@@ -11,8 +11,8 @@ documentation:
 
 types:
   errors: !include raml-storage/raml-util/schemas/errors.schema
-  marcFieldProtectionSetting: !include raml-storage/schemas/mod-di-converter-storage/marc-field-protection/marcFieldProtectionSetting.json
-  marcFieldProtectionSettingsCollection: !include raml-storage/schemas/mod-di-converter-storage/marc-field-protection/marcFieldProtectionSettingsCollection.json
+  marcFieldProtectionSetting: !include raml-storage/schemas/mod-data-import-converter-storage/marc-field-protection/marcFieldProtectionSetting.json
+  marcFieldProtectionSettingsCollection: !include raml-storage/schemas/mod-data-import-converter-storage/marc-field-protection/marcFieldProtectionSettingsCollection.json
 
 traits:
   validate: !include raml-storage/raml-util/traits/validation.raml
@@ -32,8 +32,8 @@ resourceTypes:
       collection:
         schemaCollection: marcFieldProtectionSettingsCollection
         schemaItem: marcFieldProtectionSetting
-        exampleCollection: !include raml-storage/examples/mod-di-converter-storage/marc-field-protection/marcFieldProtectionSettingsCollection.sample
-        exampleItem: !include raml-storage/examples/mod-di-converter-storage/marc-field-protection/marcFieldProtectionSetting.sample
+        exampleCollection: !include raml-storage/examples/mod-data-import-converter-storage/marc-field-protection/marcFieldProtectionSettingsCollection.sample
+        exampleItem: !include raml-storage/examples/mod-data-import-converter-storage/marc-field-protection/marcFieldProtectionSetting.sample
     get:
       is: [
         searchable: {
@@ -53,7 +53,7 @@ resourceTypes:
       type:
         collection-item:
           schema: marcFieldProtectionSetting
-          exampleItem: !include raml-storage/examples/mod-di-converter-storage/marc-field-protection/marcFieldProtectionSetting.sample
+          exampleItem: !include raml-storage/examples/mod-data-import-converter-storage/marc-field-protection/marcFieldProtectionSetting.sample
       put:
         is: [validate]
         responses:
