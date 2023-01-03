@@ -11,24 +11,24 @@ documentation:
 
 types:
   errors: !include raml-storage/raml-util/schemas/errors.schema
-  jobProfile: !include raml-storage/schemas/mod-data-import-converter-storage/jobProfile.json
-  jobProfileCollection: !include raml-storage/schemas/mod-data-import-converter-storage/jobProfileCollection.json
-  jobProfileUpdateDto: !include raml-storage/schemas/mod-data-import-converter-storage/jobProfileUpdateDto.json
-  matchProfile: !include raml-storage/schemas/mod-data-import-converter-storage/matchProfile.json
-  matchProfileCollection: !include raml-storage/schemas/mod-data-import-converter-storage/matchProfileCollection.json
-  matchProfileUpdateDto: !include raml-storage/schemas/mod-data-import-converter-storage/matchProfileUpdateDto.json
-  mappingProfile: !include raml-storage/schemas/mod-data-import-converter-storage/mappingProfile.json
-  mappingProfileCollection: !include raml-storage/schemas/mod-data-import-converter-storage/mappingProfileCollection.json
-  mappingProfileUpdateDto: !include raml-storage/schemas/mod-data-import-converter-storage/mappingProfileUpdateDto.json
-  actionProfile: !include raml-storage/schemas/mod-data-import-converter-storage/actionProfile.json
-  actionProfileCollection: !include raml-storage/schemas/mod-data-import-converter-storage/actionProfileCollection.json
-  actionProfileUpdateDto: !include raml-storage/schemas/mod-data-import-converter-storage/actionProfileUpdateDto.json
-  profileAssociation: !include raml-storage/schemas/mod-data-import-converter-storage/profileAssociation.json
-  profileAssociationCollection: !include raml-storage/schemas/mod-data-import-converter-storage/profileAssociationCollection.json
-  profileSnapshotType: !include raml-storage/schemas/mod-data-import-converter-storage/profileSnapshotType.json
-  profileSnapshotWrapper: !include raml-storage/schemas/mod-data-import-converter-storage/profileSnapshotWrapper.json
-  entityTypeCollection: !include raml-storage/schemas/mod-data-import-converter-storage/entityTypeCollection.json
-  operationType: !include raml-storage/schemas/mod-data-import-converter-storage/operationType.json
+  jobProfile: !include raml-storage/schemas/mod-di-converter-storage/jobProfile.json
+  jobProfileCollection: !include raml-storage/schemas/mod-di-converter-storage/jobProfileCollection.json
+  jobProfileUpdateDto: !include raml-storage/schemas/mod-di-converter-storage/jobProfileUpdateDto.json
+  matchProfile: !include raml-storage/schemas/mod-di-converter-storage/matchProfile.json
+  matchProfileCollection: !include raml-storage/schemas/mod-di-converter-storage/matchProfileCollection.json
+  matchProfileUpdateDto: !include raml-storage/schemas/mod-di-converter-storage/matchProfileUpdateDto.json
+  mappingProfile: !include raml-storage/schemas/mod-di-converter-storage/mappingProfile.json
+  mappingProfileCollection: !include raml-storage/schemas/mod-di-converter-storage/mappingProfileCollection.json
+  mappingProfileUpdateDto: !include raml-storage/schemas/mod-di-converter-storage/mappingProfileUpdateDto.json
+  actionProfile: !include raml-storage/schemas/mod-di-converter-storage/actionProfile.json
+  actionProfileCollection: !include raml-storage/schemas/mod-di-converter-storage/actionProfileCollection.json
+  actionProfileUpdateDto: !include raml-storage/schemas/mod-di-converter-storage/actionProfileUpdateDto.json
+  profileAssociation: !include raml-storage/schemas/mod-di-converter-storage/profileAssociation.json
+  profileAssociationCollection: !include raml-storage/schemas/mod-di-converter-storage/profileAssociationCollection.json
+  profileSnapshotType: !include raml-storage/schemas/mod-di-converter-storage/profileSnapshotType.json
+  profileSnapshotWrapper: !include raml-storage/schemas/mod-di-converter-storage/profileSnapshotWrapper.json
+  entityTypeCollection: !include raml-storage/schemas/mod-di-converter-storage/entityTypeCollection.json
+  operationType: !include raml-storage/schemas/mod-di-converter-storage/operationType.json
 
 traits:
   validate: !include raml-storage/raml-util/traits/validation.raml
@@ -48,8 +48,8 @@ resourceTypes:
       collection:
         schemaCollection: jobProfileCollection
         schemaItem: jobProfile
-        exampleCollection: !include raml-storage/examples/mod-data-import-converter-storage/jobProfileCollection.sample
-        exampleItem: !include raml-storage/examples/mod-data-import-converter-storage/jobProfile.sample
+        exampleCollection: !include raml-storage/examples/mod-di-converter-storage/jobProfileCollection.sample
+        exampleItem: !include raml-storage/examples/mod-di-converter-storage/jobProfile.sample
     post:
       is: [validate]
       body:
@@ -86,7 +86,7 @@ resourceTypes:
       type:
         collection-item:
           schema: jobProfile
-          exampleItem: !include raml-storage/examples/mod-data-import-converter-storage/jobProfile.sample
+          exampleItem: !include raml-storage/examples/mod-di-converter-storage/jobProfile.sample
       get:
         queryParameters:
           withRelations:
@@ -120,8 +120,8 @@ resourceTypes:
       collection:
         schemaCollection: matchProfileCollection
         schemaItem: matchProfile
-        exampleCollection: !include raml-storage/examples/mod-data-import-converter-storage/matchProfileCollection.sample
-        exampleItem: !include raml-storage/examples/mod-data-import-converter-storage/matchProfile.sample
+        exampleCollection: !include raml-storage/examples/mod-di-converter-storage/matchProfileCollection.sample
+        exampleItem: !include raml-storage/examples/mod-di-converter-storage/matchProfile.sample
     post:
       is: [validate]
       body:
@@ -158,7 +158,7 @@ resourceTypes:
       type:
         collection-item:
           schema: matchProfile
-          exampleItem: !include raml-storage/examples/mod-data-import-converter-storage/matchProfile.sample
+          exampleItem: !include raml-storage/examples/mod-di-converter-storage/matchProfile.sample
       get:
         queryParameters:
           withRelations:
@@ -192,8 +192,8 @@ resourceTypes:
       collection:
         schemaCollection: mappingProfileCollection
         schemaItem: mappingProfile
-        exampleCollection: !include raml-storage/examples/mod-data-import-converter-storage/mappingProfileCollection.sample
-        exampleItem: !include raml-storage/examples/mod-data-import-converter-storage/mappingProfile.sample
+        exampleCollection: !include raml-storage/examples/mod-di-converter-storage/mappingProfileCollection.sample
+        exampleItem: !include raml-storage/examples/mod-di-converter-storage/mappingProfile.sample
     post:
       is: [validate]
       body:
@@ -230,7 +230,7 @@ resourceTypes:
       type:
         collection-item:
           schema: mappingProfile
-          exampleItem: !include raml-storage/examples/mod-data-import-converter-storage/mappingProfile.sample
+          exampleItem: !include raml-storage/examples/mod-di-converter-storage/mappingProfile.sample
       get:
         queryParameters:
           withRelations:
@@ -264,8 +264,8 @@ resourceTypes:
       collection:
         schemaCollection: actionProfileCollection
         schemaItem: actionProfile
-        exampleCollection: !include raml-storage/examples/mod-data-import-converter-storage/actionProfileCollection.sample
-        exampleItem: !include raml-storage/examples/mod-data-import-converter-storage/actionProfile.sample
+        exampleCollection: !include raml-storage/examples/mod-di-converter-storage/actionProfileCollection.sample
+        exampleItem: !include raml-storage/examples/mod-di-converter-storage/actionProfile.sample
     post:
       is: [validate]
       body:
@@ -302,7 +302,7 @@ resourceTypes:
       type:
         collection-item:
           schema: actionProfile
-          exampleItem: !include raml-storage/examples/mod-data-import-converter-storage/actionProfile.sample
+          exampleItem: !include raml-storage/examples/mod-di-converter-storage/actionProfile.sample
       get:
         queryParameters:
           withRelations:
@@ -337,8 +337,8 @@ resourceTypes:
       collection:
         schemaCollection: profileAssociationCollection
         schemaItem: profileAssociation
-        exampleCollection: !include raml-storage/examples/mod-data-import-converter-storage/profileAssociationCollection.sample
-        exampleItem: !include raml-storage/examples/mod-data-import-converter-storage/profileAssociation.sample
+        exampleCollection: !include raml-storage/examples/mod-di-converter-storage/profileAssociationCollection.sample
+        exampleItem: !include raml-storage/examples/mod-di-converter-storage/profileAssociation.sample
     post:
       queryParameters:
         master:
@@ -372,7 +372,7 @@ resourceTypes:
       type:
         collection-item:
           schema: profileAssociation
-          exampleItem: !include raml-storage/examples/mod-data-import-converter-storage/profileAssociation.sample
+          exampleItem: !include raml-storage/examples/mod-di-converter-storage/profileAssociation.sample
       get:
         queryParameters:
           master:
