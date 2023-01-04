@@ -3,6 +3,8 @@ package org.folio.rest.impl;
 import io.vertx.core.Context;
 import io.vertx.core.Future;
 import io.vertx.core.Promise;
+import io.vertx.core.AsyncResult;
+import io.vertx.core.Handler;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
@@ -11,6 +13,7 @@ import org.folio.rest.jaxrs.model.TenantAttributes;
 import org.folio.rest.persist.PostgresClient;
 import org.folio.rest.tools.utils.TenantTool;
 
+import javax.ws.rs.core.Response;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
@@ -42,44 +45,53 @@ public class ModTenantAPI extends TenantAPI {
   private static final String DEFAULT_QM_AUTHORITY_UPDATE_JOB_PROFILE = "templates/db_scripts/defaultData/default_qm_authority_update_job_profile.sql";
   private static final String DEFAULT_QM_MARC_BIB_UPDATE_JOB_PROFILE = "templates/db_scripts/defaultData/default_qm_marc_bib_update_job_profile.sql";
   private static final String DEFAULT_QM_HOLDINGS_UPDATE_JOB_PROFILE = "templates/db_scripts/defaultData/default_qm_holdings_update_job_profile.sql";
-
+  private static final String RENAME_MODULE = "templates/db_scripts/rename_module.sql";
   private static final String TENANT_PLACEHOLDER = "${myuniversity}";
   private static final String MODULE_PLACEHOLDER = "${mymodule}";
 
   @Override
+  public void postTenant(TenantAttributes tenantAttributes, Map<String, String> headers, Handler<AsyncResult<Response>> handler, Context context) {
+    if (tenantAttributes.getModuleTo() != null) {
+      runSqlScript(RENAME_MODULE, headers, context);
+    }
+
+    super.postTenant(tenantAttributes, headers, handler, context);
+  }
+
+  @Override
   Future<Integer> loadData(TenantAttributes attributes, String tenantId, Map<String, String> headers, Context context) {
     return super.loadData(attributes, tenantId, headers, context)
-      .compose(num -> setupDefaultData(DEFAULT_JOB_PROFILE_SQL, headers, context)
-        .compose(r -> setupDefaultData(DEFAULT_MARC_FIELD_PROTECTION_SETTINGS_SQL, headers, context))
-        .compose(d -> setupDefaultData(DEFAULT_OCLC_JOB_PROFILE_SQL, headers, context))
-        .compose(u -> setupDefaultData(DEFAULT_OCLC_UPDATE_JOB_PROFILE_SQL, headers, context))
-        .compose(m -> setupDefaultData(DEFAULT_QM_INSTANCE_AND_SRS_MARC_BIB_CREATE_JOB_PROFILE, headers, context))
-        .compose(m -> setupDefaultData(DEFAULT_QM_HOLDINGS_AND_SRS_MARC_HOLDINGS_CREATE_JOB_PROFILE, headers, context))
-        .compose(m -> setupDefaultData(DEFAULT_INSTANCE_AND_MARC_BIB_CREATE_JOB_PROFILE, headers, context))
-        .compose(m -> setupDefaultData(DEFAULT_EDIFACT_MAPPING_PROFILES, headers, context))
-        .compose(m -> setupDefaultData(DEFAULT_MARC_AUTHORITY_CREATE_JOB_PROFILE, headers, context))
-        .compose(m -> setupDefaultData(DEFAULT_MARC_HOLDINGS_CREATE_JOB_PROFILE, headers, context))
-        .compose(m -> setupDefaultData(UPDATE_DEFAULT_QM_INSTANCE_AND_SRS_MARC_BIB_CREATE_JOB_PROFILE, headers, context))
-        .compose(m -> setupDefaultData(DEFAULT_UPDATE_MARC_AUTHORITY_JOB_PROFILE, headers, context))
-        .compose(m -> setupDefaultData(DEFAULT_UPDATE_MARC_HOLDINGS_JOB_PROFILE, headers, context))
-        .compose(m -> setupDefaultData(DEFAULT_UPDATE_QM_SRS_MARC_HOLDINGS_JOB_PROFILE, headers, context))
-        .compose(m -> setupDefaultData(DEFAULT_UPDATE_INSTANCE_AND_MARC_BIB_CREATE_JOB_PROFILE, headers, context))
-        .compose(m -> setupDefaultData(DEFAULT_UPDATE_OCLC_JOB_PROFILE_SQL, headers, context))
-        .compose(m -> setupDefaultData(DEFAULT_UPDATE_OCLC_UPDATE_JOB_PROFILE_SQL, headers, context))
-        .compose(m -> setupDefaultData(DEFAULT_UPDATE_EDIFACT_MAPPING_PROFILES, headers, context))
-        .compose(m -> setupDefaultData(DEFAULT_DELETE_MARC_AUTHORITY_JOB_PROFILES, headers, context))
-        .compose(m -> setupDefaultData(DEFAULT_QM_AUTHORITY_UPDATE_JOB_PROFILE, headers, context))
-        .compose(m -> setupDefaultData(DEFAULT_QM_MARC_BIB_UPDATE_JOB_PROFILE, headers, context))
-        .compose(m -> setupDefaultData(DEFAULT_QM_HOLDINGS_UPDATE_JOB_PROFILE, headers, context))
+      .compose(num -> runSqlScript(DEFAULT_JOB_PROFILE_SQL, headers, context)
+        .compose(r -> runSqlScript(DEFAULT_MARC_FIELD_PROTECTION_SETTINGS_SQL, headers, context))
+        .compose(d -> runSqlScript(DEFAULT_OCLC_JOB_PROFILE_SQL, headers, context))
+        .compose(u -> runSqlScript(DEFAULT_OCLC_UPDATE_JOB_PROFILE_SQL, headers, context))
+        .compose(m -> runSqlScript(DEFAULT_QM_INSTANCE_AND_SRS_MARC_BIB_CREATE_JOB_PROFILE, headers, context))
+        .compose(m -> runSqlScript(DEFAULT_QM_HOLDINGS_AND_SRS_MARC_HOLDINGS_CREATE_JOB_PROFILE, headers, context))
+        .compose(m -> runSqlScript(DEFAULT_INSTANCE_AND_MARC_BIB_CREATE_JOB_PROFILE, headers, context))
+        .compose(m -> runSqlScript(DEFAULT_EDIFACT_MAPPING_PROFILES, headers, context))
+        .compose(m -> runSqlScript(DEFAULT_MARC_AUTHORITY_CREATE_JOB_PROFILE, headers, context))
+        .compose(m -> runSqlScript(DEFAULT_MARC_HOLDINGS_CREATE_JOB_PROFILE, headers, context))
+        .compose(m -> runSqlScript(UPDATE_DEFAULT_QM_INSTANCE_AND_SRS_MARC_BIB_CREATE_JOB_PROFILE, headers, context))
+        .compose(m -> runSqlScript(DEFAULT_UPDATE_MARC_AUTHORITY_JOB_PROFILE, headers, context))
+        .compose(m -> runSqlScript(DEFAULT_UPDATE_MARC_HOLDINGS_JOB_PROFILE, headers, context))
+        .compose(m -> runSqlScript(DEFAULT_UPDATE_QM_SRS_MARC_HOLDINGS_JOB_PROFILE, headers, context))
+        .compose(m -> runSqlScript(DEFAULT_UPDATE_INSTANCE_AND_MARC_BIB_CREATE_JOB_PROFILE, headers, context))
+        .compose(m -> runSqlScript(DEFAULT_UPDATE_OCLC_JOB_PROFILE_SQL, headers, context))
+        .compose(m -> runSqlScript(DEFAULT_UPDATE_OCLC_UPDATE_JOB_PROFILE_SQL, headers, context))
+        .compose(m -> runSqlScript(DEFAULT_UPDATE_EDIFACT_MAPPING_PROFILES, headers, context))
+        .compose(m -> runSqlScript(DEFAULT_DELETE_MARC_AUTHORITY_JOB_PROFILES, headers, context))
+        .compose(m -> runSqlScript(DEFAULT_QM_AUTHORITY_UPDATE_JOB_PROFILE, headers, context))
+        .compose(m -> runSqlScript(DEFAULT_QM_MARC_BIB_UPDATE_JOB_PROFILE, headers, context))
+        .compose(m -> runSqlScript(DEFAULT_QM_HOLDINGS_UPDATE_JOB_PROFILE, headers, context))
         .map(num));
   }
 
-  private Future<List<String>> setupDefaultData(String script, Map<String, String> headers, Context context) {
+  private Future<List<String>> runSqlScript(String script, Map<String, String> headers, Context context) {
     try {
       InputStream inputStream = this.getClass().getClassLoader().getResourceAsStream(script);
 
       if (inputStream == null) {
-        LOGGER.info("setupDefaultData:: Default data was not initialized: no resources found: {}", script);
+        LOGGER.info("runSqlScript:: No resources found: {}", script);
         return Future.succeededFuture();
       }
 
@@ -98,7 +110,7 @@ public class ModTenantAPI extends TenantAPI {
 
       return promise.future();
     } catch (IOException e) {
-      LOGGER.warn("setupDefaultData:: Failed to initialize default data", e);
+      LOGGER.warn("runSqlScript:: Failed to run sql script", e);
       return Future.failedFuture(e);
     }
   }
