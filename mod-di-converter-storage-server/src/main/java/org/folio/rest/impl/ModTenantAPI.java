@@ -46,16 +46,17 @@ public class ModTenantAPI extends TenantAPI {
   private static final String DEFAULT_QM_MARC_BIB_UPDATE_JOB_PROFILE = "templates/db_scripts/defaultData/default_qm_marc_bib_update_job_profile.sql";
   private static final String DEFAULT_QM_HOLDINGS_UPDATE_JOB_PROFILE = "templates/db_scripts/defaultData/default_qm_holdings_update_job_profile.sql";
   private static final String RENAME_MODULE = "templates/db_scripts/rename_module.sql";
+
   private static final String TENANT_PLACEHOLDER = "${myuniversity}";
   private static final String MODULE_PLACEHOLDER = "${mymodule}";
 
   @Override
   public void postTenant(TenantAttributes tenantAttributes, Map<String, String> headers, Handler<AsyncResult<Response>> handler, Context context) {
-    if (tenantAttributes.getModuleTo() != null) {
-      runSqlScript(RENAME_MODULE, headers, context);
-    }
+    Future<Void> future = tenantAttributes.getModuleTo() != null
+      ? runSqlScript(RENAME_MODULE, headers, context).mapEmpty()
+      : Future.succeededFuture();
 
-    super.postTenant(tenantAttributes, headers, handler, context);
+    future.onComplete(x -> super.postTenant(tenantAttributes, headers, handler, context));
   }
 
   @Override
