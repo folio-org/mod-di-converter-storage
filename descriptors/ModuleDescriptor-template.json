@@ -1,5 +1,6 @@
 {
   "id": "${artifactId}-${version}",
+  "replaces" : [ "mod-data-import-converter-storage" ],
   "name": "Data Import Converter Storage",
   "requires": [],
   "provides": [
