@@ -76,7 +76,7 @@
 * [MODDICONV-132](https://issues.folio.org/browse/MODDICONV-132) Fixed script to delete sample data
 
 ## 2020-06-16 v1.8.1
-* [MODDICONV-129](https://issues.folio.org/browse/MODDICONV-129) Fixed creation of the rule to delete profiles 
+* [MODDICONV-129](https://issues.folio.org/browse/MODDICONV-129) Fixed creation of the rule to delete profiles
 
 ## 2020-06-11 v1.8.0
 * [MODDICONV-117](https://issues.folio.org/browse/MODDICONV-117) Added migration script to remove outdated indexes
@@ -87,14 +87,14 @@
 * [MODDICONV-124](https://issues.folio.org/browse/MODDICONV-124) Remove sample profile data from Settings/Data import
 
 ## 2020-04-23 v1.7.2
-* [MODDICONV-112](https://issues.folio.org/browse/MODDICONV-112) Added migration script to support RMB version update 
+* [MODDICONV-112](https://issues.folio.org/browse/MODDICONV-112) Added migration script to support RMB version update
 * [MODDICONV-120](https://issues.folio.org/browse/MODDICONV-120) Added default job profile as reference data to enable "secret button"
 
 ## 2020-03-27 v1.7.1
 * Adjusted staticValueDetail schema
 * Allowed for matchDetails static values contain decimal numbers
 * Provided API for getting Profile Snapshot structure for any profile type
-  
+
   | METHOD |             URL                                                | DESCRIPTION                          |
   |--------|----------------------------------------------------------------|--------------------------------------|
   | GET    | /data-import-profiles/profileSnapshots/{id}?profileType={type} | Get Profile Snapshot structure by profile id and type (JOB_PROFILE, MATCH_PROFILE, ACTION_PROFILE, MAPPING_PROFILE) |
@@ -114,7 +114,7 @@
   | GET    | /converter-storage/forms/configs/{formName}                  | Get form config by formName          |
   | PUT    | /converter-storage/forms/configs/{formName}                  | Update form config by formName       |
   | DELETE | /converter-storage/forms/configs/{formName}                  | Delete form config by formName       |
-  
+
 ## 2019-12-04 v1.6.0
 * Fixed security vulnerabilities
 * Applied new JVM features to manage container memory
@@ -136,7 +136,7 @@
 * Updated Mapping Profile schema and sample data.
 
 ## 2019-06-12 v1.3.0
-* Updated association profiles samples. 
+* Updated association profiles samples.
 * Updated API endpoint for getting details by master id. Added query param to specify return type. Added searching by cql query for details.
 * Updated API endpoint for getting masters by detail id. Added query param to specify return type. Added searching by cql query for details.
 * Updated API endpoints for Profile Association entity. Added query parameters to specify master and detail types of profile association.
@@ -166,7 +166,7 @@
   | POST   | /data-import-profiles/mappingProfiles                        | Create Mapping Profile              |
   | GET    | /data-import-profiles/mappingProfiles/{id}                   | Get Mapping Profile by id           |
   | PUT    | /data-import-profiles/mappingProfiles/{id}                   | Update Mapping Profile entity       |
-  | DELETE | /data-import-profiles/mappingProfiles/{id}                   | Delete Mapping Profile entity       | 
+  | DELETE | /data-import-profiles/mappingProfiles/{id}                   | Delete Mapping Profile entity       |
   | POST   | /data-import-profiles/profileAssociations?master={masterType}&detail={detailType}                    | Create Profile Association with appropriate masterType and detailType               |
   | GET    | /data-import-profiles/profileAssociations?master={masterType}&detail={detailType}                    | Get all Profile Association , masterType and detailType                             |
   | GET    | /data-import-profiles/profileAssociations/{id}?master={masterType}&detail={detailType}               | Get Profile Association with appropriate masterType and detailType                  |
@@ -188,7 +188,7 @@
 
 ## 2019-05-03 v1.1.0
 * Added endpoint to receive entity types list.
-* Updated Job Profile schema to contain single dataType. 
+* Updated Job Profile schema to contain single dataType.
 * Updated existing sample data.
 * Added methods to work with associated profiles.
 * Designed and created Job Profile Snapshot entity.
@@ -272,4 +272,4 @@
   | POST   | /data-import-profiles/jobProfileSnapshots/{id}               | Create Job Profile Snapshot entity  |
   | GET    | /data-import-profiles/profileAssociations/{masterId}/details?masterType={masterType}| Get details by master profile masterType: JOB_PROFILE, ACTION_PROFILE, MATCH_PROFILE, MAPPING_PROFILE |
   | GET    | /data-import-profiles/profileAssociations/{detailId}/masters?detailType={detailType}| Get masters by detail profile detailType: JOB_PROFILE, ACTION_PROFILE, MATCH_PROFILE, MAPPING_PROFILE |
-        
+
