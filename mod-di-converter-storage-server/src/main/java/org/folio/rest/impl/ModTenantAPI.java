@@ -108,10 +108,14 @@ public class ModTenantAPI extends TenantAPI {
         return Future.succeededFuture();
       }
 
+      LOGGER.warn("sqlScript 1: {}", sqlScript);
+
       String tenantId = TenantTool.calculateTenantId(headers.get("x-okapi-tenant"));
       String moduleName = PostgresClient.getModuleName();
 
       sqlScript = sqlScript.replace(TENANT_PLACEHOLDER, tenantId).replace(MODULE_PLACEHOLDER, moduleName);
+
+      LOGGER.warn("sqlScript 2: {}", sqlScript);
 
       Promise<List<String>> promise = Promise.promise();
       PostgresClient.getInstance(context.owner()).runSQLFile(sqlScript, false, promise);
