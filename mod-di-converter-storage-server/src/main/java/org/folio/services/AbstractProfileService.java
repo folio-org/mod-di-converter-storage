@@ -7,9 +7,10 @@ import io.vertx.core.json.JsonObject;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.folio.dao.PostgresClientFactory;
 import org.folio.dao.ProfileDao;
-import org.folio.rest.impl.util.OkapiConnectionParams;
 import org.folio.okapi.common.GenericCompositeFuture;
+import org.folio.rest.impl.util.OkapiConnectionParams;
 import org.folio.rest.impl.util.RestUtil;
 import org.folio.rest.jaxrs.model.EntityTypeCollection;
 import org.folio.rest.jaxrs.model.ProfileAssociation;
@@ -59,8 +60,12 @@ public abstract class AbstractProfileService<T, S, D> implements ProfileService<
   @Autowired
   protected CommonProfileAssociationService associationService;
 
+  @Autowired
+  protected PostgresClientFactory pgClientFactory;
+
   @Override
   public Future<S> getProfiles(boolean showDeleted, boolean withRelations, boolean showHidden, String query, int offset, int limit, String tenantId) {
+    logger.warn("getProfiles:: schemaName: {}", pgClientFactory.createInstance(tenantId).getSchemaName());
     return profileDao.getProfiles(showDeleted, showHidden, query, offset, limit, tenantId)
       .compose(profilesCollection -> {
         if (withRelations) {
@@ -73,6 +78,7 @@ public abstract class AbstractProfileService<T, S, D> implements ProfileService<
 
   @Override
   public Future<Optional<T>> getProfileById(String id, boolean withRelations, String tenantId) {
+    logger.warn("getProfiles:: schemaName: {}", pgClientFactory.createInstance(tenantId).getSchemaName());
     return profileDao.getProfileById(id, tenantId)
       .compose(profile -> {
         if (withRelations && profile.isPresent()) {
