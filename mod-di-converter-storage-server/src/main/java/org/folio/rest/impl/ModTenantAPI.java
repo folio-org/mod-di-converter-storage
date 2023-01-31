@@ -115,8 +115,6 @@ public class ModTenantAPI extends TenantAPI {
 
       sqlScript = sqlScript.replace(TENANT_PLACEHOLDER, tenantId).replace(MODULE_PLACEHOLDER, moduleName);
 
-      LOGGER.warn("sqlScript 2: {}", sqlScript);
-
       Promise<List<String>> promise = Promise.promise();
       PostgresClient.getInstance(context.owner()).runSQLFile(sqlScript, false, promise);
 
