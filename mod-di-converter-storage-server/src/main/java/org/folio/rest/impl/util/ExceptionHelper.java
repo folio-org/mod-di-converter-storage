@@ -24,7 +24,7 @@ public final class ExceptionHelper {
   }
 
   public static Response mapExceptionToResponse(Throwable throwable) {
-    LOGGER.warn("mapExceptionToResponse: {}", throwable.getMessage(), throwable);
+    LOGGER.warn("{}", throwable.getMessage(), throwable);
     if (throwable instanceof BadRequestException) {
       return Response.status(BAD_REQUEST.getStatusCode())
         .type(MediaType.TEXT_PLAIN)

@@ -52,13 +52,6 @@ public class ModTenantAPI extends TenantAPI {
 
   @Override
   public void postTenant(TenantAttributes tenantAttributes, Map<String, String> headers, Handler<AsyncResult<Response>> handler, Context context) {
-
-    String tenantId = TenantTool.calculateTenantId(headers.get("x-okapi-tenant"));
-    String moduleName = PostgresClient.getModuleName();
-
-    LOGGER.warn("postTenant :: tenantId:{}, moduleName:{}", tenantId, moduleName);
-    LOGGER.warn("tenantAttributes.getModuleTo() == {}", tenantAttributes.getModuleTo());
-
     Future<Void> future = tenantAttributes.getModuleTo() != null
       ? runSqlScript(RENAME_MODULE, headers, context).mapEmpty()
       : Future.succeededFuture();
@@ -107,8 +100,6 @@ public class ModTenantAPI extends TenantAPI {
       if (StringUtils.isBlank(sqlScript)) {
         return Future.succeededFuture();
       }
-
-      LOGGER.warn("sqlScript 1: {}", sqlScript);
 
       String tenantId = TenantTool.calculateTenantId(headers.get("x-okapi-tenant"));
       String moduleName = PostgresClient.getModuleName();

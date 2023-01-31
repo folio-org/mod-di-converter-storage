@@ -60,12 +60,8 @@ public abstract class AbstractProfileService<T, S, D> implements ProfileService<
   @Autowired
   protected CommonProfileAssociationService associationService;
 
-  @Autowired
-  protected PostgresClientFactory pgClientFactory;
-
   @Override
   public Future<S> getProfiles(boolean showDeleted, boolean withRelations, boolean showHidden, String query, int offset, int limit, String tenantId) {
-    logger.warn("getProfiles:: schemaName: {}", pgClientFactory.createInstance(tenantId).getSchemaName());
     return profileDao.getProfiles(showDeleted, showHidden, query, offset, limit, tenantId)
       .compose(profilesCollection -> {
         if (withRelations) {
@@ -78,7 +74,6 @@ public abstract class AbstractProfileService<T, S, D> implements ProfileService<
 
   @Override
   public Future<Optional<T>> getProfileById(String id, boolean withRelations, String tenantId) {
-    logger.warn("getProfiles:: schemaName: {}", pgClientFactory.createInstance(tenantId).getSchemaName());
     return profileDao.getProfileById(id, tenantId)
       .compose(profile -> {
         if (withRelations && profile.isPresent()) {
