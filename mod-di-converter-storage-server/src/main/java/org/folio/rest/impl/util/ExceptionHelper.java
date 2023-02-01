@@ -42,7 +42,7 @@ public final class ExceptionHelper {
         .entity(throwable.getMessage())
         .build();
     }
-    LOGGER.warn("{}", throwable.getMessage(), throwable);
+    LOGGER.error("{}", throwable.getMessage(), throwable);
     Promise<Response> validationFuture = Promise.promise();
     ValidationHelper.handleError(throwable, validationFuture);
     if (validationFuture.future().isComplete()) {
