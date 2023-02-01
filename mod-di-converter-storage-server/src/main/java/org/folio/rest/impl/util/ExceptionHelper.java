@@ -24,7 +24,6 @@ public final class ExceptionHelper {
   }
 
   public static Response mapExceptionToResponse(Throwable throwable) {
-    LOGGER.warn("{}", throwable.getMessage(), throwable);
     if (throwable instanceof BadRequestException) {
       return Response.status(BAD_REQUEST.getStatusCode())
         .type(MediaType.TEXT_PLAIN)
@@ -43,6 +42,7 @@ public final class ExceptionHelper {
         .entity(throwable.getMessage())
         .build();
     }
+    LOGGER.warn("{}", throwable.getMessage(), throwable);
     Promise<Response> validationFuture = Promise.promise();
     ValidationHelper.handleError(throwable, validationFuture);
     if (validationFuture.future().isComplete()) {
@@ -52,7 +52,6 @@ public final class ExceptionHelper {
       }
       return response;
     }
-    LOGGER.warn(throwable.getMessage(), throwable);
     return Response.status(INTERNAL_SERVER_ERROR.getStatusCode())
       .type(MediaType.TEXT_PLAIN)
       .entity(INTERNAL_SERVER_ERROR.getReasonPhrase())
