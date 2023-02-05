@@ -20,15 +20,16 @@
 
   <properties>
     <raml-module-builder.version>35.0.1</raml-module-builder.version>
-    <vertx.version>4.3.4</vertx.version>
+    <vertx.version>4.3.7</vertx.version>
     <junit.version>4.13.2</junit.version>
-    <mockito.version>4.4.0</mockito.version>
+    <mockito.version>5.1.1</mockito.version>
     <rest-assured.version>4.5.1</rest-assured.version>
     <main.basedir>${project.basedir}</main.basedir>
     <ramlfiles_path>${basedir}/ramls</ramlfiles_path>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <sonar.exclusions>**/ModTenantAPI.java</sonar.exclusions>
     <testcontainers.version>1.16.3</testcontainers.version>
+    <spring.version>5.3.23</spring.version>
   </properties>
 
   <dependencyManagement>
@@ -44,6 +45,13 @@
         <groupId>io.vertx</groupId>
         <artifactId>vertx-stack-depchain</artifactId>
         <version>${vertx.version}</version>
+        <type>pom</type>
+        <scope>import</scope>
+      </dependency>
+      <dependency>
+        <groupId>org.springframework</groupId>
+        <artifactId>spring-framework-bom</artifactId>
+        <version>${spring.version}</version>
         <type>pom</type>
         <scope>import</scope>
       </dependency>
