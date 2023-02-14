@@ -1,4 +1,4 @@
-## 2022-02-14 v2.0.0
+## 2023-02-14 v2.0.0
 * [MODDICONV-259](https://issues.folio.org/browse/MODDICONV-259) Rename mod-data-import-converter-storage module to mod-di-converter-storage
 * [MODDICONV-271](https://issues.folio.org/browse/MODDICONV-271) Logging improvement - Configuration
 * [MODDATAIMP-736](https://issues.folio.org/browse/MODDATAIMP-736) Adjust logging configuration in all DI modules to display datetime in a proper format
