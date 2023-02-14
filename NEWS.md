@@ -1,3 +1,15 @@
+## 2022-02-14 v2.0.0
+* [MODDICONV-259](https://issues.folio.org/browse/MODDICONV-259) Rename mod-data-import-converter-storage module to mod-di-converter-storage
+* [MODDICONV-271](https://issues.folio.org/browse/MODDICONV-271) Logging improvement - Configuration
+* [MODDATAIMP-736](https://issues.folio.org/browse/MODDATAIMP-736) Adjust logging configuration in all DI modules to display datetime in a proper format
+* [MODDICONV-292](https://issues.folio.org/browse/MODDICONV-292) Add validation of Folio Record Type upon linking of Action and Mapping profile
+* [MODDICONV-281](https://issues.folio.org/browse/MODDICONV-281) Enable ability to edit Job profile: Default - Create SRS MARC Authority
+* [MODDICONV-282](https://issues.folio.org/browse/MODDICONV-282) Change Job profile: Default - Create SRS MARC Authority description
+* [MODDICONV-233](https://issues.folio.org/browse/MODDICONV-233) Logging improvement
+* [MODDATAIMP-758](https://issues.folio.org/browse/MODDATAIMP-758) Improve logging (hide SQL requests)
+* [MODDICONV-291](https://issues.folio.org/browse/MODDICONV-291) Fixed unauthorized error after upgrade from Nolana to Orchid snapshot version
+* [MODDATAIMP-750](https://issues.folio.org/browse/MODDATAIMP-750) Update dependencies
+
 ## 2022-10-19 v1.15.0
 * [MODDICONV-260](https://issues.folio.org/browse/MODDICONV-260) spring-beans 5.3.20, Vert.x 4.3.3 fixing vulns
 * [MODDICONV-258](https://issues.folio.org/browse/MODDICONV-258) Apostrophe not escaped in input when creating field mapping profile (possible SQL injection)
