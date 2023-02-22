@@ -1,3 +1,6 @@
+## 2023-02-22 v2.0.1
+* [MODDICORE-306](https://issues.folio.org/browse/MODDICORE-306) Update raml-storage in order to update mappingRule with new required field
+
 ## 2023-02-14 v2.0.0
 * [MODDICONV-259](https://issues.folio.org/browse/MODDICONV-259) Rename mod-data-import-converter-storage module to mod-di-converter-storage
 * [MODDICONV-271](https://issues.folio.org/browse/MODDICONV-271) Logging improvement - Configuration
