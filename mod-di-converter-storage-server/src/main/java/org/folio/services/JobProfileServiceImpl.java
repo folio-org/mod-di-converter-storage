@@ -68,8 +68,18 @@ public class JobProfileServiceImpl extends AbstractProfileService<JobProfile, Jo
   }
 
   @Override
+  protected List<ProfileSnapshotWrapper> getChildProfiles(JobProfile profile) {
+    return profile.getChildProfiles();
+  }
+
+  @Override
   protected void setChildProfiles(JobProfile profile, List<ProfileSnapshotWrapper> childProfiles) {
     profile.setChildProfiles(childProfiles);
+  }
+
+  @Override
+  protected List<ProfileSnapshotWrapper> getParentProfiles(JobProfile profile) {
+    return profile.getParentProfiles();
   }
 
   @Override

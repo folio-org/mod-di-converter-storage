@@ -93,6 +93,13 @@ public class ActionProfileTest extends AbstractRestVerticleTest {
       .withTags(new Tags().withTagList(Arrays.asList("lorem", "ipsum", "dolor")))
       .withAction(CREATE)
       .withFolioRecord(MARC_BIBLIOGRAPHIC));
+  static ActionProfileUpdateDto actionProfileNotEmptyChildAndParent = new ActionProfileUpdateDto()
+    .withProfile(new ActionProfile()
+      .withName("Action profile with child and parent")
+      .withAction(CREATE)
+      .withParentProfiles(List.of(new ProfileSnapshotWrapper().withId(UUID.randomUUID().toString())))
+      .withChildProfiles(List.of(new ProfileSnapshotWrapper().withId(UUID.randomUUID().toString())))
+      .withFolioRecord(MARC_BIBLIOGRAPHIC));
 
   @Test
   public void shouldReturnEmptyListOnGet() {
@@ -694,6 +701,40 @@ public class ActionProfileTest extends AbstractRestVerticleTest {
           is("Can not update ActionProfile recordType and linked MappingProfile recordType are different")
         )));
   }
+
+  @Test
+  public void shouldReturnBadRequestIfChildOrParentProfileIsNotEmptyOnPost() {
+    RestAssured.given()
+      .spec(spec)
+      .body(actionProfileNotEmptyChildAndParent)
+      .when()
+      .post(ACTION_PROFILES_PATH)
+      .then()
+      .statusCode(HttpStatus.SC_UNPROCESSABLE_ENTITY)
+      .body("errors[0].message", is("actionProfile.child.notEmpty"))
+      .body("errors[1].message", is("actionProfile.parent.notEmpty"));
+  }
+
+  @Test
+  public void shouldReturnBadRequestIfChildOrParentProfileIsNotEmptyOnPut() {
+    var actionProfileUpdateDto = postActionProfile(new ActionProfileUpdateDto()
+      .withProfile(new ActionProfile()
+        .withName("Test Action Profile")
+        .withAction(CREATE)
+        .withFolioRecord(MARC_BIBLIOGRAPHIC)));
+
+
+    RestAssured.given()
+      .spec(spec)
+      .body(actionProfileNotEmptyChildAndParent)
+      .when()
+      .put(ACTION_PROFILES_PATH + "/" + actionProfileUpdateDto.getProfile().getId())
+      .then()
+      .statusCode(HttpStatus.SC_UNPROCESSABLE_ENTITY)
+      .body("errors[0].message", is("actionProfile.child.notEmpty"))
+      .body("errors[1].message", is("actionProfile.parent.notEmpty"));
+  }
+
 
   private void createProfiles() {
     List<ActionProfileUpdateDto> actionProfilesToPost = Arrays.asList(actionProfile_1, actionProfile_2, actionProfile_3);

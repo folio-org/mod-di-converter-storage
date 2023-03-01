@@ -45,6 +45,7 @@ public class ModTenantAPI extends TenantAPI {
   private static final String DEFAULT_QM_AUTHORITY_UPDATE_JOB_PROFILE = "templates/db_scripts/defaultData/default_qm_authority_update_job_profile.sql";
   private static final String DEFAULT_QM_MARC_BIB_UPDATE_JOB_PROFILE = "templates/db_scripts/defaultData/default_qm_marc_bib_update_job_profile.sql";
   private static final String DEFAULT_QM_HOLDINGS_UPDATE_JOB_PROFILE = "templates/db_scripts/defaultData/default_qm_holdings_update_job_profile.sql";
+  private static final String DEFAULT_PROFILE_REMOVE_CHILD_AND_PARENT = "templates/db_scripts/data-migration/remove_child_and_parent_from_profiles.sql";
   private static final String RENAME_MODULE = "templates/db_scripts/rename_module.sql";
 
   private static final String TENANT_PLACEHOLDER = "${myuniversity}";
@@ -84,6 +85,7 @@ public class ModTenantAPI extends TenantAPI {
         .compose(m -> runSqlScript(DEFAULT_QM_AUTHORITY_UPDATE_JOB_PROFILE, headers, context))
         .compose(m -> runSqlScript(DEFAULT_QM_MARC_BIB_UPDATE_JOB_PROFILE, headers, context))
         .compose(m -> runSqlScript(DEFAULT_QM_HOLDINGS_UPDATE_JOB_PROFILE, headers, context))
+        .compose(m -> runSqlScript(DEFAULT_PROFILE_REMOVE_CHILD_AND_PARENT, headers, context))
         .map(num));
   }
 

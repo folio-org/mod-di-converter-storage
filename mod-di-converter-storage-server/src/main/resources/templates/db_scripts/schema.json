@@ -227,6 +227,11 @@
       "run": "after",
       "snippetPath": "data-migration/set_administrative_notes.sql",
       "fromModuleVersion": "mod-di-converter-storage-1.14.3"
+    },
+    {
+      "run": "after",
+      "snippetPath": "data-migration/remove_child_and_parent_from_profiles.sql",
+      "fromModuleVersion": "mod-di-converter-storage-2.1.0"
     }
   ]
 }

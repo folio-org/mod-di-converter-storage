@@ -67,6 +67,7 @@ public class DataImportProfilesImpl implements DataImportProfiles {
   private static final Logger logger = LogManager.getLogger();
   private static final String DUPLICATE_PROFILE_ERROR_CODE = "%s.duplication.invalid";
   private static final String DUPLICATE_PROFILE_ID_ERROR_CODE = "%s.duplication.id";
+  private static final String NOT_EMPTY_RELATED_PROFILE_ERROR_CODE = "%s.%s.notEmpty";
   private static final String PROFILE_VALIDATE_ERROR_MESSAGE = "Failed to validate %s";
   private static final String MASTER_PROFILE_NOT_FOUND_MSG = "Master profile with id '%s' was not found";
   private static final String DETAIL_PROFILE_NOT_FOUND_MSG = "Detail profile with id '%s' was not found";
@@ -865,6 +866,8 @@ public class DataImportProfilesImpl implements DataImportProfiles {
   private <T, S, D> Map<String, Future<Boolean>> getValidateConditions(OperationType operationType, T profile, ProfileService<T, S, D> profileService, String tenantId) {
     Map<String, Future<Boolean>> validateConditions = new LinkedHashMap<>();
     validateConditions.put(DUPLICATE_PROFILE_ERROR_CODE, profileService.isProfileExistByProfileName(profile, tenantId));
+    validateConditions.put(String.format(NOT_EMPTY_RELATED_PROFILE_ERROR_CODE, "%s", "child"), profileService.isProfileContainsChildProfiles(profile));
+    validateConditions.put(String.format(NOT_EMPTY_RELATED_PROFILE_ERROR_CODE, "%s", "parent"), profileService.isProfileContainsParentProfiles(profile));
     if(operationType == OperationType.CREATE) {
       validateConditions.put(DUPLICATE_PROFILE_ID_ERROR_CODE, profileService.isProfileExistByProfileId(profile, tenantId));
     }

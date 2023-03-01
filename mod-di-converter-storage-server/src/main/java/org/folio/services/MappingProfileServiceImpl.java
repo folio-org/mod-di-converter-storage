@@ -79,8 +79,18 @@ public class MappingProfileServiceImpl extends AbstractProfileService<MappingPro
   }
 
   @Override
+  protected List<ProfileSnapshotWrapper> getChildProfiles(MappingProfile profile) {
+    return profile.getChildProfiles();
+  }
+
+  @Override
   protected void setChildProfiles(MappingProfile profile, List<ProfileSnapshotWrapper> childProfiles) {
     profile.setChildProfiles(childProfiles);
+  }
+
+  @Override
+  protected List<ProfileSnapshotWrapper> getParentProfiles(MappingProfile profile) {
+    return profile.getParentProfiles();
   }
 
   @Override
