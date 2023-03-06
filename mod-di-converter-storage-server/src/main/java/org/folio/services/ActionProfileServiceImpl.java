@@ -58,8 +58,18 @@ public class ActionProfileServiceImpl extends AbstractProfileService<ActionProfi
   }
 
   @Override
+  protected List<ProfileSnapshotWrapper> getChildProfiles(ActionProfile profile) {
+    return profile.getChildProfiles();
+  }
+
+  @Override
   protected void setChildProfiles(ActionProfile profile, List<ProfileSnapshotWrapper> childProfiles) {
     profile.setChildProfiles(childProfiles);
+  }
+
+  @Override
+  protected List<ProfileSnapshotWrapper> getParentProfiles(ActionProfile profile) {
+    return profile.getParentProfiles();
   }
 
   @Override

@@ -96,6 +96,14 @@ public class MappingProfileTest extends AbstractRestVerticleTest {
       .withIncomingRecordType(EntityType.MARC_BIBLIOGRAPHIC)
       .withExistingRecordType(EntityType.INSTANCE));
 
+  private static MappingProfileUpdateDto mappingProfileNotEmptyChildAndParent = new MappingProfileUpdateDto()
+    .withProfile(new MappingProfile()
+      .withName("Mapping profile with child and parent")
+      .withIncomingRecordType(EntityType.MARC_BIBLIOGRAPHIC)
+      .withExistingRecordType(EntityType.INSTANCE)
+      .withChildProfiles(List.of(new ProfileSnapshotWrapper().withId(UUID.randomUUID().toString())))
+      .withParentProfiles(List.of(new ProfileSnapshotWrapper().withId(UUID.randomUUID().toString()))));
+
 
   private static final List<MappingRule> fields = Lists.newArrayList(new MappingRule()
     .withName("repeatableField")
@@ -863,6 +871,45 @@ public class MappingProfileTest extends AbstractRestVerticleTest {
         hasEntry(is("message"),
           is("Can not update MappingProfile recordType and linked ActionProfile recordType are different")
         )));
+  }
+
+  @Test
+  public void shouldReturnBadRequestWhenChildOrParentProfileNotEmptyOnPost() {
+    createProfiles();
+    RestAssured.given()
+      .spec(spec)
+      .body(mappingProfileNotEmptyChildAndParent)
+      .when()
+      .post(MAPPING_PROFILES_PATH)
+      .then()
+      .statusCode(HttpStatus.SC_UNPROCESSABLE_ENTITY)
+      .body("errors[0].message", is("mappingProfile.child.notEmpty"))
+      .body("errors[1].message", is("mappingProfile.parent.notEmpty"));
+  }
+
+  @Test
+  public void shouldReturnBadRequestWhenChildOrParentProfileNotEmptyOnPut() {
+    Response createResponse = RestAssured.given()
+      .spec(spec)
+      .body(new MappingProfileUpdateDto().withProfile(new MappingProfile()
+        .withName("newProfile")
+        .withIncomingRecordType(EntityType.MARC_BIBLIOGRAPHIC)
+        .withExistingRecordType(EntityType.INSTANCE)))
+      .when()
+      .post(MAPPING_PROFILES_PATH);
+    Assert.assertThat(createResponse.statusCode(), is(HttpStatus.SC_CREATED));
+    MappingProfileUpdateDto createdProfile = createResponse.body().as(MappingProfileUpdateDto.class);
+
+    createProfiles();
+    RestAssured.given()
+      .spec(spec)
+      .body(mappingProfileNotEmptyChildAndParent)
+      .when()
+      .put(MAPPING_PROFILES_PATH + "/" + createdProfile.getProfile().getId())
+      .then()
+      .statusCode(HttpStatus.SC_UNPROCESSABLE_ENTITY)
+      .body("errors[0].message", is("mappingProfile.child.notEmpty"))
+      .body("errors[1].message", is("mappingProfile.parent.notEmpty"));
   }
 
   private void createProfiles() {
