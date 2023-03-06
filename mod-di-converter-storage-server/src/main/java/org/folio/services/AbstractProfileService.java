@@ -175,6 +175,18 @@ public abstract class AbstractProfileService<T, S, D> implements ProfileService<
   }
 
   @Override
+  public Future<Boolean> isProfileContainsChildProfiles(T profile) {
+    List<ProfileSnapshotWrapper> childProfiles = getChildProfiles(profile);
+    return Future.succeededFuture(childProfiles!= null && !childProfiles.isEmpty());
+  }
+
+  @Override
+  public Future<Boolean> isProfileContainsParentProfiles(T profile) {
+    List<ProfileSnapshotWrapper> parentProfiles = getParentProfiles(profile);
+    return Future.succeededFuture(parentProfiles != null && !parentProfiles.isEmpty());
+  }
+
+  @Override
   public Future<EntityTypeCollection> getEntityTypes() {
     return Future.succeededFuture(entityTypeCollection);
   }
@@ -221,7 +233,11 @@ public abstract class AbstractProfileService<T, S, D> implements ProfileService<
    */
   protected abstract ProfileSnapshotWrapper.ContentType getProfileContentType();
 
+  protected abstract List<ProfileSnapshotWrapper> getChildProfiles(T profile);
+
   protected abstract void setChildProfiles(T profile, List<ProfileSnapshotWrapper> childProfiles);
+
+  protected abstract List<ProfileSnapshotWrapper> getParentProfiles(T profile);
 
   protected abstract void setParentProfiles(T profile, List<ProfileSnapshotWrapper> parentProfiles);
 

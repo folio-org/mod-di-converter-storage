@@ -100,4 +100,20 @@ public interface ProfileService<T, S, D> {
    * @return future with {@link EntityTypeCollection}
    */
   Future<EntityTypeCollection> getEntityTypes();
+
+  /**
+   * Checks is profile contains child profiles
+   *
+   * @param profile  - T entity
+   * @return - boolean value. True if profile contains child profiles
+   */
+  Future<Boolean> isProfileContainsChildProfiles(T profile);
+
+  /**
+   * Checks is profile contains parent profiles
+   *
+   * @param profile  - T entity
+   * @return - boolean value. True if profile contains parent profiles
+   */
+  Future<Boolean> isProfileContainsParentProfiles(T profile);
 }

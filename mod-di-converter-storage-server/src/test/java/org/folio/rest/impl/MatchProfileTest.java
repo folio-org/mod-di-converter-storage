@@ -20,6 +20,7 @@ import org.folio.rest.jaxrs.model.MatchExpression;
 import org.folio.rest.jaxrs.model.MatchProfile;
 import org.folio.rest.jaxrs.model.MatchProfileUpdateDto;
 import org.folio.rest.jaxrs.model.ProfileAssociation;
+import org.folio.rest.jaxrs.model.ProfileSnapshotWrapper;
 import org.folio.rest.jaxrs.model.ProfileSnapshotWrapper.ContentType;
 import org.folio.rest.jaxrs.model.Qualifier;
 import org.folio.rest.jaxrs.model.Tags;
@@ -94,6 +95,14 @@ public class MatchProfileTest extends AbstractRestVerticleTest {
       .withTags(new Tags().withTagList(Arrays.asList("lorem", "ipsum")))
       .withIncomingRecordType(EntityType.MARC_BIBLIOGRAPHIC)
       .withExistingRecordType(EntityType.MARC_BIBLIOGRAPHIC));
+
+  private static MatchProfileUpdateDto matchProfileNotEmptyChildAndParent = new MatchProfileUpdateDto()
+    .withProfile(new MatchProfile()
+      .withName("Match profile with child and parent")
+      .withIncomingRecordType(EntityType.MARC_BIBLIOGRAPHIC)
+      .withExistingRecordType(EntityType.MARC_BIBLIOGRAPHIC)
+      .withChildProfiles(List.of(new ProfileSnapshotWrapper().withId(UUID.randomUUID().toString())))
+      .withParentProfiles(List.of(new ProfileSnapshotWrapper().withId(UUID.randomUUID().toString()))));
 
   @Test
   public void shouldReturnEmptyListOnGet() {
@@ -693,6 +702,40 @@ public class MatchProfileTest extends AbstractRestVerticleTest {
       is(matchDetail.getExistingMatchExpression().getFields().get(0).getValue()));
     Assert.assertThat(receivedMatchDetail1.getExistingMatchExpression().getQualifier().getComparisonPart(),
       is(matchDetail.getExistingMatchExpression().getQualifier().getComparisonPart()));
+  }
+
+  @Test
+  public void shouldReturnBadRequestWhenChildOrParentIsNotEmptyOnPost(TestContext context) {
+    RestAssured.given()
+      .spec(spec)
+      .body(matchProfileNotEmptyChildAndParent)
+      .when()
+      .post(MATCH_PROFILES_PATH)
+      .then()
+      .statusCode(HttpStatus.SC_UNPROCESSABLE_ENTITY)
+      .body("errors[0].message", is("matchProfile.child.notEmpty"))
+      .body("errors[1].message", is("matchProfile.parent.notEmpty"));
+  }
+
+  @Test
+  public void shouldReturnBadRequestWhenChildOrParentIsNotEmptyOnPut(TestContext context) {
+    Response createResponse = RestAssured.given()
+      .spec(spec)
+      .body(matchProfile_2)
+      .when()
+      .post(MATCH_PROFILES_PATH);
+    Assert.assertThat(createResponse.statusCode(), is(HttpStatus.SC_CREATED));
+    MatchProfileUpdateDto matchProfile = createResponse.body().as(MatchProfileUpdateDto.class);
+
+    RestAssured.given()
+      .spec(spec)
+      .body(matchProfileNotEmptyChildAndParent)
+      .when()
+      .put(MATCH_PROFILES_PATH + "/" + matchProfile.getProfile().getId())
+      .then()
+      .statusCode(HttpStatus.SC_UNPROCESSABLE_ENTITY)
+      .body("errors[0].message", is("matchProfile.child.notEmpty"))
+      .body("errors[1].message", is("matchProfile.parent.notEmpty"));
   }
 
   private List<String> createProfiles() {
