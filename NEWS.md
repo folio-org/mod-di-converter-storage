@@ -1,3 +1,6 @@
+## 2023-03-13 v2.0.2
+* [MODDICONV-293](https://issues.folio.org/browse/MODDICONV-293) Add validation for creating profiles to prevent saving child and parent elements
+
 ## 2023-02-22 v2.0.1
 * [MODDICORE-306](https://issues.folio.org/browse/MODDICORE-306) Update raml-storage in order to update mappingRule with new required field
 
