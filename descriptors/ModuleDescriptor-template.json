@@ -2,7 +2,12 @@
   "id": "${artifactId}-${version}",
   "replaces" : [ "mod-data-import-converter-storage" ],
   "name": "Data Import Converter Storage",
-  "requires": [],
+  "requires" : [
+    {
+      "id" : "permissions",
+      "version" : "5.6"
+    }
+  ],
   "provides": [
     {
       "id": "data-import-converter-storage",
