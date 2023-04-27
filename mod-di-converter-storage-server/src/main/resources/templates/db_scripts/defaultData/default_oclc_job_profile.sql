@@ -33,6 +33,7 @@ INSERT INTO ${myuniversity}_${mymodule}.action_profiles (id, jsonb) values
 	"name": "Inventory Single Record - Default Create Instance",
 	"action": "CREATE",
 	"deleted": false,
+	"remove9Subfields": true,
 	"userInfo": {
 		"lastName": "System",
 		"userName": "System",

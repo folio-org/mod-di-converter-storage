@@ -35,7 +35,7 @@ public class FieldProtectionSettingsImpl implements FieldProtectionSettings {
   }
 
   @Override
-  public void getFieldProtectionSettingsMarc(String query, int offset, int limit, String lang, Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
+  public void getFieldProtectionSettingsMarc(String query, String totalRecords, int offset, int limit, Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     try {
       marcFieldProtectionSettingsService.getMarcFieldProtectionSettings(query, offset, limit, tenantId)
         .map(FieldProtectionSettings.GetFieldProtectionSettingsMarcResponse::respond200WithApplicationJson)
@@ -49,7 +49,7 @@ public class FieldProtectionSettingsImpl implements FieldProtectionSettings {
   }
 
   @Override
-  public void postFieldProtectionSettingsMarc(String lang, MarcFieldProtectionSetting entity, Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
+  public void postFieldProtectionSettingsMarc(MarcFieldProtectionSetting entity, Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     try {
       marcFieldProtectionSettingsService.addMarcFieldProtectionSetting(entity, tenantId)
         .map(setting -> (Response) FieldProtectionSettings.PostFieldProtectionSettingsMarcResponse.respond201WithApplicationJson(setting, FieldProtectionSettings.PostFieldProtectionSettingsMarcResponse.headersFor201()))
@@ -62,7 +62,7 @@ public class FieldProtectionSettingsImpl implements FieldProtectionSettings {
   }
 
   @Override
-  public void putFieldProtectionSettingsMarcById(String id, String lang, MarcFieldProtectionSetting entity, Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
+  public void putFieldProtectionSettingsMarcById(String id, MarcFieldProtectionSetting entity, Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     try {
       entity.setId(id);
       marcFieldProtectionSettingsService.updateMarcFieldProtectionSetting(entity, tenantId)
@@ -76,7 +76,7 @@ public class FieldProtectionSettingsImpl implements FieldProtectionSettings {
   }
 
   @Override
-  public void deleteFieldProtectionSettingsMarcById(String id, String lang, Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
+  public void deleteFieldProtectionSettingsMarcById(String id, Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     try {
       marcFieldProtectionSettingsService.deleteMarcFieldProtectionSetting(id, tenantId)
         .map(deleted -> Boolean.TRUE.equals(deleted)
@@ -92,7 +92,7 @@ public class FieldProtectionSettingsImpl implements FieldProtectionSettings {
   }
 
   @Override
-  public void getFieldProtectionSettingsMarcById(String id, String lang, Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
+  public void getFieldProtectionSettingsMarcById(String id, Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     try {
       marcFieldProtectionSettingsService.getMarcFieldProtectionSettingById(id, tenantId)
         .map(optionalSetting -> optionalSetting.orElseThrow(() ->

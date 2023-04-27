@@ -29,6 +29,7 @@ SET jsonb =  '{
 	"action": "UPDATE",
 	"deleted": false,
 	"hidden": false,
+	"remove9Subfields": true,
 	"metadata": {
 		"createdDate": "2020-11-30T09:03:05.334",
 		"updatedDate": "2020-11-30T11:57:14.464+0000",

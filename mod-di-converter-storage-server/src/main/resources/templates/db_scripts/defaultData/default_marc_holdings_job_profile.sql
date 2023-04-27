@@ -30,6 +30,7 @@ INSERT INTO ${myuniversity}_${mymodule}.action_profiles (id, jsonb) values
   "name": "Default - Create Holdings",
   "action": "CREATE",
   "deleted": false,
+  "remove9Subfields": false,
   "description": "This action profile is used with FOLIO''s default job profile for creating Inventory Holdings and SRS MARC Holdings records. It can be edited, duplicated.",
   "folioRecord": "HOLDINGS",
   "childProfiles": [],

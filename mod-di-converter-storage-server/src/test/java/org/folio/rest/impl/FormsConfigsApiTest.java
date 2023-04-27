@@ -14,6 +14,7 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 
 import static org.hamcrest.Matchers.empty;
+import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.notNullValue;
 
@@ -58,7 +59,7 @@ public class FormsConfigsApiTest extends AbstractRestVerticleTest{
       .then()
       .statusCode(HttpStatus.SC_OK)
       .body("totalRecords", is(1))
-      .body("formConfigs.size", is(1));
+      .body("formConfigs", hasSize(1));
   }
 
   @Test

@@ -5,6 +5,7 @@ SET jsonb =  '{
 	"action": "CREATE",
 	"deleted": false,
 	"hidden": false,
+	"remove9Subfields": true,
 	"metadata": {
 		"createdDate": "2021-04-13T14:00:00.000",
 		"updatedDate": "2021-04-13T15:00:00.462+0000",

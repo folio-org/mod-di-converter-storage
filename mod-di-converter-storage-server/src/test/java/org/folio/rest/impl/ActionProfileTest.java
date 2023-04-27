@@ -6,6 +6,8 @@ import io.vertx.core.json.JsonObject;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
+import java.util.LinkedList;
+import java.util.Map;
 import org.apache.http.HttpStatus;
 import org.folio.rest.jaxrs.model.ActionProfile;
 import org.folio.rest.jaxrs.model.ActionProfileUpdateDto;
@@ -21,6 +23,7 @@ import org.folio.rest.persist.PostgresClient;
 import org.folio.services.util.EntityTypes;
 import org.junit.Assert;
 import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
 import org.junit.runner.RunWith;
 
 import java.util.Arrays;
@@ -29,6 +32,7 @@ import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
+import static java.util.Collections.singletonList;
 import static org.folio.rest.impl.MappingProfileTest.MAPPING_PROFILES_PATH;
 import static org.folio.rest.jaxrs.model.ActionProfile.Action.CREATE;
 import static org.folio.rest.jaxrs.model.ActionProfile.FolioRecord.INSTANCE;
@@ -43,6 +47,7 @@ import static org.hamcrest.Matchers.hasItem;
 import static org.hamcrest.Matchers.hasItemInArray;
 import static org.hamcrest.Matchers.hasProperty;
 import static org.hamcrest.Matchers.is;
+import static org.junit.Assert.assertEquals;
 
 @RunWith(VertxUnitRunner.class)
 public class ActionProfileTest extends AbstractRestVerticleTest {
@@ -85,7 +90,7 @@ public class ActionProfileTest extends AbstractRestVerticleTest {
       .withFolioRecord(MARC_BIBLIOGRAPHIC));
   static ActionProfileUpdateDto actionProfile_3 = new ActionProfileUpdateDto()
     .withProfile(new ActionProfile().withName("Foo")
-      .withTags(new Tags().withTagList(Collections.singletonList("lorem")))
+      .withTags(new Tags().withTagList(singletonList("lorem")))
       .withAction(CREATE)
       .withFolioRecord(MARC_BIBLIOGRAPHIC));
   static ActionProfileUpdateDto actionProfile_4 = new ActionProfileUpdateDto()
@@ -205,6 +210,29 @@ public class ActionProfileTest extends AbstractRestVerticleTest {
       .post(ACTION_PROFILES_PATH)
       .then()
       .statusCode(HttpStatus.SC_UNPROCESSABLE_ENTITY);
+  }
+
+  @Test
+  public void shouldCreateAndUpdateProfileNotOverridingDefaultsOnPost() {
+    var testData = Arrays.stream(ActionProfile.FolioRecord.values())
+      .collect(Collectors.toMap(folioRecord -> folioRecord,
+        folioRecord -> !folioRecord.equals(INSTANCE) && !folioRecord.equals(MARC_BIBLIOGRAPHIC)));
+    var errors = new LinkedList<String>();
+
+    for (var testDataEntry : testData.entrySet()) {
+      try {
+        testCreateUpdateActionProfileNotOverridingDefaults(testDataEntry.getValue(), testDataEntry.getKey(),
+          !testDataEntry.getValue());
+      } catch (Throwable thr) {
+        errors.add("Failed for record: " + testDataEntry.getKey() + ", flag value: "
+          + testDataEntry.getValue() + ". Cause: " + thr.getMessage());
+      }
+    }
+
+    if (!errors.isEmpty()) {
+      throw new AssertionError("There were " + errors.size() + " test failures out of " + testData.size()
+        + ": " + errors);
+    }
   }
 
   @Test
@@ -735,6 +763,34 @@ public class ActionProfileTest extends AbstractRestVerticleTest {
       .body("errors[1].message", is("actionProfile.parent.notEmpty"));
   }
 
+  private void testCreateUpdateActionProfileNotOverridingDefaults(Boolean incomingRemove9SubfieldFlag,
+                                                            ActionProfile.FolioRecord folioRecord,
+                                                            Boolean expectedRemove9SubfieldFlag) {
+    var actionProfile = new ActionProfileUpdateDto()
+      .withProfile(new ActionProfile().withName("test:" + folioRecord)
+        .withAction(CREATE)
+        .withFolioRecord(folioRecord)
+        .withRemove9Subfields(incomingRemove9SubfieldFlag));
+
+    var createResponse = RestAssured.given()
+      .spec(spec)
+      .body(actionProfile)
+      .when()
+      .post(ACTION_PROFILES_PATH);
+    assertEquals(HttpStatus.SC_CREATED, createResponse.statusCode());
+    var actionProfileUpdate = createResponse.body().as(ActionProfileUpdateDto.class);
+    assertEquals(expectedRemove9SubfieldFlag, actionProfileUpdate.getProfile().getRemove9Subfields());
+
+    actionProfileUpdate.getProfile().setRemove9Subfields(incomingRemove9SubfieldFlag);
+    RestAssured.given()
+      .spec(spec)
+      .body(actionProfileUpdate)
+      .when()
+      .put(ACTION_PROFILES_PATH + "/" + actionProfileUpdate.getProfile().getId())
+      .then()
+      .statusCode(HttpStatus.SC_OK)
+      .body("remove9Subfields", is(expectedRemove9SubfieldFlag));
+  }
 
   private void createProfiles() {
     List<ActionProfileUpdateDto> actionProfilesToPost = Arrays.asList(actionProfile_1, actionProfile_2, actionProfile_3);

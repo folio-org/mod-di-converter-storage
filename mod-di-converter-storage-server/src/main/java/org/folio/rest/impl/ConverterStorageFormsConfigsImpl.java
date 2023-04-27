@@ -34,7 +34,7 @@ public class ConverterStorageFormsConfigsImpl implements ConverterStorageFormsCo
   }
 
   @Override
-  public void postConverterStorageFormsConfigs(String lang, FormConfig entity, Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
+  public void postConverterStorageFormsConfigs(FormConfig entity, Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     try {
       formConfigService.save(entity, tenantId)
         .map(formConfig -> (Response) PostConverterStorageFormsConfigsResponse.respond201WithApplicationJson(formConfig, PostConverterStorageFormsConfigsResponse.headersFor201()))
@@ -47,7 +47,7 @@ public class ConverterStorageFormsConfigsImpl implements ConverterStorageFormsCo
   }
 
   @Override
-  public void getConverterStorageFormsConfigs(String lang, Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
+  public void getConverterStorageFormsConfigs(Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     try {
       formConfigService.getAll(tenantId)
         .map(GetConverterStorageFormsConfigsResponse::respond200WithApplicationJson)
@@ -61,7 +61,7 @@ public class ConverterStorageFormsConfigsImpl implements ConverterStorageFormsCo
   }
 
   @Override
-  public void getConverterStorageFormsConfigsByFormName(String formName, String lang, Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
+  public void getConverterStorageFormsConfigsByFormName(String formName, Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     try {
       formConfigService.getByFormName(formName, tenantId)
         .map(formConfig -> (Response) GetConverterStorageFormsConfigsByFormNameResponse.respond200WithApplicationJson(formConfig))
@@ -74,7 +74,7 @@ public class ConverterStorageFormsConfigsImpl implements ConverterStorageFormsCo
   }
 
   @Override
-  public void putConverterStorageFormsConfigsByFormName(String formName, String lang, FormConfig entity, Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
+  public void putConverterStorageFormsConfigsByFormName(String formName, FormConfig entity, Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     try {
       entity.setFormName(formName);
       formConfigService.update(entity, tenantId)
@@ -88,7 +88,7 @@ public class ConverterStorageFormsConfigsImpl implements ConverterStorageFormsCo
   }
 
   @Override
-  public void deleteConverterStorageFormsConfigsByFormName(String formName, String lang, Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
+  public void deleteConverterStorageFormsConfigsByFormName(String formName, Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     try {
       formConfigService.deleteByFormName(formName, tenantId)
         .map(isDeleted -> Boolean.TRUE.equals(isDeleted)
