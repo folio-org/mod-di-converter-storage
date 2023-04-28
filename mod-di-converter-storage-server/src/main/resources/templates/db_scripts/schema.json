@@ -236,7 +236,7 @@
     {
       "run": "after",
       "snippetPath": "data-migration/set_subfield9_removal_flag.sql",
-      "fromModuleVersion": "mod-data-import-converter-storage-1.16.0"
+      "fromModuleVersion": "mod-di-converter-storage-2.1.0"
     }
   ]
 }
