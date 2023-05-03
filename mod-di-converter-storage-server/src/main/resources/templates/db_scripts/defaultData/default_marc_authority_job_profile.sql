@@ -29,6 +29,7 @@ INSERT INTO ${myuniversity}_${mymodule}.action_profiles (id, jsonb) values
   "name": "Default - Create Authorities",
   "action": "CREATE",
   "deleted": false,
+  "remove9Subfields": false,
   "description": "This action profile is used with FOLIO''s default job profile for creating Inventory Authorities and SRS MARC Authorities records. It can be edited, duplicated.",
   "folioRecord": "AUTHORITY",
   "childProfiles": [],

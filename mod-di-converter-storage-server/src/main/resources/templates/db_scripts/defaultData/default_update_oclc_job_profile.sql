@@ -34,6 +34,7 @@ SET jsonb =  '{
 	"action": "CREATE",
 	"deleted": false,
 	"hidden": false,
+	"remove9Subfields": true,
 	"userInfo": {
 		"lastName": "System",
 		"userName": "System",

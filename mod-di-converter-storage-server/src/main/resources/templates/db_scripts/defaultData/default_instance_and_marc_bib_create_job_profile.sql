@@ -29,6 +29,7 @@ INSERT INTO ${myuniversity}_${mymodule}.action_profiles (id, jsonb) values
 	"name": "Default - Create instance",
 	"action": "CREATE",
 	"deleted": false,
+	"remove9Subfields": true,
 	"metadata": {
 		"createdDate": "2021-04-13T14:00:00.000",
 		"updatedDate": "2021-04-13T15:00:00.462+0000",

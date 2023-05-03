@@ -28,6 +28,7 @@ INSERT INTO ${myuniversity}_${mymodule}.action_profiles (id, jsonb) values
 	"name": "Inventory Single Record - Default Update Instance",
 	"action": "UPDATE",
 	"deleted": false,
+	"remove9Subfields": true,
 	"metadata": {
 		"createdDate": "2020-11-30T09:03:05.334",
 		"updatedDate": "2020-11-30T11:57:14.464+0000",

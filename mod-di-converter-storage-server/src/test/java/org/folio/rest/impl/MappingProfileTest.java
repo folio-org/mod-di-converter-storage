@@ -43,6 +43,7 @@ import static org.hamcrest.Matchers.empty;
 import static org.hamcrest.Matchers.everyItem;
 import static org.hamcrest.Matchers.hasEntry;
 import static org.hamcrest.Matchers.hasItem;
+import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.is;
 
 @RunWith(VertxUnitRunner.class)
@@ -658,7 +659,7 @@ public class MappingProfileTest extends AbstractRestVerticleTest {
       .get(ASSOCIATED_PROFILES_PATH)
       .then()
       .statusCode(HttpStatus.SC_OK)
-      .body("profileAssociations.size", is(1))
+      .body("profileAssociations", hasSize(1))
       .body("profileAssociations[0].masterProfileId", is(actionProfile.getProfile().getId()))
       .body("profileAssociations[0].detailProfileId", is(mappingProfile1.getProfile().getId()));
 
@@ -687,7 +688,7 @@ public class MappingProfileTest extends AbstractRestVerticleTest {
       .then()
       .statusCode(HttpStatus.SC_OK)
       .body("totalRecords", is(1))
-      .body("profileAssociations.size", is(1))
+      .body("profileAssociations", hasSize(1))
       .body("profileAssociations[0].masterProfileId", is(actionProfile.getProfile().getId()))
       .body("profileAssociations[0].detailProfileId", is(mappingProfile2.getProfile().getId()));
   }
@@ -738,7 +739,7 @@ public class MappingProfileTest extends AbstractRestVerticleTest {
       .get(ASSOCIATED_PROFILES_PATH)
       .then()
       .statusCode(HttpStatus.SC_OK)
-      .body("profileAssociations.size", is(1))
+      .body("profileAssociations", hasSize(1))
       .body("profileAssociations[0].masterProfileId", is(actionProfile.getProfile().getId()))
       .body("profileAssociations[0].detailProfileId", is(mappingProfile1.getProfile().getId()));
 
@@ -768,7 +769,7 @@ public class MappingProfileTest extends AbstractRestVerticleTest {
       .get(ASSOCIATED_PROFILES_PATH)
       .then()
       .statusCode(HttpStatus.SC_OK)
-      .body("profileAssociations.size", is(1))
+      .body("profileAssociations", hasSize(1))
       .body("profileAssociations[0].masterProfileId", is(actionProfile.getProfile().getId()))
       .body("profileAssociations[0].detailProfileId", is(mappingProfile2.getProfile().getId()));
   }

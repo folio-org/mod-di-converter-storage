@@ -17,6 +17,17 @@ import java.util.UUID;
 public class ActionProfileServiceImpl extends AbstractProfileService<ActionProfile, ActionProfileCollection, ActionProfileUpdateDto> {
 
   @Override
+  public Future<ActionProfile> saveProfile(ActionProfileUpdateDto profile, OkapiConnectionParams params) {
+    setDefaults(profile.getProfile());
+    return super.saveProfile(profile, params);
+  }
+
+  @Override
+  public Future<ActionProfile> updateProfile(ActionProfileUpdateDto profile, OkapiConnectionParams params) {
+    setDefaults(profile.getProfile());
+    return super.updateProfile(profile, params);
+  }
+  @Override
   ActionProfile setProfileId(ActionProfile profile) {
     String profileId = profile.getId();
     return profile.withId(StringUtils.isBlank(profileId) ?
@@ -95,6 +106,12 @@ public class ActionProfileServiceImpl extends AbstractProfileService<ActionProfi
   @Override
   protected ActionProfile getProfile(ActionProfileUpdateDto dto) {
     return dto.getProfile();
+  }
+
+  private void setDefaults(ActionProfile profile) {
+    var bibInstanceProfile = profile.getFolioRecord().equals(ActionProfile.FolioRecord.INSTANCE)
+      || profile.getFolioRecord().equals(ActionProfile.FolioRecord.MARC_BIBLIOGRAPHIC);
+    profile.setRemove9Subfields(bibInstanceProfile);
   }
 
 }
