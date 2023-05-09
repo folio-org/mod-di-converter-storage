@@ -482,8 +482,16 @@ public class MatchProfileTest extends AbstractRestVerticleTest {
       .when()
       .get(MATCH_PROFILES_PATH + "/" + profile.getProfile().getId())
       .then()
+      .statusCode(HttpStatus.SC_NOT_FOUND);
+
+    RestAssured.given()
+      .spec(spec)
+      .when()
+      .get(MATCH_PROFILES_PATH + "?showDeleted=true")
+      .then()
       .statusCode(HttpStatus.SC_OK)
-      .body("deleted", is(true));
+      .body("totalRecords", is(1))
+      .body("matchProfiles.get(0).deleted", is(true));
   }
 
   @Test

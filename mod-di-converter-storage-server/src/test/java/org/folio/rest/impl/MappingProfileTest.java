@@ -554,8 +554,16 @@ public class MappingProfileTest extends AbstractRestVerticleTest {
       .when()
       .get(MAPPING_PROFILES_PATH + "/" + profile.getProfile().getId())
       .then()
+      .statusCode(HttpStatus.SC_NOT_FOUND);
+
+    RestAssured.given()
+      .spec(spec)
+      .when()
+      .get(MAPPING_PROFILES_PATH + "?showDeleted=true")
+      .then()
       .statusCode(HttpStatus.SC_OK)
-      .body("deleted", is(true));
+      .body("totalRecords", is(1))
+      .body("mappingProfiles.get(0).deleted", is(true));
   }
 
   @Test
