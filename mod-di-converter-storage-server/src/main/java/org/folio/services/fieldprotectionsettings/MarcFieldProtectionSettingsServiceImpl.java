@@ -14,6 +14,8 @@ import java.util.UUID;
 
 @Service
 public class MarcFieldProtectionSettingsServiceImpl implements MarcFieldProtectionSettingsService {
+  private static final String MARC_PROTECTION_SETTING_NOT_FOUND = "MARC field protection with id '%s' was not found";
+  private static final String CANNOT_PERFORM_OPERATION_ON_SYSTEM_FIELD = "MARC field protection setting with source SYSTEM cannot be %s";
 
   @Autowired
   private MarcFieldProtectionSettingsDao fieldProtectionSettingsDao;
@@ -40,11 +42,11 @@ public class MarcFieldProtectionSettingsServiceImpl implements MarcFieldProtecti
       .compose(optionalSetting -> {
         if (optionalSetting.isPresent()) {
           if (MarcFieldProtectionSetting.Source.SYSTEM == optionalSetting.get().getSource()) {
-            return Future.failedFuture(new BadRequestException("MARC field protection setting with source SYSTEM cannot be updated"));
+            return Future.failedFuture(new BadRequestException(String.format(CANNOT_PERFORM_OPERATION_ON_SYSTEM_FIELD, "updated")));
           }
           return fieldProtectionSettingsDao.update(marcFieldProtectionSetting, tenantId);
         }
-        return Future.failedFuture(new NotFoundException(String.format("MARC field protection with id '%s' was not found", marcFieldProtectionSetting.getId())));
+        return Future.failedFuture(new NotFoundException(String.format(MARC_PROTECTION_SETTING_NOT_FOUND, marcFieldProtectionSetting.getId())));
       });
   }
 
@@ -54,11 +56,11 @@ public class MarcFieldProtectionSettingsServiceImpl implements MarcFieldProtecti
       .compose(optionalSetting -> {
         if (optionalSetting.isPresent()) {
           if (MarcFieldProtectionSetting.Source.SYSTEM == optionalSetting.get().getSource()) {
-            return Future.failedFuture(new BadRequestException("MARC field protection setting with source SYSTEM cannot be deleted"));
+            return Future.failedFuture(new BadRequestException(String.format(CANNOT_PERFORM_OPERATION_ON_SYSTEM_FIELD, "deleted")));
           }
           return fieldProtectionSettingsDao.delete(id, tenantId);
         }
-        return Future.succeededFuture(Boolean.FALSE);
+        return Future.failedFuture(new NotFoundException(String.format(MARC_PROTECTION_SETTING_NOT_FOUND, id)));
       });
   }
 }
