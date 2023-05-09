@@ -29,21 +29,21 @@ public class FieldProtectionSettingsApiTest extends AbstractRestVerticleTest {
   private static final String FIELD_PROTECTION_SETTINGS_PATH = "/field-protection-settings/marc";
   public static final String MARC_FIELD_PROTECTION_SETTINGS_TABLE = "marc_field_protection_settings";
 
-  private static MarcFieldProtectionSetting setting_1 = new MarcFieldProtectionSetting()
+  private static final MarcFieldProtectionSetting setting_1 = new MarcFieldProtectionSetting()
     .withField("001")
     .withIndicator1("")
     .withIndicator2("")
     .withSubfield("")
     .withData("*")
     .withSource(MarcFieldProtectionSetting.Source.SYSTEM);
-  private static MarcFieldProtectionSetting setting_2 = new MarcFieldProtectionSetting()
+  private static final MarcFieldProtectionSetting setting_2 = new MarcFieldProtectionSetting()
     .withField("999")
     .withIndicator1("f")
     .withIndicator2("f")
     .withSubfield("*")
     .withData("*")
     .withSource(MarcFieldProtectionSetting.Source.SYSTEM);
-  private static MarcFieldProtectionSetting setting_3 = new MarcFieldProtectionSetting()
+  private static final MarcFieldProtectionSetting setting_3 = new MarcFieldProtectionSetting()
     .withField("500")
     .withIndicator1("a")
     .withIndicator2("a")
@@ -210,7 +210,7 @@ public class FieldProtectionSettingsApiTest extends AbstractRestVerticleTest {
   }
 
   @Test
-  public void shouldReturnBadRequestIfSourceSystem() {
+  public void shouldReturnBadRequestIfSourceSystemOnUpdate() {
     Response createResponse = RestAssured.given()
       .spec(spec)
       .body(setting_1)
@@ -222,7 +222,7 @@ public class FieldProtectionSettingsApiTest extends AbstractRestVerticleTest {
 
     RestAssured.given()
       .spec(spec)
-      .body(setting)
+      .body(setting.withSource(MarcFieldProtectionSetting.Source.USER))
       .when()
       .put(FIELD_PROTECTION_SETTINGS_PATH + "/" + setting.getId())
       .then()
@@ -308,7 +308,7 @@ public class FieldProtectionSettingsApiTest extends AbstractRestVerticleTest {
     Async async = testContext.async();
     Response createResponse = RestAssured.given()
       .spec(spec)
-      .body(setting_1)
+      .body(setting_3)
       .when()
       .post(FIELD_PROTECTION_SETTINGS_PATH);
     Assert.assertThat(createResponse.statusCode(), is(HttpStatus.SC_CREATED));
@@ -322,6 +322,28 @@ public class FieldProtectionSettingsApiTest extends AbstractRestVerticleTest {
       .delete(FIELD_PROTECTION_SETTINGS_PATH + "/" + setting.getId())
       .then()
       .statusCode(HttpStatus.SC_NO_CONTENT);
+    async.complete();
+  }
+
+  @Test
+  public void shouldReturnBadRequestIfSourceSystemOnDelete(TestContext testContext) {
+    Async async = testContext.async();
+    Response createResponse = RestAssured.given()
+      .spec(spec)
+      .body(setting_1)
+      .when()
+      .post(FIELD_PROTECTION_SETTINGS_PATH);
+    Assert.assertThat(createResponse.statusCode(), is(HttpStatus.SC_CREATED));
+    MarcFieldProtectionSetting setting = createResponse.body().as(MarcFieldProtectionSetting.class);
+    async.complete();
+
+    async = testContext.async();
+    RestAssured.given()
+      .spec(spec)
+      .when()
+      .delete(FIELD_PROTECTION_SETTINGS_PATH + "/" + setting.getId())
+      .then()
+      .statusCode(HttpStatus.SC_BAD_REQUEST);
     async.complete();
   }
 
