@@ -79,10 +79,7 @@ public class FieldProtectionSettingsImpl implements FieldProtectionSettings {
   public void deleteFieldProtectionSettingsMarcById(String id, Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     try {
       marcFieldProtectionSettingsService.deleteMarcFieldProtectionSetting(id, tenantId)
-        .map(deleted -> Boolean.TRUE.equals(deleted)
-          ? FieldProtectionSettings.DeleteFieldProtectionSettingsMarcByIdResponse.respond204()
-          : FieldProtectionSettings.DeleteFieldProtectionSettingsMarcByIdResponse.respond404WithTextPlain(format("MARC field protection setting with id '%s' was not found", id)))
-        .map(Response.class::cast)
+        .map(deleted -> (Response) FieldProtectionSettings.DeleteFieldProtectionSettingsMarcByIdResponse.respond204())
         .otherwise(ExceptionHelper::mapExceptionToResponse)
         .onComplete(asyncResultHandler);
     } catch (Exception e) {
