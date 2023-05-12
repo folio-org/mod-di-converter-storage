@@ -220,7 +220,7 @@ public class DataImportProfilesImpl implements DataImportProfiles {
     vertxContext.runOnContext(c -> {
       try {
         jobProfileService.getProfileById(id, withRelations, tenantId)
-          .map(optionalProfile -> optionalProfile.orElseThrow(() ->
+          .map(optionalProfile -> optionalProfile.filter(jobProfile -> !jobProfile.getDeleted()).orElseThrow(() ->
             new NotFoundException(format("Job Profile with id '%s' was not found", id))))
           .map(GetDataImportProfilesJobProfilesByIdResponse::respond200WithApplicationJson)
           .map(Response.class::cast)
@@ -336,7 +336,7 @@ public class DataImportProfilesImpl implements DataImportProfiles {
     vertxContext.runOnContext(c -> {
       try {
         matchProfileService.getProfileById(id, withRelations, tenantId)
-          .map(optionalProfile -> optionalProfile.orElseThrow(() ->
+          .map(optionalProfile -> optionalProfile.filter(matchProfile -> !matchProfile.getDeleted()).orElseThrow(() ->
             new NotFoundException(format("Match Profile with id '%s' was not found", id))))
           .map(GetDataImportProfilesMatchProfilesByIdResponse::respond200WithApplicationJson)
           .map(Response.class::cast)
@@ -454,7 +454,7 @@ public class DataImportProfilesImpl implements DataImportProfiles {
     vertxContext.runOnContext(c -> {
       try {
         mappingProfileService.getProfileById(id, withRelations, tenantId)
-          .map(optionalProfile -> optionalProfile.orElseThrow(() ->
+          .map(optionalProfile -> optionalProfile.filter(mappingProfile -> !mappingProfile.getDeleted()).orElseThrow(() ->
             new NotFoundException(format("Mapping Profile with id '%s' was not found", id))))
           .map(GetDataImportProfilesMappingProfilesByIdResponse::respond200WithApplicationJson)
           .map(Response.class::cast)
@@ -576,7 +576,7 @@ public class DataImportProfilesImpl implements DataImportProfiles {
     vertxContext.runOnContext(c -> {
       try {
         actionProfileService.getProfileById(id, withRelations, tenantId)
-          .map(optionalProfile -> optionalProfile.orElseThrow(() ->
+          .map(optionalProfile -> optionalProfile.filter(actionProfile -> !actionProfile.getDeleted()).orElseThrow(() ->
             new NotFoundException(format("Action Profile with id '%s' was not found", id))))
           .map(GetDataImportProfilesActionProfilesByIdResponse::respond200WithApplicationJson)
           .map(Response.class::cast)
