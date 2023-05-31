@@ -24,7 +24,12 @@ import org.springframework.beans.factory.annotation.Autowired;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Function;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -117,9 +122,12 @@ public abstract class AbstractProfileService<T, S, D> implements ProfileService<
     if (profileAssociations.isEmpty()) {
       return Future.succeededFuture(true);
     }
+    List<ProfileAssociation> uniqueProfileAssociations = profileAssociations.stream()
+      .filter(distinctByKeys(ProfileAssociation::getDetailProfileId, ProfileAssociation::getMasterProfileId))
+      .collect(Collectors.toList());
     Promise<Boolean> result = Promise.promise();
     List<Future<ProfileAssociation>> futureList = new ArrayList<>();
-    profileAssociations.forEach(association -> futureList.add(profileAssociationService.save(association,
+    uniqueProfileAssociations.forEach(association -> futureList.add(profileAssociationService.save(association,
       ProfileSnapshotWrapper.ContentType.fromValue(association.getMasterProfileType().name()),
       ProfileSnapshotWrapper.ContentType.fromValue(association.getDetailProfileType().name()), tenantId)));
     GenericCompositeFuture.all(futureList).onComplete(ar -> {
@@ -374,6 +382,20 @@ public abstract class AbstractProfileService<T, S, D> implements ProfileService<
         }
       });
     return promise.future();
+  }
+
+  private static <T> Predicate<T> distinctByKeys(final Function<? super T, ?>... keyExtractors)
+  {
+    final Map<List<?>, Boolean> seen = new ConcurrentHashMap<>();
+
+    return t ->
+    {
+      final List<?> keys = Arrays.stream(keyExtractors)
+        .map(ke -> ke.apply(t))
+        .collect(Collectors.toList());
+
+      return seen.putIfAbsent(keys, Boolean.TRUE) == null;
+    };
   }
 
 }
