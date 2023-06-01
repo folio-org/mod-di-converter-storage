@@ -175,17 +175,17 @@ public abstract class AbstractProfileService<T, S, D> implements ProfileService<
   @Override
   public Future<Boolean> isProfileDtoValidForUpdate(String id, D profile, boolean isDefaultProfile, String tenantId) {
     return isDefaultProfile ? getProfileById(id, false, tenantId).map(profileOptional ->
-        profileOptional.map(fetchedProfile -> Stream.of(getProfile(profile), fetchedProfile).map(JsonObject::mapFrom)
-          .peek(jsonObject -> {
-            jsonObject.remove("tags");
-            jsonObject.remove("metadata");
-          }).distinct().count() <= 1).orElse(false)) : Future.succeededFuture(true);
+      profileOptional.map(fetchedProfile -> Stream.of(getProfile(profile), fetchedProfile).map(JsonObject::mapFrom)
+        .peek(jsonObject -> {
+          jsonObject.remove("tags");
+          jsonObject.remove("metadata");
+        }).distinct().count() <= 1).orElse(false)) : Future.succeededFuture(true);
   }
 
   @Override
   public Future<Boolean> isProfileContainsChildProfiles(T profile) {
     List<ProfileSnapshotWrapper> childProfiles = getChildProfiles(profile);
-    return Future.succeededFuture(childProfiles!= null && !childProfiles.isEmpty());
+    return Future.succeededFuture(childProfiles != null && !childProfiles.isEmpty());
   }
 
   @Override
@@ -384,18 +384,14 @@ public abstract class AbstractProfileService<T, S, D> implements ProfileService<
     return promise.future();
   }
 
-  private static <T> Predicate<T> distinctByKeys(final Function<? super T, ?>... keyExtractors)
-  {
+  private static <T> Predicate<T> distinctByKeys(final Function<? super T, ?>... keyExtractors) {
     final Map<List<?>, Boolean> seen = new ConcurrentHashMap<>();
-
-    return t ->
+    return e ->
     {
       final List<?> keys = Arrays.stream(keyExtractors)
-        .map(ke -> ke.apply(t))
+        .map(ke -> ke.apply(e))
         .collect(Collectors.toList());
-
       return seen.putIfAbsent(keys, Boolean.TRUE) == null;
     };
   }
-
 }
