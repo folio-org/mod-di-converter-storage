@@ -1120,7 +1120,7 @@ public class CommonProfileAssociationTest extends AbstractRestVerticleTest {
   }
 
   @Test
-  public void testShouldSaveOnlyUniqueAssociation(TestContext testContext) {
+  public void shouldSaveOnlyUniqueAssociations(TestContext testContext) {
     Async async = testContext.async();
 
     String mainMatchProfileId = "cfb7ad96-6bbb-4843-9e3a-0395190bd6c8";
