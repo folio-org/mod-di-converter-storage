@@ -122,7 +122,7 @@ public abstract class AbstractProfileService<T, S, D> implements ProfileService<
       return Future.succeededFuture(true);
     }
     List<ProfileAssociation> uniqueProfileAssociations = profileAssociations.stream()
-      .filter(distinctByKeys(ProfileAssociation::getDetailProfileId, ProfileAssociation::getMasterProfileId))
+      .filter(distinctProfileAssociation())
       .collect(Collectors.toList());
     Promise<Boolean> result = Promise.promise();
     List<Future<ProfileAssociation>> futureList = new ArrayList<>();
@@ -383,14 +383,30 @@ public abstract class AbstractProfileService<T, S, D> implements ProfileService<
     return promise.future();
   }
 
-  private <B> Predicate<B> distinctByKeys(final Function<? super B, ?>... keyExtractors) {
+//  private <B> Predicate<B> distinctByKeys(final Function<? super B, ?>... keyExtractors) {
+//    final Map<List<?>, Boolean> seen = new HashMap<>();
+//    return e ->
+//    {
+//      final List<?> keys = Arrays.stream(keyExtractors)
+//        .map(ke -> ke.apply(e))
+//        .collect(Collectors.toList());
+//      return seen.putIfAbsent(keys, Boolean.TRUE) == null;
+//    };
+//  }
+
+  private Predicate<org.folio.rest.jaxrs.model.ProfileAssociation> distinctProfileAssociation() {
     final Map<List<?>, Boolean> seen = new HashMap<>();
     return e ->
     {
-      final List<?> keys = Arrays.stream(keyExtractors)
-        .map(ke -> ke.apply(e))
-        .collect(Collectors.toList());
-      return seen.putIfAbsent(keys, Boolean.TRUE) == null;
+      String masterId = e.getMasterProfileId();
+      String detailId = e.getDetailProfileId();
+      if (seen.get(List.of(detailId, masterId)) != null) {
+        String message = String.format("Can not save ProfileAssociation with masterId=%s detailId=%s ProfileAssociation with masterId=%s detailId=%s already exist.", masterId, detailId, detailId, masterId);
+        logger.warn(message);
+        throw new ConflictException(message);
+      }
+
+      return seen.putIfAbsent(List.of(masterId, detailId), Boolean.TRUE) == null;
     };
   }
 }
