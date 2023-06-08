@@ -2,22 +2,28 @@ package org.folio.services;
 
 import io.vertx.core.Future;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.folio.rest.impl.util.OkapiConnectionParams;
 import org.folio.rest.jaxrs.model.JobProfile;
 import org.folio.rest.jaxrs.model.JobProfileCollection;
 import org.folio.rest.jaxrs.model.JobProfileUpdateDto;
 import org.folio.rest.jaxrs.model.ProfileAssociation;
 import org.folio.rest.jaxrs.model.ProfileSnapshotWrapper;
+import org.folio.services.exception.ConflictException;
 import org.springframework.stereotype.Component;
 
+import java.util.HashMap;
+import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 import static org.folio.rest.jaxrs.model.ProfileAssociation.MasterProfileType.MATCH_PROFILE;
 
 @Component
 public class JobProfileServiceImpl extends AbstractProfileService<JobProfile, JobProfileCollection, JobProfileUpdateDto> {
-
+  private static final Logger logger = LogManager.getLogger();
   @Override
   JobProfile setProfileId(JobProfile profile) {
     String profileId = profile.getId();
@@ -54,6 +60,7 @@ public class JobProfileServiceImpl extends AbstractProfileService<JobProfile, Jo
         association.setJobProfileId(profileDto.getProfile().getId());
       }
     });
+    validateProfileAddedRelations(profileDto.getAddedRelations());
     profileDto.getDeletedRelations().forEach(association -> {
       if (association.getMasterProfileType() == MATCH_PROFILE) {
         association.setJobProfileId(profileDto.getProfile().getId());
@@ -107,4 +114,21 @@ public class JobProfileServiceImpl extends AbstractProfileService<JobProfile, Jo
     return dto.getProfile();
   }
 
+  void validateProfileAddedRelations(List<ProfileAssociation> profileAssociations) {
+    Map<String, List<String>> relations = new HashMap<>();
+    for (ProfileAssociation profileAssociation : profileAssociations) {
+      String masterId = profileAssociation.getMasterProfileId();
+      String detailId = profileAssociation.getDetailProfileId();
+      if(relations.get(detailId) == null) {
+        relations.put(detailId,new LinkedList<>(List.of(masterId)));
+      } else {
+        relations.get(detailId).add(masterId);
+      }
+      if(relations.get(masterId)!=null && relations.get(masterId).contains(detailId)) {
+        String message = String.format("Can not save ProfileAssociation with masterId=%s detailId=%s ProfileAssociation with masterId=%s detailId=%s already exist.", masterId, detailId, detailId, masterId);
+        logger.warn(message);
+        throw new ConflictException(message);
+      }
+    }
+  }
 }
