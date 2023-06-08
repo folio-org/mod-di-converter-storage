@@ -24,6 +24,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -122,7 +123,7 @@ public abstract class AbstractProfileService<T, S, D> implements ProfileService<
       return Future.succeededFuture(true);
     }
     List<ProfileAssociation> uniqueProfileAssociations = profileAssociations.stream()
-      .filter(distinctByKeys(ProfileAssociation::getDetailProfileId, ProfileAssociation::getMasterProfileId))
+      .filter(distinctProfileAssociation())
       .collect(Collectors.toList());
     Promise<Boolean> result = Promise.promise();
     List<Future<ProfileAssociation>> futureList = new ArrayList<>();
@@ -383,14 +384,14 @@ public abstract class AbstractProfileService<T, S, D> implements ProfileService<
     return promise.future();
   }
 
-  private <B> Predicate<B> distinctByKeys(final Function<? super B, ?>... keyExtractors) {
+  private Predicate<org.folio.rest.jaxrs.model.ProfileAssociation> distinctProfileAssociation() {
     final Map<List<?>, Boolean> seen = new HashMap<>();
     return e ->
     {
-      final List<?> keys = Arrays.stream(keyExtractors)
-        .map(ke -> ke.apply(e))
-        .collect(Collectors.toList());
-      return seen.putIfAbsent(keys, Boolean.TRUE) == null;
+      String masterId = e.getMasterProfileId();
+      String detailId = e.getDetailProfileId();
+
+      return seen.putIfAbsent(List.of(masterId, detailId), Boolean.TRUE) == null;
     };
   }
 }
