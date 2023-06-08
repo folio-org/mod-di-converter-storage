@@ -9,18 +9,18 @@ CREATE OR REPLACE FUNCTION
           EXECUTE format('
             SELECT
               association.id,
-              association.masterprofileid AS master_id,
+              association.masterwrapperid AS master_id,
               json_agg(master.jsonb) AS master,
               ''%s'' AS master_type,
-              association.detailprofileid AS detail_id,
+              association.detailwrapperid AS detail_id,
               ''%s'' AS detail_type,
               CAST(association.jsonb->>''order'' AS integer) AS detail_order,
               json_agg(detail.jsonb) AS detail,
               CAST(association.jsonb->>''reactTo'' AS text) as react_to,
               CAST(association.jsonb->>''jobProfileId'' AS uuid) as job_profile_id
             FROM %s association
-              INNER JOIN %s master ON master.id = association.masterprofileid
-              INNER JOIN %s detail ON detail.id = association.detailprofileid
+              INNER JOIN %s master ON master.id = association.masterwrapperid
+              INNER JOIN %s detail ON detail.id = association.detailwrapperid
             GROUP BY association.id',
             _master_type, _detail_type, _association_table, _master_table, _detail_table);
       END $$

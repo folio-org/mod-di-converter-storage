@@ -26,8 +26,8 @@ CREATE OR REPLACE VIEW associations_view
       UNION ALL
     SELECT ASSOCIATION.ID AS association_id, CAST(ASSOCIATION.JSONB ->> 'jobProfileId' AS UUID) AS master_id, json_agg(JOB.jsonb) AS master, 'JOB_PROFILE' AS master_type, DETAIL.ID AS detail_id, 'ACTION_PROFILE' AS detail_type, 0 AS detail_order, CAST( MASTER.JSONB AS JSON ) AS detail, null AS react_to, CAST(ASSOCIATION.JSONB ->> 'jobProfileId' AS UUID) AS job_profile_id
     FROM MATCH_TO_ACTION_PROFILES ASSOCIATION
-    INNER JOIN MATCH_PROFILES MASTER ON MASTER.ID = ASSOCIATION.MASTERPROFILEID
-    INNER JOIN ACTION_PROFILES DETAIL ON DETAIL.ID = ASSOCIATION.DETAILPROFILEID
+    INNER JOIN MATCH_PROFILES MASTER ON MASTER.ID = ASSOCIATION.MASTERWRAPPERID
+    INNER JOIN ACTION_PROFILES DETAIL ON DETAIL.ID = ASSOCIATION.DETAILWRAPPERID
     INNER JOIN JOB_PROFILES JOB ON JOB.ID = CAST(ASSOCIATION.JSONB ->> 'jobProfileId' AS UUID)
     WHERE ASSOCIATION.JSONB ->> 'detailProfileType' = 'ACTION_PROFILE'
     	AND ASSOCIATION.JSONB ->> 'masterProfileType' = 'MATCH_PROFILE'
@@ -37,11 +37,11 @@ CREATE OR REPLACE VIEW associations_view
 CREATE OR REPLACE RULE delete_associations_with_details AS
   ON DELETE TO associations_view
   DO INSTEAD (
-    DELETE FROM action_to_action_profiles WHERE action_to_action_profiles.masterprofileid = OLD.master_id;
-    DELETE FROM action_to_mapping_profiles WHERE action_to_mapping_profiles.masterprofileid = OLD.master_id;
-    DELETE FROM action_to_match_profiles WHERE action_to_match_profiles.masterprofileid = OLD.master_id;
-    DELETE FROM job_to_action_profiles WHERE job_to_action_profiles.masterprofileid = OLD.master_id;
-    DELETE FROM job_to_match_profiles WHERE job_to_match_profiles.masterprofileid = OLD.master_id;
-    DELETE FROM match_to_action_profiles WHERE match_to_action_profiles.masterprofileid = OLD.master_id;
-    DELETE FROM match_to_match_profiles WHERE match_to_match_profiles.masterprofileid = OLD.master_id;
+    DELETE FROM action_to_action_profiles WHERE action_to_action_profiles.masterwrapperid = OLD.master_id;
+    DELETE FROM action_to_mapping_profiles WHERE action_to_mapping_profiles.masterwrapperid = OLD.master_id;
+    DELETE FROM action_to_match_profiles WHERE action_to_match_profiles.masterwrapperid = OLD.master_id;
+    DELETE FROM job_to_action_profiles WHERE job_to_action_profiles.masterwrapperid = OLD.master_id;
+    DELETE FROM job_to_match_profiles WHERE job_to_match_profiles.masterwrapperid = OLD.master_id;
+    DELETE FROM match_to_action_profiles WHERE match_to_action_profiles.masterwrapperid = OLD.master_id;
+    DELETE FROM match_to_match_profiles WHERE match_to_match_profiles.masterwrapperid = OLD.master_id;
   );

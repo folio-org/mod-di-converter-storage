@@ -22,119 +22,119 @@
     },
     {
       "tableName": "job_to_match_profiles",
-      "fromModuleVersion": "mod-di-converter-storage-1.7.0",
+      "fromModuleVersion": "mod-di-converter-storage-2.1.0",
       "withMetadata": true,
       "foreignKeys": [
         {
-          "fieldName": "masterProfileId",
-          "targetTable": "job_profiles",
+          "fieldName": "masterWrapperId",
+          "targetTable": "profile_wrappers",
           "tOps": "ADD"
         },
         {
-          "fieldName": "detailProfileId",
-          "targetTable": "match_profiles",
+          "fieldName": "detailWrapperId",
+          "targetTable": "profile_wrappers",
           "tOps": "ADD"
         }
       ]
     },
     {
       "tableName": "job_to_action_profiles",
-      "fromModuleVersion": "mod-di-converter-storage-1.7.0",
+      "fromModuleVersion": "mod-di-converter-storage-2.1.0",
       "withMetadata": true,
       "foreignKeys": [
         {
-          "fieldName": "masterProfileId",
-          "targetTable": "job_profiles",
+          "fieldName": "masterWrapperId",
+          "targetTable": "profile_wrappers",
           "tOps": "ADD"
         },
         {
-          "fieldName": "detailProfileId",
-          "targetTable": "action_profiles",
+          "fieldName": "detailWrapperId",
+          "targetTable": "profile_wrappers",
           "tOps": "ADD"
         }
       ]
     },
     {
       "tableName": "match_to_match_profiles",
-      "fromModuleVersion": "mod-di-converter-storage-1.7.0",
+      "fromModuleVersion": "mod-di-converter-storage-2.1.0",
       "withMetadata": true,
       "foreignKeys": [
         {
-          "fieldName": "masterProfileId",
-          "targetTable": "match_profiles",
+          "fieldName": "masterWrapperId",
+          "targetTable": "profile_wrappers",
           "tOps": "ADD"
         },
         {
-          "fieldName": "detailProfileId",
-          "targetTable": "match_profiles",
+          "fieldName": "detailWrapperId",
+          "targetTable": "profile_wrappers",
           "tOps": "ADD"
         }
       ]
     },
     {
       "tableName": "match_to_action_profiles",
-      "fromModuleVersion": "mod-di-converter-storage-1.7.0",
+      "fromModuleVersion": "mod-di-converter-storage-2.1.0",
       "withMetadata": true,
       "foreignKeys": [
         {
-          "fieldName": "masterProfileId",
-          "targetTable": "match_profiles",
+          "fieldName": "masterWrapperId",
+          "targetTable": "profile_wrappers",
           "tOps": "ADD"
         },
         {
-          "fieldName": "detailProfileId",
-          "targetTable": "action_profiles",
+          "fieldName": "detailWrapperId",
+          "targetTable": "profile_wrappers",
           "tOps": "ADD"
         }
       ]
     },
     {
       "tableName": "action_to_action_profiles",
-      "fromModuleVersion": "mod-di-converter-storage-1.7.0",
+      "fromModuleVersion": "mod-di-converter-storage-2.1.0",
       "withMetadata": true,
       "foreignKeys": [
         {
-          "fieldName": "masterProfileId",
-          "targetTable": "action_profiles",
+          "fieldName": "masterWrapperId",
+          "targetTable": "profile_wrappers",
           "tOps": "ADD"
         },
         {
-          "fieldName": "detailProfileId",
-          "targetTable": "action_profiles",
+          "fieldName": "detailWrapperId",
+          "targetTable": "profile_wrappers",
           "tOps": "ADD"
         }
       ]
     },
     {
       "tableName": "action_to_match_profiles",
-      "fromModuleVersion": "mod-di-converter-storage-1.7.0",
+      "fromModuleVersion": "mod-di-converter-storage-2.1.0",
       "withMetadata": true,
       "foreignKeys": [
         {
-          "fieldName": "masterProfileId",
-          "targetTable": "action_profiles",
+          "fieldName": "masterWrapperId",
+          "targetTable": "profile_wrappers",
           "tOps": "ADD"
         },
         {
-          "fieldName": "detailProfileId",
-          "targetTable": "match_profiles",
+          "fieldName": "detailWrapperId",
+          "targetTable": "profile_wrappers",
           "tOps": "ADD"
         }
       ]
     },
     {
       "tableName": "action_to_mapping_profiles",
-      "fromModuleVersion": "mod-di-converter-storage-1.7.0",
+      "fromModuleVersion": "mod-di-converter-storage-2.1.0",
       "withMetadata": true,
       "foreignKeys": [
         {
-          "fieldName": "masterProfileId",
-          "targetTable": "action_profiles",
+          "fieldName": "masterWrapperId",
+          "targetTable": "profile_wrappers",
           "tOps": "ADD"
         },
         {
-          "fieldName": "detailProfileId",
-          "targetTable": "mapping_profiles",
+          "fieldName": "detailWrapperId",
+          "targetTable": "profile_wrappers",
           "tOps": "ADD"
         }
       ]
@@ -177,6 +177,16 @@
       "run": "before",
       "snippetPath": "remove_deprecated_indexes.sql",
       "fromModuleVersion": "mod-di-converter-storage-1.8.0"
+    },
+    {
+      "run": "before",
+      "snippetPath": "associations-migration/profiles_type_table.sql",
+      "fromModuleVersion": "mod-di-converter-storage-2.1.0"
+    },
+    {
+      "run": "before",
+      "snippetPath": "associations-migration/profile_wrappers_table.sql",
+      "fromModuleVersion": "mod-di-converter-storage-2.1.0"
     },
     {
       "run": "after",
@@ -236,6 +246,21 @@
     {
       "run": "after",
       "snippetPath": "data-migration/set_subfield9_removal_flag.sql",
+      "fromModuleVersion": "mod-di-converter-storage-2.1.0"
+    },
+    {
+      "run": "after",
+      "snippet": "DROP FUNCTION IF EXISTS get_profile_association_snapshot CASCADE; CREATE OR REPLACE FUNCTION get_profile_association_snapshot(_association_table text, _master_table text, _master_type text, _detail_table text, _detail_type text) RETURNS TABLE(association_id uuid, master_id uuid, master json, master_type text, detail_id uuid, detail_type text, detail_order integer, detail json, react_to text, job_profile_id uuid) AS $$BEGIN RETURN query EXECUTE format('SELECT association.id, association.masterwrapperid AS master_id, json_agg(master.jsonb) AS master, ''%s'' AS master_type, association.detailwrapperid AS detail_id, ''%s'' AS detail_type, CAST(association.jsonb->>''order'' AS integer) AS detail_order, json_agg(detail.jsonb) AS detail, CAST(association.jsonb->>''reactTo'' AS text) as react_to, CAST(association.jsonb->>''jobProfileId'' AS uuid) as job_profile_id FROM %s association INNER JOIN %s master ON master.id = association.masterwrapperid INNER JOIN %s detail ON detail.id = association.detailwrapperid GROUP BY association.id', _master_type, _detail_type, _association_table, _master_table, _detail_table); END $$ language plpgsql;",
+      "fromModuleVersion": "mod-di-converter-storage-2.1.0"
+    },
+    {
+      "run": "after",
+      "snippet": "CREATE OR REPLACE VIEW associations_view AS SELECT association_id, master_id, master, master_type, detail_id, detail_type, detail_order, detail, react_to, job_profile_id FROM get_profile_association_snapshot('job_to_match_profiles', 'job_profiles', 'JOB_PROFILE', 'match_profiles', 'MATCH_PROFILE') UNION ALL SELECT association_id, master_id, master, master_type, detail_id, detail_type, detail_order, detail, react_to, job_profile_id FROM get_profile_association_snapshot('job_to_action_profiles', 'job_profiles', 'JOB_PROFILE', 'action_profiles', 'ACTION_PROFILE') UNION ALL SELECT association_id, master_id, master, master_type, detail_id, detail_type, detail_order, detail, react_to, job_profile_id FROM get_profile_association_snapshot('match_to_match_profiles', 'match_profiles', 'MATCH_PROFILE', 'match_profiles', 'MATCH_PROFILE') UNION ALL SELECT association_id, master_id, master, master_type, detail_id, detail_type, detail_order, detail, react_to, job_profile_id FROM get_profile_association_snapshot('match_to_action_profiles', 'match_profiles', 'MATCH_PROFILE', 'action_profiles', 'ACTION_PROFILE') UNION ALL SELECT association_id, master_id, master, master_type, detail_id, detail_type, detail_order, detail, react_to, job_profile_id FROM get_profile_association_snapshot('action_to_match_profiles', 'action_profiles', 'ACTION_PROFILE', 'match_profiles', 'MATCH_PROFILE') UNION ALL SELECT association_id, master_id, master, master_type, detail_id, detail_type, detail_order, detail, react_to, job_profile_id FROM get_profile_association_snapshot('action_to_action_profiles', 'action_profiles', 'ACTION_PROFILE', 'action_profiles', 'ACTION_PROFILE') UNION ALL SELECT association_id, master_id, master, master_type, detail_id, detail_type, detail_order, detail, react_to, job_profile_id FROM get_profile_association_snapshot('action_to_mapping_profiles', 'action_profiles', 'ACTION_PROFILE', 'mapping_profiles', 'MAPPING_PROFILE') UNION ALL SELECT ASSOCIATION.ID AS association_id, CAST(ASSOCIATION.JSONB ->> 'jobProfileId' AS UUID) AS master_id, json_agg(JOB.jsonb) AS master, 'JOB_PROFILE' AS master_type, DETAIL.ID AS detail_id, 'ACTION_PROFILE' AS detail_type, 0 AS detail_order, CAST(MASTER.JSONB AS JSON) AS detail, null AS react_to, CAST(ASSOCIATION.JSONB ->> 'jobProfileId' AS UUID) AS job_profile_id FROM MATCH_TO_ACTION_PROFILES ASSOCIATION INNER JOIN MATCH_PROFILES MASTER ON MASTER.ID = ASSOCIATION.MASTERWRAPPERID INNER JOIN ACTION_PROFILES DETAIL ON DETAIL.ID = ASSOCIATION.DETAILWRAPPERID INNER JOIN JOB_PROFILES JOB ON JOB.ID = CAST(ASSOCIATION.JSONB ->> 'jobProfileId' AS UUID) WHERE ASSOCIATION.JSONB ->> 'detailProfileType' = 'ACTION_PROFILE' AND ASSOCIATION.JSONB ->> 'masterProfileType' = 'MATCH_PROFILE' GROUP BY ASSOCIATION.ID, MASTER.ID, DETAIL.ID, DETAIL.JSONB;",
+      "fromModuleVersion": "mod-di-converter-storage-2.1.0"
+    },
+    {
+      "run": "after",
+      "snippet": "CREATE OR REPLACE RULE delete_associations_with_details AS ON DELETE TO associations_view DO INSTEAD ( DELETE FROM action_to_action_profiles WHERE action_to_action_profiles.masterwrapperid = OLD.master_id; DELETE FROM action_to_mapping_profiles WHERE action_to_mapping_profiles.masterwrapperid = OLD.master_id; DELETE FROM action_to_match_profiles WHERE action_to_match_profiles.masterwrapperid = OLD.master_id; DELETE FROM job_to_action_profiles WHERE job_to_action_profiles.masterwrapperid = OLD.master_id; DELETE FROM job_to_match_profiles WHERE job_to_match_profiles.masterwrapperid = OLD.master_id; DELETE FROM match_to_action_profiles WHERE match_to_action_profiles.masterwrapperid = OLD.master_id; DELETE FROM match_to_match_profiles WHERE match_to_match_profiles.masterwrapperid = OLD.master_id; );",
       "fromModuleVersion": "mod-di-converter-storage-2.1.0"
     }
   ]
