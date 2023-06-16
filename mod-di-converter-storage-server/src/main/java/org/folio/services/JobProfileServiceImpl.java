@@ -33,6 +33,7 @@ public class JobProfileServiceImpl extends AbstractProfileService<JobProfile, Jo
 
   @Override
   Future<JobProfile> setUserInfoForProfile(JobProfileUpdateDto profile, OkapiConnectionParams params) {
+    validateProfileAddedRelations(profile.getAddedRelations());
     return lookupUser(profile.getProfile().getMetadata().getUpdatedByUserId(), params)
       .compose(userInfo -> Future.succeededFuture(profile.getProfile().withUserInfo(userInfo)));
   }
@@ -60,7 +61,6 @@ public class JobProfileServiceImpl extends AbstractProfileService<JobProfile, Jo
         association.setJobProfileId(profileDto.getProfile().getId());
       }
     });
-    validateProfileAddedRelations(profileDto.getAddedRelations());
     profileDto.getDeletedRelations().forEach(association -> {
       if (association.getMasterProfileType() == MATCH_PROFILE) {
         association.setJobProfileId(profileDto.getProfile().getId());
