@@ -10,20 +10,23 @@ import org.folio.rest.jaxrs.model.JobProfileCollection;
 import org.folio.rest.jaxrs.model.JobProfileUpdateDto;
 import org.folio.rest.jaxrs.model.ProfileAssociation;
 import org.folio.rest.jaxrs.model.ProfileSnapshotWrapper;
-import org.folio.services.exception.ConflictException;
+import org.folio.services.snapshot.ProfileSnapshotService;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
-import java.util.HashMap;
-import java.util.LinkedList;
+import javax.ws.rs.NotFoundException;
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 
+import static java.lang.String.format;
 import static org.folio.rest.jaxrs.model.ProfileAssociation.MasterProfileType.MATCH_PROFILE;
 
 @Component
 public class JobProfileServiceImpl extends AbstractProfileService<JobProfile, JobProfileCollection, JobProfileUpdateDto> {
   private static final Logger logger = LogManager.getLogger();
+
+  @Autowired
+  private ProfileSnapshotService profileSnapshotService;
   @Override
   JobProfile setProfileId(JobProfile profile) {
     String profileId = profile.getId();
@@ -33,7 +36,6 @@ public class JobProfileServiceImpl extends AbstractProfileService<JobProfile, Jo
 
   @Override
   Future<JobProfile> setUserInfoForProfile(JobProfileUpdateDto profile, OkapiConnectionParams params) {
-    validateProfileAddedRelations(profile.getAddedRelations());
     return lookupUser(profile.getProfile().getMetadata().getUpdatedByUserId(), params)
       .compose(userInfo -> Future.succeededFuture(profile.getProfile().withUserInfo(userInfo)));
   }
@@ -114,21 +116,24 @@ public class JobProfileServiceImpl extends AbstractProfileService<JobProfile, Jo
     return dto.getProfile();
   }
 
-  void validateProfileAddedRelations(List<ProfileAssociation> profileAssociations) {
-    Map<String, List<String>> relations = new HashMap<>();
-    for (ProfileAssociation profileAssociation : profileAssociations) {
-      String masterId = profileAssociation.getMasterProfileId();
-      String detailId = profileAssociation.getDetailProfileId();
-      if(relations.get(detailId) == null) {
-        relations.put(detailId,new LinkedList<>(List.of(masterId)));
-      } else {
-        relations.get(detailId).add(masterId);
-      }
-      if(relations.get(masterId)!=null && relations.get(masterId).contains(detailId)) {
-        String message = String.format("Can not save ProfileAssociation with masterId=%s detailId=%s ProfileAssociation with masterId=%s detailId=%s already exist.", masterId, detailId, detailId, masterId);
-        logger.warn(message);
-        throw new ConflictException(message);
-      }
-    }
+  @Override
+  public Future<JobProfile> updateProfile(JobProfileUpdateDto profile, OkapiConnectionParams params) {
+    return isProfileExistByProfileId(getProfile(profile), params.getTenantId())
+      .compose(isExist -> isExist ?
+        profileSnapshotService.constructSnapshot(getProfileId(getProfile(profile)), ProfileSnapshotWrapper.ContentType.JOB_PROFILE, getProfileId(getProfile(profile)), params.getTenantId()) :
+        Future.failedFuture(new NotFoundException(format("updateProfile:: %s with id '%s' was not found", getProfileContentType().value(), getProfileId(getProfile(profile))))))
+      .map(profileSnapshotWrappers -> getProfileAssociation(profileSnapshotWrappers.getChildSnapshotWrappers(), getProfileId(getProfile(profile)), getProfileContentType().value()))
+      .map(profileAssociations -> {
+        profileAssociations.removeAll(getProfileAssociationToDelete(profile));
+        profileAssociations.addAll(getProfileAssociationToAdd(profile));
+        return profileAssociations;
+      })
+      .compose(this::validateProfileAddedRelations)
+      .compose(associations -> setUserInfoForProfile(profile, params))
+      .compose(profileWithInfo -> profileDao.updateProfile(profileWithInfo, params.getTenantId()))
+      .map(prepareAssociations((profile)))
+      .compose(ar -> deleteRelatedAssociations(getProfileAssociationToDelete(profile), params.getTenantId()))
+      .compose(ar -> saveRelatedAssociations(getProfileAssociationToAdd(profile), params.getTenantId()))
+      .map(getProfile(profile));
   }
 }
