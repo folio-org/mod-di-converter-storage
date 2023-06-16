@@ -8,16 +8,12 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.folio.dao.ProfileDao;
-import org.folio.dao.association.ProfileWrapperDao;
 import org.folio.okapi.common.GenericCompositeFuture;
 import org.folio.rest.impl.util.OkapiConnectionParams;
 import org.folio.rest.impl.util.RestUtil;
 import org.folio.rest.jaxrs.model.EntityTypeCollection;
 import org.folio.rest.jaxrs.model.ProfileAssociation;
-import org.folio.rest.jaxrs.model.ProfileAssociationRecord;
 import org.folio.rest.jaxrs.model.ProfileSnapshotWrapper;
-import org.folio.rest.jaxrs.model.ProfileType;
-import org.folio.rest.jaxrs.model.ProfileWrapper;
 import org.folio.rest.jaxrs.model.UserInfo;
 import org.folio.services.association.CommonProfileAssociationService;
 import org.folio.services.association.ProfileAssociationService;
@@ -27,10 +23,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Optional;
-import java.util.UUID;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -61,9 +55,6 @@ public abstract class AbstractProfileService<T, S, D> implements ProfileService<
 
   @Autowired
   private ProfileDao<T, S> profileDao;
-
-  @Autowired
-  private ProfileWrapperDao profileWrapperDao;
 
   @Autowired
   protected CommonProfileAssociationService associationService;
@@ -127,70 +118,16 @@ public abstract class AbstractProfileService<T, S, D> implements ProfileService<
       return Future.succeededFuture(true);
     }
     Promise<Boolean> result = Promise.promise();
-    wrapAssociationProfiles(profileAssociations, new ArrayList<>(), new HashMap<>(), tenantId)
-      .onSuccess(wrappedAssociations -> {
-        List<Future<ProfileAssociationRecord>> futureList = new ArrayList<>();
-        wrappedAssociations.forEach(association -> futureList.add(profileAssociationService.save(association,
-          ProfileSnapshotWrapper.ContentType.fromValue(association.getMasterProfileType().name()),
-          ProfileSnapshotWrapper.ContentType.fromValue(association.getDetailProfileType().name()), tenantId)));
-        GenericCompositeFuture.all(futureList).onComplete(ar -> {
-          if (ar.succeeded()) {
-            result.complete(true);
-          } else {
-            result.fail(ar.cause());
-          }
-        });
+    profileAssociationService.save(profileAssociations, tenantId)
+      .onComplete(ar -> {
+        if (ar.succeeded()) {
+          result.complete(true);
+        } else {
+          result.fail(ar.cause());
+        }
       });
 
     return result.future();
-  }
-
-  private Future<List<ProfileAssociationRecord>> wrapAssociationProfiles(List<ProfileAssociation> profileAssociations,
-                                                                         List<ProfileAssociationRecord> profileAssociationRecords,
-                                                                         HashMap<String, String> profileIdToWrapperId,
-                                                                         String tenantId) {
-    Optional<ProfileAssociation> profileAssociationOptional = profileAssociations.stream().findFirst();
-    List<Future> futureList = new ArrayList<>();
-    if (profileAssociationOptional.isEmpty()) {
-      return Future.succeededFuture(profileAssociationRecords);
-    }
-    ProfileAssociation profileAssociation = profileAssociationOptional.get();
-    ProfileAssociationRecord profileAssociationRecord = CommonProfileAssociationService
-      .createProfileAssociationRecord(profileAssociation.withId(UUID.randomUUID().toString()));
-
-    if (profileAssociation.getMasterProfileId() != null) {
-      if (profileIdToWrapperId.containsKey(profileAssociation.getMasterProfileId())) {
-        profileAssociationRecord.setMasterWrapperId(profileIdToWrapperId.get(profileAssociation.getMasterProfileId()));
-      } else {
-        futureList.add(saveWrapper(tenantId, profileAssociation.getMasterProfileType(), profileAssociation.getMasterProfileId())
-          .onComplete(ar -> {
-            if (ar.succeeded()) {
-              profileIdToWrapperId.put(ar.result().getProfileId(), ar.result().getId());
-              profileAssociationRecord.setMasterWrapperId(ar.result().getId());
-            }
-          }));
-      }
-    }
-    if (profileAssociation.getDetailProfileId() != null) {
-      futureList.add(saveWrapper(tenantId, profileAssociation.getDetailProfileType(), profileAssociation.getDetailProfileId())
-        .onComplete(ar -> {
-          if (ar.succeeded()) {
-            profileIdToWrapperId.put(ar.result().getProfileId(), ar.result().getId());
-            profileAssociationRecord.setDetailWrapperId(ar.result().getId());
-          }
-        }));
-    }
-    return GenericCompositeFuture.all(futureList).onComplete(ar -> {
-      profileAssociationRecords.add(profileAssociationRecord);
-      profileAssociations.remove(0);
-    }).compose(ar -> wrapAssociationProfiles(profileAssociations, profileAssociationRecords, profileIdToWrapperId, tenantId));
-  }
-
-  private Future<ProfileWrapper> saveWrapper(String tenantId, ProfileType profileType, String profileId) {
-    ProfileWrapper profileWrapper = new ProfileWrapper().withId(UUID.randomUUID().toString())
-      .withProfileType(profileType)
-      .withProfileId(profileId);
-    return profileWrapperDao.save(profileWrapper, tenantId).map(profileWrapper);
   }
 
   @Override
