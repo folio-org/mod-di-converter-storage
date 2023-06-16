@@ -2,7 +2,7 @@
 -- To change the get_profile_association_snapshot function, update this script and copy it to the appropriate scripts.snippet field of the schema.json
 CREATE OR REPLACE FUNCTION
   get_profile_association_snapshot(_association_table text, _master_table text, _master_type text, _detail_table text, _detail_type text)
-  RETURNS TABLE(association_id uuid, master_id uuid, master json, master_type text, detail_id uuid, detail_type text, detail_order integer, detail json, react_to text, job_profile_id uuid)
+  RETURNS TABLE(association_id uuid, master_id uuid, masterwrapperid uuid, master json, master_type text, detail_id uuid, detailwrapperid uuid, detail_type text, detail_order integer, detail json, react_to text, job_profile_id uuid)
     AS $$
       BEGIN
         RETURN query

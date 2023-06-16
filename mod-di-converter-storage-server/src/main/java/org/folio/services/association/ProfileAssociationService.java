@@ -8,6 +8,7 @@ import org.folio.rest.jaxrs.model.ProfileAssociationRecord;
 import org.folio.rest.jaxrs.model.ProfileSnapshotWrapper;
 import org.folio.rest.jaxrs.model.ProfileSnapshotWrapper.ContentType;
 
+import java.util.List;
 import java.util.Optional;
 
 /**
@@ -46,7 +47,15 @@ public interface ProfileAssociationService { //NOSONAR
    * @return future with saved entity
    */
   Future<ProfileAssociation> save(ProfileAssociation entity, ContentType masterType, ContentType detailType, String tenantId);
-  Future<ProfileAssociationRecord> save(ProfileAssociationRecord entity, ContentType masterType, ContentType detailType, String tenantId);
+
+  /**
+   * Saves List of ProfileAssociation entities
+   *
+   * @param profileAssociations     ProfileAssociations to save
+   * @param tenantId   tenantId
+   * @return future with saved entities list
+   */
+  Future<List<ProfileAssociationRecord>> save(List<ProfileAssociation> profileAssociations, String tenantId);
 
   /**
    * Updates ProfileAssociation with given id
