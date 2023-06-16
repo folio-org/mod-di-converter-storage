@@ -18,6 +18,7 @@ import org.folio.rest.jaxrs.model.ProfileAssociation;
 import org.folio.rest.jaxrs.model.ProfileSnapshotWrapper;
 import org.folio.rest.jaxrs.model.ProfileSnapshotWrapper.ContentType;
 import org.folio.rest.jaxrs.model.Tags;
+import org.folio.rest.jaxrs.model.ProfileType;
 import org.folio.rest.persist.Criteria.Criterion;
 import org.folio.rest.persist.PostgresClient;
 import org.folio.services.util.EntityTypes;
@@ -652,9 +653,9 @@ public class ActionProfileTest extends AbstractRestVerticleTest {
           .withFolioRecord(MARC_BIBLIOGRAPHIC))
         .withAddedRelations(List.of(
           new ProfileAssociation()
-            .withDetailProfileType(ProfileAssociation.DetailProfileType.MAPPING_PROFILE)
+            .withDetailProfileType(ProfileType.MAPPING_PROFILE)
             .withDetailProfileId(mappingProfileUpdateDto.getId())
-            .withMasterProfileType(ProfileAssociation.MasterProfileType.ACTION_PROFILE))))
+            .withMasterProfileType(ProfileType.ACTION_PROFILE))))
       .when()
       .post(ACTION_PROFILES_PATH)
       .then()
@@ -687,9 +688,9 @@ public class ActionProfileTest extends AbstractRestVerticleTest {
         .withFolioRecord(MARC_BIBLIOGRAPHIC))
       .withAddedRelations(List.of(
         new ProfileAssociation()
-          .withDetailProfileType(ProfileAssociation.DetailProfileType.MAPPING_PROFILE)
+          .withDetailProfileType(ProfileType.MAPPING_PROFILE)
           .withDetailProfileId(mappingProfileUpdateDto.getProfile().getId())
-          .withMasterProfileType(ProfileAssociation.MasterProfileType.ACTION_PROFILE))));
+          .withMasterProfileType(ProfileType.ACTION_PROFILE))));
 
     RestAssured.given()
       .spec(spec)
@@ -700,14 +701,14 @@ public class ActionProfileTest extends AbstractRestVerticleTest {
           .withFolioRecord(MARC_BIBLIOGRAPHIC))
         .withAddedRelations(List.of(
           new ProfileAssociation()
-            .withDetailProfileType(ProfileAssociation.DetailProfileType.MAPPING_PROFILE)
+            .withDetailProfileType(ProfileType.MAPPING_PROFILE)
             .withDetailProfileId(mappingProfileUpdateDto1.getProfile().getId())
-            .withMasterProfileType(ProfileAssociation.MasterProfileType.ACTION_PROFILE)))
+            .withMasterProfileType(ProfileType.ACTION_PROFILE)))
         .withDeletedRelations(List.of(
           new ProfileAssociation()
-            .withDetailProfileType(ProfileAssociation.DetailProfileType.MAPPING_PROFILE)
+            .withDetailProfileType(ProfileType.MAPPING_PROFILE)
             .withDetailProfileId(mappingProfileUpdateDto.getProfile().getId())
-            .withMasterProfileType(ProfileAssociation.MasterProfileType.ACTION_PROFILE))))
+            .withMasterProfileType(ProfileType.ACTION_PROFILE))))
       .when()
       .put(ACTION_PROFILES_PATH+ "/" + actionProfileUpdateDto.getProfile().getId())
       .then()

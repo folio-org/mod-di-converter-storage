@@ -12,6 +12,8 @@ import org.folio.rest.jaxrs.model.ActionProfileCollection;
 import org.folio.rest.jaxrs.model.JobProfile;
 import org.folio.rest.jaxrs.model.JobProfileCollection;
 import org.folio.rest.jaxrs.model.ProfileAssociation;
+import org.folio.rest.jaxrs.model.ReactToType;
+import org.folio.rest.jaxrs.model.ProfileAssociationRecord;
 import org.folio.rest.persist.Criteria.Criterion;
 import org.folio.rest.persist.PostgresClient;
 import org.folio.unit.AbstractUnitTest;
@@ -64,7 +66,7 @@ public class ProfileSnapshotDaoTest extends AbstractUnitTest {
     ProfileAssociation jobToAction1Association = new ProfileAssociation()
       .withId(UUID.randomUUID().toString())
       .withOrder(0)
-      .withReactTo(ProfileAssociation.ReactTo.MATCH)
+      .withReactTo(ReactToType.MATCH)
       .withOrder(1)
       .withMasterProfileId(jobProfile.getId())
       .withDetailProfileId(actionProfile.getId());
@@ -73,7 +75,7 @@ public class ProfileSnapshotDaoTest extends AbstractUnitTest {
       context.assertTrue(savedJobProfileAr.succeeded());
       actionProfileDao.saveProfile(actionProfile, TENANT_ID).onComplete(savedActionProfileAr -> {
         context.assertTrue(savedActionProfileAr.succeeded());
-        profileAssociationDao.save(jobToAction1Association, JOB_PROFILE, ACTION_PROFILE, TENANT_ID).onComplete(savedAssociationAr -> {
+        profileAssociationDao.save(createProfileAssociationRecord(jobToAction1Association), JOB_PROFILE, ACTION_PROFILE, TENANT_ID).onComplete(savedAssociationAr -> {
           context.assertTrue(savedAssociationAr.succeeded());
           dao.getSnapshotItems(jobProfile.getId(), JOB_PROFILE, jobProfile.getId(), TENANT_ID).onComplete(itemsAr -> {
             // then
@@ -105,5 +107,14 @@ public class ProfileSnapshotDaoTest extends AbstractUnitTest {
                         }
                         async.complete();
                       })))))))));
+  }
+
+  private ProfileAssociationRecord createProfileAssociationRecord(ProfileAssociation entity) {
+    return new ProfileAssociationRecord()
+      .withId(entity.getId())
+      .withJobProfileId(entity.getJobProfileId())
+      .withMasterProfileType(entity.getMasterProfileType())
+      .withDetailProfileType(entity.getDetailProfileType())
+      .withOrder(entity.getOrder());
   }
 }

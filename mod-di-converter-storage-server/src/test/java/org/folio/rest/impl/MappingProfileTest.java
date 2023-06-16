@@ -16,8 +16,7 @@ import org.folio.rest.jaxrs.model.MappingProfile;
 import org.folio.rest.jaxrs.model.MappingProfileUpdateDto;
 import org.folio.rest.jaxrs.model.MappingRule;
 import org.folio.rest.jaxrs.model.ProfileAssociation;
-import org.folio.rest.jaxrs.model.ProfileAssociation.DetailProfileType;
-import org.folio.rest.jaxrs.model.ProfileAssociation.MasterProfileType;
+import org.folio.rest.jaxrs.model.ProfileType;
 import org.folio.rest.jaxrs.model.ProfileSnapshotWrapper;
 import org.folio.rest.jaxrs.model.Tags;
 import org.folio.rest.persist.Criteria.Criterion;
@@ -650,8 +649,8 @@ public class MappingProfileTest extends AbstractRestVerticleTest {
           .withAction(CREATE)
           .withFolioRecord(INSTANCE))
         .withAddedRelations(List.of(new ProfileAssociation()
-          .withMasterProfileType(MasterProfileType.ACTION_PROFILE)
-          .withDetailProfileType(DetailProfileType.MAPPING_PROFILE)
+          .withMasterProfileType(ProfileType.ACTION_PROFILE)
+          .withDetailProfileType(ProfileType.MAPPING_PROFILE)
           .withDetailProfileId(mappingProfile1.getProfile().getId()))))
       .when()
       .post(ACTION_PROFILES_PATH)
@@ -678,8 +677,8 @@ public class MappingProfileTest extends AbstractRestVerticleTest {
           .withIncomingRecordType(EntityType.MARC_BIBLIOGRAPHIC)
           .withExistingRecordType(EntityType.INSTANCE))
         .withAddedRelations(List.of(new ProfileAssociation()
-          .withMasterProfileType(MasterProfileType.ACTION_PROFILE)
-          .withDetailProfileType(DetailProfileType.MAPPING_PROFILE)
+          .withMasterProfileType(ProfileType.ACTION_PROFILE)
+          .withDetailProfileType(ProfileType.MAPPING_PROFILE)
           .withMasterProfileId(actionProfile.getProfile().getId()))))
       .when()
       .post(MAPPING_PROFILES_PATH)
@@ -730,8 +729,8 @@ public class MappingProfileTest extends AbstractRestVerticleTest {
           .withAction(CREATE)
           .withFolioRecord(INSTANCE))
         .withAddedRelations(List.of(new ProfileAssociation()
-          .withMasterProfileType(MasterProfileType.ACTION_PROFILE)
-          .withDetailProfileType(DetailProfileType.MAPPING_PROFILE)
+          .withMasterProfileType(ProfileType.ACTION_PROFILE)
+          .withDetailProfileType(ProfileType.MAPPING_PROFILE)
           .withDetailProfileId(mappingProfile1.getProfile().getId()))))
       .when()
       .post(ACTION_PROFILES_PATH)
@@ -759,8 +758,8 @@ public class MappingProfileTest extends AbstractRestVerticleTest {
           .withIncomingRecordType(EntityType.MARC_BIBLIOGRAPHIC)
           .withExistingRecordType(EntityType.INSTANCE))
         .withAddedRelations(List.of(new ProfileAssociation()
-          .withMasterProfileType(MasterProfileType.ACTION_PROFILE)
-          .withDetailProfileType(DetailProfileType.MAPPING_PROFILE)
+          .withMasterProfileType(ProfileType.ACTION_PROFILE)
+          .withDetailProfileType(ProfileType.MAPPING_PROFILE)
           .withMasterProfileId(actionProfile.getProfile().getId())
           .withDetailProfileId(mappingProfile2.getProfile().getId()))))
       .when()
@@ -800,9 +799,9 @@ public class MappingProfileTest extends AbstractRestVerticleTest {
           .withIncomingRecordType(EntityType.MARC_BIBLIOGRAPHIC))
         .withAddedRelations(List.of(
           new ProfileAssociation()
-            .withMasterProfileType(MasterProfileType.ACTION_PROFILE)
+            .withMasterProfileType(ProfileType.ACTION_PROFILE)
             .withMasterProfileId(actionProfileUpdateDto.getProfile().getId())
-            .withDetailProfileType(DetailProfileType.MAPPING_PROFILE))))
+            .withDetailProfileType(ProfileType.MAPPING_PROFILE))))
       .when()
       .post(MAPPING_PROFILES_PATH)
       .then()
@@ -832,9 +831,9 @@ public class MappingProfileTest extends AbstractRestVerticleTest {
         .withExistingRecordType(EntityType.INSTANCE)
         .withIncomingRecordType(EntityType.INSTANCE))
       .withAddedRelations(List.of(new ProfileAssociation()
-        .withMasterProfileType(MasterProfileType.ACTION_PROFILE)
+        .withMasterProfileType(ProfileType.ACTION_PROFILE)
         .withMasterProfileId(actionProfileUpdateDto.getId())
-        .withDetailProfileType(DetailProfileType.MAPPING_PROFILE))));
+        .withDetailProfileType(ProfileType.MAPPING_PROFILE))));
 
     RestAssured.given()
       .spec(spec)
@@ -844,14 +843,14 @@ public class MappingProfileTest extends AbstractRestVerticleTest {
           .withExistingRecordType(EntityType.INSTANCE)
           .withIncomingRecordType(EntityType.INSTANCE))
         .withAddedRelations(List.of(new ProfileAssociation()
-          .withMasterProfileType(MasterProfileType.ACTION_PROFILE)
+          .withMasterProfileType(ProfileType.ACTION_PROFILE)
           .withMasterProfileId(actionProfileUpdateDto1.getProfile().getId())
-          .withDetailProfileType(DetailProfileType.MAPPING_PROFILE))
+          .withDetailProfileType(ProfileType.MAPPING_PROFILE))
         )
         .withDeletedRelations(List.of(new ProfileAssociation()
-          .withMasterProfileType(MasterProfileType.ACTION_PROFILE)
+          .withMasterProfileType(ProfileType.ACTION_PROFILE)
           .withMasterProfileId(actionProfileUpdateDto.getProfile().getId())
-          .withDetailProfileType(DetailProfileType.MAPPING_PROFILE))))
+          .withDetailProfileType(ProfileType.MAPPING_PROFILE))))
       .when()
       .put(MAPPING_PROFILES_PATH + "/" + mappingProfileUpdateDto.getProfile().getId())
       .then()

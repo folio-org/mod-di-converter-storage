@@ -19,6 +19,8 @@ import org.folio.rest.jaxrs.model.ActionProfile;
 import org.folio.rest.jaxrs.model.ActionProfileUpdateDto;
 import org.folio.rest.jaxrs.model.EntityType;
 import org.folio.rest.jaxrs.model.JobProfile;
+import org.folio.rest.jaxrs.model.ProfileType;
+import org.folio.rest.jaxrs.model.ReactToType;
 import org.folio.rest.jaxrs.model.JobProfileUpdateDto;
 import org.folio.rest.jaxrs.model.MappingProfile;
 import org.folio.rest.jaxrs.model.MappingProfileUpdateDto;
@@ -1196,81 +1198,81 @@ public class CommonProfileAssociationTest extends AbstractRestVerticleTest {
         //0
         new ProfileAssociation()
           .withDetailProfileId(mainMatchProfileId)
-          .withMasterProfileType(ProfileAssociation.MasterProfileType.JOB_PROFILE)
-          .withDetailProfileType(ProfileAssociation.DetailProfileType.MATCH_PROFILE)
+          .withMasterProfileType(ProfileType.JOB_PROFILE)
+          .withDetailProfileType(ProfileType.MATCH_PROFILE)
           .withTriggered(false),
         //1
         new ProfileAssociation()
           .withMasterProfileId(mainMatchProfileId)
           .withDetailProfileId(firstSubMatchProfileId)
-          .withDetailProfileType(ProfileAssociation.DetailProfileType.MATCH_PROFILE)
-          .withMasterProfileType(ProfileAssociation.MasterProfileType.MATCH_PROFILE)
+          .withDetailProfileType(ProfileType.MATCH_PROFILE)
+          .withMasterProfileType(ProfileType.MATCH_PROFILE)
           .withTriggered(false)
-          .withReactTo(ProfileAssociation.ReactTo.MATCH),
+          .withReactTo(ReactToType.MATCH),
         //2
         new ProfileAssociation()
           .withMasterProfileId(secondSubMatchProfileId)
           .withDetailProfileId(firstSubMatchProfileId)
-          .withMasterProfileType(ProfileAssociation.MasterProfileType.MATCH_PROFILE)
-          .withDetailProfileType(ProfileAssociation.DetailProfileType.MATCH_PROFILE)
+          .withMasterProfileType(ProfileType.MATCH_PROFILE)
+          .withDetailProfileType(ProfileType.MATCH_PROFILE)
           .withTriggered(false)
-          .withReactTo(ProfileAssociation.ReactTo.MATCH),
+          .withReactTo(ReactToType.MATCH),
         //3
         new ProfileAssociation()
           .withMasterProfileId(secondSubMatchProfileId)
           .withDetailProfileId(firstActionProfileId)
-          .withMasterProfileType(ProfileAssociation.MasterProfileType.MATCH_PROFILE)
-          .withDetailProfileType(ProfileAssociation.DetailProfileType.ACTION_PROFILE)
+          .withMasterProfileType(ProfileType.MATCH_PROFILE)
+          .withDetailProfileType(ProfileType.ACTION_PROFILE)
           .withTriggered(false)
-          .withReactTo(ProfileAssociation.ReactTo.MATCH),
+          .withReactTo(ReactToType.MATCH),
         //4
         new ProfileAssociation()
           .withMasterProfileId(secondSubMatchProfileId)
           .withDetailProfileId(secondActionProfileId)
-          .withMasterProfileType(ProfileAssociation.MasterProfileType.MATCH_PROFILE)
-          .withDetailProfileType(ProfileAssociation.DetailProfileType.ACTION_PROFILE)
+          .withMasterProfileType(ProfileType.MATCH_PROFILE)
+          .withDetailProfileType(ProfileType.ACTION_PROFILE)
           .withTriggered(false)
-          .withReactTo(ProfileAssociation.ReactTo.MATCH),
+          .withReactTo(ReactToType.MATCH),
         //5
         new ProfileAssociation()
           .withMasterProfileId(mainMatchProfileId)
           .withDetailProfileId(thirdSubMatchProfileId)
-          .withMasterProfileType(ProfileAssociation.MasterProfileType.MATCH_PROFILE)
-          .withDetailProfileType(ProfileAssociation.DetailProfileType.MATCH_PROFILE)
+          .withMasterProfileType(ProfileType.MATCH_PROFILE)
+          .withDetailProfileType(ProfileType.MATCH_PROFILE)
           .withTriggered(false)
-          .withReactTo(ProfileAssociation.ReactTo.NON_MATCH),
+          .withReactTo(ReactToType.NON_MATCH),
         //6
         new ProfileAssociation()
           .withMasterProfileId(thirdSubMatchProfileId)
           .withDetailProfileId(firstSubMatchProfileId)
-          .withMasterProfileType(ProfileAssociation.MasterProfileType.MATCH_PROFILE)
-          .withDetailProfileType(ProfileAssociation.DetailProfileType.MATCH_PROFILE)
+          .withMasterProfileType(ProfileType.MATCH_PROFILE)
+          .withDetailProfileType(ProfileType.MATCH_PROFILE)
           .withTriggered(false)
-          .withReactTo(ProfileAssociation.ReactTo.MATCH),
+          .withReactTo(ReactToType.MATCH),
         //7
         new ProfileAssociation()
           .withMasterProfileId(firstSubMatchProfileId)
           .withDetailProfileId(secondSubMatchProfileId)
-          .withMasterProfileType(ProfileAssociation.MasterProfileType.MATCH_PROFILE)
-          .withDetailProfileType(ProfileAssociation.DetailProfileType.MATCH_PROFILE)
+          .withMasterProfileType(ProfileType.MATCH_PROFILE)
+          .withDetailProfileType(ProfileType.MATCH_PROFILE)
           .withTriggered(false)
-          .withReactTo(ProfileAssociation.ReactTo.MATCH),
+          .withReactTo(ReactToType.MATCH),
         //8
         new ProfileAssociation()
           .withMasterProfileId(secondSubMatchProfileId)
           .withDetailProfileId(firstActionProfileId)
-          .withMasterProfileType(ProfileAssociation.MasterProfileType.MATCH_PROFILE)
-          .withDetailProfileType(ProfileAssociation.DetailProfileType.ACTION_PROFILE)
+          .withMasterProfileType(ProfileType.MATCH_PROFILE)
+          .withDetailProfileType(ProfileType.ACTION_PROFILE)
           .withTriggered(false)
-          .withReactTo(ProfileAssociation.ReactTo.MATCH),
+          .withReactTo(ReactToType.MATCH),
         //9
         new ProfileAssociation()
           .withMasterProfileId(secondSubMatchProfileId)
           .withDetailProfileId(secondActionProfileId)
-          .withMasterProfileType(ProfileAssociation.MasterProfileType.MATCH_PROFILE)
-          .withDetailProfileType(ProfileAssociation.DetailProfileType.ACTION_PROFILE)
+          .withMasterProfileType(ProfileType.MATCH_PROFILE)
+          .withDetailProfileType(ProfileType.ACTION_PROFILE)
           .withTriggered(false)
-          .withReactTo(ProfileAssociation.ReactTo.MATCH))));
+          .withReactTo(ReactToType.MATCH))));
     RestAssured.given()
       .spec(spec)
       .body(mainJobProfileWrapper.getProfile())

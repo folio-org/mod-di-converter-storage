@@ -4,6 +4,7 @@ import io.vertx.core.Future;
 import org.folio.rest.impl.util.OkapiConnectionParams;
 import org.folio.rest.jaxrs.model.ProfileAssociation;
 import org.folio.rest.jaxrs.model.ProfileAssociationCollection;
+import org.folio.rest.jaxrs.model.ProfileAssociationRecord;
 import org.folio.rest.jaxrs.model.ProfileSnapshotWrapper;
 import org.folio.rest.jaxrs.model.ProfileSnapshotWrapper.ContentType;
 
@@ -45,6 +46,7 @@ public interface ProfileAssociationService { //NOSONAR
    * @return future with saved entity
    */
   Future<ProfileAssociation> save(ProfileAssociation entity, ContentType masterType, ContentType detailType, String tenantId);
+  Future<ProfileAssociationRecord> save(ProfileAssociationRecord entity, ContentType masterType, ContentType detailType, String tenantId);
 
   /**
    * Updates ProfileAssociation with given id

@@ -32,6 +32,7 @@ import org.folio.rest.jaxrs.model.MatchProfile;
 import org.folio.rest.jaxrs.model.MatchProfileCollection;
 import org.folio.rest.jaxrs.model.MatchProfileUpdateDto;
 import org.folio.rest.jaxrs.model.Metadata;
+import org.folio.rest.jaxrs.model.ProfileType;
 import org.folio.rest.jaxrs.model.OperationType;
 import org.folio.rest.jaxrs.model.ProfileAssociation;
 import org.folio.rest.jaxrs.model.ProfileSnapshotWrapper.ContentType;
@@ -897,7 +898,7 @@ public class DataImportProfilesImpl implements DataImportProfiles {
     var futures = actionProfileUpdateDto
       .getAddedRelations()
       .stream()
-      .filter(profileAssociation -> profileAssociation.getDetailProfileType() == ProfileAssociation.DetailProfileType.MAPPING_PROFILE)
+      .filter(profileAssociation -> profileAssociation.getDetailProfileType() == ProfileType.MAPPING_PROFILE)
       .map(profileAssociation -> mappingProfileService.getProfileById(profileAssociation.getDetailProfileId(), false, tenantId))
       .map(futureMappingProfile -> futureMappingProfile.onSuccess(optionalMappingProfile ->
         optionalMappingProfile.ifPresent(mappingProfile -> {
@@ -964,7 +965,7 @@ public class DataImportProfilesImpl implements DataImportProfiles {
     var futures = mappingProfileUpdateDto
       .getAddedRelations()
       .stream()
-      .filter(profileAssociation -> profileAssociation.getMasterProfileType() == ProfileAssociation.MasterProfileType.ACTION_PROFILE)
+      .filter(profileAssociation -> profileAssociation.getMasterProfileType() == ProfileType.ACTION_PROFILE)
       .map(profileAssociation -> actionProfileService.getProfileById(profileAssociation.getMasterProfileId(), false, tenantId))
       .map(futureActionProfile -> futureActionProfile.onSuccess(optionalActionProfile ->
         optionalActionProfile.ifPresent(actionProfile -> {

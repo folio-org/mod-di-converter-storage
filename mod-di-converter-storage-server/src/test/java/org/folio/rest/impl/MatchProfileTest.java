@@ -24,6 +24,8 @@ import org.folio.rest.jaxrs.model.ProfileSnapshotWrapper;
 import org.folio.rest.jaxrs.model.ProfileSnapshotWrapper.ContentType;
 import org.folio.rest.jaxrs.model.Qualifier;
 import org.folio.rest.jaxrs.model.Tags;
+import org.folio.rest.jaxrs.model.ProfileType;
+import org.folio.rest.jaxrs.model.ReactToType;
 import org.folio.rest.persist.Criteria.Criterion;
 import org.folio.rest.persist.PostgresClient;
 import org.junit.Assert;
@@ -776,10 +778,10 @@ public class MatchProfileTest extends AbstractRestVerticleTest {
           .withProfile(profile.getProfile().withName(nameForProfiles + i))
           .withAddedRelations(Collections.singletonList(new ProfileAssociation()
             .withDetailProfileId(profilesIds.get(i))
-            .withDetailProfileType(ProfileAssociation.DetailProfileType.MATCH_PROFILE)
-            .withMasterProfileType(ProfileAssociation.MasterProfileType.JOB_PROFILE)
+            .withDetailProfileType(ProfileType.MATCH_PROFILE)
+            .withMasterProfileType(ProfileType.JOB_PROFILE)
             .withOrder(0)
-            .withTriggered(false).withReactTo(ProfileAssociation.ReactTo.MATCH)
+            .withTriggered(false).withReactTo(ReactToType.MATCH)
           )))
         .when()
         .post(JOB_PROFILES_PATH)
@@ -792,10 +794,10 @@ public class MatchProfileTest extends AbstractRestVerticleTest {
       profile.setDeletedRelations(Collections.singletonList(new ProfileAssociation()
         .withDetailProfileId(profilesIds.get(i))
         .withMasterProfileId(profile.getProfile().getId())
-        .withDetailProfileType(ProfileAssociation.DetailProfileType.MATCH_PROFILE)
-        .withMasterProfileType(ProfileAssociation.MasterProfileType.JOB_PROFILE)
+        .withDetailProfileType(ProfileType.MATCH_PROFILE)
+        .withMasterProfileType(ProfileType.JOB_PROFILE)
         .withOrder(0)
-        .withTriggered(false).withReactTo(ProfileAssociation.ReactTo.MATCH)));
+        .withTriggered(false).withReactTo(ReactToType.MATCH)));
       profile.getAddedRelations().clear();
       RestAssured.given()
         .spec(spec)
@@ -811,10 +813,10 @@ public class MatchProfileTest extends AbstractRestVerticleTest {
       profile.setAddedRelations(Collections.singletonList(new ProfileAssociation()
         .withDetailProfileId(profilesIds.get(i))
         .withMasterProfileId(profile.getProfile().getId())
-        .withDetailProfileType(ProfileAssociation.DetailProfileType.MATCH_PROFILE)
-        .withMasterProfileType(ProfileAssociation.MasterProfileType.JOB_PROFILE)
+        .withDetailProfileType(ProfileType.MATCH_PROFILE)
+        .withMasterProfileType(ProfileType.JOB_PROFILE)
         .withOrder(0)
-        .withTriggered(false).withReactTo(ProfileAssociation.ReactTo.MATCH)));
+        .withTriggered(false).withReactTo(ReactToType.MATCH)));
       profile.setDeletedRelations(Collections.emptyList());
       RestAssured.given()
         .spec(spec)
@@ -834,10 +836,10 @@ public class MatchProfileTest extends AbstractRestVerticleTest {
             .withName(nameForProfiles + i))
           .withAddedRelations(Collections.singletonList(new ProfileAssociation()
             .withMasterProfileId(profilesIds.get(i))
-            .withDetailProfileType(ProfileAssociation.DetailProfileType.ACTION_PROFILE)
-            .withMasterProfileType(ProfileAssociation.MasterProfileType.MATCH_PROFILE)
+            .withDetailProfileType(ProfileType.ACTION_PROFILE)
+            .withMasterProfileType(ProfileType.MATCH_PROFILE)
             .withOrder(0)
-            .withTriggered(false).withReactTo(ProfileAssociation.ReactTo.MATCH))))
+            .withTriggered(false).withReactTo(ReactToType.MATCH))))
         .when()
         .post(ACTION_PROFILES_PATH)
         .then()

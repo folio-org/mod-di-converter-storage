@@ -9,6 +9,7 @@ import org.apache.logging.log4j.Logger;
 import org.folio.dao.PostgresClientFactory;
 import org.folio.rest.jaxrs.model.ProfileAssociation;
 import org.folio.rest.jaxrs.model.ProfileAssociationCollection;
+import org.folio.rest.jaxrs.model.ProfileAssociationRecord;
 import org.folio.rest.jaxrs.model.ProfileSnapshotWrapper;
 import org.folio.rest.jaxrs.model.ProfileSnapshotWrapper.ContentType;
 import org.folio.rest.persist.Criteria.Criteria;
@@ -38,8 +39,8 @@ import static org.folio.rest.jaxrs.model.ProfileSnapshotWrapper.ContentType.MATC
 @Repository
 public class CommonProfileAssociationDao implements ProfileAssociationDao {
   private static final String ID_FIELD = "'id'";
-  private static final String MASTER_ID_FIELD = "masterProfileId";
-  private static final String DETAIL_ID_FIELD = "detailProfileId";
+  private static final String MASTER_ID_FIELD = "masterWrapperId";
+  private static final String DETAIL_ID_FIELD = "detailWrapperProfileId";
   private static final String JOB_PROFILE_ID_FIELD = "jobProfileId";
   private static final Logger LOGGER = LogManager.getLogger();
   private static final String CORRECT_PROFILE_ASSOCIATION_TYPES_MESSAGE = "Correct ProfileAssociation types: " +
@@ -66,7 +67,7 @@ public class CommonProfileAssociationDao implements ProfileAssociationDao {
   }
 
   @Override
-  public Future<String> save(ProfileAssociation entity, ContentType masterType, ContentType detailType, String tenantId) {
+  public Future<String> save(ProfileAssociationRecord entity, ContentType masterType, ContentType detailType, String tenantId) {
     Promise<String> promise = Promise.promise();
     pgClientFactory.createInstance(tenantId).save(getAssociationTableName(masterType, detailType), entity.getId(), entity, promise);
     return promise.future();
@@ -88,11 +89,11 @@ public class CommonProfileAssociationDao implements ProfileAssociationDao {
   }
 
   @Override
-  public Future<Optional<ProfileAssociation>> getById(String id, ContentType masterType, ContentType detailType, String tenantId) {
-    Promise<Results<ProfileAssociation>> promise = Promise.promise();
+  public Future<Optional<ProfileAssociationRecord>> getById(String id, ContentType masterType, ContentType detailType, String tenantId) {
+    Promise<Results<ProfileAssociationRecord>> promise = Promise.promise();
     try {
       Criteria idCrit = constructCriteria(ID_FIELD, id);
-      pgClientFactory.createInstance(tenantId).get(getAssociationTableName(masterType, detailType), ProfileAssociation.class, new Criterion(idCrit), true, false, promise);
+      pgClientFactory.createInstance(tenantId).get(getAssociationTableName(masterType, detailType), ProfileAssociationRecord.class, new Criterion(idCrit), true, false, promise);
     } catch (Exception e) {
       LOGGER.warn("getById:: Error querying {} by id", ProfileAssociation.class.getSimpleName(), e);
       promise.fail(e);

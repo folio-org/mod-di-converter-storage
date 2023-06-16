@@ -1,6 +1,7 @@
 package org.folio.services.association;
 
 import io.vertx.core.AsyncResult;
+import io.vertx.core.CompositeFuture;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
 import io.vertx.core.Promise;
@@ -9,6 +10,8 @@ import org.apache.logging.log4j.Logger;
 import org.folio.dao.ProfileDao;
 import org.folio.dao.association.MasterDetailAssociationDao;
 import org.folio.dao.association.ProfileAssociationDao;
+import org.folio.dao.association.ProfileWrapperDao;
+import org.folio.okapi.common.GenericCompositeFuture;
 import org.folio.rest.impl.util.OkapiConnectionParams;
 import org.folio.rest.jaxrs.model.ActionProfile;
 import org.folio.rest.jaxrs.model.ActionProfileCollection;
@@ -20,11 +23,14 @@ import org.folio.rest.jaxrs.model.MatchProfile;
 import org.folio.rest.jaxrs.model.MatchProfileCollection;
 import org.folio.rest.jaxrs.model.ProfileAssociation;
 import org.folio.rest.jaxrs.model.ProfileAssociationCollection;
+import org.folio.rest.jaxrs.model.ProfileAssociationRecord;
 import org.folio.rest.jaxrs.model.ProfileSnapshotWrapper;
 import org.folio.rest.jaxrs.model.ProfileSnapshotWrapper.ContentType;
+import org.folio.rest.jaxrs.model.ProfileWrapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -48,6 +54,8 @@ public class CommonProfileAssociationService implements ProfileAssociationServic
   @Autowired
   private ProfileAssociationDao profileAssociationDao;
   @Autowired
+  private ProfileWrapperDao profileWrapperDao;
+  @Autowired
   private MasterDetailAssociationDao masterDetailAssociationDao;
 
   @Override
@@ -57,13 +65,67 @@ public class CommonProfileAssociationService implements ProfileAssociationServic
 
   @Override
   public Future<Optional<ProfileAssociation>> getById(String id, ContentType masterType, ContentType detailType, String tenantId) {
-    return profileAssociationDao.getById(id, masterType, detailType, tenantId);
+    return profileAssociationDao.getById(id, masterType, detailType, tenantId)
+      .compose(profileAssociationRecordOptional -> {
+        if (profileAssociationRecordOptional.isEmpty()) {
+          return Future.succeededFuture(Optional.empty());
+        }
+        ProfileAssociationRecord profileAssociationRecord = profileAssociationRecordOptional.get();
+        ProfileAssociation profileAssociation = createProfileAssociation(profileAssociationRecord);
+        List<Future> futures = new ArrayList<>();
+        if (profileAssociationRecord.getMasterWrapperId() != null) {
+          futures.add(getProfileWrapper(tenantId, profileAssociationRecord.getMasterWrapperId())
+            .onSuccess(profileWrapperOptional -> profileWrapperOptional.
+              ifPresent(profileWrapper -> profileAssociation.setMasterProfileId(profileWrapper.getProfileId()))));
+        }
+        if (profileAssociationRecord.getDetailWrapperId() != null) {
+          futures.add(getProfileWrapper(tenantId, profileAssociationRecord.getDetailWrapperId())
+            .onSuccess(profileWrapperOptional -> profileWrapperOptional.
+              ifPresent(profileWrapper -> profileAssociation.setDetailProfileId(profileWrapper.getProfileId()))));
+        }
+        return GenericCompositeFuture.all(futures).compose(ar -> Future.succeededFuture(Optional.of(profileAssociation)));
+      });
+  }
+
+  private Future<Optional<ProfileWrapper>> getProfileWrapper(String tenantId, String wrapperId) {
+    return profileWrapperDao.getProfileWrapperById(wrapperId, tenantId)
+      .onFailure(throwable ->
+        LOGGER.warn(String.format("getById:: Could not get profile wrapper by id: %s", wrapperId), throwable));
   }
 
   @Override
   public Future<ProfileAssociation> save(ProfileAssociation entity, ContentType masterType, ContentType detailType, String tenantId) {
     entity.setId(UUID.randomUUID().toString());
-    return profileAssociationDao.save(entity, masterType, detailType, tenantId).map(entity);
+    ProfileAssociationRecord profileAssociationRecord = createProfileAssociationRecord(entity);
+    List<Future> futures = new ArrayList<>();
+    if (entity.getMasterProfileId() != null) {
+      ProfileWrapper masterProfileWrapper = new ProfileWrapper().withId(UUID.randomUUID().toString())
+        .withProfileType(entity.getMasterProfileType())
+        .withProfileId(entity.getMasterProfileId());
+      futures.add(profileWrapperDao.save(masterProfileWrapper, tenantId)
+        .onSuccess((result) -> profileAssociationRecord.setMasterWrapperId(masterProfileWrapper.getId()))
+        .onFailure((throwable ->
+          LOGGER.warn(String.format("save:: Could not save master profile wrapper with profileId: %s", masterProfileWrapper.getProfileId()), throwable)))
+      );
+    }
+    if (entity.getDetailProfileId() != null) {
+      ProfileWrapper detailProfileWrapper = new ProfileWrapper().withId(UUID.randomUUID().toString())
+        .withProfileType(entity.getDetailProfileType())
+        .withProfileId(entity.getDetailProfileId());
+      futures.add(profileWrapperDao.save(detailProfileWrapper, tenantId)
+        .onSuccess((result) -> profileAssociationRecord.setDetailWrapperId(detailProfileWrapper.getId()))
+        .onFailure((throwable ->
+          LOGGER.debug(String.format("save:: Could not save detail profile wrapper with profileId: %s", detailProfileWrapper.getProfileId()), throwable)))
+      );
+    }
+
+    return CompositeFuture.all(futures)
+      .compose((result) -> profileAssociationDao.save(profileAssociationRecord, masterType, detailType, tenantId).map(entity));
+  }
+
+  @Override
+  public Future<ProfileAssociationRecord> save(ProfileAssociationRecord entity, ContentType masterType, ContentType detailType, String tenantId) {
+    return profileAssociationDao.save(entity, masterType, detailType, tenantId).map(entity).map(entity);
   }
 
   @Override
@@ -87,7 +149,7 @@ public class CommonProfileAssociationService implements ProfileAssociationServic
           result.fail(ar.cause());
         }
         List<ProfileSnapshotWrapper> details = ar.result();
-        ProfileSnapshotWrapper wrapper = getProfileWrapper(masterId, masterType, details);
+        ProfileSnapshotWrapper wrapper = getProfileSnapshotWrapper(masterId, masterType, details);
         fillProfile(tenantId, result, wrapper);
       });
 
@@ -104,7 +166,7 @@ public class CommonProfileAssociationService implements ProfileAssociationServic
           LOGGER.warn("findMasters:: Could not get master profiles by detail id '{}', for the tenant '{}'", detailId, tenantId);
           result.fail(ar.cause());
         }
-        ProfileSnapshotWrapper wrapper = getProfileWrapper(detailId, detailType, ar.result());
+        ProfileSnapshotWrapper wrapper = getProfileSnapshotWrapper(detailId, detailType, ar.result());
         fillProfile(tenantId, result, wrapper);
       });
 
@@ -133,13 +195,13 @@ public class CommonProfileAssociationService implements ProfileAssociationServic
     ContentType profileType = wrapper.getContentType();
 
     if (profileType == ContentType.JOB_PROFILE) {
-      jobProfileDao.getProfileById(profileId, tenantId).onComplete(fillWrapperContent(result, wrapper));
+      jobProfileDao.getProfileById(profileId, tenantId).onComplete(fillSnapshotWrapperContent(result, wrapper));
     } else if (profileType == ContentType.ACTION_PROFILE) {
-      actionProfileDao.getProfileById(profileId, tenantId).onComplete(fillWrapperContent(result, wrapper));
+      actionProfileDao.getProfileById(profileId, tenantId).onComplete(fillSnapshotWrapperContent(result, wrapper));
     } else if (profileType == ContentType.MAPPING_PROFILE) {
-      mappingProfileDao.getProfileById(profileId, tenantId).onComplete(fillWrapperContent(result, wrapper));
+      mappingProfileDao.getProfileById(profileId, tenantId).onComplete(fillSnapshotWrapperContent(result, wrapper));
     } else if (profileType == ContentType.MATCH_PROFILE) {
-      matchProfileDao.getProfileById(profileId, tenantId).onComplete(fillWrapperContent(result, wrapper));
+      matchProfileDao.getProfileById(profileId, tenantId).onComplete(fillSnapshotWrapperContent(result, wrapper));
     } else {
       result.complete(Optional.empty());
     }
@@ -153,7 +215,7 @@ public class CommonProfileAssociationService implements ProfileAssociationServic
    * @param children    a list of children
    * @return profile wrapper
    */
-  private ProfileSnapshotWrapper getProfileWrapper(String profileId, ContentType profileType, List<ProfileSnapshotWrapper> children) {
+  private ProfileSnapshotWrapper getProfileSnapshotWrapper(String profileId, ContentType profileType, List<ProfileSnapshotWrapper> children) {
     ProfileSnapshotWrapper wrapper = new ProfileSnapshotWrapper();
     wrapper.setChildSnapshotWrappers(children);
     wrapper.setId(profileId);
@@ -169,7 +231,7 @@ public class CommonProfileAssociationService implements ProfileAssociationServic
    * @param <T>     a profile type.
    * @return the handler.
    */
-  private <T> Handler<AsyncResult<Optional<T>>> fillWrapperContent(Promise<Optional<ProfileSnapshotWrapper>> result, ProfileSnapshotWrapper wrapper) {
+  private <T> Handler<AsyncResult<Optional<T>>> fillSnapshotWrapperContent(Promise<Optional<ProfileSnapshotWrapper>> result, ProfileSnapshotWrapper wrapper) {
     return asyncResult -> {
       if (asyncResult.failed()) {
         LOGGER.warn("fillWrapperContent:: Could not get a profile", asyncResult.cause());
@@ -186,4 +248,25 @@ public class CommonProfileAssociationService implements ProfileAssociationServic
     };
   }
 
+  public static ProfileAssociationRecord createProfileAssociationRecord(ProfileAssociation entity) {
+    return new ProfileAssociationRecord()
+      .withId(entity.getId())
+      .withJobProfileId(entity.getJobProfileId())
+      .withMasterProfileType(entity.getMasterProfileType())
+      .withDetailProfileType(entity.getDetailProfileType())
+      .withOrder(entity.getOrder())
+      .withTriggered(entity.getTriggered())
+      .withReactTo(entity.getReactTo());
+  }
+
+  public static ProfileAssociation createProfileAssociation(ProfileAssociationRecord entity) {
+    return new ProfileAssociation()
+      .withId(entity.getId())
+      .withJobProfileId(entity.getJobProfileId())
+      .withMasterProfileType(entity.getMasterProfileType())
+      .withDetailProfileType(entity.getDetailProfileType())
+      .withOrder(entity.getOrder())
+      .withTriggered(entity.getTriggered())
+      .withReactTo(entity.getReactTo());
+  }
 }

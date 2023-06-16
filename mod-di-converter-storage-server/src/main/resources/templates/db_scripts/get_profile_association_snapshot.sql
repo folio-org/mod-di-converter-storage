@@ -9,19 +9,23 @@ CREATE OR REPLACE FUNCTION
           EXECUTE format('
             SELECT
               association.id,
-              association.masterwrapperid AS master_id,
+              masterwrapper.%s_id AS master_id,
+			        association.masterwrapperid AS masterwrapperid,
               json_agg(master.jsonb) AS master,
               ''%s'' AS master_type,
-              association.detailwrapperid AS detail_id,
+              detailwrapper.%s_id AS detail_id,
+			        association.detailwrapperid AS detailwrapperid,
               ''%s'' AS detail_type,
               CAST(association.jsonb->>''order'' AS integer) AS detail_order,
               json_agg(detail.jsonb) AS detail,
               CAST(association.jsonb->>''reactTo'' AS text) as react_to,
               CAST(association.jsonb->>''jobProfileId'' AS uuid) as job_profile_id
             FROM %s association
-              INNER JOIN %s master ON master.id = association.masterwrapperid
-              INNER JOIN %s detail ON detail.id = association.detailwrapperid
-            GROUP BY association.id',
-            _master_type, _detail_type, _association_table, _master_table, _detail_table);
+              INNER JOIN profile_wrappers as masterwrapper ON association.masterwrapperid = masterwrapper.id
+			        INNER JOIN profile_wrappers as detailwrapper ON association.detailwrapperid = detailwrapper.id
+              INNER JOIN %s master ON master.id = masterwrapper.%s_id
+              INNER JOIN %s detail ON detail.id = detailwrapper.%s_id
+            GROUP BY association.id, masterwrapper.%s_id, detailwrapper.%s_id, association.masterwrapperid, association.detailwrapperid',
+            _master_type, _master_type, _detail_type, _detail_type, _association_table, _master_table, _master_type, _detail_table, _detail_type, _master_type, _detail_type);
       END $$
 language plpgsql;
