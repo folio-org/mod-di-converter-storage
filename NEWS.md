@@ -1,3 +1,6 @@
+## 2023-06-19 v2.0.3
+* [MODDICONV-304](https://issues.folio.org/browse/MODDICONV-304) Added dependency on "permissions" interface v5.6
+
 ## 2023-03-13 v2.0.2
 * [MODDICONV-293](https://issues.folio.org/browse/MODDICONV-293) Add validation for creating profiles to prevent saving child and parent elements
 
