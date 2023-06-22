@@ -1120,7 +1120,7 @@ public class CommonProfileAssociationTest extends AbstractRestVerticleTest {
   }
 
   @Test
-  public void shouldSaveOnlyUniqueAssociations(TestContext testContext) {
+  public void shouldSaveOnlyUniqueAssociationsAndDoNotAddMirrorAssociations(TestContext testContext) {
     Async async = testContext.async();
 
     String mainMatchProfileId = "cfb7ad96-6bbb-4843-9e3a-0395190bd6c8";
@@ -1281,7 +1281,29 @@ public class CommonProfileAssociationTest extends AbstractRestVerticleTest {
       .body("profile.id", is(jobProfileId))
       .body("addedRelations.size()", is(10))
       .body("deletedRelations.size()", is(0));
-
+    JobProfileWrapper editedJobProfileWrapper = new JobProfileWrapper(new JobProfileUpdateDto()
+      .withProfile(new JobProfile()
+        .withId(jobProfileId)
+        .withName("Testing JobProfile")
+        .withDataType(MARC)
+        .withDeleted(false)
+        .withHidden(false)
+        .withDescription("test-description"))
+      .withAddedRelations(Lists.newArrayList(
+        new ProfileAssociation()
+          .withMasterProfileId(firstSubMatchProfileId)
+          .withDetailProfileId(thirdSubMatchProfileId)
+          .withMasterProfileType(ProfileAssociation.MasterProfileType.MATCH_PROFILE)
+          .withDetailProfileType(ProfileAssociation.DetailProfileType.MATCH_PROFILE)
+          .withTriggered(false)
+          .withReactTo(ProfileAssociation.ReactTo.MATCH))));
+    RestAssured.given()
+      .spec(spec)
+      .body(editedJobProfileWrapper.getProfile())
+      .when()
+      .put(JOB_PROFILES_URL + "/" + jobProfileId)
+      .then().log().all()
+      .statusCode(HttpStatus.SC_CONFLICT);
     async.complete();
 
     async = testContext.async();
