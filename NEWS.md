@@ -1,3 +1,6 @@
+## 2023-06-27 v2.0.4
+* [MODDICONV-317](https://issues.folio.org/browse/MODDICONV-317) Match and action profiles cannot be re-used in an import job profile (MODDICONV-300)
+
 ## 2023-06-19 v2.0.3
 * [MODDICONV-304](https://issues.folio.org/browse/MODDICONV-304) Added dependency on "permissions" interface v5.6
 
