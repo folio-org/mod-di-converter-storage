@@ -679,7 +679,7 @@ public class CommonProfileAssociationTest extends AbstractRestVerticleTest {
       .get(DETAILS_BY_MASTER_URL, UUID.randomUUID().toString())
       .then()
       .statusCode(HttpStatus.SC_BAD_REQUEST)
-      .body(is("The specified type: foo is wrong. It should be " + Arrays.toString(ContentType.values())));
+      .body("errors[0].message", is("The specified type: foo is wrong. It should be " + Arrays.toString(ContentType.values())));
     async.complete();
   }
 
@@ -971,7 +971,7 @@ public class CommonProfileAssociationTest extends AbstractRestVerticleTest {
       .get(MASTERS_BY_DETAIL_URL, UUID.randomUUID().toString())
       .then()
       .statusCode(HttpStatus.SC_BAD_REQUEST)
-      .body(is("The specified type: foo is wrong. It should be " + Arrays.toString(ContentType.values())));
+      .body("errors[0].message", is("The specified type: foo is wrong. It should be " + Arrays.toString(ContentType.values())));
     async.complete();
   }
 
