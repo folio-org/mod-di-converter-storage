@@ -19,6 +19,16 @@ public class ProfileSnapshotItem {
    * Unique identifier of the detail profile
    */
   private String detailId;
+
+  /**
+   * Unique identifier of the master wrapper profile
+   */
+  private String masterWrapperId;
+  /**
+   * Unique identifier of the detail wrapper profile
+   */
+  private String detailWrapperId;
+
   /**
    * Type of the detail profile
    */
@@ -89,5 +99,21 @@ public class ProfileSnapshotItem {
 
   public void setOrder(Integer order) {
     this.order = order;
+  }
+
+  public String getMasterWrapperId() {
+    return masterWrapperId;
+  }
+
+  public void setMasterWrapperId(String masterWrapperId) {
+    this.masterWrapperId = masterWrapperId;
+  }
+
+  public String getDetailWrapperId() {
+    return detailWrapperId;
+  }
+
+  public void setDetailWrapperId(String detailWrapperId) {
+    this.detailWrapperId = detailWrapperId;
   }
 }
