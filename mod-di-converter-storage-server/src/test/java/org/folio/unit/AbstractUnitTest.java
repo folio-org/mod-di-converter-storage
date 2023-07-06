@@ -47,7 +47,7 @@ public abstract class AbstractUnitTest {
     vertx.deployVerticle(RestVerticle.class.getName(), options, res -> {
       try {
         TenantAttributes tenantAttributes = new TenantAttributes();
-        tenantAttributes.setModuleTo(ModuleName.getModuleName());
+        tenantAttributes.setModuleTo(constructModuleName());
         tenantClient.postTenant(tenantAttributes, res2 -> {
           if (res2.result().statusCode() == 204) {
             return;
@@ -69,6 +69,11 @@ public abstract class AbstractUnitTest {
         throw new RuntimeException(e);
       }
     });
+  }
+
+  private static String constructModuleName() {
+    String result = ModuleName.getModuleName().replace("_", "-");
+    return result + "-" + ModuleName.getModuleVersion();
   }
 
   @After

@@ -18,7 +18,7 @@ RETURNS TABLE(snapshot json)
                 0 AS detail_order,
                 json_agg(job_profile.jsonb) detail,
                 null AS react_to
-              FROM %s AS job_profile INNER JOIN profile_wrappers pw ON job_profile.id = pw.job_profile_id
+              FROM %s AS job_profile LEFT JOIN profile_wrappers pw ON pw.job_profile_id = job_profile.id
               WHERE job_profile.id = ''%s''
               GROUP BY job_profile.id, pw.id
                 UNION ALL

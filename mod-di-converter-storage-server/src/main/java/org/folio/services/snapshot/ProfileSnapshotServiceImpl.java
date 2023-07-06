@@ -129,6 +129,7 @@ public class ProfileSnapshotServiceImpl implements ProfileSnapshotService {
       rootWrapper.setOrder(rootItem.getOrder());
       rootWrapper.setId(UUID.randomUUID().toString());
       rootWrapper.setProfileId(rootItem.getDetailId());
+      rootWrapper.setProfileWrapperId(rootItem.getDetailWrapperId());
       rootWrapper.setContentType(rootItem.getDetailType());
       rootWrapper.setContent(convertContentByType(rootItem.getDetail(), rootItem.getDetailType()));
       fillChildSnapshotWrappers(rootItem.getDetailWrapperId(), rootWrapper.getChildSnapshotWrappers(), snapshotItems);
@@ -148,19 +149,22 @@ public class ProfileSnapshotServiceImpl implements ProfileSnapshotService {
    * @param snapshotItems collection of snapshot items
    */
   private void fillChildSnapshotWrappers(String parentWrapperId, List<ProfileSnapshotWrapper> childWrappers, List<ProfileSnapshotItem> snapshotItems) {
-    for (ProfileSnapshotItem snapshotItem : snapshotItems) {
-      if (parentWrapperId.equals(snapshotItem.getMasterWrapperId())) {
-        ProfileSnapshotWrapper childWrapper = new ProfileSnapshotWrapper();
-        childWrapper.setId(UUID.randomUUID().toString());
-        childWrapper.setProfileId(snapshotItem.getDetailId());
-        childWrapper.setContentType(snapshotItem.getDetailType());
-        childWrapper.setContent(convertContentByType(snapshotItem.getDetail(), snapshotItem.getDetailType()));
-        if (snapshotItem.getReactTo() != null) {
-          childWrapper.setReactTo(ProfileSnapshotWrapper.ReactTo.fromValue(snapshotItem.getReactTo().name()));
+    if (parentWrapperId != null) {
+      for (ProfileSnapshotItem snapshotItem : snapshotItems) {
+        if (parentWrapperId.equals(snapshotItem.getMasterWrapperId())) {
+          ProfileSnapshotWrapper childWrapper = new ProfileSnapshotWrapper();
+          childWrapper.setId(UUID.randomUUID().toString());
+          childWrapper.setProfileId(snapshotItem.getDetailId());
+          childWrapper.setProfileWrapperId(snapshotItem.getDetailWrapperId());
+          childWrapper.setContentType(snapshotItem.getDetailType());
+          childWrapper.setContent(convertContentByType(snapshotItem.getDetail(), snapshotItem.getDetailType()));
+          if (snapshotItem.getReactTo() != null) {
+            childWrapper.setReactTo(ProfileSnapshotWrapper.ReactTo.fromValue(snapshotItem.getReactTo().name()));
+          }
+          childWrapper.setOrder(snapshotItem.getOrder());
+          childWrappers.add(childWrapper);
+          fillChildSnapshotWrappers(snapshotItem.getDetailWrapperId(), childWrapper.getChildSnapshotWrappers(), snapshotItems);
         }
-        childWrapper.setOrder(snapshotItem.getOrder());
-        childWrappers.add(childWrapper);
-        fillChildSnapshotWrappers(snapshotItem.getDetailWrapperId(), childWrapper.getChildSnapshotWrappers(), snapshotItems);
       }
     }
   }
