@@ -8,12 +8,16 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.folio.dao.ProfileDao;
+import org.folio.dao.association.ProfileWrapperDao;
 import org.folio.okapi.common.GenericCompositeFuture;
 import org.folio.rest.impl.util.OkapiConnectionParams;
 import org.folio.rest.impl.util.RestUtil;
 import org.folio.rest.jaxrs.model.EntityTypeCollection;
 import org.folio.rest.jaxrs.model.ProfileAssociation;
+import org.folio.rest.jaxrs.model.ProfileAssociationRecord;
 import org.folio.rest.jaxrs.model.ProfileSnapshotWrapper;
+import org.folio.rest.jaxrs.model.ProfileType;
+import org.folio.rest.jaxrs.model.ProfileWrapper;
 import org.folio.rest.jaxrs.model.UserInfo;
 import org.folio.services.association.CommonProfileAssociationService;
 import org.folio.services.association.ProfileAssociationService;
@@ -23,8 +27,10 @@ import org.springframework.beans.factory.annotation.Autowired;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -58,6 +64,8 @@ public abstract class AbstractProfileService<T, S, D> implements ProfileService<
 
   @Autowired
   protected CommonProfileAssociationService associationService;
+  @Autowired
+  private ProfileWrapperDao profileWrapperDao;
 
   @Override
   public Future<S> getProfiles(boolean showDeleted, boolean withRelations, boolean showHidden, String query, int offset, int limit, String tenantId) {
@@ -99,8 +107,8 @@ public abstract class AbstractProfileService<T, S, D> implements ProfileService<
     }
     Promise<Boolean> result = Promise.promise();
     List<Future<Boolean>> futureList = new ArrayList<>();
-    profileAssociations.forEach(association -> futureList.add(profileAssociationService.delete(association.getMasterProfileId(),
-      association.getDetailProfileId(),
+    profileAssociations.forEach(association -> futureList.add(profileAssociationService.delete(association.getMasterWrapperId(),
+      association.getDetailWrapperId(),
       ProfileSnapshotWrapper.ContentType.fromValue(association.getMasterProfileType().name()),
       ProfileSnapshotWrapper.ContentType.fromValue(association.getDetailProfileType().name()), tenantId, association.getJobProfileId())));
     GenericCompositeFuture.all(futureList).onComplete(ar -> {

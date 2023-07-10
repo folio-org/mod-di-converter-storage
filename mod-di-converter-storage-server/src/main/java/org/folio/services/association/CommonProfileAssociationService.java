@@ -145,16 +145,16 @@ public class CommonProfileAssociationService implements ProfileAssociationServic
       } else {
         futureList.add(saveWrapper(tenantId, profileAssociation.getMasterProfileType(), profileAssociation.getMasterProfileId())
           .onSuccess(result -> {
-              profileIdToWrapperId.put(result.getProfileId(), result.getId());
-              profileAssociationRecord.setMasterWrapperId(result.getId());
+            profileIdToWrapperId.put(result.getProfileId(), result.getId());
+            profileAssociationRecord.setMasterWrapperId(result.getId());
           }));
       }
     }
     if (profileAssociation.getDetailProfileId() != null) {
       futureList.add(saveWrapper(tenantId, profileAssociation.getDetailProfileType(), profileAssociation.getDetailProfileId())
         .onSuccess(result -> {
-            profileIdToWrapperId.put(result.getProfileId(), result.getId());
-            profileAssociationRecord.setDetailWrapperId(result.getId());
+          profileIdToWrapperId.put(result.getProfileId(), result.getId());
+          profileAssociationRecord.setDetailWrapperId(result.getId());
         }));
     }
     return GenericCompositeFuture.all(futureList).onSuccess(ar -> {
@@ -172,7 +172,21 @@ public class CommonProfileAssociationService implements ProfileAssociationServic
 
   @Override
   public Future<ProfileAssociation> update(ProfileAssociation entity, ContentType masterType, ContentType detailType, OkapiConnectionParams params) {
-    return profileAssociationDao.update(entity, masterType, detailType, params.getTenantId());
+    return profileWrapperDao.deleteById(entity.getMasterProfileId(), params.getTenantId())
+      .compose(e -> profileWrapperDao.deleteById(entity.getDetailProfileId(), params.getTenantId()))
+      .compose(r -> {
+        ProfileWrapper masterWrapper = new ProfileWrapper();
+        masterWrapper.setProfileType(entity.getMasterProfileType());
+        masterWrapper.setProfileId(entity.getMasterProfileId());
+        return profileWrapperDao.save(masterWrapper, params.getTenantId());
+      })
+      .compose(s -> {
+        ProfileWrapper detailWrapper = new ProfileWrapper();
+        detailWrapper.setProfileType(entity.getDetailProfileType());
+        detailWrapper.setProfileId(entity.getDetailProfileId());
+        return profileWrapperDao.save(detailWrapper, params.getTenantId());
+      })
+      .compose(f -> profileAssociationDao.update(entity, masterType, detailType, params.getTenantId()));
   }
 
   @Override
@@ -216,8 +230,8 @@ public class CommonProfileAssociationService implements ProfileAssociationServic
   }
 
   @Override
-  public Future<Boolean> delete(String masterId, String detailId, ContentType masterType, ContentType detailType, String tenantId, String jobProfileId) {
-    return profileAssociationDao.delete(masterId, detailId, masterType, detailType, tenantId, jobProfileId);
+  public Future<Boolean> delete(String masterWrapperId, String detailWrapperId, ContentType masterType, ContentType detailType, String tenantId, String jobProfileId) {
+    return profileAssociationDao.delete(masterWrapperId, detailWrapperId, masterType, detailType, tenantId, jobProfileId);
   }
 
   @Override

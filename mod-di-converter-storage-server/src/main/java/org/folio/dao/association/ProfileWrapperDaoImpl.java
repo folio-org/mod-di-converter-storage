@@ -71,4 +71,11 @@ public class ProfileWrapperDaoImpl implements ProfileWrapperDao {
     pgClientFactory.createInstance(tenantId).execute(query, queryParams, promise);
     return promise.future().map(entity.getId()).onFailure(e -> LOGGER.warn("save:: Error saving profile wrapper", e));
   }
+
+  @Override
+  public Future<Boolean> deleteById(String id, String tenantId) {
+    Promise<RowSet<Row>> promise = Promise.promise();
+    pgClientFactory.createInstance(tenantId).delete(TABLE_NAME, id, promise);
+    return promise.future().map(updateResult -> updateResult.rowCount() == 1);
+  }
 }

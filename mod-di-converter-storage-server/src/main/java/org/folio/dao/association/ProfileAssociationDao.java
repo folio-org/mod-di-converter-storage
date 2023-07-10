@@ -68,17 +68,17 @@ public interface ProfileAssociationDao {
   Future<Boolean> delete(String id, ProfileSnapshotWrapper.ContentType masterType, ProfileSnapshotWrapper.ContentType detailType, String tenantId);
 
   /**
-   * Delete ProfileAssociation  by masterId and detailId
+   * Delete ProfileAssociation  by masterWrapperId and detailWrapperId
    *
-   * @param masterId     - UUID of masterProfile
-   * @param detailId     - UUID of detailProfile
+   * @param masterWrapperId     - UUID of masterProfile
+   * @param detailWrapperId     - UUID of detailProfile
    * @param masterType   - master Profile Type
    * @param detailType   - detail Profile Type
    * @param tenantId     - tenant id
    * @param jobProfileId - job profile id (optional)
    * @return - boolean result of operation
    */
-  Future<Boolean> delete(String masterId, String detailId, ProfileSnapshotWrapper.ContentType masterType, ProfileSnapshotWrapper.ContentType detailType, String tenantId, String jobProfileId);
+  Future<Boolean> delete(String masterWrapperId, String detailWrapperId, ProfileSnapshotWrapper.ContentType masterType, ProfileSnapshotWrapper.ContentType detailType, String tenantId, String jobProfileId);
 
   /**
    * Delete profile associations for particular master profile by masterId
