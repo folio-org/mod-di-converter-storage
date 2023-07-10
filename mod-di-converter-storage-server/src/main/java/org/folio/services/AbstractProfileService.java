@@ -126,7 +126,8 @@ public abstract class AbstractProfileService<T, S, D> implements ProfileService<
       return Future.succeededFuture(true);
     }
     Promise<Boolean> result = Promise.promise();
-    profileAssociationService.save(profileAssociations, tenantId)
+    associationService.wrapAssociationProfiles(profileAssociations, new ArrayList<>(), new HashMap<>(), tenantId)
+      .compose(e -> profileAssociationService.save(e, tenantId))
       .onComplete(ar -> {
         if (ar.succeeded()) {
           result.complete(true);

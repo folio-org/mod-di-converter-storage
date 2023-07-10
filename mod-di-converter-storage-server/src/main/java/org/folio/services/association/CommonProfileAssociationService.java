@@ -100,7 +100,7 @@ public class CommonProfileAssociationService implements ProfileAssociationServic
     return result.future();
   }
 
-  private Future<List<ProfileAssociation>> wrapAssociationProfiles(List<ProfileAssociation> profileAssociations,
+  public Future<List<ProfileAssociation>> wrapAssociationProfiles(List<ProfileAssociation> profileAssociations,
                                                                          List<ProfileAssociation> profileAssociationRecords,
                                                                          HashMap<String, String> profileIdToWrapperId,
                                                                          String tenantId) {
