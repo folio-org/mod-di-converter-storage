@@ -51,6 +51,7 @@ public class CommonProfileAssociationTest extends AbstractRestVerticleTest {
 
   public static final String ACTION_TO_ACTION_PROFILES = "action_to_action_profiles";
   public static final String ACTION_TO_MAPPING_PROFILES = "action_to_mapping_profiles";
+  public static final String PROFILE_WRAPPERS = "profile_wrappers";
   public static final String ACTION_TO_MATCH_PROFILES = "action_to_match_profiles";
   public static final String JOB_TO_ACTION_PROFILES = "job_to_action_profiles";
   public static final String JOB_TO_MATCH_PROFILES = "job_to_match_profiles";
@@ -182,6 +183,8 @@ public class CommonProfileAssociationTest extends AbstractRestVerticleTest {
     ProfileAssociation profileAssociation = new ProfileAssociation()
       .withMasterProfileId(masterProfileWrapper1.getId())
       .withDetailProfileId(detailProfileWrapper1.getId())
+      .withMasterProfileType(ProfileType.valueOf(masterProfileType.value()))
+      .withDetailProfileType(ProfileType.valueOf(detailProfileType.value()))
       .withOrder(5)
       .withTriggered(true);
 
@@ -291,6 +294,8 @@ public class CommonProfileAssociationTest extends AbstractRestVerticleTest {
     ProfileAssociation profileAssociation = new ProfileAssociation()
       .withMasterProfileId(masterWrapper.getId())
       .withDetailProfileId(detailWrapper.getId())
+      .withMasterProfileType(ProfileType.valueOf(masterContentType.value()))
+      .withDetailProfileType(ProfileType.valueOf(detailContentType.value()))
       .withOrder(5)
       .withTriggered(true);
 
@@ -395,6 +400,8 @@ public class CommonProfileAssociationTest extends AbstractRestVerticleTest {
     ProfileAssociation profileAssociation = new ProfileAssociation()
       .withMasterProfileId(masterProfileWrapper.getId())
       .withDetailProfileId(detailProfileWrapper.getId())
+      .withMasterProfileType(ProfileType.valueOf(masterProfileType.value()))
+      .withDetailProfileType(ProfileType.valueOf(detailProfileType.value()))
       .withOrder(10)
       .withTriggered(false);
 
@@ -510,6 +517,8 @@ public class CommonProfileAssociationTest extends AbstractRestVerticleTest {
     ProfileAssociation profileAssociation = new ProfileAssociation()
       .withMasterProfileId(masterProfileWrapper.getId())
       .withDetailProfileId(detailProfileWrapper.getId())
+      .withMasterProfileType(ProfileType.valueOf(masterContentType.value()))
+      .withDetailProfileType(ProfileType.valueOf(detailContentType.value()))
       .withOrder(7)
       .withTriggered(true);
 
@@ -587,12 +596,16 @@ public class CommonProfileAssociationTest extends AbstractRestVerticleTest {
     ProfileAssociation profileAssociation1 = new ProfileAssociation()
       .withMasterProfileId(masterProfileWrapper1.getId())
       .withDetailProfileId(detailProfileWrapper1.getId())
+      .withMasterProfileType(ProfileType.valueOf(masterProfileType.value()))
+      .withDetailProfileType(ProfileType.valueOf(detailProfileType.value()))
       .withOrder(7)
       .withTriggered(true);
 
     ProfileAssociation profileAssociation2 = new ProfileAssociation()
       .withMasterProfileId(masterProfileWrapper2.getId())
       .withDetailProfileId(detailProfileWrapper2.getId())
+      .withMasterProfileType(ProfileType.valueOf(masterProfileType.value()))
+      .withDetailProfileType(ProfileType.valueOf(detailProfileType.value()))
       .withOrder(7)
       .withTriggered(true);
 
@@ -754,6 +767,8 @@ public class CommonProfileAssociationTest extends AbstractRestVerticleTest {
     ProfileAssociation profileAssociation2 = new ProfileAssociation()
       .withMasterProfileId(masterProfileWrapper1.getId())
       .withDetailProfileId(detailProfileWrapper2.getId())
+      .withMasterProfileType(ProfileType.valueOf(masterProfileType.value()))
+      .withDetailProfileType(ProfileType.valueOf(detailProfileType.value()))
       .withOrder(7)
       .withTriggered(true);
     Async async = testContext.async();
@@ -777,6 +792,8 @@ public class CommonProfileAssociationTest extends AbstractRestVerticleTest {
     ProfileAssociation profileAssociation1 = new ProfileAssociation()
       .withMasterProfileId(masterProfileWrapper1.getId())
       .withDetailProfileId(detailProfileWrapper1.getId())
+      .withMasterProfileType(ProfileType.valueOf(masterProfileType.value()))
+      .withDetailProfileType(ProfileType.valueOf(detailProfileType.value()))
       .withOrder(7)
       .withTriggered(true);
     async = testContext.async();
@@ -800,6 +817,8 @@ public class CommonProfileAssociationTest extends AbstractRestVerticleTest {
     ProfileAssociation profileAssociation3 = new ProfileAssociation()
       .withMasterProfileId(masterProfileWrapper1.getId())
       .withDetailProfileId(detailProfileWrapper3.getId())
+      .withMasterProfileType(ProfileType.valueOf(masterProfileType.value()))
+      .withDetailProfileType(ProfileType.valueOf(detailProfileType.value()))
       .withOrder(7)
       .withTriggered(true);
     async = testContext.async();
@@ -879,12 +898,16 @@ public class CommonProfileAssociationTest extends AbstractRestVerticleTest {
     ProfileAssociation profileAssociation1 = new ProfileAssociation()
       .withMasterProfileId(masterProfileWrapper1.getId())
       .withDetailProfileId(detailProfileWrapper1.getId())
+      .withMasterProfileType(ProfileType.valueOf(masterProfileType.value()))
+      .withDetailProfileType(ProfileType.valueOf(detailProfileType.value()))
       .withOrder(7)
       .withTriggered(true);
 
     ProfileAssociation profileAssociation2 = new ProfileAssociation()
       .withMasterProfileId(masterProfileWrapper2.getId())
       .withDetailProfileId(detailProfileWrapper2.getId())
+      .withMasterProfileType(ProfileType.valueOf(masterProfileType.value()))
+      .withDetailProfileType(ProfileType.valueOf(detailProfileType.value()))
       .withOrder(7)
       .withTriggered(true);
 
@@ -1054,6 +1077,8 @@ public class CommonProfileAssociationTest extends AbstractRestVerticleTest {
       .body(new ProfileAssociation()
         .withMasterProfileId(masterWrapper3.getId())
         .withDetailProfileId(detailWrapper.getId())
+        .withMasterProfileType(ProfileType.valueOf(masterProfileType.value()))
+        .withDetailProfileType(ProfileType.valueOf(detailProfileType.value()))
         .withOrder(7)
         .withTriggered(true))
       .when()
@@ -1074,6 +1099,8 @@ public class CommonProfileAssociationTest extends AbstractRestVerticleTest {
       .body(new ProfileAssociation()
         .withMasterProfileId(masterWrapper2.getId())
         .withDetailProfileId(detailWrapper.getId())
+        .withMasterProfileType(ProfileType.valueOf(masterProfileType.value()))
+        .withDetailProfileType(ProfileType.valueOf(detailProfileType.value()))
         .withOrder(7)
         .withTriggered(true))
       .when()
@@ -1094,6 +1121,8 @@ public class CommonProfileAssociationTest extends AbstractRestVerticleTest {
       .body(new ProfileAssociation()
         .withMasterProfileId(masterWrapper1.getId())
         .withDetailProfileId(detailWrapper.getId())
+        .withMasterProfileType(ProfileType.valueOf(masterProfileType.value()))
+        .withDetailProfileType(ProfileType.valueOf(detailProfileType.value()))
         .withOrder(7)
         .withTriggered(true))
       .when()
@@ -1122,7 +1151,7 @@ public class CommonProfileAssociationTest extends AbstractRestVerticleTest {
   }
 
   @Test
-  public void shouldSaveOnlyUniqueAssociations(TestContext testContext) {
+  public void shouldSaveNotOnlyUniqueAssociations(TestContext testContext) {
     Async async = testContext.async();
 
     String mainMatchProfileId = "cfb7ad96-6bbb-4843-9e3a-0395190bd6c8";
@@ -1211,8 +1240,8 @@ public class CommonProfileAssociationTest extends AbstractRestVerticleTest {
           .withReactTo(ReactToType.MATCH),
         //2
         new ProfileAssociation()
-          .withMasterProfileId(secondSubMatchProfileId)
-          .withDetailProfileId(firstSubMatchProfileId)
+          .withMasterProfileId(firstSubMatchProfileId)
+          .withDetailProfileId(secondSubMatchProfileId)
           .withMasterProfileType(ProfileType.MATCH_PROFILE)
           .withDetailProfileType(ProfileType.MATCH_PROFILE)
           .withTriggered(false)
@@ -1220,12 +1249,20 @@ public class CommonProfileAssociationTest extends AbstractRestVerticleTest {
         //3
         new ProfileAssociation()
           .withMasterProfileId(secondSubMatchProfileId)
+          .withDetailProfileId(firstSubMatchProfileId)
+          .withMasterProfileType(ProfileType.MATCH_PROFILE)
+          .withDetailProfileType(ProfileType.MATCH_PROFILE)
+          .withTriggered(false)
+          .withReactTo(ReactToType.MATCH),
+        //4
+        new ProfileAssociation()
+          .withMasterProfileId(secondSubMatchProfileId)
           .withDetailProfileId(firstActionProfileId)
           .withMasterProfileType(ProfileType.MATCH_PROFILE)
           .withDetailProfileType(ProfileType.ACTION_PROFILE)
           .withTriggered(false)
           .withReactTo(ReactToType.MATCH),
-        //4
+        //5
         new ProfileAssociation()
           .withMasterProfileId(secondSubMatchProfileId)
           .withDetailProfileId(secondActionProfileId)
@@ -1233,7 +1270,7 @@ public class CommonProfileAssociationTest extends AbstractRestVerticleTest {
           .withDetailProfileType(ProfileType.ACTION_PROFILE)
           .withTriggered(false)
           .withReactTo(ReactToType.MATCH),
-        //5
+        //6
         new ProfileAssociation()
           .withMasterProfileId(mainMatchProfileId)
           .withDetailProfileId(thirdSubMatchProfileId)
@@ -1241,18 +1278,10 @@ public class CommonProfileAssociationTest extends AbstractRestVerticleTest {
           .withDetailProfileType(ProfileType.MATCH_PROFILE)
           .withTriggered(false)
           .withReactTo(ReactToType.NON_MATCH),
-        //6
+        //7
         new ProfileAssociation()
           .withMasterProfileId(thirdSubMatchProfileId)
           .withDetailProfileId(firstSubMatchProfileId)
-          .withMasterProfileType(ProfileType.MATCH_PROFILE)
-          .withDetailProfileType(ProfileType.MATCH_PROFILE)
-          .withTriggered(false)
-          .withReactTo(ReactToType.MATCH),
-        //7
-        new ProfileAssociation()
-          .withMasterProfileId(firstSubMatchProfileId)
-          .withDetailProfileId(secondSubMatchProfileId)
           .withMasterProfileType(ProfileType.MATCH_PROFILE)
           .withDetailProfileType(ProfileType.MATCH_PROFILE)
           .withTriggered(false)
@@ -1295,7 +1324,7 @@ public class CommonProfileAssociationTest extends AbstractRestVerticleTest {
       .get(ASSOCIATED_PROFILES_URL)
       .then()
       .statusCode(HttpStatus.SC_OK)
-      .body("totalRecords", is(2));
+      .body("totalRecords", is(4));
     async.complete();
 
     clearTables(testContext);
@@ -1327,6 +1356,7 @@ public class CommonProfileAssociationTest extends AbstractRestVerticleTest {
       .compose(e -> deleteTable(JOB_TO_MATCH_PROFILES))
       .compose(e -> deleteTable(MATCH_TO_ACTION_PROFILES))
       .compose(e -> deleteTable(MATCH_TO_MATCH_PROFILES))
+      .compose(e -> deleteTable(PROFILE_WRAPPERS))
       .compose(e -> deleteTable(ACTION_PROFILES_TABLE))
       .compose(e -> deleteTable(JOB_PROFILES_TABLE))
       .compose(e -> deleteTable(MAPPING_PROFILES_TABLE))

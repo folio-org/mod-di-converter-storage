@@ -679,6 +679,7 @@ public class MappingProfileTest extends AbstractRestVerticleTest {
         .withAddedRelations(List.of(new ProfileAssociation()
           .withMasterProfileType(ProfileType.ACTION_PROFILE)
           .withDetailProfileType(ProfileType.MAPPING_PROFILE)
+          .withMasterWrapperId(actionProfile.getAddedRelations().get(0).getMasterWrapperId())
           .withMasterProfileId(actionProfile.getProfile().getId()))))
       .when()
       .post(MAPPING_PROFILES_PATH)
