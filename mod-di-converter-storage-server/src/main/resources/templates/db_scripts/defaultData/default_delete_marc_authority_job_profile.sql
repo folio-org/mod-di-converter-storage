@@ -30,6 +30,7 @@ INSERT INTO ${myuniversity}_${mymodule}.action_profiles (id, jsonb) values
   "folioRecord": "MARC_AUTHORITY",
   "deleted": false,
   "hidden": true,
+  "remove9Subfields": false,
   "userInfo": {
     "firstName": "System",
     "lastName": "System",

@@ -43,6 +43,7 @@ import static org.hamcrest.Matchers.empty;
 import static org.hamcrest.Matchers.everyItem;
 import static org.hamcrest.Matchers.hasEntry;
 import static org.hamcrest.Matchers.hasItem;
+import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.is;
 
 @RunWith(VertxUnitRunner.class)
@@ -95,6 +96,14 @@ public class MappingProfileTest extends AbstractRestVerticleTest {
       .withTags(new Tags().withTagList(Arrays.asList("lorem", "ipsum", "dolor")))
       .withIncomingRecordType(EntityType.MARC_BIBLIOGRAPHIC)
       .withExistingRecordType(EntityType.INSTANCE));
+
+  private static MappingProfileUpdateDto mappingProfileNotEmptyChildAndParent = new MappingProfileUpdateDto()
+    .withProfile(new MappingProfile()
+      .withName("Mapping profile with child and parent")
+      .withIncomingRecordType(EntityType.MARC_BIBLIOGRAPHIC)
+      .withExistingRecordType(EntityType.INSTANCE)
+      .withChildProfiles(List.of(new ProfileSnapshotWrapper().withId(UUID.randomUUID().toString())))
+      .withParentProfiles(List.of(new ProfileSnapshotWrapper().withId(UUID.randomUUID().toString()))));
 
 
   private static final List<MappingRule> fields = Lists.newArrayList(new MappingRule()
@@ -545,8 +554,16 @@ public class MappingProfileTest extends AbstractRestVerticleTest {
       .when()
       .get(MAPPING_PROFILES_PATH + "/" + profile.getProfile().getId())
       .then()
+      .statusCode(HttpStatus.SC_NOT_FOUND);
+
+    RestAssured.given()
+      .spec(spec)
+      .when()
+      .get(MAPPING_PROFILES_PATH + "?showDeleted=true")
+      .then()
       .statusCode(HttpStatus.SC_OK)
-      .body("deleted", is(true));
+      .body("totalRecords", is(1))
+      .body("mappingProfiles.get(0).deleted", is(true));
   }
 
   @Test
@@ -650,7 +667,7 @@ public class MappingProfileTest extends AbstractRestVerticleTest {
       .get(ASSOCIATED_PROFILES_PATH)
       .then()
       .statusCode(HttpStatus.SC_OK)
-      .body("profileAssociations.size", is(1))
+      .body("profileAssociations", hasSize(1))
       .body("profileAssociations[0].masterProfileId", is(actionProfile.getProfile().getId()))
       .body("profileAssociations[0].detailProfileId", is(mappingProfile1.getProfile().getId()));
 
@@ -679,7 +696,7 @@ public class MappingProfileTest extends AbstractRestVerticleTest {
       .then()
       .statusCode(HttpStatus.SC_OK)
       .body("totalRecords", is(1))
-      .body("profileAssociations.size", is(1))
+      .body("profileAssociations", hasSize(1))
       .body("profileAssociations[0].masterProfileId", is(actionProfile.getProfile().getId()))
       .body("profileAssociations[0].detailProfileId", is(mappingProfile2.getProfile().getId()));
   }
@@ -730,7 +747,7 @@ public class MappingProfileTest extends AbstractRestVerticleTest {
       .get(ASSOCIATED_PROFILES_PATH)
       .then()
       .statusCode(HttpStatus.SC_OK)
-      .body("profileAssociations.size", is(1))
+      .body("profileAssociations", hasSize(1))
       .body("profileAssociations[0].masterProfileId", is(actionProfile.getProfile().getId()))
       .body("profileAssociations[0].detailProfileId", is(mappingProfile1.getProfile().getId()));
 
@@ -760,7 +777,7 @@ public class MappingProfileTest extends AbstractRestVerticleTest {
       .get(ASSOCIATED_PROFILES_PATH)
       .then()
       .statusCode(HttpStatus.SC_OK)
-      .body("profileAssociations.size", is(1))
+      .body("profileAssociations", hasSize(1))
       .body("profileAssociations[0].masterProfileId", is(actionProfile.getProfile().getId()))
       .body("profileAssociations[0].detailProfileId", is(mappingProfile2.getProfile().getId()));
   }
@@ -863,6 +880,45 @@ public class MappingProfileTest extends AbstractRestVerticleTest {
         hasEntry(is("message"),
           is("Can not update MappingProfile recordType and linked ActionProfile recordType are different")
         )));
+  }
+
+  @Test
+  public void shouldReturnBadRequestWhenChildOrParentProfileNotEmptyOnPost() {
+    createProfiles();
+    RestAssured.given()
+      .spec(spec)
+      .body(mappingProfileNotEmptyChildAndParent)
+      .when()
+      .post(MAPPING_PROFILES_PATH)
+      .then()
+      .statusCode(HttpStatus.SC_UNPROCESSABLE_ENTITY)
+      .body("errors[0].message", is("mappingProfile.child.notEmpty"))
+      .body("errors[1].message", is("mappingProfile.parent.notEmpty"));
+  }
+
+  @Test
+  public void shouldReturnBadRequestWhenChildOrParentProfileNotEmptyOnPut() {
+    Response createResponse = RestAssured.given()
+      .spec(spec)
+      .body(new MappingProfileUpdateDto().withProfile(new MappingProfile()
+        .withName("newProfile")
+        .withIncomingRecordType(EntityType.MARC_BIBLIOGRAPHIC)
+        .withExistingRecordType(EntityType.INSTANCE)))
+      .when()
+      .post(MAPPING_PROFILES_PATH);
+    Assert.assertThat(createResponse.statusCode(), is(HttpStatus.SC_CREATED));
+    MappingProfileUpdateDto createdProfile = createResponse.body().as(MappingProfileUpdateDto.class);
+
+    createProfiles();
+    RestAssured.given()
+      .spec(spec)
+      .body(mappingProfileNotEmptyChildAndParent)
+      .when()
+      .put(MAPPING_PROFILES_PATH + "/" + createdProfile.getProfile().getId())
+      .then()
+      .statusCode(HttpStatus.SC_UNPROCESSABLE_ENTITY)
+      .body("errors[0].message", is("mappingProfile.child.notEmpty"))
+      .body("errors[1].message", is("mappingProfile.parent.notEmpty"));
   }
 
   private void createProfiles() {

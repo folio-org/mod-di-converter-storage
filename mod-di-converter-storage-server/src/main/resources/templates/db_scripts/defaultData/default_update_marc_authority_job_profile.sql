@@ -32,6 +32,7 @@ SET jsonb =  '{
   "action": "CREATE",
   "deleted": false,
   "hidden": false,
+  "remove9Subfields": false,
   "description": "This action profile is used with FOLIO''s default job profile for creating a MARC authority record in source-record-storage. It cannot be edited, duplicated, or deleted.",
   "folioRecord": "AUTHORITY",
   "childProfiles": [],

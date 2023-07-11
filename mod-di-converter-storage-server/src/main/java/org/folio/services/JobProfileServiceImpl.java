@@ -2,22 +2,31 @@ package org.folio.services;
 
 import io.vertx.core.Future;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.folio.rest.impl.util.OkapiConnectionParams;
 import org.folio.rest.jaxrs.model.JobProfile;
 import org.folio.rest.jaxrs.model.JobProfileCollection;
 import org.folio.rest.jaxrs.model.JobProfileUpdateDto;
 import org.folio.rest.jaxrs.model.ProfileAssociation;
 import org.folio.rest.jaxrs.model.ProfileSnapshotWrapper;
+import org.folio.services.snapshot.ProfileSnapshotService;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
+import javax.ws.rs.NotFoundException;
 import java.util.List;
 import java.util.UUID;
 
+import static java.lang.String.format;
 import static org.folio.rest.jaxrs.model.ProfileAssociation.MasterProfileType.MATCH_PROFILE;
 
 @Component
 public class JobProfileServiceImpl extends AbstractProfileService<JobProfile, JobProfileCollection, JobProfileUpdateDto> {
+  private static final Logger logger = LogManager.getLogger();
 
+  @Autowired
+  private ProfileSnapshotService profileSnapshotService;
   @Override
   JobProfile setProfileId(JobProfile profile) {
     String profileId = profile.getId();
@@ -68,8 +77,18 @@ public class JobProfileServiceImpl extends AbstractProfileService<JobProfile, Jo
   }
 
   @Override
+  protected List<ProfileSnapshotWrapper> getChildProfiles(JobProfile profile) {
+    return profile.getChildProfiles();
+  }
+
+  @Override
   protected void setChildProfiles(JobProfile profile, List<ProfileSnapshotWrapper> childProfiles) {
     profile.setChildProfiles(childProfiles);
+  }
+
+  @Override
+  protected List<ProfileSnapshotWrapper> getParentProfiles(JobProfile profile) {
+    return profile.getParentProfiles();
   }
 
   @Override
@@ -97,4 +116,24 @@ public class JobProfileServiceImpl extends AbstractProfileService<JobProfile, Jo
     return dto.getProfile();
   }
 
+  @Override
+  public Future<JobProfile> updateProfile(JobProfileUpdateDto profile, OkapiConnectionParams params) {
+    return isProfileExistByProfileId(getProfile(profile), params.getTenantId())
+      .compose(isExist -> isExist ?
+        profileSnapshotService.constructSnapshot(getProfileId(getProfile(profile)), ProfileSnapshotWrapper.ContentType.JOB_PROFILE, getProfileId(getProfile(profile)), params.getTenantId()) :
+        Future.failedFuture(new NotFoundException(format("updateProfile:: %s with id '%s' was not found", getProfileContentType().value(), getProfileId(getProfile(profile))))))
+      .map(profileSnapshotWrappers -> getProfileAssociation(profileSnapshotWrappers.getChildSnapshotWrappers(), getProfileId(getProfile(profile)), getProfileContentType().value()))
+      .map(profileAssociations -> {
+        profileAssociations.removeAll(getProfileAssociationToDelete(profile));
+        profileAssociations.addAll(getProfileAssociationToAdd(profile));
+        return profileAssociations;
+      })
+      .compose(this::validateProfileAddedRelations)
+      .compose(associations -> setUserInfoForProfile(profile, params))
+      .compose(profileWithInfo -> profileDao.updateProfile(profileWithInfo, params.getTenantId()))
+      .map(prepareAssociations((profile)))
+      .compose(ar -> deleteRelatedAssociations(getProfileAssociationToDelete(profile), params.getTenantId()))
+      .compose(ar -> saveRelatedAssociations(getProfileAssociationToAdd(profile), params.getTenantId()))
+      .map(getProfile(profile));
+  }
 }

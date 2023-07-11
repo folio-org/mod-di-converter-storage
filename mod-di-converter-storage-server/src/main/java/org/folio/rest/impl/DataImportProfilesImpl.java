@@ -67,6 +67,7 @@ public class DataImportProfilesImpl implements DataImportProfiles {
   private static final Logger logger = LogManager.getLogger();
   private static final String DUPLICATE_PROFILE_ERROR_CODE = "%s '%s' already exists";
   private static final String DUPLICATE_PROFILE_ID_ERROR_CODE = "%s with id '%s' already exists";
+  private static final String NOT_EMPTY_RELATED_PROFILE_ERROR_CODE = "%s.%s.notEmpty";
   private static final String PROFILE_VALIDATE_ERROR_MESSAGE = "Failed to validate %s";
   private static final String MASTER_PROFILE_NOT_FOUND_MSG = "Master profile with id '%s' was not found";
   private static final String DETAIL_PROFILE_NOT_FOUND_MSG = "Detail profile with id '%s' was not found";
@@ -149,7 +150,7 @@ public class DataImportProfilesImpl implements DataImportProfiles {
   }
 
   @Override
-  public void postDataImportProfilesJobProfiles(String lang, JobProfileUpdateDto entity, Map<String, String> okapiHeaders,
+  public void postDataImportProfilesJobProfiles(JobProfileUpdateDto entity, Map<String, String> okapiHeaders,
                                                 Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     vertxContext.runOnContext(v -> {
       try {
@@ -177,7 +178,7 @@ public class DataImportProfilesImpl implements DataImportProfiles {
 
   @Override
   public void getDataImportProfilesJobProfiles(boolean showDeleted, boolean showHidden, boolean withRelations,
-                                               String query, int offset, int limit, String lang,
+                                               String query, String totalRecords, int offset, int limit,
                                                Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler,
                                                Context vertxContext) {
     vertxContext.runOnContext(v -> {
@@ -195,7 +196,7 @@ public class DataImportProfilesImpl implements DataImportProfiles {
   }
 
   @Override
-  public void putDataImportProfilesJobProfilesById(String id, String lang, JobProfileUpdateDto entity, Map<String, String> okapiHeaders,
+  public void putDataImportProfilesJobProfilesById(String id, JobProfileUpdateDto entity, Map<String, String> okapiHeaders,
                                                    Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     vertxContext.runOnContext(v -> {
       try {
@@ -222,12 +223,12 @@ public class DataImportProfilesImpl implements DataImportProfiles {
   }
 
   @Override
-  public void getDataImportProfilesJobProfilesById(String id, boolean withRelations, String lang, Map<String, String> okapiHeaders,
+  public void getDataImportProfilesJobProfilesById(String id, boolean withRelations, Map<String, String> okapiHeaders,
                                                    Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     vertxContext.runOnContext(c -> {
       try {
         jobProfileService.getProfileById(id, withRelations, tenantId)
-          .map(optionalProfile -> optionalProfile.orElseThrow(() ->
+          .map(optionalProfile -> optionalProfile.filter(jobProfile -> !jobProfile.getDeleted()).orElseThrow(() ->
             new NotFoundException(format("Job Profile with id '%s' was not found", id))))
           .map(GetDataImportProfilesJobProfilesByIdResponse::respond200WithApplicationJson)
           .map(Response.class::cast)
@@ -241,7 +242,7 @@ public class DataImportProfilesImpl implements DataImportProfiles {
   }
 
   @Override
-  public void deleteDataImportProfilesJobProfilesById(String id, String lang, Map<String, String> okapiHeaders,
+  public void deleteDataImportProfilesJobProfilesById(String id, Map<String, String> okapiHeaders,
                                                       Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     vertxContext.runOnContext(v -> {
       try {
@@ -265,7 +266,7 @@ public class DataImportProfilesImpl implements DataImportProfiles {
   }
 
   @Override
-  public void postDataImportProfilesMatchProfiles(String lang, MatchProfileUpdateDto entity, Map<String, String> okapiHeaders,
+  public void postDataImportProfilesMatchProfiles(MatchProfileUpdateDto entity, Map<String, String> okapiHeaders,
                                                   Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     vertxContext.runOnContext(v -> {
       try {
@@ -293,7 +294,7 @@ public class DataImportProfilesImpl implements DataImportProfiles {
 
   @Override
   public void getDataImportProfilesMatchProfiles(boolean showDeleted, boolean showHidden, boolean withRelations,
-                                                 String query, int offset, int limit, String lang,
+                                                 String query, String totalRecords, int offset, int limit,
                                                  Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler,
                                                  Context vertxContext) {
     vertxContext.runOnContext(v -> {
@@ -311,7 +312,7 @@ public class DataImportProfilesImpl implements DataImportProfiles {
   }
 
   @Override
-  public void putDataImportProfilesMatchProfilesById(String id, String lang, MatchProfileUpdateDto entity, Map<String, String> okapiHeaders,
+  public void putDataImportProfilesMatchProfilesById(String id, MatchProfileUpdateDto entity, Map<String, String> okapiHeaders,
                                                      Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     vertxContext.runOnContext(v -> {
       try {
@@ -338,12 +339,12 @@ public class DataImportProfilesImpl implements DataImportProfiles {
   }
 
   @Override
-  public void getDataImportProfilesMatchProfilesById(String id, boolean withRelations, String lang, Map<String, String> okapiHeaders,
+  public void getDataImportProfilesMatchProfilesById(String id, boolean withRelations, Map<String, String> okapiHeaders,
                                                      Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     vertxContext.runOnContext(c -> {
       try {
         matchProfileService.getProfileById(id, withRelations, tenantId)
-          .map(optionalProfile -> optionalProfile.orElseThrow(() ->
+          .map(optionalProfile -> optionalProfile.filter(matchProfile -> !matchProfile.getDeleted()).orElseThrow(() ->
             new NotFoundException(format("Match Profile with id '%s' was not found", id))))
           .map(GetDataImportProfilesMatchProfilesByIdResponse::respond200WithApplicationJson)
           .map(Response.class::cast)
@@ -357,7 +358,7 @@ public class DataImportProfilesImpl implements DataImportProfiles {
   }
 
   @Override
-  public void postDataImportProfilesMappingProfiles(String lang, MappingProfileUpdateDto entity, Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
+  public void postDataImportProfilesMappingProfiles(MappingProfileUpdateDto entity, Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     vertxContext.runOnContext(v -> {
       try {
         entity.getProfile().setMetadata(getMetadata(okapiHeaders));
@@ -386,7 +387,7 @@ public class DataImportProfilesImpl implements DataImportProfiles {
 
   @Override
   public void getDataImportProfilesMappingProfiles(boolean showDeleted, boolean showHidden, boolean withRelations,
-                                                   String query, int offset, int limit, String lang,
+                                                   String query, String totalRecords, int offset, int limit,
                                                    Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler,
                                                    Context vertxContext) {
     vertxContext.runOnContext(v -> {
@@ -404,7 +405,7 @@ public class DataImportProfilesImpl implements DataImportProfiles {
   }
 
   @Override
-  public void putDataImportProfilesMappingProfilesById(String id, String lang, MappingProfileUpdateDto entity, Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
+  public void putDataImportProfilesMappingProfilesById(String id, MappingProfileUpdateDto entity, Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     vertxContext.runOnContext(v -> {
       try {
         mappingProfileService.isProfileDtoValidForUpdate(id, entity, canDeleteOrUpdateProfile(id, MAPPING_PROFILES), tenantId).compose(isDtoValidForUpdate -> {
@@ -434,7 +435,7 @@ public class DataImportProfilesImpl implements DataImportProfiles {
   }
 
   @Override
-  public void deleteDataImportProfilesMappingProfilesById(String id, String lang, Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
+  public void deleteDataImportProfilesMappingProfilesById(String id, Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     vertxContext.runOnContext(v -> {
       try {
         if (canDeleteOrUpdateProfile(id, MAPPING_PROFILES)) {
@@ -457,11 +458,11 @@ public class DataImportProfilesImpl implements DataImportProfiles {
   }
 
   @Override
-  public void getDataImportProfilesMappingProfilesById(String id, boolean withRelations, String lang, Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
+  public void getDataImportProfilesMappingProfilesById(String id, boolean withRelations, Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     vertxContext.runOnContext(c -> {
       try {
         mappingProfileService.getProfileById(id, withRelations, tenantId)
-          .map(optionalProfile -> optionalProfile.orElseThrow(() ->
+          .map(optionalProfile -> optionalProfile.filter(mappingProfile -> !mappingProfile.getDeleted()).orElseThrow(() ->
             new NotFoundException(format("Mapping Profile with id '%s' was not found", id))))
           .map(GetDataImportProfilesMappingProfilesByIdResponse::respond200WithApplicationJson)
           .map(Response.class::cast)
@@ -475,7 +476,7 @@ public class DataImportProfilesImpl implements DataImportProfiles {
   }
 
   @Override
-  public void deleteDataImportProfilesMatchProfilesById(String id, String lang, Map<String, String> okapiHeaders,
+  public void deleteDataImportProfilesMatchProfilesById(String id, Map<String, String> okapiHeaders,
                                                         Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     vertxContext.runOnContext(v -> {
       try {
@@ -499,7 +500,7 @@ public class DataImportProfilesImpl implements DataImportProfiles {
   }
 
   @Override
-  public void postDataImportProfilesActionProfiles(String lang, ActionProfileUpdateDto entity, Map<String, String> okapiHeaders,
+  public void postDataImportProfilesActionProfiles(ActionProfileUpdateDto entity, Map<String, String> okapiHeaders,
                                                    Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     vertxContext.runOnContext(v -> {
       try {
@@ -529,7 +530,7 @@ public class DataImportProfilesImpl implements DataImportProfiles {
 
   @Override
   public void getDataImportProfilesActionProfiles(boolean showDeleted, boolean showHidden, boolean withRelations,
-                                                  String query, int offset, int limit, String lang,
+                                                  String query, String totalRecords, int offset, int limit,
                                                   Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler,
                                                   Context vertxContext) {
     vertxContext.runOnContext(v -> {
@@ -547,7 +548,7 @@ public class DataImportProfilesImpl implements DataImportProfiles {
   }
 
   @Override
-  public void putDataImportProfilesActionProfilesById(String id, String lang, ActionProfileUpdateDto entity, Map<String, String> okapiHeaders,
+  public void putDataImportProfilesActionProfilesById(String id, ActionProfileUpdateDto entity, Map<String, String> okapiHeaders,
                                                       Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     vertxContext.runOnContext(v -> {
       try {
@@ -578,12 +579,12 @@ public class DataImportProfilesImpl implements DataImportProfiles {
   }
 
   @Override
-  public void getDataImportProfilesActionProfilesById(String id, boolean withRelations, String lang, Map<String, String> okapiHeaders,
+  public void getDataImportProfilesActionProfilesById(String id, boolean withRelations, Map<String, String> okapiHeaders,
                                                       Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     vertxContext.runOnContext(c -> {
       try {
         actionProfileService.getProfileById(id, withRelations, tenantId)
-          .map(optionalProfile -> optionalProfile.orElseThrow(() ->
+          .map(optionalProfile -> optionalProfile.filter(actionProfile -> !actionProfile.getDeleted()).orElseThrow(() ->
             new NotFoundException(format("Action Profile with id '%s' was not found", id))))
           .map(GetDataImportProfilesActionProfilesByIdResponse::respond200WithApplicationJson)
           .map(Response.class::cast)
@@ -597,7 +598,7 @@ public class DataImportProfilesImpl implements DataImportProfiles {
   }
 
   @Override
-  public void postDataImportProfilesProfileAssociations(String master, String detail, String lang, ProfileAssociation entity, Map<String, String> okapiHeaders,
+  public void postDataImportProfilesProfileAssociations(String master, String detail, ProfileAssociation entity, Map<String, String> okapiHeaders,
                                                         Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     vertxContext.runOnContext(v -> {
       try {
@@ -614,7 +615,7 @@ public class DataImportProfilesImpl implements DataImportProfiles {
   }
 
   @Override
-  public void getDataImportProfilesProfileAssociations(String master, String detail, String lang, Map<String, String> okapiHeaders,
+  public void getDataImportProfilesProfileAssociations(String master, String detail, Map<String, String> okapiHeaders,
                                                        Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     vertxContext.runOnContext(v -> {
         try {
@@ -633,7 +634,7 @@ public class DataImportProfilesImpl implements DataImportProfiles {
   }
 
   @Override
-  public void putDataImportProfilesProfileAssociationsById(String id, String master, String detail, String lang, ProfileAssociation entity,
+  public void putDataImportProfilesProfileAssociationsById(String id, String master, String detail, ProfileAssociation entity,
                                                            Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     vertxContext.runOnContext(v -> {
       try {
@@ -650,7 +651,7 @@ public class DataImportProfilesImpl implements DataImportProfiles {
   }
 
   @Override
-  public void deleteDataImportProfilesProfileAssociationsById(String id, String master, String detail, String lang, Map<String, String> okapiHeaders,
+  public void deleteDataImportProfilesProfileAssociationsById(String id, String master, String detail, Map<String, String> okapiHeaders,
                                                               Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     vertxContext.runOnContext(v -> {
       try {
@@ -675,7 +676,6 @@ public class DataImportProfilesImpl implements DataImportProfiles {
     String id,
     String master,
     String detail,
-    String lang,
     Map<String, String> okapiHeaders,
     Handler<AsyncResult<Response>> asyncResultHandler,
     Context vertxContext) {
@@ -737,6 +737,7 @@ public class DataImportProfilesImpl implements DataImportProfiles {
     String masterType,
     String detailType,
     String query,
+    String totalRecords,
     int offset,
     int limit,
     Map<String, String> okapiHeaders,
@@ -772,6 +773,7 @@ public class DataImportProfilesImpl implements DataImportProfiles {
     String detailType,
     String masterType,
     String query,
+    String totalRecords,
     int offset,
     int limit,
     Map<String, String> okapiHeaders,
@@ -795,7 +797,7 @@ public class DataImportProfilesImpl implements DataImportProfiles {
   }
 
   @Override
-  public void deleteDataImportProfilesActionProfilesById(String id, String lang, Map<String, String> okapiHeaders,
+  public void deleteDataImportProfilesActionProfilesById(String id, Map<String, String> okapiHeaders,
                                                          Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     vertxContext.runOnContext(v -> {
       try {
@@ -874,6 +876,8 @@ public class DataImportProfilesImpl implements DataImportProfiles {
   private <T, S, D> Map<String, Future<Boolean>> getValidateConditions(OperationType operationType, T profile, ProfileService<T, S, D> profileService, String tenantId) {
     Map<String, Future<Boolean>> validateConditions = new LinkedHashMap<>();
     validateConditions.put(DUPLICATE_PROFILE_ERROR_CODE, profileService.isProfileExistByProfileName(profile, tenantId));
+    validateConditions.put(String.format(NOT_EMPTY_RELATED_PROFILE_ERROR_CODE, "%s", "child"), profileService.isProfileContainsChildProfiles(profile));
+    validateConditions.put(String.format(NOT_EMPTY_RELATED_PROFILE_ERROR_CODE, "%s", "parent"), profileService.isProfileContainsParentProfiles(profile));
     if(operationType == OperationType.CREATE) {
       validateConditions.put(DUPLICATE_PROFILE_ID_ERROR_CODE, profileService.isProfileExistByProfileId(profile, tenantId));
     }

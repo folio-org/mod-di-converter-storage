@@ -23,8 +23,13 @@ import org.springframework.beans.factory.annotation.Autowired;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -54,7 +59,7 @@ public abstract class AbstractProfileService<T, S, D> implements ProfileService<
   }
 
   @Autowired
-  private ProfileDao<T, S> profileDao;
+  protected ProfileDao<T, S> profileDao;
 
   @Autowired
   protected CommonProfileAssociationService associationService;
@@ -85,7 +90,8 @@ public abstract class AbstractProfileService<T, S, D> implements ProfileService<
 
   @Override
   public Future<T> saveProfile(D profile, OkapiConnectionParams params) {
-    return setUserInfoForProfile(profile, params)
+    return validateProfileAddedRelations(getProfileAssociationToAdd(profile))
+      .compose(profileAssociations -> setUserInfoForProfile(profile, params))
       .compose(profileWithInfo -> profileDao.saveProfile(setProfileId(profileWithInfo), params.getTenantId())
         .map(prepareAssociations((profile)))
         .compose(ar -> deleteRelatedAssociations(getProfileAssociationToDelete(profile), params.getTenantId()))
@@ -93,7 +99,7 @@ public abstract class AbstractProfileService<T, S, D> implements ProfileService<
         .map(profileWithInfo));
   }
 
-  private Future<Boolean> deleteRelatedAssociations(List<ProfileAssociation> profileAssociations, String tenantId) {
+  protected Future<Boolean> deleteRelatedAssociations(List<ProfileAssociation> profileAssociations, String tenantId) {
     if (profileAssociations.isEmpty()) {
       return Future.succeededFuture(true);
     }
@@ -113,13 +119,16 @@ public abstract class AbstractProfileService<T, S, D> implements ProfileService<
     return result.future();
   }
 
-  private Future<Boolean> saveRelatedAssociations(List<ProfileAssociation> profileAssociations, String tenantId) {
+  protected Future<Boolean> saveRelatedAssociations(List<ProfileAssociation> profileAssociations, String tenantId) {
     if (profileAssociations.isEmpty()) {
       return Future.succeededFuture(true);
     }
+    List<ProfileAssociation> uniqueProfileAssociations = profileAssociations.stream()
+      .filter(distinctProfileAssociation())
+      .collect(Collectors.toList());
     Promise<Boolean> result = Promise.promise();
     List<Future<ProfileAssociation>> futureList = new ArrayList<>();
-    profileAssociations.forEach(association -> futureList.add(profileAssociationService.save(association,
+    uniqueProfileAssociations.forEach(association -> futureList.add(profileAssociationService.save(association,
       ProfileSnapshotWrapper.ContentType.fromValue(association.getMasterProfileType().name()),
       ProfileSnapshotWrapper.ContentType.fromValue(association.getDetailProfileType().name()), tenantId)));
     GenericCompositeFuture.all(futureList).onComplete(ar -> {
@@ -167,11 +176,23 @@ public abstract class AbstractProfileService<T, S, D> implements ProfileService<
   @Override
   public Future<Boolean> isProfileDtoValidForUpdate(String id, D profile, boolean isDefaultProfile, String tenantId) {
     return isDefaultProfile ? getProfileById(id, false, tenantId).map(profileOptional ->
-        profileOptional.map(fetchedProfile -> Stream.of(getProfile(profile), fetchedProfile).map(JsonObject::mapFrom)
-          .peek(jsonObject -> {
-            jsonObject.remove("tags");
-            jsonObject.remove("metadata");
-          }).distinct().count() <= 1).orElse(false)) : Future.succeededFuture(true);
+      profileOptional.map(fetchedProfile -> Stream.of(getProfile(profile), fetchedProfile).map(JsonObject::mapFrom)
+        .peek(jsonObject -> {
+          jsonObject.remove("tags");
+          jsonObject.remove("metadata");
+        }).distinct().count() <= 1).orElse(false)) : Future.succeededFuture(true);
+  }
+
+  @Override
+  public Future<Boolean> isProfileContainsChildProfiles(T profile) {
+    List<ProfileSnapshotWrapper> childProfiles = getChildProfiles(profile);
+    return Future.succeededFuture(childProfiles != null && !childProfiles.isEmpty());
+  }
+
+  @Override
+  public Future<Boolean> isProfileContainsParentProfiles(T profile) {
+    List<ProfileSnapshotWrapper> parentProfiles = getParentProfiles(profile);
+    return Future.succeededFuture(parentProfiles != null && !parentProfiles.isEmpty());
   }
 
   @Override
@@ -221,7 +242,11 @@ public abstract class AbstractProfileService<T, S, D> implements ProfileService<
    */
   protected abstract ProfileSnapshotWrapper.ContentType getProfileContentType();
 
+  protected abstract List<ProfileSnapshotWrapper> getChildProfiles(T profile);
+
   protected abstract void setChildProfiles(T profile, List<ProfileSnapshotWrapper> childProfiles);
+
+  protected abstract List<ProfileSnapshotWrapper> getParentProfiles(T profile);
 
   protected abstract void setParentProfiles(T profile, List<ProfileSnapshotWrapper> parentProfiles);
 
@@ -360,4 +385,47 @@ public abstract class AbstractProfileService<T, S, D> implements ProfileService<
     return promise.future();
   }
 
+  private Predicate<org.folio.rest.jaxrs.model.ProfileAssociation> distinctProfileAssociation() {
+    final Map<List<?>, Boolean> seen = new HashMap<>();
+    return e ->
+    {
+      String masterId = e.getMasterProfileId();
+      String detailId = e.getDetailProfileId();
+
+      return seen.putIfAbsent(List.of(masterId, detailId), Boolean.TRUE) == null;
+    };
+  }
+
+  protected Future<List<ProfileAssociation>> validateProfileAddedRelations(List<ProfileAssociation> profileAssociations) {
+    Map<String, List<String>> relations = new HashMap<>();
+    for (ProfileAssociation profileAssociation : profileAssociations) {
+      String masterId = profileAssociation.getMasterProfileId();
+      String detailId = profileAssociation.getDetailProfileId();
+      if (relations.get(detailId) == null) {
+        relations.put(detailId, new LinkedList<>(Collections.singletonList(masterId)));
+      } else {
+        relations.get(detailId).add(masterId);
+      }
+      if (relations.get(masterId) != null && relations.get(masterId).contains(detailId)) {
+        String message = String.format("Can not save ProfileAssociation with masterId=%s detailId=%s ProfileAssociation with masterId=%s detailId=%s already exist.", masterId, detailId, detailId, masterId);
+        logger.warn(message);
+        return Future.failedFuture(new ConflictException(message));
+      }
+    }
+    return Future.succeededFuture(profileAssociations);
+  }
+
+  protected List<ProfileAssociation> getProfileAssociation(List<ProfileSnapshotWrapper> profileSnapshotWrappers, String id, String profileType) {
+    List<ProfileAssociation> profileAssociation = new LinkedList<>();
+    for (ProfileSnapshotWrapper profileSnapshotWrapper : profileSnapshotWrappers) {
+      profileAssociation.add(new ProfileAssociation()
+        .withMasterProfileId(id)
+        .withMasterProfileType(ProfileAssociation.MasterProfileType.fromValue(profileType))
+        .withDetailProfileId(profileSnapshotWrapper.getProfileId())
+        .withDetailProfileType(ProfileAssociation.DetailProfileType.fromValue(profileSnapshotWrapper.getContentType().value())));
+      profileAssociation.addAll(getProfileAssociation(profileSnapshotWrapper.getChildSnapshotWrappers(), profileSnapshotWrapper.getProfileId(), profileSnapshotWrapper.getContentType().value()));
+    }
+    return profileAssociation;
+
+  }
 }

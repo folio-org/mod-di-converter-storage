@@ -17,6 +17,7 @@ import org.folio.rest.jaxrs.model.JobProfileUpdateDto;
 import org.folio.rest.jaxrs.model.MatchProfile;
 import org.folio.rest.jaxrs.model.MatchProfileUpdateDto;
 import org.folio.rest.jaxrs.model.ProfileAssociation;
+import org.folio.rest.jaxrs.model.ProfileSnapshotWrapper;
 import org.folio.rest.jaxrs.model.ProfileSnapshotWrapper.ContentType;
 import org.folio.rest.jaxrs.model.Tags;
 import org.folio.rest.persist.Criteria.Criterion;
@@ -95,6 +96,12 @@ public class JobProfileTest extends AbstractRestVerticleTest {
       .withName("Default - Create SRS MARC Authority")
       .withDescription("Default job profile for creating MARC authority records.")
       .withDataType(MARC));
+  static JobProfileUpdateDto jobProfileNotEmptyChildAndParent = new JobProfileUpdateDto()
+    .withProfile(new JobProfile()
+      .withName("Job profile with child and parent")
+      .withDataType(MARC)
+      .withChildProfiles(List.of(new ProfileSnapshotWrapper().withId(UUID.randomUUID().toString())))
+      .withParentProfiles(List.of(new ProfileSnapshotWrapper().withId(UUID.randomUUID().toString()))));
 
   @Test
   public void shouldReturnEmptyListOnGet() {
@@ -479,8 +486,16 @@ public class JobProfileTest extends AbstractRestVerticleTest {
       .when()
       .get(JOB_PROFILES_PATH + "/" + profile.getProfile().getId())
       .then()
+      .statusCode(HttpStatus.SC_NOT_FOUND);
+
+    RestAssured.given()
+      .spec(spec)
+      .when()
+      .get(JOB_PROFILES_PATH + "?showDeleted=true")
+      .then()
       .statusCode(HttpStatus.SC_OK)
-      .body("deleted", is(true));
+      .body("totalRecords", is(1))
+      .body("jobProfiles.get(0).deleted", is(true));
   }
 
   @Test
@@ -684,6 +699,41 @@ public class JobProfileTest extends AbstractRestVerticleTest {
       .log().all()
       .statusCode(HttpStatus.SC_CREATED);
   }
+
+  @Test
+  public void shouldReturnBadRequestWhenChildOrParentProfileIsNotEmptyOnPost() {
+    RestAssured.given()
+      .spec(spec)
+      .body(jobProfileNotEmptyChildAndParent)
+      .when()
+      .post(JOB_PROFILES_PATH)
+      .then()
+      .statusCode(HttpStatus.SC_UNPROCESSABLE_ENTITY)
+      .body("errors[0].message", is("jobProfile.child.notEmpty"))
+      .body("errors[1].message", is("jobProfile.parent.notEmpty"));
+  }
+
+  @Test
+  public void shouldReturnBadRequestWhenChildOrParentProfileIsNotEmptyOnPut() {
+    Response createResponse = RestAssured.given()
+      .spec(spec)
+      .body(jobProfile_2)
+      .when()
+      .post(JOB_PROFILES_PATH);
+    Assert.assertThat(createResponse.statusCode(), is(HttpStatus.SC_CREATED));
+    JobProfileUpdateDto jobProfile = createResponse.body().as(JobProfileUpdateDto.class);
+
+    RestAssured.given()
+      .spec(spec)
+      .body(jobProfileNotEmptyChildAndParent)
+      .when()
+      .put(JOB_PROFILES_PATH + "/" + jobProfile.getProfile().getId())
+      .then()
+      .statusCode(HttpStatus.SC_UNPROCESSABLE_ENTITY)
+      .body("errors[0].message", is("jobProfile.child.notEmpty"))
+      .body("errors[1].message", is("jobProfile.parent.notEmpty"));
+  }
+
 
   private void createProfiles() {
     List<JobProfileUpdateDto> jobProfilesToPost = Arrays.asList(jobProfile_1, jobProfile_2, jobProfile_3);

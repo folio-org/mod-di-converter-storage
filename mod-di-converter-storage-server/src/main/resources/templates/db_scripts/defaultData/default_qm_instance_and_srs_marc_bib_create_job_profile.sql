@@ -29,6 +29,7 @@ INSERT INTO ${myuniversity}_${mymodule}.action_profiles (id, jsonb) values
 	"name": "quickMARC Derive - Create Inventory Instance",
 	"action": "CREATE",
 	"deleted": false,
+    "remove9Subfields": false,
 	"metadata": {
 		"createdDate": "2021-01-14T14:00:00.000",
 		"updatedDate": "2021-01-14T15:00:00.462+0000",

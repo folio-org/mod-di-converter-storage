@@ -30,6 +30,7 @@ INSERT INTO ${myuniversity}_${mymodule}.action_profiles (id, jsonb) values
 	"action": "UPDATE",
 	"deleted": false,
 	"hidden": true,
+    "remove9Subfields": false,
 	"metadata": {
 		"createdDate": "2020-11-30T09:02:39.96",
 		"updatedDate": "2020-11-30T11:57:24.083+0000",

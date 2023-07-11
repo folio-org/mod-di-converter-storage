@@ -58,8 +58,18 @@ public class MatchProfileServiceImpl extends AbstractProfileService<MatchProfile
   }
 
   @Override
+  protected List<ProfileSnapshotWrapper> getChildProfiles(MatchProfile profile) {
+    return profile.getChildProfiles();
+  }
+
+  @Override
   protected void setChildProfiles(MatchProfile profile, List<ProfileSnapshotWrapper> childProfiles) {
     profile.setChildProfiles(childProfiles);
+  }
+
+  @Override
+  protected List<ProfileSnapshotWrapper> getParentProfiles(MatchProfile profile) {
+    return profile.getParentProfiles();
   }
 
   @Override
