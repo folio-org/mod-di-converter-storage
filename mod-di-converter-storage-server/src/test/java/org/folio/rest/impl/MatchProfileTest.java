@@ -288,7 +288,7 @@ public class MatchProfileTest extends AbstractRestVerticleTest {
       .post(MATCH_PROFILES_PATH)
       .then()
       .statusCode(HttpStatus.SC_UNPROCESSABLE_ENTITY)
-      .body("errors[0].message", is("matchProfile.duplication.id"));
+      .body("errors[0].message", is("Match profile with id 'GOA' already exists"));
   }
 
   @Test

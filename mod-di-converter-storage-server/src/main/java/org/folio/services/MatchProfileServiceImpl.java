@@ -30,7 +30,7 @@ public class MatchProfileServiceImpl extends AbstractProfileService<MatchProfile
   }
 
   @Override
-  protected String getProfileName(MatchProfile profile) {
+  public String getProfileName(MatchProfile profile) {
     return profile.getName();
   }
 

@@ -100,4 +100,12 @@ public interface ProfileService<T, S, D> {
    * @return future with {@link EntityTypeCollection}
    */
   Future<EntityTypeCollection> getEntityTypes();
+
+  /**
+   * Returns name of specified profile
+   *
+   * @param profile - profile entity
+   * @return - profile name
+   */
+  String getProfileName(T profile);
 }

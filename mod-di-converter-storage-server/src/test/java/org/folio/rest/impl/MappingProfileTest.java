@@ -298,7 +298,7 @@ public class MappingProfileTest extends AbstractRestVerticleTest {
       .post(MAPPING_PROFILES_PATH)
       .then()
       .statusCode(HttpStatus.SC_UNPROCESSABLE_ENTITY)
-      .body("errors[0].message", is("mappingProfile.duplication.id"));
+      .body("errors[0].message", is("The field mapping profile with id 'OLA' already exists"));
   }
 
   @Test

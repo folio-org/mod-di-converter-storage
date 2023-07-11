@@ -248,7 +248,7 @@ public class JobProfileTest extends AbstractRestVerticleTest {
       .post(JOB_PROFILES_PATH)
       .then().log().all()
       .statusCode(HttpStatus.SC_UNPROCESSABLE_ENTITY)
-      .body("errors[0].message", is("jobProfile.duplication.invalid"));
+      .body("errors[0].message", is("Job profile 'Bla' already exists"));
   }
 
   @Test
@@ -278,7 +278,7 @@ public class JobProfileTest extends AbstractRestVerticleTest {
       .post(JOB_PROFILES_PATH)
       .then().log().all()
       .statusCode(HttpStatus.SC_UNPROCESSABLE_ENTITY)
-      .body("errors[0].message", is("jobProfile.duplication.id"));
+      .body("errors[0].message", is("Job profile with id 'GOA' already exists"));
   }
 
   @Test
