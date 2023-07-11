@@ -65,9 +65,9 @@ import static org.folio.rest.RestVerticle.OKAPI_USERID_HEADER;
 public class DataImportProfilesImpl implements DataImportProfiles {
 
   private static final Logger logger = LogManager.getLogger();
-  private static final String DUPLICATE_PROFILE_ERROR_CODE = "%s.duplication.invalid";
-  private static final String DUPLICATE_PROFILE_ID_ERROR_CODE = "%s.duplication.id";
-  private static final String NOT_EMPTY_RELATED_PROFILE_ERROR_CODE = "%s.%s.notEmpty";
+  private static final String DUPLICATE_PROFILE_ERROR_CODE = "%s '%s' already exists";
+  private static final String DUPLICATE_PROFILE_ID_ERROR_CODE = "%s with id '%s' already exists";
+  private static final String NOT_EMPTY_RELATED_PROFILE_ERROR_CODE = "%s read-only '%s' field should be empty";
   private static final String PROFILE_VALIDATE_ERROR_MESSAGE = "Failed to validate %s";
   private static final String MASTER_PROFILE_NOT_FOUND_MSG = "Master profile with id '%s' was not found";
   private static final String DETAIL_PROFILE_NOT_FOUND_MSG = "Detail profile with id '%s' was not found";
@@ -76,6 +76,14 @@ public class DataImportProfilesImpl implements DataImportProfiles {
   private static final String INVALID_RECORD_TYPE_LINKED_ACTION_PROFILE_TO_MAPPING_PROFILE = "Action profile '%s' can not be linked to this Mapping profile. FolioRecord and ExistingRecordType types are different";
   private static final String INVALID_MAPPING_PROFILE_NEW_RECORD_TYPE_LINKED_TO_ACTION_PROFILE = "Can not update MappingProfile recordType and linked ActionProfile recordType are different";
   private static final String INVALID_ACTION_PROFILE_NEW_RECORD_TYPE_LINKED_TO_MAPPING_PROFILE = "Can not update ActionProfile recordType and linked MappingProfile recordType are different";
+
+  static final Map<String, String> ERROR_CODES_TYPES_RELATION = Map.of(
+    "mappingProfile", "The field mapping profile",
+    "jobProfile", "Job profile",
+    "matchProfile", "Match profile",
+    "actionProfile", "Action profile"
+  );
+
   private static final String[] MATCH_PROFILES = {
     "d27d71ce-8a1e-44c6-acea-96961b5592c6", //OCLC_MARC_MARC_MATCH_PROFILE_ID
     "31dbb554-0826-48ec-a0a4-3c55293d4dee", //OCLC_INSTANCE_UUID_MATCH_PROFILE_ID
@@ -853,7 +861,8 @@ public class DataImportProfilesImpl implements DataImportProfiles {
       if(ar.succeeded()) {
         List<Error> errors = new ArrayList<>(errorCodes).stream()
           .filter(errorCode -> ar.result().resultAt(errorCodes.indexOf(errorCode)))
-          .map(errorCode -> new Error().withMessage(format(errorCode, profileTypeName)))
+          .map(errorCode -> new Error().withMessage(format(errorCode,
+            ERROR_CODES_TYPES_RELATION.get(profileTypeName), profileService.getProfileName(profile))))
           .collect(Collectors.toList());
         promise.complete(new Errors().withErrors(errors).withTotalRecords(errors.size()));
       } else {

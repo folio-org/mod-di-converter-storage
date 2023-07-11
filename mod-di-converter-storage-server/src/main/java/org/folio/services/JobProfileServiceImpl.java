@@ -41,7 +41,7 @@ public class JobProfileServiceImpl extends AbstractProfileService<JobProfile, Jo
   }
 
   @Override
-  protected String getProfileName(JobProfile profile) {
+  public String getProfileName(JobProfile profile) {
     return profile.getName();
   }
 

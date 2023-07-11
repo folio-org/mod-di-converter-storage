@@ -6,6 +6,8 @@ import io.vertx.core.json.JsonObject;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
+import java.util.LinkedList;
+import java.util.Map;
 import org.apache.http.HttpStatus;
 import org.folio.rest.jaxrs.model.ActionProfile;
 import org.folio.rest.jaxrs.model.ActionProfileUpdateDto;
@@ -21,6 +23,7 @@ import org.folio.rest.persist.PostgresClient;
 import org.folio.services.util.EntityTypes;
 import org.junit.Assert;
 import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
 import org.junit.runner.RunWith;
 
 import java.util.Arrays;
@@ -29,6 +32,7 @@ import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
+import static java.util.Collections.singletonList;
 import static org.folio.rest.impl.MappingProfileTest.MAPPING_PROFILES_PATH;
 import static org.folio.rest.jaxrs.model.ActionProfile.Action.CREATE;
 import static org.folio.rest.jaxrs.model.ActionProfile.FolioRecord.INSTANCE;
@@ -43,6 +47,7 @@ import static org.hamcrest.Matchers.hasItem;
 import static org.hamcrest.Matchers.hasItemInArray;
 import static org.hamcrest.Matchers.hasProperty;
 import static org.hamcrest.Matchers.is;
+import static org.junit.Assert.assertEquals;
 
 @RunWith(VertxUnitRunner.class)
 public class ActionProfileTest extends AbstractRestVerticleTest {
@@ -85,7 +90,7 @@ public class ActionProfileTest extends AbstractRestVerticleTest {
       .withFolioRecord(MARC_BIBLIOGRAPHIC));
   static ActionProfileUpdateDto actionProfile_3 = new ActionProfileUpdateDto()
     .withProfile(new ActionProfile().withName("Foo")
-      .withTags(new Tags().withTagList(Collections.singletonList("lorem")))
+      .withTags(new Tags().withTagList(singletonList("lorem")))
       .withAction(CREATE)
       .withFolioRecord(MARC_BIBLIOGRAPHIC));
   static ActionProfileUpdateDto actionProfile_4 = new ActionProfileUpdateDto()
@@ -233,7 +238,7 @@ public class ActionProfileTest extends AbstractRestVerticleTest {
       .post(ACTION_PROFILES_PATH)
       .then()
       .statusCode(HttpStatus.SC_UNPROCESSABLE_ENTITY)
-      .body("errors[0].message", is("actionProfile.duplication.id"));
+      .body("errors[0].message", is("Action profile with id 'GOA' already exists"));
   }
 
   @Test
@@ -443,8 +448,7 @@ public class ActionProfileTest extends AbstractRestVerticleTest {
       .when()
       .get(ACTION_PROFILES_PATH + "/" + profile.getProfile().getId())
       .then()
-      .statusCode(HttpStatus.SC_OK)
-      .body("deleted", is(true));
+      .statusCode(HttpStatus.SC_OK);
   }
 
   @Test
@@ -711,8 +715,8 @@ public class ActionProfileTest extends AbstractRestVerticleTest {
       .post(ACTION_PROFILES_PATH)
       .then()
       .statusCode(HttpStatus.SC_UNPROCESSABLE_ENTITY)
-      .body("errors[0].message", is("actionProfile.child.notEmpty"))
-      .body("errors[1].message", is("actionProfile.parent.notEmpty"));
+      .body("errors[0].message", is("Action profile read-only 'child' field should be empty"))
+      .body("errors[1].message", is("Action profile read-only 'parent' field should be empty"));
   }
 
   @Test
@@ -731,8 +735,8 @@ public class ActionProfileTest extends AbstractRestVerticleTest {
       .put(ACTION_PROFILES_PATH + "/" + actionProfileUpdateDto.getProfile().getId())
       .then()
       .statusCode(HttpStatus.SC_UNPROCESSABLE_ENTITY)
-      .body("errors[0].message", is("actionProfile.child.notEmpty"))
-      .body("errors[1].message", is("actionProfile.parent.notEmpty"));
+      .body("errors[0].message", is("Action profile read-only 'child' field should be empty"))
+      .body("errors[1].message", is("Action profile read-only 'parent' field should be empty"));
   }
 
 

@@ -306,7 +306,7 @@ public class MappingProfileTest extends AbstractRestVerticleTest {
       .post(MAPPING_PROFILES_PATH)
       .then()
       .statusCode(HttpStatus.SC_UNPROCESSABLE_ENTITY)
-      .body("errors[0].message", is("mappingProfile.duplication.id"));
+      .body("errors[0].message", is("The field mapping profile with id 'OLA' already exists"));
   }
 
   @Test
@@ -883,8 +883,8 @@ public class MappingProfileTest extends AbstractRestVerticleTest {
       .post(MAPPING_PROFILES_PATH)
       .then()
       .statusCode(HttpStatus.SC_UNPROCESSABLE_ENTITY)
-      .body("errors[0].message", is("mappingProfile.child.notEmpty"))
-      .body("errors[1].message", is("mappingProfile.parent.notEmpty"));
+      .body("errors[0].message", is("The field mapping profile read-only 'child' field should be empty"))
+      .body("errors[1].message", is("The field mapping profile read-only 'parent' field should be empty"));
   }
 
   @Test
@@ -908,8 +908,8 @@ public class MappingProfileTest extends AbstractRestVerticleTest {
       .put(MAPPING_PROFILES_PATH + "/" + createdProfile.getProfile().getId())
       .then()
       .statusCode(HttpStatus.SC_UNPROCESSABLE_ENTITY)
-      .body("errors[0].message", is("mappingProfile.child.notEmpty"))
-      .body("errors[1].message", is("mappingProfile.parent.notEmpty"));
+      .body("errors[0].message", is("The field mapping profile read-only 'child' field should be empty"))
+      .body("errors[1].message", is("The field mapping profile read-only 'parent' field should be empty"));
   }
 
   private void createProfiles() {
