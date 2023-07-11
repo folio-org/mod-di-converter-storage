@@ -102,6 +102,14 @@ public interface ProfileService<T, S, D> {
   Future<EntityTypeCollection> getEntityTypes();
 
   /**
+   * Returns name of specified profile
+   *
+   * @param profile - profile entity
+   * @return - profile name
+   */
+  String getProfileName(T profile);
+
+  /**
    * Checks is profile contains child profiles
    *
    * @param profile  - T entity
