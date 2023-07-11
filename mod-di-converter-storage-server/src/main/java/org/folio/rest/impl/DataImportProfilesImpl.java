@@ -67,7 +67,7 @@ public class DataImportProfilesImpl implements DataImportProfiles {
   private static final Logger logger = LogManager.getLogger();
   private static final String DUPLICATE_PROFILE_ERROR_CODE = "%s '%s' already exists";
   private static final String DUPLICATE_PROFILE_ID_ERROR_CODE = "%s with id '%s' already exists";
-  private static final String NOT_EMPTY_RELATED_PROFILE_ERROR_CODE = "%s.%s.notEmpty";
+  private static final String NOT_EMPTY_RELATED_PROFILE_ERROR_CODE = "%s read-only '%s' field should be empty";
   private static final String PROFILE_VALIDATE_ERROR_MESSAGE = "Failed to validate %s";
   private static final String MASTER_PROFILE_NOT_FOUND_MSG = "Master profile with id '%s' was not found";
   private static final String DETAIL_PROFILE_NOT_FOUND_MSG = "Detail profile with id '%s' was not found";
