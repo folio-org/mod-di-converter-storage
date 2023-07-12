@@ -63,6 +63,9 @@ public class ProfileWrapperDaoImpl implements ProfileWrapperDao {
   public Future<String> save(ProfileWrapper entity, String tenantId) {
     Promise<RowSet<Row>> promise = Promise.promise();
     LOGGER.trace("save:: Saving profile wrapper, tenant id {}", tenantId);
+    if (entity.getProfileType() == null) {
+      return Future.failedFuture("save:: Error saving profile wrapper - profile type is empty");
+    }
     String query = format(INSERT_QUERY, convertToPsqlStandard(tenantId), TABLE_NAME, profileTypeToColumn.get(entity.getProfileType().value()));
     Tuple queryParams = Tuple.of(
       entity.getId(),

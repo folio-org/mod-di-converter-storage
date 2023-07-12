@@ -146,12 +146,14 @@ public class CommonProfileAssociationService implements ProfileAssociationServic
       .compose(e -> profileWrapperDao.deleteById(entity.getDetailProfileId(), params.getTenantId()))
       .compose(r -> {
         ProfileWrapper masterWrapper = new ProfileWrapper();
+        masterWrapper.setId(UUID.randomUUID().toString());
         masterWrapper.setProfileType(entity.getMasterProfileType());
         masterWrapper.setProfileId(entity.getMasterProfileId());
         return profileWrapperDao.save(masterWrapper, params.getTenantId());
       })
       .compose(s -> {
         ProfileWrapper detailWrapper = new ProfileWrapper();
+        detailWrapper.setId(UUID.randomUUID().toString());
         detailWrapper.setProfileType(entity.getDetailProfileType());
         detailWrapper.setProfileId(entity.getDetailProfileId());
         return profileWrapperDao.save(detailWrapper, params.getTenantId());

@@ -19,6 +19,7 @@ import org.folio.rest.jaxrs.model.ActionProfile;
 import org.folio.rest.jaxrs.model.ActionProfileUpdateDto;
 import org.folio.rest.jaxrs.model.EntityType;
 import org.folio.rest.jaxrs.model.JobProfile;
+import org.folio.rest.jaxrs.model.MappingDetail;
 import org.folio.rest.jaxrs.model.ProfileType;
 import org.folio.rest.jaxrs.model.ReactToType;
 import org.folio.rest.jaxrs.model.JobProfileUpdateDto;
@@ -460,28 +461,130 @@ public class CommonProfileAssociationTest extends AbstractRestVerticleTest {
 
   @Test
   public void runTestShouldReturnNotFoundOnPut(TestContext testContext) {
-    shouldReturnNotFoundOnPut(testContext, ACTION_PROFILE, ACTION_PROFILE);
-    shouldReturnNotFoundOnPut(testContext, ACTION_PROFILE, MAPPING_PROFILE);
-    shouldReturnNotFoundOnPut(testContext, ACTION_PROFILE, MATCH_PROFILE);
-    shouldReturnNotFoundOnPut(testContext, JOB_PROFILE, ACTION_PROFILE);
-    shouldReturnNotFoundOnPut(testContext, JOB_PROFILE, MATCH_PROFILE);
-    shouldReturnNotFoundOnPut(testContext, MATCH_PROFILE, ACTION_PROFILE);
-    shouldReturnNotFoundOnPut(testContext, MATCH_PROFILE, MATCH_PROFILE);
+    String jobProfileId = UUID.randomUUID().toString();
+    String actionProfileId = UUID.randomUUID().toString();
+    String firstMatchProfileId = UUID.randomUUID().toString();
+    String secondMatchProfileId = UUID.randomUUID().toString();
+    String mappingProfileId = UUID.randomUUID().toString();
+
+    JobProfileWrapper existingJobProfileWrapper = new JobProfileWrapper(new JobProfileUpdateDto()
+      .withProfile(new JobProfile()
+        .withId(jobProfileId)
+        .withName("Existing JobProfile")
+        .withDataType(MARC)
+        .withDeleted(false)
+        .withHidden(false)
+        .withDescription("test-description")));
+
+    ActionProfileWrapper existingActionProfileWrapper = new ActionProfileWrapper(new ActionProfileUpdateDto()
+      .withProfile(new ActionProfile()
+        .withId(actionProfileId)
+        .withName("Existing ActionProfile")
+        .withFolioRecord(MARC_BIBLIOGRAPHIC)
+        .withAction(CREATE)
+        .withDeleted(false)
+        .withHidden(false)
+        .withDescription("test-description")));
+
+    MatchProfileWrapper existingMatchProfileWrapper = new MatchProfileWrapper(new MatchProfileUpdateDto()
+      .withProfile(new MatchProfile()
+        .withId(firstMatchProfileId)
+        .withName("Existing MatchProfile")
+        .withMatchDetails(Lists.newArrayList())
+        .withDeleted(false)
+        .withHidden(false)
+        .withDescription("test-description")));
+
+    MatchProfileWrapper secondExistingMatchProfileWrapper = new MatchProfileWrapper(new MatchProfileUpdateDto()
+      .withProfile(new MatchProfile()
+        .withId(secondMatchProfileId)
+        .withName("Second Existing MatchProfile")
+        .withMatchDetails(Lists.newArrayList())
+        .withDeleted(false)
+        .withHidden(false)
+        .withDescription("test-description")));
+
+    MappingProfileWrapper existingMappingProfileWrapper = new MappingProfileWrapper(new MappingProfileUpdateDto()
+      .withProfile(new MappingProfile()
+        .withId(mappingProfileId)
+        .withName("Existing MappingProfile")
+        .withExistingRecordType(EntityType.INSTANCE)
+        .withIncomingRecordType(EntityType.MARC_BIBLIOGRAPHIC)
+        .withMappingDetails(new MappingDetail())
+        .withDeleted(false)
+        .withHidden(false)
+        .withDescription("test-description")));
+
+    RestAssured.given()
+      .spec(spec)
+      .body(existingJobProfileWrapper.getProfile())
+      .when()
+      .post(JOB_PROFILES_URL)
+      .then().log().all()
+      .statusCode(HttpStatus.SC_CREATED)
+      .body("profile.id", is(jobProfileId));
+
+    RestAssured.given()
+      .spec(spec)
+      .body(existingActionProfileWrapper.getProfile())
+      .when()
+      .post(ACTION_PROFILES_URL)
+      .then().log().all()
+      .statusCode(HttpStatus.SC_CREATED)
+      .body("profile.id", is(actionProfileId));
+
+    RestAssured.given()
+      .spec(spec)
+      .body(existingMatchProfileWrapper.getProfile())
+      .when()
+      .post(MATCH_PROFILES_URL)
+      .then().log().all()
+      .statusCode(HttpStatus.SC_CREATED)
+      .body("profile.id", is(firstMatchProfileId));
+
+    RestAssured.given()
+      .spec(spec)
+      .body(secondExistingMatchProfileWrapper.getProfile())
+      .when()
+      .post(MATCH_PROFILES_URL)
+      .then().log().all()
+      .statusCode(HttpStatus.SC_CREATED)
+      .body("profile.id", is(secondMatchProfileId));
+
+    RestAssured.given()
+      .spec(spec)
+      .body(existingMappingProfileWrapper.getProfile())
+      .when()
+      .post(MAPPING_PROFILES_URL)
+      .then().log().all()
+      .statusCode(HttpStatus.SC_CREATED)
+      .body("profile.id", is(mappingProfileId));
+
+    shouldReturnNotFoundOnPut(testContext, ACTION_PROFILE, MAPPING_PROFILE, actionProfileId, mappingProfileId, ProfileType.ACTION_PROFILE, ProfileType.MAPPING_PROFILE);
+    shouldReturnNotFoundOnPut(testContext, ACTION_PROFILE, MATCH_PROFILE, actionProfileId, firstMatchProfileId,ProfileType.ACTION_PROFILE, ProfileType.MATCH_PROFILE);
+    shouldReturnNotFoundOnPut(testContext, JOB_PROFILE, ACTION_PROFILE, jobProfileId, actionProfileId, ProfileType.JOB_PROFILE, ProfileType.ACTION_PROFILE);
+    shouldReturnNotFoundOnPut(testContext, JOB_PROFILE, MATCH_PROFILE, jobProfileId, firstMatchProfileId, ProfileType.JOB_PROFILE, ProfileType.MATCH_PROFILE);
+    shouldReturnNotFoundOnPut(testContext, MATCH_PROFILE, ACTION_PROFILE, firstMatchProfileId, actionProfileId, ProfileType.MATCH_PROFILE, ProfileType.ACTION_PROFILE);
+    shouldReturnNotFoundOnPut(testContext, MATCH_PROFILE, MATCH_PROFILE, firstMatchProfileId, secondMatchProfileId, ProfileType.MATCH_PROFILE, ProfileType.MATCH_PROFILE);
   }
 
-  public void shouldReturnNotFoundOnPut(TestContext testContext, ContentType masterContentType, ContentType detailContentType) {
+  public void   shouldReturnNotFoundOnPut(TestContext testContext, ContentType masterContentType, ContentType detailContentType, String masterId, String detailId,
+                                          ProfileType masterType, ProfileType detailType) {
     Async async = testContext.async();
+
     ProfileAssociation profileAssociation = new ProfileAssociation()
       .withId(UUID.randomUUID().toString())
-      .withMasterProfileId(UUID.randomUUID().toString())
-      .withDetailProfileId(UUID.randomUUID().toString());
+      .withMasterProfileId(masterId)
+      .withDetailProfileId(detailId)
+      .withMasterProfileType(masterType)
+      .withDetailProfileType(detailType);
     RestAssured.given()
       .spec(spec)
       .queryParam("master", masterContentType.value())
       .queryParam("detail", detailContentType.value())
       .body(profileAssociation)
       .when()
-      .put(ASSOCIATED_PROFILES_URL + "/" + UUID.randomUUID().toString())
+      .put(ASSOCIATED_PROFILES_URL + "/" + UUID.randomUUID())
       .then()
       .statusCode(HttpStatus.SC_NOT_FOUND);
     async.complete();
