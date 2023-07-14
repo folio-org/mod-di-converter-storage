@@ -3,6 +3,7 @@ package org.folio.rest.impl;
 import com.google.common.collect.Lists;
 import io.restassured.RestAssured;
 import io.restassured.response.Response;
+import io.restassured.response.ValidatableResponse;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
@@ -44,6 +45,7 @@ import static org.hamcrest.Matchers.hasEntry;
 import static org.hamcrest.Matchers.hasItem;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.is;
+import static org.hamcrest.Matchers.notNullValue;
 
 @RunWith(VertxUnitRunner.class)
 public class MappingProfileTest extends AbstractRestVerticleTest {
@@ -58,6 +60,8 @@ public class MappingProfileTest extends AbstractRestVerticleTest {
   private static final String MATCH_TO_MATCH_PROFILES_TABLE = "match_to_match_profiles";
   private static final String MATCH_TO_ACTION_PROFILES_TABLE = "match_to_action_profiles";
   static final String MATCH_PROFILES_TABLE_NAME = "match_profiles";
+  private static final String PROFILE_WRAPPERS_TABLE = "profile_wrappers";
+
   private static final String MAPPING_PROFILE_UUID = "608ab35e-5f8b-49c3-bcf1-1fb5e57d5130";
   private List<String> defaultMappingProfileIds = Arrays.asList(
     "d0ebbc2e-2f0f-11eb-adc1-0242ac120002", //OCLC_CREATE_MAPPING_PROFILE_ID
@@ -516,6 +520,8 @@ public class MappingProfileTest extends AbstractRestVerticleTest {
       .body(new ProfileAssociation()
         .withMasterProfileId(actionProfile.getProfile().getId())
         .withDetailProfileId(profileToDelete.getProfile().getId())
+        .withMasterProfileType(ProfileType.ACTION_PROFILE)
+        .withDetailProfileType(ProfileType.MAPPING_PROFILE)
         .withOrder(1))
       .when()
       .post(ASSOCIATED_PROFILES_PATH)
@@ -739,7 +745,7 @@ public class MappingProfileTest extends AbstractRestVerticleTest {
       .statusCode(HttpStatus.SC_CREATED)
       .extract().body().as(ActionProfileUpdateDto.class);
 
-    RestAssured.given()
+    String masterWrapperId =  RestAssured.given()
       .spec(spec)
       .queryParam("master", ACTION_PROFILE.value())
       .queryParam("detail", MAPPING_PROFILE.value())
@@ -749,7 +755,10 @@ public class MappingProfileTest extends AbstractRestVerticleTest {
       .statusCode(HttpStatus.SC_OK)
       .body("profileAssociations", hasSize(1))
       .body("profileAssociations[0].masterProfileId", is(actionProfile.getProfile().getId()))
-      .body("profileAssociations[0].detailProfileId", is(mappingProfile1.getProfile().getId()));
+      .body("profileAssociations[0].detailProfileId", is(mappingProfile1.getProfile().getId()))
+      .body("profileAssociations[0].masterWrapperId", notNullValue())
+      .extract().
+       path("profileAssociations[0].masterWrapperId");
 
     mappingProfile2.getProfile().setName("mapping profile 2");
     RestAssured.given()
@@ -762,21 +771,23 @@ public class MappingProfileTest extends AbstractRestVerticleTest {
           .withMasterProfileType(ProfileType.ACTION_PROFILE)
           .withDetailProfileType(ProfileType.MAPPING_PROFILE)
           .withMasterProfileId(actionProfile.getProfile().getId())
-          .withDetailProfileId(mappingProfile2.getProfile().getId()))))
+          .withDetailProfileId(mappingProfile2.getProfile().getId())
+          .withMasterWrapperId(masterWrapperId))))
       .when()
       .put(MAPPING_PROFILES_PATH + "/" + mappingProfile2.getProfile().getId())
       .then()
       .statusCode(HttpStatus.SC_OK)
       .body("name", is("mapping profile 2"));
 
-    RestAssured.given()
+    ValidatableResponse validatableResponse = RestAssured.given()
       .spec(spec)
       .queryParam("master", ACTION_PROFILE.value())
       .queryParam("detail", MAPPING_PROFILE.value())
       .when()
       .get(ASSOCIATED_PROFILES_PATH)
       .then()
-      .statusCode(HttpStatus.SC_OK)
+      .statusCode(HttpStatus.SC_OK);
+    validatableResponse
       .body("profileAssociations", hasSize(1))
       .body("profileAssociations[0].masterProfileId", is(actionProfile.getProfile().getId()))
       .body("profileAssociations[0].detailProfileId", is(mappingProfile2.getProfile().getId()));
@@ -938,20 +949,21 @@ public class MappingProfileTest extends AbstractRestVerticleTest {
   public void clearTables(TestContext context) {
     Async async = context.async();
     PostgresClient pgClient = PostgresClient.getInstance(vertx, TENANT_ID);
-    pgClient.delete(JOB_TO_ACTION_PROFILES_TABLE, new Criterion(), event ->
-      pgClient.delete(JOB_TO_MATCH_PROFILES_TABLE, new Criterion(), event2 ->
-        pgClient.delete(ACTION_TO_MAPPING_PROFILES_TABLE, new Criterion(), event3 ->
-          pgClient.delete(MATCH_TO_MATCH_PROFILES_TABLE, new Criterion(), event4 ->
-            pgClient.delete(MATCH_TO_ACTION_PROFILES_TABLE, new Criterion(), event5 ->
-              pgClient.delete(JOB_PROFILES_TABLE_NAME, new Criterion(), event6 ->
-                pgClient.delete(MATCH_PROFILES_TABLE_NAME, new Criterion(), event7 ->
-                  pgClient.delete(ACTION_PROFILES_TABLE_NAME, new Criterion(), event8 ->
-                    pgClient.delete(MAPPING_PROFILES_TABLE_NAME, new Criterion(), event9 -> {
-                      if (event7.failed()) {
-                        context.fail(event7.cause());
-                      }
-                      async.complete();
-                    })))))))));
+    pgClient.delete(PROFILE_WRAPPERS_TABLE, new Criterion(), event13 ->
+      pgClient.delete(JOB_TO_ACTION_PROFILES_TABLE, new Criterion(), event ->
+        pgClient.delete(JOB_TO_MATCH_PROFILES_TABLE, new Criterion(), event2 ->
+          pgClient.delete(ACTION_TO_MAPPING_PROFILES_TABLE, new Criterion(), event3 ->
+            pgClient.delete(MATCH_TO_MATCH_PROFILES_TABLE, new Criterion(), event4 ->
+              pgClient.delete(MATCH_TO_ACTION_PROFILES_TABLE, new Criterion(), event5 ->
+                pgClient.delete(JOB_PROFILES_TABLE_NAME, new Criterion(), event6 ->
+                  pgClient.delete(MATCH_PROFILES_TABLE_NAME, new Criterion(), event7 ->
+                    pgClient.delete(ACTION_PROFILES_TABLE_NAME, new Criterion(), event8 ->
+                      pgClient.delete(MAPPING_PROFILES_TABLE_NAME, new Criterion(), event9 -> {
+                        if (event7.failed()) {
+                          context.fail(event7.cause());
+                        }
+                        async.complete();
+                      }))))))))));
   }
 
 }

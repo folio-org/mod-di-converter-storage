@@ -66,6 +66,7 @@ public class JobProfileSnapshotTest extends AbstractRestVerticleTest {
   private static final String ACTION_TO_ACTION_PROFILES_TABLE_NAME = "action_to_action_profiles";
   private static final String MATCH_TO_MATCH_PROFILES_TABLE_NAME = "match_to_match_profiles";
 
+  private static final String PROFILE_WRAPPERS_TABLE = "profile_wrappers";
 
   private JobProfileUpdateDto jobProfile = new JobProfileUpdateDto()
     .withProfile(new JobProfile().withName("testJobProfile1").withDataType(MARC).withDescription("test-description"));
@@ -378,7 +379,8 @@ public class JobProfileSnapshotTest extends AbstractRestVerticleTest {
     Async async = context.async();
     PostgresClient pgClient = PostgresClient.getInstance(vertx, TENANT_ID);
     pgClient.delete(SNAPSHOTS_TABLE_NAME, new Criterion(), event2 ->
-      pgClient.delete(JOB_TO_ACTION_PROFILES_TABLE_NAME, new Criterion(), event3 ->
+      pgClient.delete(PROFILE_WRAPPERS_TABLE, new Criterion(), event13 ->
+        pgClient.delete(JOB_TO_ACTION_PROFILES_TABLE_NAME, new Criterion(), event3 ->
         pgClient.delete(JOB_TO_MATCH_PROFILES_TABLE_NAME, new Criterion(), event4 ->
           pgClient.delete(ACTION_TO_MAPPING_PROFILES_TABLE_NAME, new Criterion(), event5 ->
             pgClient.delete(MATCH_TO_ACTION_PROFILES_TABLE_NAME, new Criterion(), event6 ->
@@ -392,6 +394,6 @@ public class JobProfileSnapshotTest extends AbstractRestVerticleTest {
                             context.fail(event12.cause());
                           }
                           async.complete();
-                        })))))))))));
+                        }))))))))))));
   }
 }

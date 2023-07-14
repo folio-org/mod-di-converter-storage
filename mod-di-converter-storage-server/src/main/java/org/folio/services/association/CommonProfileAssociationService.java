@@ -207,8 +207,8 @@ public class CommonProfileAssociationService implements ProfileAssociationServic
   }
 
   @Override
-  public Future<Boolean> deleteByMasterId(String masterId, ContentType masterType, ContentType detailType, String tenantId) {
-    return profileAssociationDao.deleteByMasterId(masterId, masterType, detailType, tenantId);
+  public Future<Boolean> deleteByMasterId(String wrapperId, ContentType masterType, ContentType detailType, String tenantId) {
+    return profileAssociationDao.deleteByMasterId(wrapperId, masterType, detailType, tenantId);
   }
 
   /**

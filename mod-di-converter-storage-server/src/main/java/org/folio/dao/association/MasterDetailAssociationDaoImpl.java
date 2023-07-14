@@ -34,7 +34,7 @@ public class MasterDetailAssociationDaoImpl implements MasterDetailAssociationDa
   /**
    * This query selects detail profiles by master profile id.
    */
-  private static final String RETRIEVES_DETAILS_SQL = "SELECT detail_id, detail_type, detail FROM associations_view";
+  private static final String RETRIEVES_DETAILS_SQL = "SELECT detail_id, detail_type, detail, detailwrapperid FROM associations_view";
   /**
    * This query selects master profiles by detail profile id.
    */
@@ -84,6 +84,7 @@ public class MasterDetailAssociationDaoImpl implements MasterDetailAssociationDa
       wrapper.setId(row.getUUID(DETAIL_ID_FIELD).toString());
       wrapper.setContentType(detailType);
       wrapper.setContent(mapProfile(detail, detailType));
+      wrapper.setProfileWrapperId(row.getUUID("detailwrapperid").toString());
       wrappers.add(wrapper);
     });
     return wrappers;

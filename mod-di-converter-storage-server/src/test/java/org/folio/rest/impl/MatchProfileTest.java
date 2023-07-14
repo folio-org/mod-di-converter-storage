@@ -71,6 +71,9 @@ public class MatchProfileTest extends AbstractRestVerticleTest {
   static final String MATCH_PROFILES_PATH = "/data-import-profiles/matchProfiles";
   private static final String ASSOCIATED_PROFILES_PATH = "/data-import-profiles/profileAssociations";
   private static final String MATCH_PROFILE_UUID = "48a54656-8a2c-43c1-96b4-da96a70a0a62";
+
+  private static final String PROFILE_WRAPPERS_TABLE = "profile_wrappers";
+
   private List<String> defaultMatchedProfileIds = Arrays.asList(
     "d27d71ce-8a1e-44c6-acea-96961b5592c6", //OCLC_MARC_MARC_MATCH_PROFILE_ID
     "31dbb554-0826-48ec-a0a4-3c55293d4dee", //OCLC_INSTANCE_UUID_MATCH_PROFILE_ID
@@ -447,6 +450,8 @@ public class MatchProfileTest extends AbstractRestVerticleTest {
       .body(new ProfileAssociation()
         .withMasterProfileId(matchProfile.getProfile().getId())
         .withDetailProfileId(profileToDelete.getProfile().getId())
+        .withMasterProfileType(ProfileType.MATCH_PROFILE)
+        .withDetailProfileType(ProfileType.MATCH_PROFILE)
         .withOrder(1))
       .when()
       .post(ASSOCIATED_PROFILES_PATH)
@@ -531,9 +536,9 @@ public class MatchProfileTest extends AbstractRestVerticleTest {
       .withMasterProfileId(profileToDelete.getProfile().getId())
       .withOrder(1);
 
-    ProfileAssociation matchToMatchAssociation = postProfileAssociation(profileAssociation.withDetailProfileId(associatedMatchProfile.getProfile().getId()),
+    ProfileAssociation matchToMatchAssociation = postProfileAssociation(profileAssociation.withDetailProfileId(associatedMatchProfile.getProfile().getId()).withMasterProfileId(profileToDelete.getProfile().getId()).withMasterProfileType(ProfileType.MATCH_PROFILE).withDetailProfileType(ProfileType.MATCH_PROFILE),
       MATCH_PROFILE, MATCH_PROFILE);
-    ProfileAssociation matchToActionAssociation = postProfileAssociation(profileAssociation.withDetailProfileId(associatedActionProfile.getProfile().getId()),
+    ProfileAssociation matchToActionAssociation = postProfileAssociation(profileAssociation.withDetailProfileId(associatedActionProfile.getProfile().getId()).withMasterProfileId(profileToDelete.getProfile().getId()).withMasterProfileType(ProfileType.MATCH_PROFILE).withDetailProfileType(ProfileType.ACTION_PROFILE),
       MATCH_PROFILE, ACTION_PROFILE);
 
     // deleting match profile
@@ -863,7 +868,8 @@ public class MatchProfileTest extends AbstractRestVerticleTest {
   @Override
   public void clearTables(TestContext context) {
     Async async = context.async();
-    deleteTable(ACTION_TO_ACTION_PROFILES)
+    deleteTable(PROFILE_WRAPPERS_TABLE)
+      .compose(e -> deleteTable(ACTION_TO_ACTION_PROFILES))
       .compose(e -> deleteTable(ACTION_TO_MAPPING_PROFILES))
       .compose(e -> deleteTable(ACTION_TO_MATCH_PROFILES))
       .compose(e -> deleteTable(JOB_TO_ACTION_PROFILES))

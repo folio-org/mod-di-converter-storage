@@ -121,7 +121,7 @@ public class MappingProfileServiceImpl extends AbstractProfileService<MappingPro
   private Future<Boolean> deleteExistingActionToMappingAssociations(MappingProfileUpdateDto profileDto, String tenantId) {
     List<Future<Boolean>> futures = profileDto.getAddedRelations().stream()
       .filter(profileAssociation -> profileAssociation.getMasterProfileType().equals(ACTION_PROFILE))
-      .map(ProfileAssociation::getMasterProfileId)
+      .map(ProfileAssociation::getMasterWrapperId)
       .map(actionProfileId -> profileAssociationService.deleteByMasterId(actionProfileId, ContentType.ACTION_PROFILE,
         ContentType.MAPPING_PROFILE, tenantId))
       .collect(Collectors.toList());

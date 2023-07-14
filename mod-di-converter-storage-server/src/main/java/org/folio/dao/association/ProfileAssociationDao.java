@@ -80,13 +80,13 @@ public interface ProfileAssociationDao {
   Future<Boolean> delete(String masterWrapperId, String detailWrapperId, ProfileSnapshotWrapper.ContentType masterType, ProfileSnapshotWrapper.ContentType detailType, String tenantId, String jobProfileId);
 
   /**
-   * Delete profile associations for particular master profile by masterId
+   * Delete profile associations for particular master profile by wrapperId
    *
-   * @param masterId   - master profile id
+   * @param wrapperId   - master profile id
    * @param masterType - master profile type
    * @param detailType - detail profile type
    * @param tenantId   - tenant id
    * @return future with boolean
    */
-  Future<Boolean> deleteByMasterId(String masterId, ProfileSnapshotWrapper.ContentType masterType, ProfileSnapshotWrapper.ContentType detailType, String tenantId);
+  Future<Boolean> deleteByMasterId(String wrapperId, ProfileSnapshotWrapper.ContentType masterType, ProfileSnapshotWrapper.ContentType detailType, String tenantId);
 }

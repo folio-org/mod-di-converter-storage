@@ -65,6 +65,8 @@ public class JobProfileTest extends AbstractRestVerticleTest {
   private static final String MATCH_TO_ACTION_PROFILES_TABLE_NAME = "match_to_action_profiles";
   private static final String ACTION_TO_ACTION_PROFILES_TABLE_NAME = "action_to_action_profiles";
   private static final String MATCH_TO_MATCH_PROFILES_TABLE_NAME = "match_to_match_profiles";
+  private static final String PROFILE_WRAPPERS_TABLE = "profile_wrappers";
+
   private static final String JOB_PROFILE_UUID = "b81c283c-131d-4470-ab91-e92bb415c000";
   private static final String DEFAULT_CREATE_SRS_MARC_AUTHORITY_JOB_PROFILE_ID = "6eefa4c6-bbf7-4845-ad82-de7fc5abd0e3";
   private final List<String> defaultJobProfileIds = Arrays.asList(
@@ -790,7 +792,7 @@ public class JobProfileTest extends AbstractRestVerticleTest {
                     pgClient.delete(ACTION_TO_ACTION_PROFILES_TABLE_NAME, new Criterion(), event10 ->
                       pgClient.delete(MAPPING_PROFILES_TABLE_NAME, new Criterion(), event11 ->
                         pgClient.delete(MATCH_TO_MATCH_PROFILES_TABLE_NAME, new Criterion(), event12 ->
-                          pgClient.delete("profile_wrappers", new Criterion(), event13 -> {
+                          pgClient.delete(PROFILE_WRAPPERS_TABLE, new Criterion(), event13 -> {
                             if (event12.failed()) {
                             context.fail(event12.cause());
                           }

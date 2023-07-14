@@ -151,13 +151,13 @@ public class CommonProfileAssociationDao implements ProfileAssociationDao {
   }
 
   @Override
-  public Future<Boolean> deleteByMasterId(String masterId, ProfileSnapshotWrapper.ContentType masterType, ProfileSnapshotWrapper.ContentType detailType, String tenantId) {
+  public Future<Boolean> deleteByMasterId(String wrapperId, ProfileSnapshotWrapper.ContentType masterType, ProfileSnapshotWrapper.ContentType detailType, String tenantId) {
     Promise<RowSet<Row>> promise = Promise.promise();
     try {
-      CQLWrapper filter = getCQLWrapper(getAssociationTableName(masterType, detailType), "(" + MASTER_WRAPPER_ID_FIELD + "==" + masterId + ")");
+      CQLWrapper filter = getCQLWrapper(getAssociationTableName(masterType, detailType), "(" + MASTER_WRAPPER_ID_FIELD + "==" + wrapperId + ")");
       pgClientFactory.createInstance(tenantId).delete(getAssociationTableName(masterType, detailType), filter, promise);
     } catch (Exception e) {
-      LOGGER.warn("delete:: Error deleting by master id {}", masterId, e);
+      LOGGER.warn("delete:: Error deleting by master id {}", wrapperId, e);
       return Future.failedFuture(e);
     }
     return promise.future().map(updateResult -> updateResult.rowCount() > 0);
