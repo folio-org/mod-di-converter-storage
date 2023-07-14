@@ -3,26 +3,23 @@ package org.folio.dao.association;
 import io.vertx.core.Future;
 import io.vertx.core.Promise;
 import io.vertx.sqlclient.Row;
+import io.vertx.sqlclient.RowIterator;
 import io.vertx.sqlclient.RowSet;
 import io.vertx.sqlclient.Tuple;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.folio.dao.PostgresClientFactory;
 import org.folio.rest.jaxrs.model.ProfileType;
 import org.folio.rest.jaxrs.model.ProfileWrapper;
-import org.folio.rest.persist.Criteria.Criteria;
-import org.folio.rest.persist.Criteria.Criterion;
-import org.folio.rest.persist.interfaces.Results;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Repository;
 
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
-import java.util.UUID;
 
 import static java.lang.String.format;
-import static org.folio.dao.util.DaoUtil.constructCriteria;
 import static org.folio.rest.persist.PostgresClient.convertToPsqlStandard;
 
 @Repository
@@ -31,6 +28,9 @@ public class ProfileWrapperDaoImpl implements ProfileWrapperDao {
   private static final String ID_FIELD = "'id'";
   private static final String TABLE_NAME = "profile_wrappers";
   private static final String INSERT_QUERY = "INSERT INTO %s.%s (id, profile_type, %s) VALUES ($1, $2, $3)";
+
+  private static final String SELECT_QUERY = "SELECT * FROM %s.%s WHERE id = $1";
+
   private static final Map<String, String> profileTypeToColumn;
 
   static {
@@ -46,17 +46,11 @@ public class ProfileWrapperDaoImpl implements ProfileWrapperDao {
 
   @Override
   public Future<Optional<ProfileWrapper>> getProfileWrapperById(String id, String tenantId) {
-    Promise<Results<ProfileWrapper>> promise = Promise.promise();
-    try {
-      Criteria idCrit = constructCriteria(ID_FIELD, id);
-      pgClientFactory.createInstance(tenantId).get(TABLE_NAME, ProfileWrapper.class, new Criterion(idCrit), true, false, promise);
-    } catch (Exception e) {
-      LOGGER.warn("getProfileWrapperById:: Error querying {} by id", ProfileWrapper.class.getSimpleName(), e);
-      promise.fail(e);
-    }
-    return promise.future()
-      .map(Results::getResults)
-      .map(profileWrappers -> profileWrappers.isEmpty() ? Optional.empty() : Optional.of(profileWrappers.get(0)));
+    Promise<RowSet<Row>> promise = Promise.promise();
+    String query = format(SELECT_QUERY, convertToPsqlStandard(tenantId), TABLE_NAME);
+    Tuple queryParams = Tuple.of(id);
+    pgClientFactory.createInstance(tenantId).execute(query, queryParams, promise);
+    return promise.future().map(this::mapResultSetToOptionalProfileWrapper);
   }
 
   @Override
@@ -80,5 +74,30 @@ public class ProfileWrapperDaoImpl implements ProfileWrapperDao {
     Promise<RowSet<Row>> promise = Promise.promise();
     pgClientFactory.createInstance(tenantId).delete(TABLE_NAME, id, promise);
     return promise.future().map(updateResult -> updateResult.rowCount() == 1);
+  }
+
+  private Optional<ProfileWrapper> mapResultSetToOptionalProfileWrapper(RowSet<Row> resultSet) {
+    RowIterator<Row> iterator = resultSet.iterator();
+    return iterator.hasNext() ? Optional.of(mapRowToProfileWrapper(iterator.next())) : Optional.empty();
+  }
+
+  private ProfileWrapper mapRowToProfileWrapper(Row row) {
+    String profileId = "";
+    if (StringUtils.isNotEmpty(row.getValue("action_profile_id").toString())){
+      profileId = row.getValue("action_profile_id").toString();
+    }
+    else if  (StringUtils.isNotEmpty(row.getValue("match_profile_id").toString())){
+      profileId = row.getValue("match_profile_id").toString();
+    }
+    else if  (StringUtils.isNotEmpty(row.getValue("mapping_profile_id").toString())){
+      profileId = row.getValue("mapping_profile_id").toString();
+    }
+    else if  (StringUtils.isNotEmpty(row.getValue("job_profile_id").toString())){
+      profileId = row.getValue("job_profile_id").toString();
+    }
+    return new ProfileWrapper()
+      .withId(row.getValue("id").toString())
+      .withProfileId(profileId)
+      .withProfileType(ProfileType.fromValue(row.getValue("profile_type").toString()));
   }
 }
