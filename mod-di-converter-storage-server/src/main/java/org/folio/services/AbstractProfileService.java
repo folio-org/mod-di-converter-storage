@@ -14,10 +14,7 @@ import org.folio.rest.impl.util.OkapiConnectionParams;
 import org.folio.rest.impl.util.RestUtil;
 import org.folio.rest.jaxrs.model.EntityTypeCollection;
 import org.folio.rest.jaxrs.model.ProfileAssociation;
-import org.folio.rest.jaxrs.model.ProfileAssociationRecord;
 import org.folio.rest.jaxrs.model.ProfileSnapshotWrapper;
-import org.folio.rest.jaxrs.model.ProfileType;
-import org.folio.rest.jaxrs.model.ProfileWrapper;
 import org.folio.rest.jaxrs.model.UserInfo;
 import org.folio.services.association.CommonProfileAssociationService;
 import org.folio.services.association.ProfileAssociationService;
@@ -30,7 +27,6 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Optional;
-import java.util.UUID;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 

@@ -28,5 +28,11 @@ public interface ProfileWrapperDao {
    */
   Future<String> save(ProfileWrapper entity, String tenantId);
 
+  /**
+   * Deletes ProfileWrapper entity from database by id
+   * @param id -  profile wrapper id
+   * @param tenantId - tenant id
+   * @return future with if delete = true, if not - false
+   */
   Future<Boolean> deleteById(String id, String tenantId);
 }
