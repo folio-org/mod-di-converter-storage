@@ -72,6 +72,35 @@ public class ProfileWrapperDaoTest extends AbstractUnitTest {
     });
   }
 
+  @Test
+  public void shouldDeleteNewlyCreatedProfileWrapper(TestContext context) {
+    Async async = context.async();
+    // given
+    String actionProfileId = UUID.randomUUID().toString();
+    ActionProfile actionProfile = new ActionProfile().withId(actionProfileId);
+
+    String wrapperId = UUID.randomUUID().toString();
+    ProfileWrapper profileWrapper1 = new ProfileWrapper().withProfileId(actionProfileId).withProfileType(ProfileType.ACTION_PROFILE).withId(wrapperId);
+    actionProfileDao.saveProfile(actionProfile, TENANT_ID).onComplete(savedActionProfileAr -> {
+      context.assertTrue(savedActionProfileAr.succeeded());
+      dao.save(profileWrapper1, TENANT_ID).onComplete(e -> {
+        context.assertTrue(e.succeeded());
+        context.assertNotNull(e.result());
+        dao.getProfileWrapperById(profileWrapper1.getId(), TENANT_ID).onComplete(r -> {
+          context.assertTrue(r.succeeded());
+          Optional<ProfileWrapper> result = r.result();
+          context.assertEquals(wrapperId, result.get().getId());
+          dao.deleteById(profileWrapper1.getId(), TENANT_ID).onComplete(t -> {
+            context.assertTrue(t.succeeded());
+            context.assertNotNull(t.result());
+            context.assertTrue(t.result());
+            async.complete();
+          });
+        });
+      });
+    });
+  }
+
   @Override
   public void afterTest(TestContext context) {
     Async async = context.async();
