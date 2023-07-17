@@ -1,5 +1,6 @@
 ## 2023-XX-XX 2.1.0-SNAPSHOT
 * [MODDICONV-300](https://issues.folio.org/browse/MODDICONV-300) Match and action profiles cannot be re-used in an import job profile - short term fix
+* [MODDICONV-310](https://issues.folio.org/browse/MODDICONV-310) Add wrappers around profiles to build associations.
 
 ## 2022-02-14 v2.0.0
 * [MODDICONV-259](https://issues.folio.org/browse/MODDICONV-259) Rename mod-data-import-converter-storage module to mod-di-converter-storage
