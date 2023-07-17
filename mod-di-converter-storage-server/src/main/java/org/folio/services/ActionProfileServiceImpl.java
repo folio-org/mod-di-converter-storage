@@ -41,7 +41,7 @@ public class ActionProfileServiceImpl extends AbstractProfileService<ActionProfi
   }
 
   @Override
-  protected String getProfileName(ActionProfile profile) {
+  public String getProfileName(ActionProfile profile) {
     return profile.getName();
   }
 

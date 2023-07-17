@@ -262,7 +262,7 @@ public class JobProfileTest extends AbstractRestVerticleTest {
       .post(JOB_PROFILES_PATH)
       .then().log().all()
       .statusCode(HttpStatus.SC_UNPROCESSABLE_ENTITY)
-      .body("errors[0].message", is("jobProfile.duplication.invalid"));
+      .body("errors[0].message", is("Job profile 'Bla' already exists"));
   }
 
   @Test
@@ -292,7 +292,7 @@ public class JobProfileTest extends AbstractRestVerticleTest {
       .post(JOB_PROFILES_PATH)
       .then().log().all()
       .statusCode(HttpStatus.SC_UNPROCESSABLE_ENTITY)
-      .body("errors[0].message", is("jobProfile.duplication.id"));
+      .body("errors[0].message", is("Job profile with id 'GOA' already exists"));
   }
 
   @Test
@@ -726,8 +726,8 @@ public class JobProfileTest extends AbstractRestVerticleTest {
       .post(JOB_PROFILES_PATH)
       .then()
       .statusCode(HttpStatus.SC_UNPROCESSABLE_ENTITY)
-      .body("errors[0].message", is("jobProfile.child.notEmpty"))
-      .body("errors[1].message", is("jobProfile.parent.notEmpty"));
+      .body("errors[0].message", is("Job profile read-only 'child' field should be empty"))
+      .body("errors[1].message", is("Job profile read-only 'parent' field should be empty"));
   }
 
   @Test
@@ -747,8 +747,8 @@ public class JobProfileTest extends AbstractRestVerticleTest {
       .put(JOB_PROFILES_PATH + "/" + jobProfile.getProfile().getId())
       .then()
       .statusCode(HttpStatus.SC_UNPROCESSABLE_ENTITY)
-      .body("errors[0].message", is("jobProfile.child.notEmpty"))
-      .body("errors[1].message", is("jobProfile.parent.notEmpty"));
+      .body("errors[0].message", is("Job profile read-only 'child' field should be empty"))
+      .body("errors[1].message", is("Job profile read-only 'parent' field should be empty"));
   }
 
 

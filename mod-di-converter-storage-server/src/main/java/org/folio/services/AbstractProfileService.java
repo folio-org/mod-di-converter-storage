@@ -217,7 +217,7 @@ public abstract class AbstractProfileService<T, S, D> implements ProfileService<
    * @param profile - profile entity
    * @return - profile name
    */
-  protected abstract String getProfileName(T profile);
+  public abstract String getProfileName(T profile);
 
   /**
    * Returns id of specified profile

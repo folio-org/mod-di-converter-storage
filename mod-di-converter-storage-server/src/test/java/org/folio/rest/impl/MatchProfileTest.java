@@ -302,7 +302,7 @@ public class MatchProfileTest extends AbstractRestVerticleTest {
       .post(MATCH_PROFILES_PATH)
       .then()
       .statusCode(HttpStatus.SC_UNPROCESSABLE_ENTITY)
-      .body("errors[0].message", is("matchProfile.duplication.id"));
+      .body("errors[0].message", is("Match profile with id 'GOA' already exists"));
   }
 
   @Test
@@ -728,8 +728,8 @@ public class MatchProfileTest extends AbstractRestVerticleTest {
       .post(MATCH_PROFILES_PATH)
       .then()
       .statusCode(HttpStatus.SC_UNPROCESSABLE_ENTITY)
-      .body("errors[0].message", is("matchProfile.child.notEmpty"))
-      .body("errors[1].message", is("matchProfile.parent.notEmpty"));
+      .body("errors[0].message", is("Match profile read-only 'child' field should be empty"))
+      .body("errors[1].message", is("Match profile read-only 'parent' field should be empty"));
   }
 
   @Test
@@ -749,8 +749,8 @@ public class MatchProfileTest extends AbstractRestVerticleTest {
       .put(MATCH_PROFILES_PATH + "/" + matchProfile.getProfile().getId())
       .then()
       .statusCode(HttpStatus.SC_UNPROCESSABLE_ENTITY)
-      .body("errors[0].message", is("matchProfile.child.notEmpty"))
-      .body("errors[1].message", is("matchProfile.parent.notEmpty"));
+      .body("errors[0].message", is("Match profile read-only 'child' field should be empty"))
+      .body("errors[1].message", is("Match profile read-only 'parent' field should be empty"));
   }
 
   private List<String> createProfiles() {

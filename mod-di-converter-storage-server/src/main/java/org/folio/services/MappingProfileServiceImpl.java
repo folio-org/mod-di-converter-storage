@@ -51,7 +51,7 @@ public class MappingProfileServiceImpl extends AbstractProfileService<MappingPro
   }
 
   @Override
-  protected String getProfileName(MappingProfile profile) {
+  public String getProfileName(MappingProfile profile) {
     return profile.getName();
   }
 

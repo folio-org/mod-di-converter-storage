@@ -7,7 +7,6 @@ import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
 import java.util.LinkedList;
-import java.util.Map;
 import org.apache.http.HttpStatus;
 import org.folio.rest.jaxrs.model.ActionProfile;
 import org.folio.rest.jaxrs.model.ActionProfileUpdateDto;
@@ -24,11 +23,9 @@ import org.folio.rest.persist.PostgresClient;
 import org.folio.services.util.EntityTypes;
 import org.junit.Assert;
 import org.junit.Test;
-import org.junit.jupiter.api.Assertions;
 import org.junit.runner.RunWith;
 
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -47,8 +44,6 @@ import static org.hamcrest.Matchers.empty;
 import static org.hamcrest.Matchers.everyItem;
 import static org.hamcrest.Matchers.hasEntry;
 import static org.hamcrest.Matchers.hasItem;
-import static org.hamcrest.Matchers.hasItemInArray;
-import static org.hamcrest.Matchers.hasProperty;
 import static org.hamcrest.Matchers.is;
 import static org.junit.Assert.assertEquals;
 
@@ -265,7 +260,7 @@ public class ActionProfileTest extends AbstractRestVerticleTest {
       .post(ACTION_PROFILES_PATH)
       .then()
       .statusCode(HttpStatus.SC_UNPROCESSABLE_ENTITY)
-      .body("errors[0].message", is("actionProfile.duplication.id"));
+      .body("errors[0].message", is("Action profile with id 'GOA' already exists"));
   }
 
   @Test
@@ -753,8 +748,8 @@ public class ActionProfileTest extends AbstractRestVerticleTest {
       .post(ACTION_PROFILES_PATH)
       .then()
       .statusCode(HttpStatus.SC_UNPROCESSABLE_ENTITY)
-      .body("errors[0].message", is("actionProfile.child.notEmpty"))
-      .body("errors[1].message", is("actionProfile.parent.notEmpty"));
+      .body("errors[0].message", is("Action profile read-only 'child' field should be empty"))
+      .body("errors[1].message", is("Action profile read-only 'parent' field should be empty"));
   }
 
   @Test
@@ -773,8 +768,8 @@ public class ActionProfileTest extends AbstractRestVerticleTest {
       .put(ACTION_PROFILES_PATH + "/" + actionProfileUpdateDto.getProfile().getId())
       .then()
       .statusCode(HttpStatus.SC_UNPROCESSABLE_ENTITY)
-      .body("errors[0].message", is("actionProfile.child.notEmpty"))
-      .body("errors[1].message", is("actionProfile.parent.notEmpty"));
+      .body("errors[0].message", is("Action profile read-only 'child' field should be empty"))
+      .body("errors[1].message", is("Action profile read-only 'parent' field should be empty"));
   }
 
   private void testCreateUpdateActionProfileNotOverridingDefaults(Boolean incomingRemove9SubfieldFlag,
