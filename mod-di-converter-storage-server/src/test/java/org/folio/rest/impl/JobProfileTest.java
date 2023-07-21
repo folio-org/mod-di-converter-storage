@@ -235,22 +235,27 @@ public class JobProfileTest extends AbstractRestVerticleTest {
 
   @Test
   public void shouldCreateProfileOnPost() {
+    JobProfileUpdateDto jobProfile = new JobProfileUpdateDto()
+      .withProfile(new JobProfile().withName("Bla")
+        .withTags(new Tags().withTagList(Arrays.asList("lorem", "ipsum", "dolor")))
+        .withDataType(MARC));
+
     RestAssured.given()
       .spec(spec)
-      .body(jobProfile_1)
+      .body(jobProfile)
       .when()
       .post(JOB_PROFILES_PATH)
       .then().log().all()
       .statusCode(HttpStatus.SC_CREATED)
-      .body("profile.name", is(jobProfile_1.getProfile().getName()))
-      .body("profile.tags.tagList", is(jobProfile_1.getProfile().getTags().getTagList()))
+      .body("profile.name", is(jobProfile.getProfile().getName()))
+      .body("profile.tags.tagList", is(jobProfile.getProfile().getTags().getTagList()))
       .body("profile.userInfo.lastName", is("Doe"))
       .body("profile.userInfo.firstName", is("Jane"))
       .body("profile.userInfo.userName", is("@janedoe"))
-      .body("profile.dataType", is(jobProfile_1.getProfile().getDataType().value()));
+      .body("profile.dataType", is(jobProfile.getProfile().getDataType().value()));
 
     RestAssured.given().spec(spec)
-      .body(jobProfile_1)
+      .body(jobProfile)
       .when()
       .post(JOB_PROFILES_PATH)
       .then().log().all()
