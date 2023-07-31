@@ -255,7 +255,7 @@ public class JobProfileTest extends AbstractRestVerticleTest {
       .post(JOB_PROFILES_PATH)
       .then().log().all()
       .statusCode(HttpStatus.SC_UNPROCESSABLE_ENTITY)
-      .body("errors[0].message", is("Job profile 'Bla' already exists"));
+      .body("errors[0].message", is("Job profile 'tree2' already exists"));
   }
 
   @Test
