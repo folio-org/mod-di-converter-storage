@@ -1,3 +1,7 @@
+## 2023-07-31 v2.0.5
+* [MODDICONV-302](https://issues.folio.org/browse/MODDICONV-302) Disallow creating profiles with mirroring associations
+* [MODDICONV-323](https://issues.folio.org/browse/MODDICONV-323) Change profile validation messages which are represented in code format
+
 ## 2023-06-27 v2.0.4
 * [MODDICONV-317](https://issues.folio.org/browse/MODDICONV-317) Match and action profiles cannot be re-used in an import job profile (MODDICONV-300)
 
