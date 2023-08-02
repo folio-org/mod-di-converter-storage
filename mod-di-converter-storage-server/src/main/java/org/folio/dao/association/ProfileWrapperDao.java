@@ -35,4 +35,11 @@ public interface ProfileWrapperDao {
    * @return future with if delete = true, if not - false
    */
   Future<Boolean> deleteById(String id, String tenantId);
+
+  /**
+   * Check if profile_wrapper table is empty
+   * @param tenantId - tenant id
+   * @return future with if delete = true, if not - false
+   */
+  Future<Boolean> checkIfDataInTableExists(String tenantId);
 }

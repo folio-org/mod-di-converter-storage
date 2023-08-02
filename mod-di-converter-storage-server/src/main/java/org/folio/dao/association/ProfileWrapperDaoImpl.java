@@ -29,6 +29,8 @@ public class ProfileWrapperDaoImpl implements ProfileWrapperDao {
   private static final String TABLE_NAME = "profile_wrappers";
   private static final String INSERT_QUERY = "INSERT INTO %s.%s (id, profile_type, %s) VALUES ($1, $2, $3)";
 
+  private static final String SELECT_ON_EMPTY_TABLE_QUERY = "SELECT EXISTS (SELECT * FROM %s.%s LIMIT 1)";
+
   private static final String SELECT_QUERY = "SELECT * FROM %s.%s WHERE id = $1";
 
   private static final Map<String, String> profileTypeToColumn;
@@ -76,9 +78,24 @@ public class ProfileWrapperDaoImpl implements ProfileWrapperDao {
     return promise.future().map(updateResult -> updateResult.rowCount() == 1);
   }
 
+  @Override
+  public Future<Boolean> checkIfDataInTableExists(String tenantId) {
+    Promise<RowSet<Row>> promise = Promise.promise();
+    String query = format(SELECT_ON_EMPTY_TABLE_QUERY, convertToPsqlStandard(tenantId), TABLE_NAME);
+
+    pgClientFactory.createInstance(tenantId).execute(query, promise);
+    return promise.future().map(this::mapResultSetIfExists);
+
+  }
+
   private Optional<ProfileWrapper> mapResultSetToOptionalProfileWrapper(RowSet<Row> resultSet) {
     RowIterator<Row> iterator = resultSet.iterator();
     return iterator.hasNext() ? Optional.of(mapRowToProfileWrapper(iterator.next())) : Optional.empty();
+  }
+
+  private Boolean mapResultSetIfExists(RowSet<Row> resultSet) {
+    RowIterator<Row> iterator = resultSet.iterator();
+    return iterator.hasNext() ? iterator.next().getBoolean("exists") : false;
   }
 
   private ProfileWrapper mapRowToProfileWrapper(Row row) {
