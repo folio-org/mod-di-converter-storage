@@ -65,7 +65,7 @@ public class ProfileMigrationServiceImpl implements ProfileMigrationService {
       .compose(e -> {
         if (!e) {
           return runScript(tenantId, REVERT_VIEW)
-            .compose(x -> jobProfileDao.getProfiles(false, false, "cql.allRecords=1   ", 0, 10000, tenantId))
+            .compose(x -> jobProfileDao.getProfiles(true, true, "cql.allRecords=1   ", 0, 10000, tenantId))
             .compose(f -> {
               List<Future<List<ProfileSnapshotItem>>> snapshotList = new ArrayList<>();
               for (JobProfile jobProfile : f.getJobProfiles()) {
