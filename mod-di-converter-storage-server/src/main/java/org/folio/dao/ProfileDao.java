@@ -91,4 +91,11 @@ public interface ProfileDao<T, S> {
    * @return future with true if succeeded
    */
   Future<Boolean> markProfileAsDeleted(String profileId, String tenantId);
+
+  /**
+   * Retrieve total profile's number
+   * @param tenantId - tenant id
+   * @return future with number of profiles in the table
+   */
+  Future<Integer> getTotalProfilesNumber(String tenantId);
 }

@@ -65,7 +65,8 @@ public class ProfileMigrationServiceImpl implements ProfileMigrationService {
       .compose(e -> {
         if (!e) {
           return runScript(tenantId, REVERT_VIEW)
-            .compose(x -> jobProfileDao.getProfiles(true, true, "cql.allRecords=1   ", 0, 10000, tenantId))
+            .compose(y -> jobProfileDao.getTotalProfilesNumber(tenantId))
+            .compose(x -> jobProfileDao.getProfiles(true, true, "cql.allRecords=1   ", 0, x, tenantId))
             .compose(f -> {
               List<Future<List<ProfileSnapshotItem>>> snapshotList = new ArrayList<>();
               for (JobProfile jobProfile : f.getJobProfiles()) {
@@ -92,7 +93,11 @@ public class ProfileMigrationServiceImpl implements ProfileMigrationService {
           wrapFuture.add(commonProfileAssociationService.wrapAssociationProfiles(associations, new ArrayList<>(), new HashMap<>(), tenantId));
         }
         GenericCompositeFuture.all(wrapFuture).onComplete(r -> {
-          promise.complete();
+          if(r.succeeded()) {
+            promise.complete();
+          } else {
+            promise.fail(r.cause());
+          }
         });
       } else {
         promise.fail(format("Fail while migrating: %s ", ar.cause()));
