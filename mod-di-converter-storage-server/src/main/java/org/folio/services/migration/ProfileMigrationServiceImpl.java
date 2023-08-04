@@ -64,6 +64,7 @@ public class ProfileMigrationServiceImpl implements ProfileMigrationService {
     return profileWrapperDao.checkIfDataInTableExists(tenantId)
       .compose(e -> {
         if (!e) {
+          LOGGER.info("Profile migration started...");
           return runScript(tenantId, REVERT_VIEW)
             .compose(y -> jobProfileDao.getTotalProfilesNumber(tenantId))
             .compose(x -> jobProfileDao.getProfiles(true, true, "cql.allRecords=1   ", 0, x, tenantId))
@@ -77,6 +78,7 @@ public class ProfileMigrationServiceImpl implements ProfileMigrationService {
             .compose(t -> runScript(tenantId, UPDATE_SCHEMA_FOR_MIGRATION))
             .compose(r -> runScript(tenantId, UPDATE_WRAPPERS_INSIDE_ASSOCIATIONS));
         } else {
+          LOGGER.info("Migration will not execute. profile_wrappers table is NOT empty already.");
           return Future.succeededFuture(true);
         }
       });
@@ -134,7 +136,7 @@ public class ProfileMigrationServiceImpl implements ProfileMigrationService {
         promise.complete();
       })
       .onFailure(r -> {
-        LOGGER.info("Fail while executing {}", sqlPath);
+        LOGGER.warn("Fail while executing {}", sqlPath);
         promise.fail(format("Fail while executing %s", sqlPath));
       });
     return promise.future();
