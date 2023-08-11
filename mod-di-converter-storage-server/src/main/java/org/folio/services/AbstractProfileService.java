@@ -15,6 +15,8 @@ import org.folio.rest.impl.util.RestUtil;
 import org.folio.rest.jaxrs.model.EntityTypeCollection;
 import org.folio.rest.jaxrs.model.ProfileAssociation;
 import org.folio.rest.jaxrs.model.ProfileSnapshotWrapper;
+import org.folio.rest.jaxrs.model.ProfileType;
+import org.folio.rest.jaxrs.model.ProfileWrapper;
 import org.folio.rest.jaxrs.model.UserInfo;
 import org.folio.services.association.CommonProfileAssociationService;
 import org.folio.services.association.ProfileAssociationService;
@@ -22,6 +24,7 @@ import org.folio.services.exception.ConflictException;
 import org.folio.services.util.EntityTypes;
 import org.springframework.beans.factory.annotation.Autowired;
 
+import javax.ws.rs.NotFoundException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -29,6 +32,8 @@ import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+
+import static java.lang.String.format;
 
 /**
  * Generic implementation of the {@link ProfileService}
@@ -122,17 +127,40 @@ public abstract class AbstractProfileService<T, S, D> implements ProfileService<
       return Future.succeededFuture(true);
     }
     Promise<Boolean> result = Promise.promise();
-    associationService.wrapAssociationProfiles(profileAssociations, new ArrayList<>(), new HashMap<>(), tenantId)
-      .compose(e -> profileAssociationService.save(e, tenantId))
-      .onComplete(ar -> {
-        if (ar.succeeded()) {
-          result.complete(true);
-        } else {
-          result.fail(ar.cause());
-        }
-      });
+    List<Future<List<ProfileWrapper>>> futures = new ArrayList<>();
+    fillNeededProfilesIfNeeded(profileAssociations, tenantId, futures);
 
+    GenericCompositeFuture.all(futures).onSuccess(r -> {
+      associationService.wrapAssociationProfiles(profileAssociations, new ArrayList<>(), new HashMap<>(), tenantId)
+        .compose(e -> profileAssociationService.save(e, tenantId))
+        .onComplete(ar -> {
+          if (ar.succeeded()) {
+            result.complete(true);
+          } else {
+            result.fail(ar.cause());
+          }
+        });
+    }).onFailure(result::fail);
     return result.future();
+  }
+
+  private void fillNeededProfilesIfNeeded(List<ProfileAssociation> profileAssociations, String tenantId, List<Future<List<ProfileWrapper>>> futures) {
+    for (int i = 0; i < profileAssociations.size(); i++) {
+      if (profileAssociations.get(i).getDetailProfileType() == ProfileType.ACTION_PROFILE &&
+        (profileAssociations.size() == i + 1 || profileAssociations.get(i + 1).getMasterProfileType() != ProfileType.ACTION_PROFILE)) {
+        ProfileAssociation tmpActionProfileAssoc = profileAssociations.get(i);
+        String actionProfileId = profileAssociations.get(i).getDetailProfileId();
+        futures.add(profileWrapperDao.getWrapperByProfileId(actionProfileId, ProfileType.ACTION_PROFILE, tenantId)
+          .compose(o -> {
+            if (o.size() == 1) {
+              tmpActionProfileAssoc.setDetailWrapperId(o.get(0).getId());
+              return Future.succeededFuture();
+            } else {
+              return Future.failedFuture(new NotFoundException(format("Action Profile Not found for action with id '%s' ", actionProfileId)));
+            }
+          }));
+      }
+    }
   }
 
   @Override

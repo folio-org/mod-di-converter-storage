@@ -15,7 +15,9 @@ import org.folio.rest.jaxrs.model.ProfileWrapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Repository;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
@@ -32,6 +34,8 @@ public class ProfileWrapperDaoImpl implements ProfileWrapperDao {
   private static final String SELECT_ON_EMPTY_TABLE_QUERY = "SELECT EXISTS (SELECT * FROM %s.%s LIMIT 1)";
 
   private static final String SELECT_QUERY = "SELECT * FROM %s.%s WHERE id = $1";
+
+  private static final String SELECT_QUERY_ON_GETTING_PROFILE_WRAPPER = "SELECT * FROM %s.%s WHERE %s = $1";
 
   private static final Map<String, String> profileTypeToColumn;
 
@@ -88,6 +92,20 @@ public class ProfileWrapperDaoImpl implements ProfileWrapperDao {
 
   }
 
+  @Override
+  public Future<List<ProfileWrapper>> getWrapperByProfileId(String profileId, ProfileType profileType, String tenantId) {
+    Promise<RowSet<Row>> promise = Promise.promise();
+    LOGGER.trace("get:: Getting profile wrapper, tenant id {}", tenantId);
+    if (profileId == null) {
+      return Future.failedFuture("get:: Getting profile wrapper - profile id is empty");
+    }
+    String query = format(SELECT_QUERY_ON_GETTING_PROFILE_WRAPPER, convertToPsqlStandard(tenantId), TABLE_NAME, profileTypeToColumn.get(profileType.value()));
+
+    Tuple queryParams = Tuple.of(profileId);
+    pgClientFactory.createInstance(tenantId).execute(query, queryParams, promise);
+    return promise.future().map(this::mapResultSetToListProfileWrappers);
+  }
+
   private Optional<ProfileWrapper> mapResultSetToOptionalProfileWrapper(RowSet<Row> resultSet) {
     RowIterator<Row> iterator = resultSet.iterator();
     return iterator.hasNext() ? Optional.of(mapRowToProfileWrapper(iterator.next())) : Optional.empty();
@@ -116,5 +134,13 @@ public class ProfileWrapperDaoImpl implements ProfileWrapperDao {
       .withId(row.getValue("id").toString())
       .withProfileId(profileId)
       .withProfileType(ProfileType.fromValue(row.getValue("profile_type").toString()));
+  }
+
+  private List<ProfileWrapper> mapResultSetToListProfileWrappers(RowSet<Row> resultSet) {
+    List<ProfileWrapper> profileWrappers = new ArrayList<ProfileWrapper>();
+    for (Row row : resultSet) {
+      profileWrappers.add(mapRowToProfileWrapper(row));
+    }
+    return profileWrappers;
   }
 }
