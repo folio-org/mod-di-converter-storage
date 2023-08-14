@@ -91,9 +91,6 @@ public class JobProfileSnapshotTest extends AbstractRestVerticleTest {
   public void setUp(TestContext testContext) {
     super.setUp(testContext);
 
-
-
-
     mappingProfile = postProfile(testContext, mappingProfile, MAPPING_PROFILES_PATH).body().as(MappingProfileUpdateDto.class);
     actionProfile.withAddedRelations(Collections.singletonList(new ProfileAssociation()
       .withMasterProfileId(actionProfile.getId())
@@ -135,12 +132,6 @@ public class JobProfileSnapshotTest extends AbstractRestVerticleTest {
         .withOrder(0)));
 
     jobProfile = postProfile(testContext, jobProfile, JOB_PROFILES_PATH).body().as(JobProfileUpdateDto.class);
-
-
-/*    updateProfile(testContext, jobProfile, jobProfile.getId(), JOB_PROFILES_PATH);
-    updateProfile(testContext, matchProfile, matchProfile.getId(), MATCH_PROFILES_PATH);
-    updateProfile(testContext, actionProfile, actionProfile.getId(), ACTION_PROFILES_PATH);
-    updateProfile(testContext, mappingProfile, mappingProfile.getId(), MAPPING_PROFILES_PATH);*/
   }
 
   @Test
