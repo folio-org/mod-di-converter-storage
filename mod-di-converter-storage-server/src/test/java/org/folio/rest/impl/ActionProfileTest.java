@@ -61,6 +61,7 @@ public class ActionProfileTest extends AbstractRestVerticleTest {
   static final String MAPPING_PROFILES_TABLE_NAME = "mapping_profiles";
   static final String MATCH_PROFILES_TABLE_NAME = "match_profiles";
   private static final String SNAPSHOTS_TABLE_NAME = "profile_snapshots";
+  private static final String PROFILE_WRAPPERS_TABLE_NAME = "profile_wrappers";
   private static final String MATCH_TO_ACTION_PROFILES_TABLE_NAME = "match_to_action_profiles";
   private static final String MATCH_TO_MATCH_PROFILES_TABLE_NAME = "match_to_match_profiles";
   private static final String ACTION_PROFILE_UUID = "16449d21-ad7c-4f69-b31e-a521fe4ae893";
@@ -830,6 +831,7 @@ public class ActionProfileTest extends AbstractRestVerticleTest {
   public void clearTables(TestContext context) {
     Async async = context.async();
     PostgresClient pgClient = PostgresClient.getInstance(vertx, TENANT_ID);
+    pgClient.delete(PROFILE_WRAPPERS_TABLE_NAME, new Criterion(), event1 ->
       pgClient.delete(SNAPSHOTS_TABLE_NAME, new Criterion(), event2 ->
         pgClient.delete(JOB_TO_ACTION_PROFILES_TABLE_NAME, new Criterion(), event3 ->
           pgClient.delete(JOB_TO_MATCH_PROFILES_TABLE_NAME, new Criterion(), event4 ->
@@ -846,6 +848,6 @@ public class ActionProfileTest extends AbstractRestVerticleTest {
                           context.fail(event12.cause());
                         }
                         async.complete();
-                      }))))))))))));
+                      })))))))))))));
   }
 }

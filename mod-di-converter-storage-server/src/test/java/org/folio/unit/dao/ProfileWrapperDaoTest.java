@@ -32,6 +32,8 @@ public class ProfileWrapperDaoTest extends AbstractUnitTest {
   private static final String JOB_TO_ACTION_PROFILES_TABLE_NAME = "job_to_action_profiles";
   private static final String MAPPING_PROFILES_TABLE_NAME = "mapping_profiles";
   private static final String MATCH_PROFILES_TABLE_NAME = "match_profiles";
+  private static final String PROFILE_WRAPPERS_TABLE_NAME = "profile_wrappers";
+
   @Autowired
   private ProfileWrapperDao dao;
 
@@ -105,7 +107,8 @@ public class ProfileWrapperDaoTest extends AbstractUnitTest {
   public void afterTest(TestContext context) {
     Async async = context.async();
     PostgresClient pgClient = PostgresClient.getInstance(vertx, TENANT_ID);
-    pgClient.delete(SNAPSHOTS_TABLE_NAME, new Criterion(), event2 ->
+    pgClient.delete(PROFILE_WRAPPERS_TABLE_NAME, new Criterion(), event1 ->
+      pgClient.delete(SNAPSHOTS_TABLE_NAME, new Criterion(), event2 ->
       pgClient.delete(JOB_TO_ACTION_PROFILES_TABLE_NAME, new Criterion(), event3 ->
         pgClient.delete(JOB_TO_MATCH_PROFILES_TABLE_NAME, new Criterion(), event4 ->
           pgClient.delete(ACTION_TO_MAPPING_PROFILES_TABLE_NAME, new Criterion(), event5 ->
@@ -118,6 +121,6 @@ public class ProfileWrapperDaoTest extends AbstractUnitTest {
                         context.fail(event10.cause());
                       }
                       async.complete();
-                    })))))))));
+                    }))))))))));
   }
 }
