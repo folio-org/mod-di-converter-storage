@@ -278,6 +278,17 @@ public class JobProfileSnapshotTest extends AbstractRestVerticleTest {
 
     actionProfile2 = postProfile(testContext, actionProfile2, ACTION_PROFILES_PATH).body().as(ActionProfileUpdateDto.class);
 
+    actionProfile2.setAddedRelations(Arrays.asList(
+      new ProfileAssociation()
+        .withMasterProfileId(actionProfile2.getId())
+        .withDetailProfileId(mappingProfile.getId())
+        .withMasterProfileType(ProfileType.ACTION_PROFILE)
+        .withDetailProfileType(ProfileType.MAPPING_PROFILE)
+        .withOrder(0)
+    ));
+
+    updateProfile(testContext, actionProfile2,  actionProfile.getId(), ACTION_PROFILES_PATH);
+
     JobProfileUpdateDto jobProfile2 = new JobProfileUpdateDto()
       .withProfile(new JobProfile().withName("testJobProfile2").withDataType(MARC).withDescription("test-description"))
       .withAddedRelations(Arrays.asList(
@@ -318,7 +329,7 @@ public class JobProfileSnapshotTest extends AbstractRestVerticleTest {
     ProfileSnapshotWrapper actionProfileSnapshot = matchProfileSnapshot.getChildSnapshotWrappers().get(0);
     ActionProfile actualActionProfile = DatabindCodec.mapper().convertValue(actionProfileSnapshot.getContent(), ActionProfile.class);
     Assert.assertEquals(actionProfile2.getId(), actualActionProfile.getId());
-    Assert.assertEquals(0, actionProfileSnapshot.getChildSnapshotWrappers().size());
+    Assert.assertEquals(1, actionProfileSnapshot.getChildSnapshotWrappers().size());
     async.complete();
   }
 

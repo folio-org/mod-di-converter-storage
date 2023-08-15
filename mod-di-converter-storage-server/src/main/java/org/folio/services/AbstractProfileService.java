@@ -156,7 +156,7 @@ public abstract class AbstractProfileService<T, S, D> implements ProfileService<
               tmpActionProfileAssoc.setDetailWrapperId(o.get(0).getId());
               return Future.succeededFuture();
             } else {
-              return Future.failedFuture(new NotFoundException(format("Action Profile Not found for action with id '%s' ", actionProfileId)));
+              return Future.failedFuture(new NotFoundException(format("Mapping Profile is NOT exists for this Action Profile with id '%s' ", actionProfileId)));
             }
           }));
       }
