@@ -1,8 +1,10 @@
 package org.folio.dao.association;
 
 import io.vertx.core.Future;
+import org.folio.rest.jaxrs.model.ProfileType;
 import org.folio.rest.jaxrs.model.ProfileWrapper;
 
+import java.util.List;
 import java.util.Optional;
 
 /**
@@ -42,4 +44,11 @@ public interface ProfileWrapperDao {
    * @return future with if delete = true, if not - false
    */
   Future<Boolean> checkIfDataInTableExists(String tenantId);
+
+  /**
+   * Get wrapper by specific id based on profile type
+   * @param tenantId - tenant id
+   * @return future with founded ProfileWrapper
+   */
+  Future<List<ProfileWrapper>> getWrapperByProfileId(String profileId, ProfileType profileType, String tenantId);
 }
