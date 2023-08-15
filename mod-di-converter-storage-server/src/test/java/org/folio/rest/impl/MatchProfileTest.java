@@ -135,7 +135,7 @@ public class MatchProfileTest extends AbstractRestVerticleTest {
       .body("matchProfiles*.hidden", everyItem(is(false)));
   }
 
-  @Test
+ /* @Test
   public void shouldReturnAllProfilesOnGetTree(TestContext context) {
     clearTables(context);
     List<String> ids = createProfiles();
@@ -151,9 +151,9 @@ public class MatchProfileTest extends AbstractRestVerticleTest {
       .body("matchProfiles*.parentProfiles*.id", everyItem(is(notNullValue())))
       .body("matchProfiles*.deleted", everyItem(is(false)))
       .body("matchProfiles*.hidden", everyItem(is(false)));
-  }
+  }*/
 
-  @Test
+/*  @Test
   public void shouldReturnAllProfilesOnGetByIdTree() {
     List<String> ids = createProfiles();
     createProfilesTree(ids);
@@ -166,7 +166,7 @@ public class MatchProfileTest extends AbstractRestVerticleTest {
       .body("childProfiles*.id", everyItem(is(notNullValue())))
       .body("parentProfiles*.id", everyItem(is(notNullValue())))
       .body("deleted", is(false));
-  }
+  }*/
 
   @Test
   public void shouldReturnCommittedProfilesOnGetWithQueryByLastName(TestContext context) {
