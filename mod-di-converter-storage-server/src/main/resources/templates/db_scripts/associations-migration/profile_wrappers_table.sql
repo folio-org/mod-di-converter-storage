@@ -1,6 +1,11 @@
 DROP TRIGGER set_id_in_jsonb
 ON ${myuniversity}_${mymodule}.profile_wrappers CASCADE;
 
+ALTER TABLE ${myuniversity}_${mymodule}.profile_wrappers DROP CONSTRAINT IF EXISTS profile_wrappers_action_profile_fk;
+ALTER TABLE ${myuniversity}_${mymodule}.profile_wrappers DROP CONSTRAINT IF EXISTS profile_wrappers_match_profile_fk;
+ALTER TABLE ${myuniversity}_${mymodule}.profile_wrappers DROP CONSTRAINT IF EXISTS profile_wrappers_mapping_profile_fk;
+ALTER TABLE ${myuniversity}_${mymodule}.profile_wrappers DROP CONSTRAINT IF EXISTS profile_wrappers_job_profile_fk;
+
 ALTER TABLE ${myuniversity}_${mymodule}.profile_wrappers
   DROP COLUMN IF EXISTS jsonb,
   ADD IF NOT EXISTS profile_type text NULL,
