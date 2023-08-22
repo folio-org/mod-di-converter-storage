@@ -13,7 +13,7 @@ $$BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-CREATE TRIGGER remove_related_wrappers_job_match
+CREATE TRIGGER OR REPLACE remove_related_wrappers_job_match
    AFTER DELETE ON ${myuniversity}_${mymodule}.job_to_match_profiles
    FOR EACH ROW
    EXECUTE PROCEDURE remove_related_wrappers_job_match();
@@ -30,7 +30,7 @@ $$BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-CREATE TRIGGER remove_related_wrappers_match_match
+CREATE TRIGGER OR REPLACE remove_related_wrappers_match_match
    AFTER DELETE ON ${myuniversity}_${mymodule}.match_to_match_profiles
    FOR EACH ROW
    EXECUTE PROCEDURE remove_related_wrappers_match_match();
@@ -56,7 +56,7 @@ $$BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-CREATE TRIGGER remove_related_wrappers_action_match
+CREATE TRIGGER OR REPLACE remove_related_wrappers_action_match
    AFTER DELETE ON ${myuniversity}_${mymodule}.action_to_match_profiles
    FOR EACH ROW
    EXECUTE PROCEDURE remove_related_wrappers_action_match();
@@ -73,7 +73,7 @@ $$BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-CREATE TRIGGER remove_related_wrappers_action_mapping
+CREATE TRIGGER OR REPLACE remove_related_wrappers_action_mapping
    AFTER DELETE ON ${myuniversity}_${mymodule}.action_to_mapping_profiles
    FOR EACH ROW
    EXECUTE PROCEDURE remove_related_wrappers_action_mapping();
