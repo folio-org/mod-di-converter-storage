@@ -2,7 +2,7 @@ DROP TRIGGER set_id_in_jsonb
 ON ${myuniversity}_${mymodule}.profile_wrappers CASCADE;
 
 ALTER TABLE ${myuniversity}_${mymodule}.profile_wrappers
-  DROP COLUMN jsonb,
+  DROP COLUMN IF EXISTS jsonb,
   ADD profile_type text NULL,
   ADD action_profile_id uuid NULL,
   ADD match_profile_id uuid NULL,
