@@ -40,6 +40,7 @@ import java.util.Arrays;
 import java.util.UUID;
 
 import static org.folio.rest.jaxrs.model.ActionProfile.Action.CREATE;
+import static org.folio.rest.jaxrs.model.ActionProfile.FolioRecord.INSTANCE;
 import static org.folio.rest.jaxrs.model.ActionProfile.FolioRecord.MARC_BIBLIOGRAPHIC;
 import static org.folio.rest.jaxrs.model.JobProfile.DataType.MARC;
 import static org.folio.rest.jaxrs.model.ProfileSnapshotWrapper.ContentType.ACTION_PROFILE;
@@ -562,15 +563,15 @@ public class CommonProfileAssociationTest extends AbstractRestVerticleTest {
       .body("profile.id", is(mappingProfileId));
 
     shouldReturnNotFoundOnPut(testContext, ACTION_PROFILE, MAPPING_PROFILE, actionProfileId, mappingProfileId, ProfileType.ACTION_PROFILE, ProfileType.MAPPING_PROFILE);
-    shouldReturnNotFoundOnPut(testContext, ACTION_PROFILE, MATCH_PROFILE, actionProfileId, firstMatchProfileId,ProfileType.ACTION_PROFILE, ProfileType.MATCH_PROFILE);
+    shouldReturnNotFoundOnPut(testContext, ACTION_PROFILE, MATCH_PROFILE, actionProfileId, firstMatchProfileId, ProfileType.ACTION_PROFILE, ProfileType.MATCH_PROFILE);
     shouldReturnNotFoundOnPut(testContext, JOB_PROFILE, ACTION_PROFILE, jobProfileId, actionProfileId, ProfileType.JOB_PROFILE, ProfileType.ACTION_PROFILE);
     shouldReturnNotFoundOnPut(testContext, JOB_PROFILE, MATCH_PROFILE, jobProfileId, firstMatchProfileId, ProfileType.JOB_PROFILE, ProfileType.MATCH_PROFILE);
     shouldReturnNotFoundOnPut(testContext, MATCH_PROFILE, ACTION_PROFILE, firstMatchProfileId, actionProfileId, ProfileType.MATCH_PROFILE, ProfileType.ACTION_PROFILE);
     shouldReturnNotFoundOnPut(testContext, MATCH_PROFILE, MATCH_PROFILE, firstMatchProfileId, secondMatchProfileId, ProfileType.MATCH_PROFILE, ProfileType.MATCH_PROFILE);
   }
 
-  public void   shouldReturnNotFoundOnPut(TestContext testContext, ContentType masterContentType, ContentType detailContentType, String masterId, String detailId,
-                                          ProfileType masterType, ProfileType detailType) {
+  public void shouldReturnNotFoundOnPut(TestContext testContext, ContentType masterContentType, ContentType detailContentType, String masterId, String detailId,
+                                        ProfileType masterType, ProfileType detailType) {
     Async async = testContext.async();
 
     ProfileAssociation profileAssociation = new ProfileAssociation()
@@ -1254,7 +1255,6 @@ public class CommonProfileAssociationTest extends AbstractRestVerticleTest {
     clearTables(testContext);
   }
 
-  @Ignore
   @Test
   public void shouldSaveNotOnlyUniqueAssociations(TestContext testContext) {
     Async async = testContext.async();
@@ -1265,6 +1265,8 @@ public class CommonProfileAssociationTest extends AbstractRestVerticleTest {
     String thirdSubMatchProfileId = "f14271b1-2f64-430c-b4f9-0e2ab30e1180";
     String firstActionProfileId = "fa45f3ec-9b83-11eb-a8b3-0242ac130003";
     String secondActionProfileId = "8aa0b850-9182-4005-8435-340b704b2a19";
+    String firstMappingProfileId = "fa45f3ec-9b83-11eb-a8b3-0242ac130004";
+    String secondMappingProfileId = "8aa0b850-9182-4005-8435-340b704b2a18";
 
     String jobProfileId = UUID.randomUUID().toString();
 
@@ -1301,7 +1303,7 @@ public class CommonProfileAssociationTest extends AbstractRestVerticleTest {
         .withAction(ActionProfile.Action.UPDATE)
         .withName("First Testing Action Profile")
         .withDeleted(false)
-        .withFolioRecord(MARC_BIBLIOGRAPHIC)
+        .withFolioRecord(INSTANCE)
         .withId(firstActionProfileId));
 
     ActionProfileUpdateDto secondActionProfile = new ActionProfileUpdateDto()
@@ -1309,8 +1311,24 @@ public class CommonProfileAssociationTest extends AbstractRestVerticleTest {
         .withAction(ActionProfile.Action.UPDATE)
         .withName("Second Testing Action Profile")
         .withDeleted(false)
-        .withFolioRecord(MARC_BIBLIOGRAPHIC)
+        .withFolioRecord(INSTANCE)
         .withId(secondActionProfileId));
+
+    MappingProfileUpdateDto firstMappingProfile = new MappingProfileUpdateDto()
+      .withProfile(new MappingProfile()
+        .withName("First Testing Mapping Profile")
+        .withDeleted(false)
+        .withId(firstMappingProfileId)
+        .withIncomingRecordType(EntityType.MARC_BIBLIOGRAPHIC)
+        .withExistingRecordType(EntityType.INSTANCE));
+
+    MappingProfileUpdateDto secondMappingProfile = new MappingProfileUpdateDto()
+      .withProfile(new MappingProfile()
+        .withName("Second Testing Mapping Profile")
+        .withDeleted(false)
+        .withId(secondMappingProfileId)
+        .withIncomingRecordType(EntityType.MARC_BIBLIOGRAPHIC)
+        .withExistingRecordType(EntityType.INSTANCE));
 
     postProfile(testContext, new MatchProfileWrapper(mainMatchProfile), MATCH_PROFILES_URL);
     postProfile(testContext, new MatchProfileWrapper(firstSubMatchProfile), MATCH_PROFILES_URL);
@@ -1319,6 +1337,9 @@ public class CommonProfileAssociationTest extends AbstractRestVerticleTest {
 
     postProfile(testContext, new ActionProfileWrapper(firstActionProfile), ACTION_PROFILES_URL);
     postProfile(testContext, new ActionProfileWrapper(secondActionProfile), ACTION_PROFILES_URL);
+
+    postProfile(testContext, new MappingProfileWrapper(firstMappingProfile), MAPPING_PROFILES_URL);
+    postProfile(testContext, new MappingProfileWrapper(secondMappingProfile), MAPPING_PROFILES_URL);
 
     JobProfileWrapper mainJobProfileWrapper = new JobProfileWrapper(new JobProfileUpdateDto()
       .withProfile(new JobProfile()
@@ -1406,7 +1427,21 @@ public class CommonProfileAssociationTest extends AbstractRestVerticleTest {
           .withMasterProfileType(ProfileType.MATCH_PROFILE)
           .withDetailProfileType(ProfileType.ACTION_PROFILE)
           .withTriggered(false)
-          .withReactTo(ReactToType.MATCH))));
+          .withReactTo(ReactToType.MATCH),
+        //10
+        new ProfileAssociation()
+          .withMasterProfileId(firstActionProfileId)
+          .withDetailProfileId(firstMappingProfileId)
+          .withMasterProfileType(ProfileType.ACTION_PROFILE)
+          .withDetailProfileType(ProfileType.MAPPING_PROFILE)
+          .withTriggered(false),
+        //11
+        new ProfileAssociation()
+          .withMasterProfileId(secondActionProfileId)
+          .withDetailProfileId(secondMappingProfileId)
+          .withMasterProfileType(ProfileType.ACTION_PROFILE)
+          .withDetailProfileType(ProfileType.MAPPING_PROFILE)
+          .withTriggered(false))));
     RestAssured.given()
       .spec(spec)
       .body(mainJobProfileWrapper.getProfile())

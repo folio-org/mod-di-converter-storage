@@ -82,17 +82,17 @@ public class ActionProfileTest extends AbstractRestVerticleTest {
     .withProfile(new ActionProfile().withName("Bla")
       .withTags(new Tags().withTagList(Arrays.asList("lorem", "ipsum", "dolor")))
       .withAction(CREATE)
-      .withFolioRecord(MARC_BIBLIOGRAPHIC));
+      .withFolioRecord(INSTANCE));
   static ActionProfileUpdateDto actionProfile_2 = new ActionProfileUpdateDto()
     .withProfile(new ActionProfile().withName("Boo")
       .withTags(new Tags().withTagList(Arrays.asList("lorem", "ipsum")))
       .withAction(CREATE)
-      .withFolioRecord(MARC_BIBLIOGRAPHIC));
+      .withFolioRecord(INSTANCE));
   static ActionProfileUpdateDto actionProfile_3 = new ActionProfileUpdateDto()
     .withProfile(new ActionProfile().withName("Foo")
       .withTags(new Tags().withTagList(singletonList("lorem")))
       .withAction(CREATE)
-      .withFolioRecord(MARC_BIBLIOGRAPHIC));
+      .withFolioRecord(INSTANCE));
   static ActionProfileUpdateDto actionProfile_4 = new ActionProfileUpdateDto()
     .withProfile(new ActionProfile().withId(ACTION_PROFILE_UUID).withName("OLA")
       .withTags(new Tags().withTagList(Arrays.asList("lorem", "ipsum", "dolor")))

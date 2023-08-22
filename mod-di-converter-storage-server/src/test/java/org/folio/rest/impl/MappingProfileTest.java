@@ -73,28 +73,28 @@ public class MappingProfileTest extends AbstractRestVerticleTest {
     "6a0ec1de-68eb-4833-bdbf-0741db25c314"
   );
 
-  private static MappingProfileUpdateDto mappingProfile_1 = new MappingProfileUpdateDto()
+  public static MappingProfileUpdateDto mappingProfile_1 = new MappingProfileUpdateDto()
     .withProfile(new MappingProfile().withName("Bla")
       .withTags(new Tags().withTagList(Arrays.asList("lorem", "ipsum", "dolor")))
       .withIncomingRecordType(EntityType.MARC_BIBLIOGRAPHIC)
       .withExistingRecordType(EntityType.INSTANCE));
-  private static MappingProfileUpdateDto mappingProfile_2 = new MappingProfileUpdateDto()
+  public static MappingProfileUpdateDto mappingProfile_2 = new MappingProfileUpdateDto()
     .withProfile(new MappingProfile().withName("Boo")
       .withTags(new Tags().withTagList(Arrays.asList("lorem", "ipsum")))
       .withIncomingRecordType(EntityType.MARC_BIBLIOGRAPHIC)
       .withExistingRecordType(EntityType.INSTANCE));
-  private static MappingProfileUpdateDto mappingProfile_3 = new MappingProfileUpdateDto()
+  public static MappingProfileUpdateDto mappingProfile_3 = new MappingProfileUpdateDto()
     .withProfile(new MappingProfile().withName("Foo")
       .withTags(new Tags().withTagList(Collections.singletonList("lorem")))
       .withIncomingRecordType(EntityType.MARC_BIBLIOGRAPHIC)
       .withExistingRecordType(EntityType.INSTANCE));
-  private static MappingProfileUpdateDto mappingProfile_4 = new MappingProfileUpdateDto()
+  public static MappingProfileUpdateDto mappingProfile_4 = new MappingProfileUpdateDto()
     .withProfile(new MappingProfile().withId(MAPPING_PROFILE_UUID).withName("OLA")
       .withTags(new Tags().withTagList(Arrays.asList("lorem", "ipsum")))
       .withIncomingRecordType(EntityType.MARC_BIBLIOGRAPHIC)
       .withExistingRecordType(EntityType.INSTANCE));
 
-  private static MappingProfileUpdateDto mappingProfile_5 = new MappingProfileUpdateDto()
+  public static MappingProfileUpdateDto mappingProfile_5 = new MappingProfileUpdateDto()
     .withProfile(new MappingProfile().withName("B'oom")
       .withTags(new Tags().withTagList(Arrays.asList("lorem", "ipsum", "dolor")))
       .withIncomingRecordType(EntityType.MARC_BIBLIOGRAPHIC)

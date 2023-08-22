@@ -1,5 +1,6 @@
 package org.folio.rest.impl;
 
+import com.google.common.collect.Lists;
 import io.restassured.RestAssured;
 import io.restassured.response.Response;
 import io.vertx.core.Future;
@@ -15,6 +16,7 @@ import org.folio.rest.jaxrs.model.ActionProfileUpdateDto;
 import org.folio.rest.jaxrs.model.EntityType;
 import org.folio.rest.jaxrs.model.Field;
 import org.folio.rest.jaxrs.model.JobProfileUpdateDto;
+import org.folio.rest.jaxrs.model.MappingProfileUpdateDto;
 import org.folio.rest.jaxrs.model.MatchDetail;
 import org.folio.rest.jaxrs.model.MatchExpression;
 import org.folio.rest.jaxrs.model.MatchProfile;
@@ -42,6 +44,10 @@ import static org.folio.rest.impl.ActionProfileTest.ACTION_PROFILES_PATH;
 import static org.folio.rest.impl.ActionProfileTest.actionProfile_1;
 import static org.folio.rest.impl.JobProfileTest.JOB_PROFILES_PATH;
 import static org.folio.rest.impl.JobProfileTest.jobProfile_1;
+import static org.folio.rest.impl.MappingProfileTest.MAPPING_PROFILES_PATH;
+import static org.folio.rest.impl.MappingProfileTest.mappingProfile_1;
+import static org.folio.rest.impl.MappingProfileTest.mappingProfile_2;
+import static org.folio.rest.impl.MappingProfileTest.mappingProfile_3;
 import static org.folio.rest.impl.association.CommonProfileAssociationTest.ACTION_PROFILES_TABLE;
 import static org.folio.rest.impl.association.CommonProfileAssociationTest.ACTION_TO_ACTION_PROFILES;
 import static org.folio.rest.impl.association.CommonProfileAssociationTest.ACTION_TO_MAPPING_PROFILES;
@@ -135,7 +141,7 @@ public class MatchProfileTest extends AbstractRestVerticleTest {
       .body("matchProfiles*.hidden", everyItem(is(false)));
   }
 
- /* @Test
+  @Test
   public void shouldReturnAllProfilesOnGetTree(TestContext context) {
     clearTables(context);
     List<String> ids = createProfiles();
@@ -151,9 +157,9 @@ public class MatchProfileTest extends AbstractRestVerticleTest {
       .body("matchProfiles*.parentProfiles*.id", everyItem(is(notNullValue())))
       .body("matchProfiles*.deleted", everyItem(is(false)))
       .body("matchProfiles*.hidden", everyItem(is(false)));
-  }*/
+  }
 
-/*  @Test
+  @Test
   public void shouldReturnAllProfilesOnGetByIdTree() {
     List<String> ids = createProfiles();
     createProfilesTree(ids);
@@ -166,7 +172,7 @@ public class MatchProfileTest extends AbstractRestVerticleTest {
       .body("childProfiles*.id", everyItem(is(notNullValue())))
       .body("parentProfiles*.id", everyItem(is(notNullValue())))
       .body("deleted", is(false));
-  }*/
+  }
 
   @Test
   public void shouldReturnCommittedProfilesOnGetWithQueryByLastName(TestContext context) {
@@ -772,9 +778,24 @@ public class MatchProfileTest extends AbstractRestVerticleTest {
     String nameForProfiles = "tree";
     List<JobProfileUpdateDto> jobProfiles = Arrays.asList(jobProfile_1, jobProfile_1, jobProfile_1);
     List<ActionProfileUpdateDto> actionProfiles = Arrays.asList(actionProfile_1, actionProfile_1, actionProfile_1);
+    List<MappingProfileUpdateDto> mappingProfiles = Arrays.asList(mappingProfile_1, mappingProfile_2, mappingProfile_3);
     List<JobProfileUpdateDto> created = new ArrayList<>();
+    List<MappingProfileUpdateDto> createdMappings = new ArrayList<>();
     List<ActionProfileUpdateDto> createdActions = new ArrayList<>();
     int i = 0;
+    i = 0;
+    for (MappingProfileUpdateDto profile : mappingProfiles) {
+      createdMappings.add(RestAssured.given()
+        .spec(spec)
+        .body(new MappingProfileUpdateDto()
+          .withProfile(profile.getProfile().withName(nameForProfiles + i)))
+        .when()
+        .post(MAPPING_PROFILES_PATH)
+        .then()
+        .statusCode(HttpStatus.SC_CREATED).extract().body().as(MappingProfileUpdateDto.class));
+      i++;
+    }
+
     i = 0;
     for (JobProfileUpdateDto profile : jobProfiles) {
       created.add(RestAssured.given()
@@ -839,12 +860,19 @@ public class MatchProfileTest extends AbstractRestVerticleTest {
         .body(new ActionProfileUpdateDto()
           .withProfile(action.getProfile()
             .withName(nameForProfiles + i))
-          .withAddedRelations(Collections.singletonList(new ProfileAssociation()
-            .withMasterProfileId(profilesIds.get(i))
-            .withDetailProfileType(ProfileType.ACTION_PROFILE)
-            .withMasterProfileType(ProfileType.MATCH_PROFILE)
-            .withOrder(0)
-            .withTriggered(false).withReactTo(ReactToType.MATCH))))
+          .withAddedRelations(Lists.newArrayList(new ProfileAssociation()
+              .withMasterProfileId(profilesIds.get(i))
+              .withDetailProfileType(ProfileType.ACTION_PROFILE)
+              .withMasterProfileType(ProfileType.MATCH_PROFILE)
+              .withOrder(0)
+              .withTriggered(false).withReactTo(ReactToType.MATCH),
+            new ProfileAssociation()
+              .withMasterProfileId(action.getProfile().getId())
+              .withDetailProfileId(createdMappings.get(i).getId())
+              .withDetailProfileType(ProfileType.MAPPING_PROFILE)
+              .withMasterProfileType(ProfileType.ACTION_PROFILE)
+              .withOrder(0)
+              .withTriggered(false))))
         .when()
         .post(ACTION_PROFILES_PATH)
         .then()
