@@ -1,5 +1,6 @@
 package org.folio.rest.impl.snapshot;
 
+import com.google.common.collect.Lists;
 import io.restassured.RestAssured;
 import io.restassured.response.ExtractableResponse;
 import io.restassured.response.Response;
@@ -21,6 +22,7 @@ import org.folio.rest.jaxrs.model.MatchProfile;
 import org.folio.rest.jaxrs.model.MatchProfileUpdateDto;
 import org.folio.rest.jaxrs.model.ProfileAssociation;
 import org.folio.rest.jaxrs.model.ProfileSnapshotWrapper;
+import org.folio.rest.jaxrs.model.ProfileType;
 import org.folio.rest.persist.Criteria.Criterion;
 import org.folio.rest.persist.PostgresClient;
 import org.junit.Assert;
@@ -35,8 +37,8 @@ import java.util.UUID;
 import static org.folio.rest.jaxrs.model.ActionProfile.Action.CREATE;
 import static org.folio.rest.jaxrs.model.ActionProfile.FolioRecord.MARC_BIBLIOGRAPHIC;
 import static org.folio.rest.jaxrs.model.JobProfile.DataType.MARC;
-import static org.folio.rest.jaxrs.model.ProfileAssociation.ReactTo.MATCH;
-import static org.folio.rest.jaxrs.model.ProfileAssociation.ReactTo.NON_MATCH;
+import static org.folio.rest.jaxrs.model.ReactToType.MATCH;
+import static org.folio.rest.jaxrs.model.ReactToType.NON_MATCH;
 import static org.folio.rest.jaxrs.model.ProfileSnapshotWrapper.ContentType.ACTION_PROFILE;
 import static org.folio.rest.jaxrs.model.ProfileSnapshotWrapper.ContentType.JOB_PROFILE;
 import static org.folio.rest.jaxrs.model.ProfileSnapshotWrapper.ContentType.MATCH_PROFILE;
@@ -65,6 +67,7 @@ public class JobProfileSnapshotTest extends AbstractRestVerticleTest {
   private static final String ACTION_TO_ACTION_PROFILES_TABLE_NAME = "action_to_action_profiles";
   private static final String MATCH_TO_MATCH_PROFILES_TABLE_NAME = "match_to_match_profiles";
 
+  private static final String PROFILE_WRAPPERS_TABLE = "profile_wrappers";
 
   private JobProfileUpdateDto jobProfile = new JobProfileUpdateDto()
     .withProfile(new JobProfile().withName("testJobProfile1").withDataType(MARC).withDescription("test-description"));
@@ -87,36 +90,48 @@ public class JobProfileSnapshotTest extends AbstractRestVerticleTest {
   @Before
   public void setUp(TestContext testContext) {
     super.setUp(testContext);
-    jobProfile = postProfile(testContext, jobProfile, JOB_PROFILES_PATH).body().as(JobProfileUpdateDto.class);
-    matchProfile = postProfile(testContext, matchProfile, MATCH_PROFILES_PATH).body().as(MatchProfileUpdateDto.class);
-    actionProfile = postProfile(testContext, actionProfile, ACTION_PROFILES_PATH).body().as(ActionProfileUpdateDto.class);
-    mappingProfile = postProfile(testContext, mappingProfile, MAPPING_PROFILES_PATH).body().as(MappingProfileUpdateDto.class);
 
-    jobProfile.withAddedRelations(Collections.singletonList(new ProfileAssociation()
-      .withMasterProfileId(jobProfile.getId())
-      .withDetailProfileId(matchProfile.getId())
-      .withMasterProfileType(ProfileAssociation.MasterProfileType.JOB_PROFILE)
-      .withDetailProfileType(ProfileAssociation.DetailProfileType.MATCH_PROFILE)
-      .withOrder(0)));
-    matchProfile.withAddedRelations(Collections.singletonList(new ProfileAssociation()
-      .withMasterProfileId(matchProfile.getId())
-      .withDetailProfileId(actionProfile.getId())
-      .withMasterProfileType(ProfileAssociation.MasterProfileType.MATCH_PROFILE)
-      .withDetailProfileType(ProfileAssociation.DetailProfileType.ACTION_PROFILE)
-      .withReactTo(NON_MATCH)
-      .withJobProfileId(jobProfile.getId())
-      .withOrder(0)));
+    mappingProfile = postProfile(testContext, mappingProfile, MAPPING_PROFILES_PATH).body().as(MappingProfileUpdateDto.class);
     actionProfile.withAddedRelations(Collections.singletonList(new ProfileAssociation()
       .withMasterProfileId(actionProfile.getId())
       .withDetailProfileId(mappingProfile.getId())
-      .withMasterProfileType(ProfileAssociation.MasterProfileType.ACTION_PROFILE)
-      .withDetailProfileType(ProfileAssociation.DetailProfileType.MAPPING_PROFILE)
+      .withMasterProfileType(ProfileType.ACTION_PROFILE)
+      .withDetailProfileType(ProfileType.MAPPING_PROFILE)
       .withOrder(0)));
 
-    updateProfile(testContext, jobProfile, jobProfile.getId(), JOB_PROFILES_PATH);
-    updateProfile(testContext, matchProfile, matchProfile.getId(), MATCH_PROFILES_PATH);
-    updateProfile(testContext, actionProfile, actionProfile.getId(), ACTION_PROFILES_PATH);
-    updateProfile(testContext, mappingProfile, mappingProfile.getId(), MAPPING_PROFILES_PATH);
+
+    actionProfile = postProfile(testContext, actionProfile, ACTION_PROFILES_PATH).body().as(ActionProfileUpdateDto.class);
+    matchProfile.withAddedRelations(Collections.singletonList(new ProfileAssociation()
+      .withMasterProfileId(matchProfile.getId())
+      .withDetailProfileId(actionProfile.getId())
+      .withMasterProfileType(ProfileType.MATCH_PROFILE)
+      .withDetailProfileType(ProfileType.ACTION_PROFILE)
+      .withReactTo(NON_MATCH)
+      .withJobProfileId(jobProfile.getId())
+      .withOrder(0)));
+
+    matchProfile = postProfile(testContext, matchProfile, MATCH_PROFILES_PATH).body().as(MatchProfileUpdateDto.class);
+
+    jobProfile.withAddedRelations(Lists.newArrayList(new ProfileAssociation()
+        .withMasterProfileId(jobProfile.getId())
+        .withDetailProfileId(matchProfile.getId())
+        .withMasterProfileType(ProfileType.JOB_PROFILE)
+        .withDetailProfileType(ProfileType.MATCH_PROFILE)
+        .withOrder(0),
+      new ProfileAssociation()
+        .withMasterProfileId(matchProfile.getId())
+        .withDetailProfileId(actionProfile.getId())
+        .withMasterProfileType(ProfileType.MATCH_PROFILE)
+        .withDetailProfileType(ProfileType.ACTION_PROFILE)
+        .withOrder(0),
+      new ProfileAssociation()
+        .withMasterProfileId(actionProfile.getId())
+        .withDetailProfileId(mappingProfile.getId())
+        .withMasterProfileType(ProfileType.ACTION_PROFILE)
+        .withDetailProfileType(ProfileType.MAPPING_PROFILE)
+        .withOrder(0)));
+
+    jobProfile = postProfile(testContext, jobProfile, JOB_PROFILES_PATH).body().as(JobProfileUpdateDto.class);
   }
 
   @Test
@@ -185,7 +200,7 @@ public class JobProfileSnapshotTest extends AbstractRestVerticleTest {
   }
 
   @Test
-  public void shouldReturnSnapshotWrapperOnGetByProfileIdForJobProfile(TestContext testContext) {
+  public void shouldReturnSnapshotWrapperOnGetByProfileIdForJobProfileWithEmptyChildSnapshotWrappers(TestContext testContext) {
     Async async = testContext.async();
     ProfileSnapshotWrapper jobProfileSnapshot = RestAssured.given()
       .spec(spec)
@@ -219,7 +234,7 @@ public class JobProfileSnapshotTest extends AbstractRestVerticleTest {
   }
 
   @Test
-  public void shouldReturnSnapshotWrapperOnGetByProfileIdForMatchProfile(TestContext testContext) {
+  public void shouldReturnSnapshotWrapperOnGetByProfileIdForMatchProfileWithEmptyChildSnapshotWrappers(TestContext testContext) {
     Async async = testContext.async();
     ProfileSnapshotWrapper matchProfileSnapshot = RestAssured.given()
       .spec(spec)
@@ -233,18 +248,7 @@ public class JobProfileSnapshotTest extends AbstractRestVerticleTest {
 
     MatchProfile actualMatchProfile = DatabindCodec.mapper().convertValue(matchProfileSnapshot.getContent(), MatchProfile.class);
     Assert.assertEquals(matchProfile.getId(), actualMatchProfile.getId());
-    Assert.assertEquals(1, matchProfileSnapshot.getChildSnapshotWrappers().size());
-
-    ProfileSnapshotWrapper actionProfileSnapshot = matchProfileSnapshot.getChildSnapshotWrappers().get(0);
-    Assert.assertEquals(ProfileSnapshotWrapper.ReactTo.NON_MATCH, actionProfileSnapshot.getReactTo());
-    ActionProfile actualActionProfile = DatabindCodec.mapper().convertValue(actionProfileSnapshot.getContent(), ActionProfile.class);
-    Assert.assertEquals(actionProfile.getId(), actualActionProfile.getId());
-    Assert.assertEquals(1, actionProfileSnapshot.getChildSnapshotWrappers().size());
-
-    ProfileSnapshotWrapper mappingProfileSnapshot = actionProfileSnapshot.getChildSnapshotWrappers().get(0);
-    MappingProfile mappingActionProfile = DatabindCodec.mapper().convertValue(mappingProfileSnapshot.getContent(), MappingProfile.class);
-    Assert.assertEquals(mappingProfile.getId(), mappingActionProfile.getId());
-    Assert.assertEquals(0, mappingProfileSnapshot.getChildSnapshotWrappers().size());
+    Assert.assertEquals(0, matchProfileSnapshot.getChildSnapshotWrappers().size());
     async.complete();
   }
 
@@ -260,10 +264,7 @@ public class JobProfileSnapshotTest extends AbstractRestVerticleTest {
       .statusCode(HttpStatus.SC_OK)
       .extract().body().as(ProfileSnapshotWrapper.class);
 
-    ProfileSnapshotWrapper mappingProfileSnapshot = actionProfileSnapshot.getChildSnapshotWrappers().get(0);
-    MappingProfile mappingActionProfile = DatabindCodec.mapper().convertValue(mappingProfileSnapshot.getContent(), MappingProfile.class);
-    Assert.assertEquals(mappingProfile.getId(), mappingActionProfile.getId());
-    Assert.assertEquals(0, mappingProfileSnapshot.getChildSnapshotWrappers().size());
+    Assert.assertEquals(0, actionProfileSnapshot.getChildSnapshotWrappers().size());
     async.complete();
   }
 
@@ -277,19 +278,30 @@ public class JobProfileSnapshotTest extends AbstractRestVerticleTest {
 
     actionProfile2 = postProfile(testContext, actionProfile2, ACTION_PROFILES_PATH).body().as(ActionProfileUpdateDto.class);
 
+    actionProfile2.setAddedRelations(Arrays.asList(
+      new ProfileAssociation()
+        .withMasterProfileId(actionProfile2.getId())
+        .withDetailProfileId(mappingProfile.getId())
+        .withMasterProfileType(ProfileType.ACTION_PROFILE)
+        .withDetailProfileType(ProfileType.MAPPING_PROFILE)
+        .withOrder(0)
+    ));
+
+    updateProfile(testContext, actionProfile2,  actionProfile.getId(), ACTION_PROFILES_PATH);
+
     JobProfileUpdateDto jobProfile2 = new JobProfileUpdateDto()
       .withProfile(new JobProfile().withName("testJobProfile2").withDataType(MARC).withDescription("test-description"))
       .withAddedRelations(Arrays.asList(
         new ProfileAssociation()
           .withDetailProfileId(matchProfile.getId())
-          .withMasterProfileType(ProfileAssociation.MasterProfileType.JOB_PROFILE)
-          .withDetailProfileType(ProfileAssociation.DetailProfileType.MATCH_PROFILE)
+          .withMasterProfileType(ProfileType.JOB_PROFILE)
+          .withDetailProfileType(ProfileType.MATCH_PROFILE)
           .withOrder(0),
         new ProfileAssociation()
           .withMasterProfileId(matchProfile.getId())
           .withDetailProfileId(actionProfile2.getId())
-          .withMasterProfileType(ProfileAssociation.MasterProfileType.MATCH_PROFILE)
-          .withDetailProfileType(ProfileAssociation.DetailProfileType.ACTION_PROFILE)
+          .withMasterProfileType(ProfileType.MATCH_PROFILE)
+          .withDetailProfileType(ProfileType.ACTION_PROFILE)
           .withReactTo(MATCH)
           .withOrder(0)));
 
@@ -317,7 +329,7 @@ public class JobProfileSnapshotTest extends AbstractRestVerticleTest {
     ProfileSnapshotWrapper actionProfileSnapshot = matchProfileSnapshot.getChildSnapshotWrappers().get(0);
     ActionProfile actualActionProfile = DatabindCodec.mapper().convertValue(actionProfileSnapshot.getContent(), ActionProfile.class);
     Assert.assertEquals(actionProfile2.getId(), actualActionProfile.getId());
-    Assert.assertEquals(0, actionProfileSnapshot.getChildSnapshotWrappers().size());
+    Assert.assertEquals(1, actionProfileSnapshot.getChildSnapshotWrappers().size());
     async.complete();
   }
 
@@ -377,7 +389,8 @@ public class JobProfileSnapshotTest extends AbstractRestVerticleTest {
     Async async = context.async();
     PostgresClient pgClient = PostgresClient.getInstance(vertx, TENANT_ID);
     pgClient.delete(SNAPSHOTS_TABLE_NAME, new Criterion(), event2 ->
-      pgClient.delete(JOB_TO_ACTION_PROFILES_TABLE_NAME, new Criterion(), event3 ->
+      pgClient.delete(PROFILE_WRAPPERS_TABLE, new Criterion(), event13 ->
+        pgClient.delete(JOB_TO_ACTION_PROFILES_TABLE_NAME, new Criterion(), event3 ->
         pgClient.delete(JOB_TO_MATCH_PROFILES_TABLE_NAME, new Criterion(), event4 ->
           pgClient.delete(ACTION_TO_MAPPING_PROFILES_TABLE_NAME, new Criterion(), event5 ->
             pgClient.delete(MATCH_TO_ACTION_PROFILES_TABLE_NAME, new Criterion(), event6 ->
@@ -391,6 +404,6 @@ public class JobProfileSnapshotTest extends AbstractRestVerticleTest {
                             context.fail(event12.cause());
                           }
                           async.complete();
-                        })))))))))));
+                        }))))))))))));
   }
 }

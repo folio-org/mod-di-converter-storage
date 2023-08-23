@@ -1,10 +1,11 @@
 package org.folio.rest.impl;
 
+import io.vertx.core.AsyncResult;
 import io.vertx.core.Context;
 import io.vertx.core.Future;
-import io.vertx.core.Promise;
-import io.vertx.core.AsyncResult;
 import io.vertx.core.Handler;
+import io.vertx.core.Promise;
+import io.vertx.core.Vertx;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
@@ -12,6 +13,9 @@ import org.apache.logging.log4j.Logger;
 import org.folio.rest.jaxrs.model.TenantAttributes;
 import org.folio.rest.persist.PostgresClient;
 import org.folio.rest.tools.utils.TenantTool;
+import org.folio.services.migration.ProfileMigrationService;
+import org.folio.spring.SpringContextUtil;
+import org.springframework.beans.factory.annotation.Autowired;
 
 import javax.ws.rs.core.Response;
 import java.io.IOException;
@@ -50,6 +54,12 @@ public class ModTenantAPI extends TenantAPI {
   private static final String TENANT_PLACEHOLDER = "${myuniversity}";
   private static final String MODULE_PLACEHOLDER = "${mymodule}";
 
+  @Autowired
+  ProfileMigrationService profileMigrationService;
+
+  public ModTenantAPI() { //NOSONAR
+    SpringContextUtil.autowireDependencies(this, Vertx.currentContext());
+  }
   @Override
   public void postTenant(TenantAttributes tenantAttributes, Map<String, String> headers, Handler<AsyncResult<Response>> handler, Context context) {
     Future<Void> future = tenantAttributes.getModuleTo() != null
@@ -84,6 +94,7 @@ public class ModTenantAPI extends TenantAPI {
         .compose(m -> runSqlScript(DEFAULT_QM_AUTHORITY_UPDATE_JOB_PROFILE, headers, context))
         .compose(m -> runSqlScript(DEFAULT_QM_MARC_BIB_UPDATE_JOB_PROFILE, headers, context))
         .compose(m -> runSqlScript(DEFAULT_QM_HOLDINGS_UPDATE_JOB_PROFILE, headers, context))
+        .compose(m -> profileMigrationService.migrateDataImportProfiles(headers, context))
         .map(num));
   }
 

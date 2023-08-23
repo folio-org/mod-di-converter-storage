@@ -38,8 +38,8 @@ import static org.folio.rest.jaxrs.model.ProfileSnapshotWrapper.ContentType.MATC
 @Repository
 public class CommonProfileAssociationDao implements ProfileAssociationDao {
   private static final String ID_FIELD = "'id'";
-  private static final String MASTER_ID_FIELD = "masterProfileId";
-  private static final String DETAIL_ID_FIELD = "detailProfileId";
+  private static final String MASTER_WRAPPER_ID_FIELD = "masterWrapperId";
+  private static final String DETAIL_WRAPPER_ID_FIELD = "detailWrapperId";
   private static final String JOB_PROFILE_ID_FIELD = "jobProfileId";
   private static final Logger LOGGER = LogManager.getLogger();
   private static final String CORRECT_PROFILE_ASSOCIATION_TYPES_MESSAGE = "Correct ProfileAssociation types: " +
@@ -134,30 +134,30 @@ public class CommonProfileAssociationDao implements ProfileAssociationDao {
   }
 
   @Override
-  public Future<Boolean> delete(String masterId, String detailId, ProfileSnapshotWrapper.ContentType masterType, ProfileSnapshotWrapper.ContentType detailType, String tenantId, String jobProfileId) {
+  public Future<Boolean> delete(String masterWrapperId, String detailWrapperId, ProfileSnapshotWrapper.ContentType masterType, ProfileSnapshotWrapper.ContentType detailType, String tenantId, String jobProfileId) {
     Promise<RowSet<Row>> promise = Promise.promise();
     try {
       CQLWrapper filter = getCQLWrapper(getAssociationTableName(masterType, detailType),
-        MASTER_ID_FIELD + "==" + masterId + " AND " + DETAIL_ID_FIELD + "==" + detailId +
+        MASTER_WRAPPER_ID_FIELD + "==" + masterWrapperId + " AND " + DETAIL_WRAPPER_ID_FIELD + "==" + detailWrapperId +
           // if jobProfileId field defined in jsonb - perform matching on it, if not - match all records.
           " AND (" + JOB_PROFILE_ID_FIELD + "==" + jobProfileId + " OR (cql.allRecords=1 NOT " + JOB_PROFILE_ID_FIELD + "=\"\"))");
 
       pgClientFactory.createInstance(tenantId).delete(getAssociationTableName(masterType, detailType), filter, promise);
     } catch (Exception e) {
-      LOGGER.warn("delete:: Error deleting by master id {} and detail id {}", masterId, detailId, e);
+      LOGGER.warn("delete:: Error deleting by master id {} and detail id {}", masterWrapperId, detailWrapperId, e);
       return Future.failedFuture(e);
     }
     return promise.future().map(updateResult -> updateResult.rowCount() == 1);
   }
 
   @Override
-  public Future<Boolean> deleteByMasterId(String masterId, ProfileSnapshotWrapper.ContentType masterType, ProfileSnapshotWrapper.ContentType detailType, String tenantId) {
+  public Future<Boolean> deleteByMasterId(String wrapperId, ProfileSnapshotWrapper.ContentType masterType, ProfileSnapshotWrapper.ContentType detailType, String tenantId) {
     Promise<RowSet<Row>> promise = Promise.promise();
     try {
-      CQLWrapper filter = getCQLWrapper(getAssociationTableName(masterType, detailType), "(" + MASTER_ID_FIELD + "==" + masterId + ")");
+      CQLWrapper filter = getCQLWrapper(getAssociationTableName(masterType, detailType), "(" + MASTER_WRAPPER_ID_FIELD + "==" + wrapperId + ")");
       pgClientFactory.createInstance(tenantId).delete(getAssociationTableName(masterType, detailType), filter, promise);
     } catch (Exception e) {
-      LOGGER.warn("delete:: Error deleting by master id {}", masterId, e);
+      LOGGER.warn("delete:: Error deleting by master id {}", wrapperId, e);
       return Future.failedFuture(e);
     }
     return promise.future().map(updateResult -> updateResult.rowCount() > 0);

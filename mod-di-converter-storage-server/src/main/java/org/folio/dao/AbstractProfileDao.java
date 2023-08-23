@@ -225,6 +225,21 @@ public abstract class AbstractProfileDao<T, S> implements ProfileDao<T, S> {
     return promise.future();
   }
 
+  @Override
+  public Future<Integer> getTotalProfilesNumber(String tenantId) {
+    Promise<Integer> promise = Promise.promise();
+    String totalCountSql = format("SELECT count(*) AS exact_count FROM %s;", getTableName());
+    pgClientFactory.createInstance((tenantId)).select(totalCountSql, selectAr -> {
+      if (selectAr.succeeded()) {
+        promise.complete(selectAr.result().iterator().next().getInteger(0));
+      } else {
+        logger.warn("getTotalProfilesNumber:: Error during retrieving total count for profiles", selectAr.cause());
+        promise.fail(selectAr.cause());
+      }
+    });
+    return promise.future();
+  }
+
   /**
    * Sets deleted to {@code true} in Profile entity
    *

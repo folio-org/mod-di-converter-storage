@@ -6,7 +6,9 @@ import io.vertx.core.json.JsonObject;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
+
 import java.util.ArrayList;
+
 import org.apache.http.HttpStatus;
 import org.folio.rest.jaxrs.model.ActionProfile;
 import org.folio.rest.jaxrs.model.ActionProfileUpdateDto;
@@ -19,10 +21,13 @@ import org.folio.rest.jaxrs.model.MatchProfileUpdateDto;
 import org.folio.rest.jaxrs.model.ProfileAssociation;
 import org.folio.rest.jaxrs.model.ProfileSnapshotWrapper;
 import org.folio.rest.jaxrs.model.ProfileSnapshotWrapper.ContentType;
+import org.folio.rest.jaxrs.model.ProfileType;
 import org.folio.rest.jaxrs.model.Tags;
 import org.folio.rest.persist.Criteria.Criterion;
 import org.folio.rest.persist.PostgresClient;
+import org.junit.After;
 import org.junit.Assert;
+import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
@@ -53,6 +58,7 @@ public class JobProfileTest extends AbstractRestVerticleTest {
   public static final String JOB_TO_MATCH_PROFILES_TABLE = "job_to_match_profiles";
   static final String JOB_PROFILES_PATH = "/data-import-profiles/jobProfiles";
   private static final String ASSOCIATED_PROFILES_PATH = "/data-import-profiles/profileAssociations";
+  private static final String PROFILE_WRAPPERS_TABLE_NAME = "profile_wrappers";
   static final String MAPPING_PROFILES_TABLE_NAME = "mapping_profiles";
   private static final String ACTION_TO_MAPPING_PROFILES_TABLE = "action_to_mapping_profiles";
   static final String MATCH_PROFILES_TABLE_NAME = "match_profiles";
@@ -60,6 +66,8 @@ public class JobProfileTest extends AbstractRestVerticleTest {
   private static final String MATCH_TO_ACTION_PROFILES_TABLE_NAME = "match_to_action_profiles";
   private static final String ACTION_TO_ACTION_PROFILES_TABLE_NAME = "action_to_action_profiles";
   private static final String MATCH_TO_MATCH_PROFILES_TABLE_NAME = "match_to_match_profiles";
+  private static final String PROFILE_WRAPPERS_TABLE = "profile_wrappers";
+
   private static final String JOB_PROFILE_UUID = "b81c283c-131d-4470-ab91-e92bb415c000";
   private static final String DEFAULT_CREATE_SRS_MARC_AUTHORITY_JOB_PROFILE_ID = "6eefa4c6-bbf7-4845-ad82-de7fc5abd0e3";
   private final List<String> defaultJobProfileIds = Arrays.asList(
@@ -505,19 +513,27 @@ public class JobProfileTest extends AbstractRestVerticleTest {
 
   @Test
   public void shouldDeleteAssociationsWithDetailProfilesOnDelete() {
+    String jobProfileId = UUID.randomUUID().toString();
+    JobProfileUpdateDto jobProfile = new JobProfileUpdateDto()
+      .withProfile(new JobProfile().withId(jobProfileId).withName("Bla")
+        .withTags(new Tags().withTagList(Arrays.asList("lorem", "ipsum", "dolor")))
+        .withDataType(MARC));
+
     Response createResponse = RestAssured.given()
       .spec(spec)
-      .body(jobProfile_1)
+      .body(jobProfile)
       .when()
       .post(JOB_PROFILES_PATH);
     Assert.assertThat(createResponse.statusCode(), is(HttpStatus.SC_CREATED));
     JobProfileUpdateDto profileToDelete = createResponse.body().as(JobProfileUpdateDto.class);
 
     // creation detail-profiles
+    String actionProfileId = UUID.randomUUID().toString();
     createResponse = RestAssured.given()
       .spec(spec)
       .body(new ActionProfileUpdateDto()
         .withProfile(new ActionProfile()
+          .withId(actionProfileId)
           .withName("testAction")
           .withAction(CREATE)
           .withFolioRecord(MARC_BIBLIOGRAPHIC)))
@@ -526,10 +542,12 @@ public class JobProfileTest extends AbstractRestVerticleTest {
     Assert.assertThat(createResponse.statusCode(), is(HttpStatus.SC_CREATED));
     ActionProfileUpdateDto associatedActionProfile = createResponse.body().as(ActionProfileUpdateDto.class);
 
+    String matchProfileId = UUID.randomUUID().toString();
     createResponse = RestAssured.given()
       .spec(spec)
       .body(new MatchProfileUpdateDto()
         .withProfile(new MatchProfile()
+          .withId(matchProfileId)
           .withName("testMatch")
           .withIncomingRecordType(EntityType.MARC_BIBLIOGRAPHIC)
           .withExistingRecordType(EntityType.INSTANCE)))
@@ -543,9 +561,9 @@ public class JobProfileTest extends AbstractRestVerticleTest {
       .withMasterProfileId(profileToDelete.getProfile().getId())
       .withOrder(1);
 
-    ProfileAssociation jobToActionAssociation = postProfileAssociation(profileAssociation.withDetailProfileId(associatedActionProfile.getProfile().getId()),
+    ProfileAssociation jobToActionAssociation = postProfileAssociation(profileAssociation.withDetailProfileId(associatedActionProfile.getProfile().getId()).withMasterProfileId(profileToDelete.getProfile().getId()).withMasterProfileType(ProfileType.JOB_PROFILE).withDetailProfileType(ProfileType.ACTION_PROFILE),
       JOB_PROFILE, ACTION_PROFILE);
-    ProfileAssociation jobToMatchAssociation = postProfileAssociation(profileAssociation.withDetailProfileId(associatedMatchProfile.getProfile().getId()),
+    ProfileAssociation jobToMatchAssociation = postProfileAssociation(profileAssociation.withDetailProfileId(associatedMatchProfile.getProfile().getId()).withMasterProfileId(profileToDelete.getProfile().getId()).withMasterProfileType(ProfileType.JOB_PROFILE).withDetailProfileType(ProfileType.MATCH_PROFILE),
       JOB_PROFILE, MATCH_PROFILE);
 
     // deleting job profile
@@ -769,7 +787,8 @@ public class JobProfileTest extends AbstractRestVerticleTest {
   public void clearTables(TestContext context) {
     Async async = context.async();
     PostgresClient pgClient = PostgresClient.getInstance(vertx, TENANT_ID);
-    pgClient.delete(SNAPSHOTS_TABLE_NAME, new Criterion(), event2 ->
+    pgClient.delete(PROFILE_WRAPPERS_TABLE_NAME, new Criterion(), event1 ->
+      pgClient.delete(SNAPSHOTS_TABLE_NAME, new Criterion(), event2 ->
       pgClient.delete(JOB_TO_ACTION_PROFILES_TABLE, new Criterion(), event3 ->
         pgClient.delete(JOB_TO_MATCH_PROFILES_TABLE, new Criterion(), event4 ->
           pgClient.delete(ACTION_TO_MAPPING_PROFILES_TABLE, new Criterion(), event5 ->
@@ -779,11 +798,12 @@ public class JobProfileTest extends AbstractRestVerticleTest {
                   pgClient.delete(ACTION_PROFILES_TABLE_NAME, new Criterion(), event9 ->
                     pgClient.delete(ACTION_TO_ACTION_PROFILES_TABLE_NAME, new Criterion(), event10 ->
                       pgClient.delete(MAPPING_PROFILES_TABLE_NAME, new Criterion(), event11 ->
-                        pgClient.delete(MATCH_TO_MATCH_PROFILES_TABLE_NAME, new Criterion(), event12 -> {
-                          if (event12.failed()) {
+                        pgClient.delete(MATCH_TO_MATCH_PROFILES_TABLE_NAME, new Criterion(), event12 ->
+                          pgClient.delete(PROFILE_WRAPPERS_TABLE, new Criterion(), event13 -> {
+                            if (event12.failed()) {
                             context.fail(event12.cause());
                           }
                           async.complete();
-                        })))))))))));
+                        })))))))))))));
   }
 }

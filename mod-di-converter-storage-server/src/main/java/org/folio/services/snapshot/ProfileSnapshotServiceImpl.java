@@ -129,9 +129,10 @@ public class ProfileSnapshotServiceImpl implements ProfileSnapshotService {
       rootWrapper.setOrder(rootItem.getOrder());
       rootWrapper.setId(UUID.randomUUID().toString());
       rootWrapper.setProfileId(rootItem.getDetailId());
+      rootWrapper.setProfileWrapperId(rootItem.getDetailWrapperId());
       rootWrapper.setContentType(rootItem.getDetailType());
       rootWrapper.setContent(convertContentByType(rootItem.getDetail(), rootItem.getDetailType()));
-      fillChildSnapshotWrappers(rootItem.getDetailId(), rootWrapper.getChildSnapshotWrappers(), snapshotItems);
+      fillChildSnapshotWrappers(rootItem.getDetailWrapperId(), rootWrapper.getChildSnapshotWrappers(), snapshotItems);
       return rootWrapper;
     } else {
       throw new IllegalArgumentException("Can not find the root item in snapshot items list");
@@ -143,24 +144,27 @@ public class ProfileSnapshotServiceImpl implements ProfileSnapshotService {
    * The method finds a first child of given parent profile, adds a child to parent profile(in childWrappers collection)
    * and falls into recursion passing child profile just been found (Depth-first traversal algorithm).
    *
-   * @param parentId      parent profile id
+   * @param parentWrapperId      parent wrapper profile id
    * @param childWrappers collection of child snapshot wrappers linked to given parent id
    * @param snapshotItems collection of snapshot items
    */
-  private void fillChildSnapshotWrappers(String parentId, List<ProfileSnapshotWrapper> childWrappers, List<ProfileSnapshotItem> snapshotItems) {
-    for (ProfileSnapshotItem snapshotItem : snapshotItems) {
-      if (parentId.equals(snapshotItem.getMasterId())) {
-        ProfileSnapshotWrapper childWrapper = new ProfileSnapshotWrapper();
-        childWrapper.setId(UUID.randomUUID().toString());
-        childWrapper.setProfileId(snapshotItem.getDetailId());
-        childWrapper.setContentType(snapshotItem.getDetailType());
-        childWrapper.setContent(convertContentByType(snapshotItem.getDetail(), snapshotItem.getDetailType()));
-        if (snapshotItem.getReactTo() != null) {
-          childWrapper.setReactTo(ProfileSnapshotWrapper.ReactTo.fromValue(snapshotItem.getReactTo().name()));
+  private void fillChildSnapshotWrappers(String parentWrapperId, List<ProfileSnapshotWrapper> childWrappers, List<ProfileSnapshotItem> snapshotItems) {
+    if (parentWrapperId != null) {
+      for (ProfileSnapshotItem snapshotItem : snapshotItems) {
+        if (parentWrapperId.equals(snapshotItem.getMasterWrapperId())) {
+          ProfileSnapshotWrapper childWrapper = new ProfileSnapshotWrapper();
+          childWrapper.setId(UUID.randomUUID().toString());
+          childWrapper.setProfileId(snapshotItem.getDetailId());
+          childWrapper.setProfileWrapperId(snapshotItem.getDetailWrapperId());
+          childWrapper.setContentType(snapshotItem.getDetailType());
+          childWrapper.setContent(convertContentByType(snapshotItem.getDetail(), snapshotItem.getDetailType()));
+          if (snapshotItem.getReactTo() != null) {
+            childWrapper.setReactTo(ProfileSnapshotWrapper.ReactTo.fromValue(snapshotItem.getReactTo().name()));
+          }
+          childWrapper.setOrder(snapshotItem.getOrder());
+          childWrappers.add(childWrapper);
+          fillChildSnapshotWrappers(snapshotItem.getDetailWrapperId(), childWrapper.getChildSnapshotWrappers(), snapshotItems);
         }
-        childWrapper.setOrder(snapshotItem.getOrder());
-        childWrappers.add(childWrapper);
-        fillChildSnapshotWrappers(childWrapper.getProfileId(), childWrapper.getChildSnapshotWrappers(), snapshotItems);
       }
     }
   }

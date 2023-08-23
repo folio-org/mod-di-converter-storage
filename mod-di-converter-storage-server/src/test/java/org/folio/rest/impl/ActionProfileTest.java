@@ -17,6 +17,7 @@ import org.folio.rest.jaxrs.model.ProfileAssociation;
 import org.folio.rest.jaxrs.model.ProfileSnapshotWrapper;
 import org.folio.rest.jaxrs.model.ProfileSnapshotWrapper.ContentType;
 import org.folio.rest.jaxrs.model.Tags;
+import org.folio.rest.jaxrs.model.ProfileType;
 import org.folio.rest.persist.Criteria.Criterion;
 import org.folio.rest.persist.PostgresClient;
 import org.folio.services.util.EntityTypes;
@@ -35,7 +36,9 @@ import static org.folio.rest.jaxrs.model.ActionProfile.Action.CREATE;
 import static org.folio.rest.jaxrs.model.ActionProfile.FolioRecord.INSTANCE;
 import static org.folio.rest.jaxrs.model.ActionProfile.FolioRecord.MARC_BIBLIOGRAPHIC;
 import static org.folio.rest.jaxrs.model.ProfileSnapshotWrapper.ContentType.ACTION_PROFILE;
+import static org.folio.rest.jaxrs.model.ProfileSnapshotWrapper.ContentType.JOB_PROFILE;
 import static org.folio.rest.jaxrs.model.ProfileSnapshotWrapper.ContentType.MAPPING_PROFILE;
+import static org.folio.rest.jaxrs.model.ProfileSnapshotWrapper.ContentType.MATCH_PROFILE;
 import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.hamcrest.Matchers.empty;
 import static org.hamcrest.Matchers.everyItem;
@@ -58,10 +61,12 @@ public class ActionProfileTest extends AbstractRestVerticleTest {
   static final String MAPPING_PROFILES_TABLE_NAME = "mapping_profiles";
   static final String MATCH_PROFILES_TABLE_NAME = "match_profiles";
   private static final String SNAPSHOTS_TABLE_NAME = "profile_snapshots";
+  private static final String PROFILE_WRAPPERS_TABLE_NAME = "profile_wrappers";
   private static final String MATCH_TO_ACTION_PROFILES_TABLE_NAME = "match_to_action_profiles";
   private static final String MATCH_TO_MATCH_PROFILES_TABLE_NAME = "match_to_match_profiles";
   private static final String ACTION_PROFILE_UUID = "16449d21-ad7c-4f69-b31e-a521fe4ae893";
   private static final String ASSOCIATED_PROFILES_PATH = "/data-import-profiles/profileAssociations";
+  private static final String PROFILE_WRAPPERS_TABLE = "profile_wrappers";
   private List<String> defaultActionProfileIds = Arrays.asList(
     "d0ebba8a-2f0f-11eb-adc1-0242ac120002", //OCLC_CREATE_INSTANCE_ACTION_PROFILE_ID
     "cddff0e1-233c-47ba-8be5-553c632709d9", //OCLC_UPDATE_INSTANCE_ACTION_PROFILE_ID
@@ -77,17 +82,17 @@ public class ActionProfileTest extends AbstractRestVerticleTest {
     .withProfile(new ActionProfile().withName("Bla")
       .withTags(new Tags().withTagList(Arrays.asList("lorem", "ipsum", "dolor")))
       .withAction(CREATE)
-      .withFolioRecord(MARC_BIBLIOGRAPHIC));
+      .withFolioRecord(INSTANCE));
   static ActionProfileUpdateDto actionProfile_2 = new ActionProfileUpdateDto()
     .withProfile(new ActionProfile().withName("Boo")
       .withTags(new Tags().withTagList(Arrays.asList("lorem", "ipsum")))
       .withAction(CREATE)
-      .withFolioRecord(MARC_BIBLIOGRAPHIC));
+      .withFolioRecord(INSTANCE));
   static ActionProfileUpdateDto actionProfile_3 = new ActionProfileUpdateDto()
     .withProfile(new ActionProfile().withName("Foo")
       .withTags(new Tags().withTagList(singletonList("lorem")))
       .withAction(CREATE)
-      .withFolioRecord(MARC_BIBLIOGRAPHIC));
+      .withFolioRecord(INSTANCE));
   static ActionProfileUpdateDto actionProfile_4 = new ActionProfileUpdateDto()
     .withProfile(new ActionProfile().withId(ACTION_PROFILE_UUID).withName("OLA")
       .withTags(new Tags().withTagList(Arrays.asList("lorem", "ipsum", "dolor")))
@@ -429,6 +434,8 @@ public class ActionProfileTest extends AbstractRestVerticleTest {
       .body(new ProfileAssociation()
         .withMasterProfileId(associatedActionProfile.getProfile().getId())
         .withDetailProfileId(profileToDelete.getProfile().getId())
+        .withMasterProfileType(ProfileType.ACTION_PROFILE)
+        .withDetailProfileType(ProfileType.ACTION_PROFILE)
         .withOrder(1))
       .when()
       .post(ASSOCIATED_PROFILES_PATH)
@@ -512,9 +519,9 @@ public class ActionProfileTest extends AbstractRestVerticleTest {
       .withMasterProfileId(profileToDelete.getProfile().getId())
       .withOrder(1);
 
-    ProfileAssociation actionToActionAssociation = postProfileAssociation(profileAssociation.withDetailProfileId(associatedActionProfile.getProfile().getId()),
+    ProfileAssociation actionToActionAssociation = postProfileAssociation(profileAssociation.withDetailProfileId(associatedActionProfile.getProfile().getId()).withMasterProfileId(profileToDelete.getProfile().getId()).withMasterProfileType(ProfileType.ACTION_PROFILE).withDetailProfileType(ProfileType.ACTION_PROFILE),
       ACTION_PROFILE, ACTION_PROFILE);
-    ProfileAssociation actionToMappingAssociation = postProfileAssociation(profileAssociation.withDetailProfileId(associatedMappingProfile.getProfile().getId()),
+    ProfileAssociation actionToMappingAssociation = postProfileAssociation(profileAssociation.withDetailProfileId(associatedMappingProfile.getProfile().getId()).withMasterProfileId(profileToDelete.getProfile().getId()).withMasterProfileType(ProfileType.ACTION_PROFILE).withDetailProfileType(ProfileType.MAPPING_PROFILE),
       ACTION_PROFILE, MAPPING_PROFILE);
 
     // deleting action profile
@@ -647,9 +654,9 @@ public class ActionProfileTest extends AbstractRestVerticleTest {
           .withFolioRecord(MARC_BIBLIOGRAPHIC))
         .withAddedRelations(List.of(
           new ProfileAssociation()
-            .withDetailProfileType(ProfileAssociation.DetailProfileType.MAPPING_PROFILE)
+            .withDetailProfileType(ProfileType.MAPPING_PROFILE)
             .withDetailProfileId(mappingProfileUpdateDto.getId())
-            .withMasterProfileType(ProfileAssociation.MasterProfileType.ACTION_PROFILE))))
+            .withMasterProfileType(ProfileType.ACTION_PROFILE))))
       .when()
       .post(ACTION_PROFILES_PATH)
       .then()
@@ -682,9 +689,9 @@ public class ActionProfileTest extends AbstractRestVerticleTest {
         .withFolioRecord(MARC_BIBLIOGRAPHIC))
       .withAddedRelations(List.of(
         new ProfileAssociation()
-          .withDetailProfileType(ProfileAssociation.DetailProfileType.MAPPING_PROFILE)
+          .withDetailProfileType(ProfileType.MAPPING_PROFILE)
           .withDetailProfileId(mappingProfileUpdateDto.getProfile().getId())
-          .withMasterProfileType(ProfileAssociation.MasterProfileType.ACTION_PROFILE))));
+          .withMasterProfileType(ProfileType.ACTION_PROFILE))));
 
     RestAssured.given()
       .spec(spec)
@@ -695,14 +702,14 @@ public class ActionProfileTest extends AbstractRestVerticleTest {
           .withFolioRecord(MARC_BIBLIOGRAPHIC))
         .withAddedRelations(List.of(
           new ProfileAssociation()
-            .withDetailProfileType(ProfileAssociation.DetailProfileType.MAPPING_PROFILE)
+            .withDetailProfileType(ProfileType.MAPPING_PROFILE)
             .withDetailProfileId(mappingProfileUpdateDto1.getProfile().getId())
-            .withMasterProfileType(ProfileAssociation.MasterProfileType.ACTION_PROFILE)))
+            .withMasterProfileType(ProfileType.ACTION_PROFILE)))
         .withDeletedRelations(List.of(
           new ProfileAssociation()
-            .withDetailProfileType(ProfileAssociation.DetailProfileType.MAPPING_PROFILE)
+            .withDetailProfileType(ProfileType.MAPPING_PROFILE)
             .withDetailProfileId(mappingProfileUpdateDto.getProfile().getId())
-            .withMasterProfileType(ProfileAssociation.MasterProfileType.ACTION_PROFILE))))
+            .withMasterProfileType(ProfileType.ACTION_PROFILE))))
       .when()
       .put(ACTION_PROFILES_PATH+ "/" + actionProfileUpdateDto.getProfile().getId())
       .then()
@@ -824,6 +831,7 @@ public class ActionProfileTest extends AbstractRestVerticleTest {
   public void clearTables(TestContext context) {
     Async async = context.async();
     PostgresClient pgClient = PostgresClient.getInstance(vertx, TENANT_ID);
+    pgClient.delete(PROFILE_WRAPPERS_TABLE_NAME, new Criterion(), event1 ->
       pgClient.delete(SNAPSHOTS_TABLE_NAME, new Criterion(), event2 ->
         pgClient.delete(JOB_TO_ACTION_PROFILES_TABLE_NAME, new Criterion(), event3 ->
           pgClient.delete(JOB_TO_MATCH_PROFILES_TABLE_NAME, new Criterion(), event4 ->
@@ -834,11 +842,12 @@ public class ActionProfileTest extends AbstractRestVerticleTest {
                     pgClient.delete(ACTION_PROFILES_TABLE_NAME, new Criterion(), event9 ->
                       pgClient.delete(ACTION_TO_ACTION_PROFILES_TABLE_NAME, new Criterion(), event10 ->
                         pgClient.delete(MAPPING_PROFILES_TABLE_NAME, new Criterion(), event11 ->
-                          pgClient.delete(MATCH_TO_MATCH_PROFILES_TABLE_NAME, new Criterion(), event12 -> {
-                            if (event12.failed()) {
+                          pgClient.delete(MATCH_TO_MATCH_PROFILES_TABLE_NAME, new Criterion(), event12 ->
+                            pgClient.delete(PROFILE_WRAPPERS_TABLE, new Criterion(), event13 -> {
+                              if (event12.failed()) {
                           context.fail(event12.cause());
                         }
                         async.complete();
-                      })))))))))));
+                      })))))))))))));
   }
 }

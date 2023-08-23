@@ -7,6 +7,7 @@ import org.folio.rest.jaxrs.model.ProfileAssociationCollection;
 import org.folio.rest.jaxrs.model.ProfileSnapshotWrapper;
 import org.folio.rest.jaxrs.model.ProfileSnapshotWrapper.ContentType;
 
+import java.util.List;
 import java.util.Optional;
 
 /**
@@ -45,6 +46,15 @@ public interface ProfileAssociationService { //NOSONAR
    * @return future with saved entity
    */
   Future<ProfileAssociation> save(ProfileAssociation entity, ContentType masterType, ContentType detailType, String tenantId);
+
+  /**
+   * Saves List of ProfileAssociation entities
+   *
+   * @param profileAssociations     ProfileAssociations to save
+   * @param tenantId   tenantId
+   * @return future with saved entities list
+   */
+  Future<List<ProfileAssociation>> save(List<ProfileAssociation> profileAssociations, String tenantId);
 
   /**
    * Updates ProfileAssociation with given id
@@ -97,26 +107,26 @@ public interface ProfileAssociationService { //NOSONAR
   Future<Optional<ProfileSnapshotWrapper>> findMasters(String detailId, ContentType detailType, ContentType masterType, String query, int offset, int limit, String tenantId);
 
   /**
-   * Delete ProfileAssociation by masterId and detailId
+   * Delete ProfileAssociation by masterWrapperId and detailWrapperId
    *
-   * @param masterId     - UUID of masterProfile
-   * @param detailId     - UUID of detailProfile
+   * @param masterWrapperId     - UUID of masterWrapperProfile
+   * @param detailWrapperId     - UUID of detailWrapperProfile
    * @param masterType   - master Profile Type
    * @param detailType   - detail Profile Type
    * @param tenantId     - tenant id
    * @param jobProfileId - job profile id (optional)
    * @return - boolean result of operation
    */
-  Future<Boolean> delete(String masterId, String detailId, ContentType masterType, ContentType detailType, String tenantId, String jobProfileId);
+  Future<Boolean> delete(String masterWrapperId, String detailWrapperId, ContentType masterType, ContentType detailType, String tenantId, String jobProfileId);
 
   /**
-   * Delete profile associations for particular master profile by masterId
+   * Delete profile associations for particular master profile by wrapperId
    *
-   * @param masterId   - master profile id
+   * @param wrapperId   - master profile id
    * @param masterType - master profile type
    * @param detailType - detail profile type
    * @param tenantId   - tenant id
    * @return future with boolean
    */
-  Future<Boolean> deleteByMasterId(String masterId, ContentType masterType, ContentType detailType, String tenantId);
+  Future<Boolean> deleteByMasterId(String wrapperId, ContentType masterType, ContentType detailType, String tenantId);
 }

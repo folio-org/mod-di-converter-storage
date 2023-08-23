@@ -74,6 +74,8 @@ public class ProfileSnapshotDaoImpl implements ProfileSnapshotDao {
           snapshotItem.setDetailType(ContentType.fromValue(jsonItem.getString("detail_type")));
           snapshotItem.setDetail(jsonItem.getJsonArray("detail").getList().get(0));
           snapshotItem.setOrder(jsonItem.getInteger("detail_order"));
+          snapshotItem.setMasterWrapperId(jsonItem.getString("masterwrapperid"));
+          snapshotItem.setDetailWrapperId(jsonItem.getString("detailwrapperid"));
           if (StringUtils.isNotEmpty(jsonItem.getString("react_to"))) {
             snapshotItem.setReactTo(ProfileSnapshotWrapper.ReactTo.fromValue(jsonItem.getString("react_to")));
           }
