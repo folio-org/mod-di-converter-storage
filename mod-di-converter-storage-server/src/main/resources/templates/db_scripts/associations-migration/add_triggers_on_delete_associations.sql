@@ -1,8 +1,3 @@
-DROP TRIGGER IF EXISTS remove_related_wrappers_job_action
-ON ${myuniversity}_${mymodule}.job_to_action_profiles;
-
-DROP FUNCTION IF EXISTS remove_related_wrappers_job_action();
-
 CREATE OR REPLACE FUNCTION remove_related_wrappers_job_match()
 RETURNS trigger AS
 $$BEGIN
@@ -41,17 +36,6 @@ CREATE TRIGGER  remove_related_wrappers_match_match
    AFTER DELETE ON ${myuniversity}_${mymodule}.match_to_match_profiles
    FOR EACH ROW
    EXECUTE PROCEDURE remove_related_wrappers_match_match();
-
-
-DROP TRIGGER IF EXISTS remove_related_wrappers_match_action
-ON ${myuniversity}_${mymodule}.match_to_action_profiles;
-
-DROP FUNCTION IF EXISTS remove_related_wrappers_match_action();
-
-DROP TRIGGER IF EXISTS remove_related_wrappers_action_action
-ON ${myuniversity}_${mymodule}.action_to_action_profiles;
-
-DROP FUNCTION IF EXISTS remove_related_wrappers_action_action();
 
 CREATE OR REPLACE FUNCTION remove_related_wrappers_action_match()
 RETURNS trigger AS
