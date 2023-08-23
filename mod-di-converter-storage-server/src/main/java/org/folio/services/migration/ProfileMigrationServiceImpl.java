@@ -62,8 +62,8 @@ public class ProfileMigrationServiceImpl implements ProfileMigrationService {
     Promise<Boolean> creationProfilesFuture = Promise.promise();
     String tenantId = new OkapiConnectionParams(headers).getTenantId();
     return profileWrapperDao.checkIfDataInTableExists(tenantId)
-      .compose(e -> {
-        if (!e) {
+      .compose(isDataPresent -> {
+        if (!isDataPresent) {
           LOGGER.info("Profile migration started...");
           return runScript(tenantId, REVERT_VIEW)
             .compose(y -> jobProfileDao.getTotalProfilesNumber(tenantId))
