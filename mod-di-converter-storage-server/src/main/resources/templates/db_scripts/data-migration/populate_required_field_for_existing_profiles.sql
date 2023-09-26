@@ -1,6 +1,6 @@
 ----update existing profile's 'required' field to 'true'
 --
-----Holding and Item profile
+----Holding AND Item profile
 -----electronicAccess
 UPDATE ${myuniversity}_${mymodule}.mapping_profiles
 SET jsonb = jsonb_set(
@@ -9,30 +9,30 @@ SET jsonb = jsonb_set(
 	(
 		SELECT jsonb_agg(
 			CASE
-				WHEN elem->>'name' = 'electronicAccess' and elem->'subfields' is not null THEN
+				WHEN elem->>'name' = 'electronicAccess' AND elem->'subfields' IS NOT NULL THEN
 					jsonb_set(elem, '{subfields}', (
-						select jsonb_agg(
-							case
-								when subfields is not null then
+						SELECT jsonb_agg(
+							CASE
+								WHEN subfields IS NOT NULL THEN
 									jsonb_set(subfields,'{fields}',
 										(
-											select jsonb_agg(
-												case
-													when subfields_fields->>'name' = 'uri' then
+											SELECT jsonb_agg(
+												CASE
+													WHEN subfields_fields->>'name' = 'uri' THEN
 														jsonb_set(subfields_fields, '{required}','true')
-													else
+													ELSE
 													subfields_fields
-												end
+												END
 
 											)
-											from jsonb_array_elements(subfields->'fields') as subfields_fields
+											FROM jsonb_array_elements(subfields->'fields') AS subfields_fields
 										)
 									)
-								else subfields
-							end
+								ELSE subfields
+							END
 
 						)
-						from jsonb_array_elements(elem->'subfields') as subfields
+						FROM jsonb_array_elements(elem->'subfields') AS subfields
 					)
 					)
 				ELSE
@@ -41,15 +41,15 @@ SET jsonb = jsonb_set(
 		FROM jsonb_array_elements(jsonb-> 'mappingDetails'->'mappingFields') AS elem
 	)
 )
-where exists ( select 1 from
+WHERE EXISTS ( SELECT 1 FROM
 	jsonb_array_elements(jsonb->'mappingDetails'->
-'mappingFields') as fields,
-	jsonb_array_elements(fields->'subfields') as subfields,
-	jsonb_array_elements(subfields->'fields') as subfields_fields
-where
-	jsonb->'mappingDetails'->>'recordType' in ('HOLDINGS','ITEM')
-	and fields ->>'name' = 'electronicAccess' and
-	subfields is not null
+'mappingFields') AS fields,
+	jsonb_array_elements(fields->'subfields') AS subfields,
+	jsonb_array_elements(subfields->'fields') AS subfields_fields
+WHERE
+	jsonb->'mappingDetails'->>'recordType' IN ('HOLDINGS','ITEM')
+	AND fields ->>'name' = 'electronicAccess' AND
+	subfields IS NOT NULL
 	);
 
 
@@ -61,30 +61,30 @@ SET jsonb = jsonb_set(
 	(
 		SELECT jsonb_agg(
 			CASE
-				WHEN elem->>'name' = 'notes' and elem->'subfields' is not null THEN
+				WHEN elem->>'name' = 'notes' AND elem->'subfields' IS NOT NULL THEN
 					jsonb_set(elem, '{subfields}', (
-						select jsonb_agg(
-							case
-								when subfields is not null then
+						SELECT jsonb_agg(
+							CASE
+								WHEN subfields IS NOT NULL THEN
 									jsonb_set(subfields,'{fields}',
 										(
-											select jsonb_agg(
-												case
-													when subfields_fields->>'name' in ('noteType', 'note') then
+											SELECT jsonb_agg(
+												CASE
+													WHEN subfields_fields->>'name' IN ('noteType', 'note') THEN
 														jsonb_set(subfields_fields, '{required}','true')
-													else
+													ELSE
 													subfields_fields
-												end
+												END
 
 											)
-											from jsonb_array_elements(subfields->'fields') as subfields_fields
+											FROM jsonb_array_elements(subfields->'fields') AS subfields_fields
 										)
 									)
-								else subfields
-							end
+								ELSE subfields
+							END
 
 						)
-						from jsonb_array_elements(elem->'subfields') as subfields
+						FROM jsonb_array_elements(elem->'subfields') AS subfields
 					)
 					)
 				ELSE
@@ -93,15 +93,15 @@ SET jsonb = jsonb_set(
 		FROM jsonb_array_elements(jsonb-> 'mappingDetails'->'mappingFields') AS elem
 	)
 )
-where exists ( select 1 from
+WHERE EXISTS ( SELECT 1 FROM
 	jsonb_array_elements(jsonb->'mappingDetails'->
-'mappingFields') as fields,
-	jsonb_array_elements(fields->'subfields') as subfields,
-	jsonb_array_elements(subfields->'fields') as subfields_fields
-where
-	jsonb->'mappingDetails'->>'recordType' in ('HOLDINGS','ITEM')
-	and fields ->>'name' = 'notes' and
-	subfields is not null
+'mappingFields') AS fields,
+	jsonb_array_elements(fields->'subfields') AS subfields,
+	jsonb_array_elements(subfields->'fields') AS subfields_fields
+WHERE
+	jsonb->'mappingDetails'->>'recordType' IN ('HOLDINGS','ITEM')
+	AND fields ->>'name' = 'notes' AND
+	subfields IS NOT NULL
 	);
 
 ---circulations(noteType, note) of Item profile
@@ -112,30 +112,30 @@ SET jsonb = jsonb_set(
 	(
 		SELECT jsonb_agg(
 			CASE
-				WHEN elem->>'name' = 'circulationNotes' and elem->'subfields' is not null THEN
+				WHEN elem->>'name' = 'circulationNotes' AND elem->'subfields' IS NOT NULL THEN
 					jsonb_set(elem, '{subfields}', (
-						select jsonb_agg(
-							case
-								when subfields is not null then
+						SELECT jsonb_agg(
+							CASE
+								WHEN subfields IS NOT NULL THEN
 									jsonb_set(subfields,'{fields}',
 										(
-											select jsonb_agg(
-												case
-													when subfields_fields->>'name' in ('noteType', 'note') then
+											SELECT jsonb_agg(
+												CASE
+													WHEN subfields_fields->>'name' IN ('noteType', 'note') THEN
 														jsonb_set(subfields_fields, '{required}','true')
-													else
+													ELSE
 													subfields_fields
-												end
+												END
 
 											)
-											from jsonb_array_elements(subfields->'fields') as subfields_fields
+											FROM jsonb_array_elements(subfields->'fields') AS subfields_fields
 										)
 									)
-								else subfields
-							end
+								ELSE subfields
+							END
 
 						)
-						from jsonb_array_elements(elem->'subfields') as subfields
+						FROM jsonb_array_elements(elem->'subfields') AS subfields
 					)
 					)
 				ELSE
@@ -144,13 +144,13 @@ SET jsonb = jsonb_set(
 		FROM jsonb_array_elements(jsonb-> 'mappingDetails'->'mappingFields') AS elem
 	)
 )
-where exists ( select 1 from
+WHERE EXISTS ( SELECT 1 FROM
 	jsonb_array_elements(jsonb->'mappingDetails'->
-'mappingFields') as fields,
-	jsonb_array_elements(fields->'subfields') as subfields,
-	jsonb_array_elements(subfields->'fields') as subfields_fields
-where
+'mappingFields') AS fields,
+	jsonb_array_elements(fields->'subfields') AS subfields,
+	jsonb_array_elements(subfields->'fields') AS subfields_fields
+WHERE
 	jsonb->'mappingDetails'->>'recordType' = 'ITEM'
-	and fields ->>'name' = 'circulationNotes' and
-	subfields is not null
+	AND fields ->>'name' = 'circulationNotes' AND
+	subfields IS NOT NULL
 	);
