@@ -2,6 +2,7 @@
 * [MODDICONV-313](https://issues.folio.org/browse/MODDICONV-313) Upgrade mod-di-converter-storage to Java 17
 * [MODDICONV-300](https://issues.folio.org/browse/MODDICONV-300) Match and action profiles cannot be re-used in an import job profile - short term fix
 * [MODDICONV-310](https://issues.folio.org/browse/MODDICONV-310) Add wrappers around profiles to build associations.
+* [MODDICONV-297](https://issues.folio.org/browse/MODDICONV-297) Add migration script for profiles with mapping for required subfields.
 
 ## 2022-02-14 v2.0.0
 * [MODDICONV-259](https://issues.folio.org/browse/MODDICONV-259) Rename mod-data-import-converter-storage module to mod-di-converter-storage

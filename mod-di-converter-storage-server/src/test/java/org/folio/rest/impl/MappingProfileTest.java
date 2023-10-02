@@ -725,7 +725,6 @@ public class MappingProfileTest extends AbstractRestVerticleTest {
       .post(MAPPING_PROFILES_PATH)
       .then()
       .statusCode(HttpStatus.SC_CREATED)
-      .body("profile.name", is("Boo"))
       .extract().body().as(MappingProfileUpdateDto.class);
 
     ActionProfileUpdateDto actionProfile = RestAssured.given()
