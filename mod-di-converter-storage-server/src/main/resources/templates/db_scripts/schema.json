@@ -382,6 +382,11 @@
       "run": "after",
       "snippetPath": "data-migration/populate_required_field_for_existing_profiles.sql",
       "fromModuleVersion": "mod-di-converter-storage-2.1.0"
+    },
+    {
+      "run": "after",
+      "snippetPath": "data-migration/update_value_if_absent.sql",
+      "fromModuleVersion": "mod-di-converter-storage-2.1.0"
     }
   ]
 }
