@@ -1,6 +1,7 @@
 package org.folio.dao.association;
 
 import io.vertx.core.Future;
+import org.folio.dao.dto.ProfileIdAndName;
 import org.folio.rest.jaxrs.model.ProfileSnapshotWrapper;
 
 import java.util.List;
@@ -35,4 +36,14 @@ public interface MasterDetailAssociationDao {
    * @return a list of masters for a detail id
    */
   Future<List<ProfileSnapshotWrapper>> getMasterProfilesByDetailId(String detailId, ProfileSnapshotWrapper.ContentType masterType, String query, int offset, int limit, String tenantId);
+
+  /**
+   * Returns profile info with mirroring associations
+   *
+   * @param associationTable1 - first association table
+   * @param associationTable2 - second association table
+   * @param tenantId          - tenant id
+   * @return future with boolean
+   */
+  Future<List<ProfileIdAndName>> getProfilesWithMirroringAssociations(String associationTable1, String associationTable2, String tenantId);
 }

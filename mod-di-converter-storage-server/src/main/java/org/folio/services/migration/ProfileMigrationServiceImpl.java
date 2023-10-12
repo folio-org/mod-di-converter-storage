@@ -64,24 +64,36 @@ public class ProfileMigrationServiceImpl implements ProfileMigrationService {
     return profileWrapperDao.checkIfDataInTableExists(tenantId)
       .compose(isDataPresent -> {
         if (!isDataPresent) {
-          LOGGER.info("Profile migration started...");
-          return runScript(tenantId, REVERT_VIEW)
-            .compose(y -> jobProfileDao.getTotalProfilesNumber(tenantId))
-            .compose(x -> jobProfileDao.getProfiles(true, true, "cql.allRecords=1   ", 0, x, tenantId))
-            .compose(f -> {
-              List<Future<List<ProfileSnapshotItem>>> snapshotList = new ArrayList<>();
-              for (JobProfile jobProfile : f.getJobProfiles()) {
-                snapshotList.add(profileSnapshotDao.getSnapshotItems(jobProfile.getId(), ProfileSnapshotWrapper.ContentType.JOB_PROFILE, jobProfile.getId(), tenantId));
-              }
-              return wrapAndCreateProfileWrappers(creationProfilesFuture, tenantId, snapshotList);
-            })
-            .compose(t -> runScript(tenantId, UPDATE_SCHEMA_FOR_MIGRATION))
-            .compose(r -> runScript(tenantId, UPDATE_WRAPPERS_INSIDE_ASSOCIATIONS));
+          return checkForInvalidProfilesAndFailMigrationIfAnyExist(tenantId)
+            .compose(p -> {
+              LOGGER.info("Profile migration started...");
+              return runScript(tenantId, REVERT_VIEW)
+                .compose(y -> jobProfileDao.getTotalProfilesNumber(tenantId))
+                .compose(x -> jobProfileDao.getProfiles(true, true, "cql.allRecords=1   ", 0, x, tenantId))
+                .compose(f -> {
+                  List<Future<List<ProfileSnapshotItem>>> snapshotList = new ArrayList<>();
+                  for (JobProfile jobProfile : f.getJobProfiles()) {
+                    snapshotList.add(profileSnapshotDao.getSnapshotItems(jobProfile.getId(), ProfileSnapshotWrapper.ContentType.JOB_PROFILE, jobProfile.getId(), tenantId));
+                  }
+                  return wrapAndCreateProfileWrappers(creationProfilesFuture, tenantId, snapshotList);
+                })
+                .compose(t -> runScript(tenantId, UPDATE_SCHEMA_FOR_MIGRATION))
+                .compose(r -> runScript(tenantId, UPDATE_WRAPPERS_INSIDE_ASSOCIATIONS));
+            });
         } else {
           LOGGER.info("Migration will not execute. profile_wrappers table is NOT empty already.");
           return Future.succeededFuture(true);
         }
       });
+  }
+
+  private Future<Void> checkForInvalidProfilesAndFailMigrationIfAnyExist(String tenantId) {
+    return commonProfileAssociationService.existProfilesWithMirroringAssociations(
+        "match_to_match_profiles", "match_to_match_profiles", tenantId)
+      .compose(p -> commonProfileAssociationService.existProfilesWithMirroringAssociations(
+        "action_to_action_profiles", "action_to_action_profiles", tenantId))
+      .compose(p -> commonProfileAssociationService.existProfilesWithMirroringAssociations(
+        "action_to_match_profiles", "match_to_action_profiles", tenantId));
   }
 
   private Future<Boolean> wrapAndCreateProfileWrappers(Promise<Boolean> promise, String tenantId, List<Future<List<ProfileSnapshotItem>>> snapshotList) {

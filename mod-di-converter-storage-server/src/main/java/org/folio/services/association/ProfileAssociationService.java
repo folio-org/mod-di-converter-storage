@@ -129,4 +129,14 @@ public interface ProfileAssociationService { //NOSONAR
    * @return future with boolean
    */
   Future<Boolean> deleteByMasterId(String wrapperId, ContentType masterType, ContentType detailType, String tenantId);
+
+  /**
+   * Check for existence profiles with mirroring sssociations
+   *
+   * @param tableName1 - first association table
+   * @param tableName2 - second association table
+   * @param tenantId   - tenant id
+   * @return void future
+   */
+  Future<Void> existProfilesWithMirroringAssociations(String tableName1, String tableName2, String tenantId);
 }

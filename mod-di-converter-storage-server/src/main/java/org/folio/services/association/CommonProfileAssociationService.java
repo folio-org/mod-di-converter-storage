@@ -10,6 +10,7 @@ import org.folio.dao.ProfileDao;
 import org.folio.dao.association.MasterDetailAssociationDao;
 import org.folio.dao.association.ProfileAssociationDao;
 import org.folio.dao.association.ProfileWrapperDao;
+import org.folio.dao.exception.MirroringAssociationException;
 import org.folio.okapi.common.GenericCompositeFuture;
 import org.folio.rest.impl.util.OkapiConnectionParams;
 import org.folio.rest.jaxrs.model.ActionProfile;
@@ -35,6 +36,8 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
+import static java.lang.String.format;
+import static java.util.stream.Collectors.toList;
 
 /**
  * Generic implementation of the {@link ProfileAssociationService}
@@ -209,6 +212,26 @@ public class CommonProfileAssociationService implements ProfileAssociationServic
   @Override
   public Future<Boolean> deleteByMasterId(String wrapperId, ContentType masterType, ContentType detailType, String tenantId) {
     return profileAssociationDao.deleteByMasterId(wrapperId, masterType, detailType, tenantId);
+  }
+
+  @Override
+  public Future<Void> existProfilesWithMirroringAssociations(String tableName1, String tableName2, String tenantId) {
+    return masterDetailAssociationDao.getProfilesWithMirroringAssociations(tableName1, tableName2, tenantId)
+      .compose(profileIdAndNameList -> {
+        List<String> jobProfileLogs = profileIdAndNameList.stream()
+          .map(p -> format("job profile id: %s, name: %s", p.getJobProfileId(), p.getJobProfileName()))
+          .collect(toList());
+
+        if (!profileIdAndNameList.isEmpty()) {
+          LOGGER.warn("existProfilesWithMirroringAssociations:: Found profiles with mirroring associations: {}",
+            String.join("; ", jobProfileLogs));
+        } else {
+          return Future.succeededFuture();
+        }
+        return Future.failedFuture(new MirroringAssociationException(
+          format("Found profiles with mirroring associations, association1 '%s', association2 '%s', tenant '%s'",
+            tableName1, tableName2, tenantId)));
+      }).mapEmpty();
   }
 
   /**

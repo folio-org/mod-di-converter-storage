@@ -9,6 +9,7 @@ import io.vertx.sqlclient.RowSet;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.folio.dao.PostgresClientFactory;
+import org.folio.dao.dto.ProfileIdAndName;
 import org.folio.dao.sql.SelectBuilder;
 import org.folio.rest.jaxrs.model.ActionProfile;
 import org.folio.rest.jaxrs.model.JobProfile;
@@ -22,6 +23,7 @@ import org.springframework.stereotype.Repository;
 import java.util.ArrayList;
 import java.util.List;
 
+import static java.lang.String.format;
 import static org.apache.commons.lang3.StringUtils.isNotBlank;
 import static org.folio.dao.sql.SelectBuilder.parseQuery;
 import static org.folio.dao.sql.SelectBuilder.putInQuotes;
@@ -30,6 +32,12 @@ import static org.folio.dao.sql.SelectBuilder.putInQuotes;
 public class MasterDetailAssociationDaoImpl implements MasterDetailAssociationDao {
 
   private static final Logger LOGGER = LogManager.getLogger();
+
+  private static final String SELECT_PROFILES_WITH_MIRRORING_ASSOCIATIONS =
+    "SELECT DISTINCT A1.jsonb ->> 'jobProfileId' AS job_profile_id, JP.jsonb ->> 'name' AS job_profile_name" +
+      " FROM %s AS A1" +
+      " INNER JOIN %s AS A2 ON A1.masterprofileid = A2.detailprofileid AND A1.detailprofileid = A2.masterprofileid" +
+      " INNER JOIN job_profiles JP ON JP.id = CAST(A1.jsonb ->> 'jobProfileId' AS UUID)";
 
   /**
    * This query selects detail profiles by master profile id.
@@ -131,6 +139,24 @@ public class MasterDetailAssociationDaoImpl implements MasterDetailAssociationDa
     selectBuilder.limit(limit).offset(offset);
 
     return select(tenantId, selectBuilder.toString()).map(this::mapToMasters);
+  }
+
+  @Override
+  public Future<List<ProfileIdAndName>> getProfilesWithMirroringAssociations(String associationTable1,
+                                                                             String associationTable2, String tenantId) {
+    Promise<RowSet<Row>> promise = Promise.promise();
+    String query = format(SELECT_PROFILES_WITH_MIRRORING_ASSOCIATIONS, associationTable1, associationTable2);
+    pgClientFactory.createInstance(tenantId).select(query, promise);
+    return promise.future().map(rows -> {
+      List<ProfileIdAndName> actionToMatchSet = new ArrayList<>();
+      rows.forEach(row -> actionToMatchSet.add(mapRowToProfileIdAndName(row)));
+      return actionToMatchSet;
+    });
+  }
+
+  private ProfileIdAndName mapRowToProfileIdAndName(Row row) {
+    return new ProfileIdAndName(row.getValue("job_profile_id").toString(),
+      row.getValue("job_profile_name").toString());
   }
 
   /**
