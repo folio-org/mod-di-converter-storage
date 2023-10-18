@@ -48,7 +48,7 @@ public class DefaultJobProfileTest extends AbstractRestVerticleTest {
       .get(JOB_PROFILES_PATH + "?showHidden=true")
       .then()
       .statusCode(HttpStatus.SC_OK)
-      .body("totalRecords", is(11));
+      .body("totalRecords", is(12));
   }
 
   @Test
