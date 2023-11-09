@@ -391,7 +391,7 @@
     {
       "run": "after",
       "snippetPath": "associations-migration/actualize_wrappers_ids_at_relations_jsonb.sql",
-      "fromModuleVersion": "mod-di-converter-storage-2.2.0"
+      "fromModuleVersion": "mod-di-converter-storage-2.1.2"
     }
   ]
 }
