@@ -44,6 +44,7 @@ public class ProfileMigrationServiceImpl implements ProfileMigrationService {
   private static final String UPDATE_WRAPPERS_INSIDE_ASSOCIATIONS = "templates/db_scripts/associations-migration/update_wrappers_inside_associations.sql";
   private static final String REVERT_VIEW = "templates/db_scripts/associations-migration/revert_associations_view.sql";
   private static final String UPDATE_SCHEMA_FOR_MIGRATION = "templates/db_scripts/associations-migration/actualize_schema_for_migrations.sql";
+  private static final String ACTUALIZE_WRAPPERS_IDS_AT_JSONB = "templates/db_scripts/associations-migration/actualize_wrappers_ids_at_relations_jsonb.sql";
   private static final String TENANT_PLACEHOLDER = "${myuniversity}";
   private static final String MODULE_PLACEHOLDER = "${mymodule}";
   @Autowired
@@ -76,7 +77,8 @@ public class ProfileMigrationServiceImpl implements ProfileMigrationService {
               return wrapAndCreateProfileWrappers(creationProfilesFuture, tenantId, snapshotList);
             })
             .compose(t -> runScript(tenantId, UPDATE_SCHEMA_FOR_MIGRATION))
-            .compose(r -> runScript(tenantId, UPDATE_WRAPPERS_INSIDE_ASSOCIATIONS));
+            .compose(r -> runScript(tenantId, UPDATE_WRAPPERS_INSIDE_ASSOCIATIONS))
+            .compose(v -> runScript(tenantId, ACTUALIZE_WRAPPERS_IDS_AT_JSONB));
         } else {
           LOGGER.info("Migration will not execute. profile_wrappers table is NOT empty already.");
           return Future.succeededFuture(true);
