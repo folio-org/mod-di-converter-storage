@@ -1,8 +1,10 @@
+## 2023-11-13 2.1.2
+* [MODDICONV-345](https://issues.folio.org/browse/MODDICONV-345) Set wrapper ids at jsonb for migrated relations
+
 ## 2023-11-06 v2.1.1
 * [MODDICONV-348](https://issues.folio.org/browse/MODDICONV-348) Create default hidden job profile to create ECS instance during sharing process
 
 ## 2023-10-12 2.1.0
-* [MODDICONV-345](https://issues.folio.org/browse/MODDICONV-345) Set wrapper ids at jsonb for migrated relations
 * [MODDICONV-313](https://issues.folio.org/browse/MODDICONV-313) Upgrade mod-di-converter-storage to Java 17
 * [MODDICONV-300](https://issues.folio.org/browse/MODDICONV-300) Match and action profiles cannot be re-used in an import job profile - short term fix
 * [MODDICONV-310](https://issues.folio.org/browse/MODDICONV-310) Add wrappers around profiles to build associations.
