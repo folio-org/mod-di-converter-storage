@@ -34,7 +34,7 @@ public class MappingProfileServiceImpl extends AbstractProfileService<MappingPro
   @Override
   public Future<MappingProfile> updateProfile(MappingProfileUpdateDto profileDto, OkapiConnectionParams params) {
     return deleteExistingActionToMappingAssociations(profileDto, params.getTenantId())
-      .compose(deleteAr -> super.updateProfile(profileDto, params));
+      .compose(deleteAr -> super.updateProfile(profileDto, params, this::deleteRelatedAssociationsByMasterIdAndDetailId));
   }
 
   @Override
@@ -122,7 +122,7 @@ public class MappingProfileServiceImpl extends AbstractProfileService<MappingPro
     List<Future<Boolean>> futures = profileDto.getAddedRelations().stream()
       .filter(profileAssociation -> profileAssociation.getMasterProfileType().equals(ACTION_PROFILE))
       .map(ProfileAssociation::getMasterWrapperId)
-      .map(actionProfileId -> profileAssociationService.deleteByMasterId(actionProfileId, ContentType.ACTION_PROFILE,
+      .map(actionProfileId -> profileAssociationService.deleteByMasterWrapperId(actionProfileId, ContentType.ACTION_PROFILE,
         ContentType.MAPPING_PROFILE, tenantId))
       .collect(Collectors.toList());
 

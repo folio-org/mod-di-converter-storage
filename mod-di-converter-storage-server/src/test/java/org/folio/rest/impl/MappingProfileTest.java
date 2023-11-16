@@ -792,6 +792,59 @@ public class MappingProfileTest extends AbstractRestVerticleTest {
       .body("profileAssociations[0].detailProfileId", is(mappingProfile2.getProfile().getId()));
   }
 
+  @Test
+  public void shouldUpdateProfileAssociationsOnPut() {
+    var actionProfileDto = postActionProfile(new ActionProfileUpdateDto()
+      .withProfile(new ActionProfile()
+        .withName("Test Action Profile")
+        .withAction(CREATE)
+        .withFolioRecord(INSTANCE)));
+
+    var mappingProfileDto = postMappingProfile(new MappingProfileUpdateDto()
+      .withProfile(new MappingProfile()
+        .withName("Test Mapping Profile with relations")
+        .withExistingRecordType(EntityType.INSTANCE)
+        .withIncomingRecordType(EntityType.INSTANCE))
+      .withAddedRelations(List.of(new ProfileAssociation()
+        .withMasterProfileType(ProfileType.ACTION_PROFILE)
+        .withMasterProfileId(actionProfileDto.getId())
+        .withDetailProfileType(ProfileType.MAPPING_PROFILE))));
+
+    RestAssured.given()
+      .spec(spec)
+      .body(new MappingProfileUpdateDto()
+        .withId(mappingProfileDto.getId())
+        .withProfile(new MappingProfile()
+          .withId(mappingProfileDto.getProfile().getId())
+          .withName("Test Mapping Profile with relations")
+          .withExistingRecordType(EntityType.INSTANCE)
+          .withIncomingRecordType(EntityType.INSTANCE))
+        .withDeletedRelations(List.of(new ProfileAssociation()
+          .withMasterProfileType(ProfileType.ACTION_PROFILE)
+          .withMasterProfileId(actionProfileDto.getProfile().getId())
+          .withDetailProfileType(ProfileType.MAPPING_PROFILE)
+          .withDetailProfileId(mappingProfileDto.getAddedRelations().get(0).getDetailProfileId()))))
+      .when()
+      .put(MAPPING_PROFILES_PATH + "/" + mappingProfileDto.getProfile().getId())
+      .then()
+      .statusCode(HttpStatus.SC_OK)
+      .body("id", is(mappingProfileDto.getProfile().getId()))
+      .body("name", is(mappingProfileDto.getProfile().getName()));
+
+    RestAssured.given()
+      .spec(spec)
+      .when()
+      .get(MAPPING_PROFILES_PATH + "/" + mappingProfileDto.getProfile().getId() + "?withRelations=true")
+      .then()
+      .statusCode(HttpStatus.SC_OK)
+      .body("id", is(mappingProfileDto.getProfile().getId()))
+      .body("name", is(mappingProfileDto.getProfile().getName()))
+      .body("userInfo.lastName", is("Doe"))
+      .body("userInfo.firstName", is("Jane"))
+      .body("userInfo.userName", is("@janedoe"))
+      .body("parentProfiles", is(empty()))
+      .body("childProfiles", is(empty()));
+  }
 
   @Test
   public void shouldNotCreateMappingProfilesWhenDifferentFolioRecord() {

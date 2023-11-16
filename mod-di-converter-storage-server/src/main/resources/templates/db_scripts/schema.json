@@ -289,6 +289,16 @@
           "targetTable": "profile_wrappers",
           "tOps": "ADD"
         }
+      ],
+      "index": [
+        {
+          "fieldName": "masterProfileId",
+          "tOps": "ADD"
+        },
+        {
+          "fieldName": "detailProfileId",
+          "tOps": "ADD"
+        }
       ]
     }
   ],

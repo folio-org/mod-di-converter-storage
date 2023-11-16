@@ -25,7 +25,7 @@ public class ActionProfileServiceImpl extends AbstractProfileService<ActionProfi
   @Override
   public Future<ActionProfile> updateProfile(ActionProfileUpdateDto profile, OkapiConnectionParams params) {
     setDefaults(profile.getProfile());
-    return super.updateProfile(profile, params);
+    return super.updateProfile(profile, params, this::deleteRelatedAssociationsByMasterIdAndDetailId);
   }
   @Override
   ActionProfile setProfileId(ActionProfile profile) {
