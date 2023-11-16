@@ -685,7 +685,7 @@
       },
       {
         "name": "DB_QUERYTIMEOUT",
-        "value": "60000"
+        "value": "360000"
       },
       {
         "name": "DB_CHARSET",
