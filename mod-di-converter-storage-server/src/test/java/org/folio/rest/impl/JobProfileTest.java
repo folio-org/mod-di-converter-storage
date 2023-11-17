@@ -25,9 +25,7 @@ import org.folio.rest.jaxrs.model.ProfileType;
 import org.folio.rest.jaxrs.model.Tags;
 import org.folio.rest.persist.Criteria.Criterion;
 import org.folio.rest.persist.PostgresClient;
-import org.junit.After;
 import org.junit.Assert;
-import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
@@ -407,6 +405,79 @@ public class JobProfileTest extends AbstractRestVerticleTest {
       .body("name", is(jobProfile.getProfile().getName()))
       .body("description", is(jobProfile.getProfile().getDescription()))
       .body("dataType", is(jobProfile.getProfile().getDataType().value()));
+  }
+
+  @Test
+  public void shouldUpdateProfileAssociationsOnPut() {
+    JobProfileUpdateDto jobProfile = new JobProfileUpdateDto()
+      .withProfile(new JobProfile()
+        .withId(UUID.randomUUID().toString())
+        .withName("Bla")
+        .withTags(new Tags().withTagList(Arrays.asList("lorem", "ipsum", "dolor")))
+        .withDataType(MARC));
+
+    JobProfileUpdateDto jobProfileToUpdate = RestAssured.given()
+      .spec(spec)
+      .body(jobProfile)
+      .when()
+      .post(JOB_PROFILES_PATH)
+      .then()
+      .statusCode(HttpStatus.SC_CREATED)
+      .extract().as(JobProfileUpdateDto.class);
+
+    MatchProfileUpdateDto associatedMatchProfile = RestAssured.given()
+      .spec(spec)
+      .body(new MatchProfileUpdateDto()
+        .withProfile(new MatchProfile()
+          .withId(UUID.randomUUID().toString())
+          .withName("testMatch")
+          .withIncomingRecordType(EntityType.MARC_BIBLIOGRAPHIC)
+          .withExistingRecordType(EntityType.INSTANCE)))
+      .when()
+      .post(MATCH_PROFILES_PATH)
+      .then()
+      .statusCode(HttpStatus.SC_CREATED)
+      .extract().as(MatchProfileUpdateDto.class);
+
+    ProfileAssociation jobToMatchAssociation = postProfileAssociation(
+      new ProfileAssociation()
+        .withDetailProfileId(associatedMatchProfile.getProfile().getId())
+        .withMasterProfileId(jobProfileToUpdate.getProfile().getId())
+        .withMasterProfileType(ProfileType.JOB_PROFILE)
+        .withDetailProfileType(ProfileType.MATCH_PROFILE)
+        .withOrder(1),
+      JOB_PROFILE, MATCH_PROFILE);
+
+    RestAssured.given()
+      .spec(spec)
+      .body(jobProfileToUpdate.withDeletedRelations(List.of(jobToMatchAssociation)))
+      .when()
+      .put(JOB_PROFILES_PATH + "/" + jobProfile.getProfile().getId())
+      .then()
+      .statusCode(HttpStatus.SC_OK)
+      .body("id", is(jobProfileToUpdate.getProfile().getId()))
+      .body("name", is(jobProfileToUpdate.getProfile().getName()))
+      .body("tags.tagList", is(jobProfile.getProfile().getTags().getTagList()))
+      .body("userInfo.lastName", is("Doe"))
+      .body("userInfo.firstName", is("Jane"))
+      .body("userInfo.userName", is("@janedoe"))
+      .body("dataType", is(jobProfile.getProfile().getDataType().value()))
+      .extract().body().asPrettyString();
+
+    RestAssured.given()
+      .spec(spec)
+      .when()
+      .get(JOB_PROFILES_PATH + "/" + jobProfileToUpdate.getProfile().getId() + "?withRelations=true")
+      .then()
+      .statusCode(HttpStatus.SC_OK)
+      .body("id", is(jobProfileToUpdate.getProfile().getId()))
+      .body("name", is(jobProfileToUpdate.getProfile().getName()))
+      .body("userInfo.lastName", is("Doe"))
+      .body("userInfo.firstName", is("Jane"))
+      .body("userInfo.userName", is("@janedoe"))
+      .body("dataType", is(jobProfile.getProfile().getDataType().value()))
+      .body("parentProfiles", is(empty()))
+      .body("childProfiles", is(empty()));
   }
 
   @Test
