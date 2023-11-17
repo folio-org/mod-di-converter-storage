@@ -30,8 +30,6 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Optional;
-import java.util.function.BiFunction;
-import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -104,35 +102,31 @@ public abstract class AbstractProfileService<T, S, D> implements ProfileService<
         .map(profileWithInfo));
   }
 
-  protected Future<Boolean> deleteRelatedAssociations(List<ProfileAssociation> profileAssociations, String tenantId) {
-    return processAssociations(profileAssociations, association -> profileAssociationService.delete(
-      association.getMasterWrapperId(),
-      association.getDetailWrapperId(),
-      ProfileSnapshotWrapper.ContentType.fromValue(association.getMasterProfileType().name()),
-      ProfileSnapshotWrapper.ContentType.fromValue(association.getDetailProfileType().name()), tenantId,
-      association.getJobProfileId()
-    ));
-  }
-
-  protected Future<Boolean> deleteRelatedAssociationsByMasterIdAndDetailId(List<ProfileAssociation> profileAssociations,
-                                                                           String tenantId) {
-    return processAssociations(profileAssociations, association -> profileAssociationService.deleteByMasterIdAndDetailId(
-      association.getMasterProfileId(),
-      association.getDetailProfileId(),
-      ProfileSnapshotWrapper.ContentType.fromValue(association.getMasterProfileType().name()),
-      ProfileSnapshotWrapper.ContentType.fromValue(association.getDetailProfileType().name()), tenantId
-    ));
-  }
-
-  private Future<Boolean> processAssociations(List<ProfileAssociation> profileAssociations,
-                                              Function<ProfileAssociation, Future<Boolean>> associationProcessor) {
+  private Future<Boolean> deleteRelatedAssociations(List<ProfileAssociation> profileAssociations, String tenantId) {
     if (profileAssociations.isEmpty()) {
       return Future.succeededFuture(true);
     }
     Promise<Boolean> result = Promise.promise();
+
     List<Future<Boolean>> futureList = profileAssociations.stream()
-      .map(associationProcessor)
+      .map(association -> {
+        if (association.getMasterProfileType() == ProfileType.ACTION_PROFILE
+          && association.getDetailProfileType() == ProfileType.MAPPING_PROFILE) {
+          return profileAssociationService.deleteByMasterIdAndDetailId(
+            association.getMasterProfileId(), association.getDetailProfileId(),
+            ProfileSnapshotWrapper.ContentType.fromValue(association.getMasterProfileType().name()),
+            ProfileSnapshotWrapper.ContentType.fromValue(association.getDetailProfileType().name()),
+            tenantId);
+        } else {
+          return profileAssociationService.delete(
+            association.getMasterWrapperId(), association.getDetailWrapperId(),
+            ProfileSnapshotWrapper.ContentType.fromValue(association.getMasterProfileType().name()),
+            ProfileSnapshotWrapper.ContentType.fromValue(association.getDetailProfileType().name()),
+            tenantId, association.getJobProfileId());
+        }
+      })
       .collect(Collectors.toList());
+
     GenericCompositeFuture.all(futureList).onComplete(ar -> {
       if (ar.succeeded()) {
         result.complete(true);
@@ -186,16 +180,10 @@ public abstract class AbstractProfileService<T, S, D> implements ProfileService<
 
   @Override
   public Future<T> updateProfile(D profile, OkapiConnectionParams params) {
-    return updateProfile(profile, params, this::deleteRelatedAssociations);
-  }
-
-  @Override
-  public Future<T> updateProfile(D profile, OkapiConnectionParams params,
-                                 BiFunction<List<ProfileAssociation>, String, Future<Boolean>> deleteAssociationsFunction) {
     return setUserInfoForProfile(profile, params)
       .compose(profileWithInfo -> profileDao.updateProfile(profileWithInfo, params.getTenantId()))
       .map(prepareAssociations((profile)))
-      .compose(ar -> deleteAssociationsFunction.apply(getProfileAssociationToDelete(profile), params.getTenantId()))
+      .compose(ar -> deleteRelatedAssociations(getProfileAssociationToDelete(profile), params.getTenantId()))
       .compose(ar -> saveRelatedAssociations(getProfileAssociationToAdd(profile), params.getTenantId()))
       .map(getProfile(profile));
   }

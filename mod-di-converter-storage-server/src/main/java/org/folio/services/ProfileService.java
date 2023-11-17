@@ -3,11 +3,8 @@ package org.folio.services;
 import io.vertx.core.Future;
 import org.folio.rest.impl.util.OkapiConnectionParams;
 import org.folio.rest.jaxrs.model.EntityTypeCollection;
-import org.folio.rest.jaxrs.model.ProfileAssociation;
 
-import java.util.List;
 import java.util.Optional;
-import java.util.function.BiFunction;
 
 /**
  * Generic Profile Service
@@ -58,17 +55,6 @@ public interface ProfileService<T, S, D> {
    * @return future with updated entity
    */
   Future<T> updateProfile(D profile, OkapiConnectionParams params);
-
-   /**
-   * Updates D with given id
-   *
-   * @param profile Profile to update
-   * @param params  {@link OkapiConnectionParams}
-   * @param deleteAssociationsFunction function for profile associations deletion
-   * @return future with updated entity
-   */
-  Future<T> updateProfile(D profile, OkapiConnectionParams params,
-                          BiFunction<List<ProfileAssociation>, String, Future<Boolean>> deleteAssociationsFunction);
 
   /**
    * Search in database profile with the same name which contains in specified profile
