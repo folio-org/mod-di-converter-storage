@@ -293,11 +293,13 @@
       "index": [
         {
           "fieldName": "masterProfileId",
-          "tOps": "ADD"
+          "tOps": "ADD",
+          "removeAccents": false
         },
         {
           "fieldName": "detailProfileId",
-          "tOps": "ADD"
+          "tOps": "ADD",
+          "removeAccents": false
         }
       ]
     }

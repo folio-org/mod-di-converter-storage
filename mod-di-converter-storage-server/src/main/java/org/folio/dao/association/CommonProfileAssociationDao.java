@@ -42,8 +42,8 @@ public class CommonProfileAssociationDao implements ProfileAssociationDao {
   private static final String DETAIL_WRAPPER_ID_FIELD = "detailWrapperId";
   private static final String JOB_PROFILE_ID_FIELD = "jobProfileId";
   private static final String DELETE_BY_MASTER_ID_AND_DETAIL_ID_WHERE_CLAUSE =
-    "WHERE (left(lower(f_unaccent(%1$s.jsonb->>'masterProfileId')),600) LIKE lower(f_unaccent('%2$s'))) " +
-      "AND (lower(f_unaccent(%1$s.jsonb->>'detailProfileId')) LIKE lower(f_unaccent('%3$s')))";
+    "WHERE (left(lower(%1$s.jsonb->>'masterProfileId'),600) LIKE lower('%2$s')) " +
+      "AND (lower(%1$s.jsonb->>'detailProfileId') LIKE lower('%3$s'))";
   private static final Logger LOGGER = LogManager.getLogger();
   private static final String CORRECT_PROFILE_ASSOCIATION_TYPES_MESSAGE = "Correct ProfileAssociation types: " +
     "ACTION_PROFILE_TO_ACTION_PROFILE, " +
