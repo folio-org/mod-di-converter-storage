@@ -170,6 +170,8 @@ public class CommonProfileAssociationDao implements ProfileAssociationDao {
   public Future<Boolean> deleteByMasterIdAndDetailId(String masterId, String detailId, ContentType masterType, ContentType detailType, String tenantId) {
     Promise<RowSet<Row>> promise = Promise.promise();
     try {
+      /* Setting WHERE clause explicitly here because incorrect query is created by CQLWrapper by default due to
+      presence of 2 definitions of mapping tables in schema.json and the query is generated based on outdated definition */
       CQLWrapper filter = new CQLWrapper().setWhereClause(String.format(DELETE_BY_MASTER_ID_AND_DETAIL_ID_WHERE_CLAUSE,
         getAssociationTableName(masterType, detailType), masterId, detailId));
       pgClientFactory.createInstance(tenantId).delete(getAssociationTableName(masterType, detailType), filter, promise);
