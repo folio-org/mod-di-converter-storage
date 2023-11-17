@@ -107,11 +107,26 @@ public abstract class AbstractProfileService<T, S, D> implements ProfileService<
       return Future.succeededFuture(true);
     }
     Promise<Boolean> result = Promise.promise();
-    List<Future<Boolean>> futureList = new ArrayList<>();
-    profileAssociations.forEach(association -> futureList.add(profileAssociationService.delete(association.getMasterWrapperId(),
-      association.getDetailWrapperId(),
-      ProfileSnapshotWrapper.ContentType.fromValue(association.getMasterProfileType().name()),
-      ProfileSnapshotWrapper.ContentType.fromValue(association.getDetailProfileType().name()), tenantId, association.getJobProfileId())));
+
+    List<Future<Boolean>> futureList = profileAssociations.stream()
+      .map(association -> {
+        if (association.getMasterProfileType() == ProfileType.ACTION_PROFILE
+          && association.getDetailProfileType() == ProfileType.MAPPING_PROFILE) {
+          return profileAssociationService.deleteByMasterIdAndDetailId(
+            association.getMasterProfileId(), association.getDetailProfileId(),
+            ProfileSnapshotWrapper.ContentType.fromValue(association.getMasterProfileType().name()),
+            ProfileSnapshotWrapper.ContentType.fromValue(association.getDetailProfileType().name()),
+            tenantId);
+        } else {
+          return profileAssociationService.delete(
+            association.getMasterWrapperId(), association.getDetailWrapperId(),
+            ProfileSnapshotWrapper.ContentType.fromValue(association.getMasterProfileType().name()),
+            ProfileSnapshotWrapper.ContentType.fromValue(association.getDetailProfileType().name()),
+            tenantId, association.getJobProfileId());
+        }
+      })
+      .collect(Collectors.toList());
+
     GenericCompositeFuture.all(futureList).onComplete(ar -> {
       if (ar.succeeded()) {
         result.complete(true);

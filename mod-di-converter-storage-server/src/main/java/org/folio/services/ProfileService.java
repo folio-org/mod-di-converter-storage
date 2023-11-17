@@ -48,7 +48,7 @@ public interface ProfileService<T, S, D> {
   Future<T> saveProfile(D profile, OkapiConnectionParams params);
 
   /**
-   * Updates T with given id
+   * Updates D with given id
    *
    * @param profile Profile to update
    * @param params  {@link OkapiConnectionParams}

@@ -1,3 +1,6 @@
+## 2023-XX-XX 2.1.3
+* [MODDICONV-346](https://issues.folio.org/browse/MODDICONV-346) Fix unlinking for action-mapping associations
+
 ## 2023-11-13 2.1.2
 * [MODDICONV-345](https://issues.folio.org/browse/MODDICONV-345) Set wrapper ids at jsonb for migrated relations
 

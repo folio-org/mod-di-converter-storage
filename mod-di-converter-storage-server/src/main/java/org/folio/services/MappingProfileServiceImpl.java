@@ -122,7 +122,7 @@ public class MappingProfileServiceImpl extends AbstractProfileService<MappingPro
     List<Future<Boolean>> futures = profileDto.getAddedRelations().stream()
       .filter(profileAssociation -> profileAssociation.getMasterProfileType().equals(ACTION_PROFILE))
       .map(ProfileAssociation::getMasterWrapperId)
-      .map(actionProfileId -> profileAssociationService.deleteByMasterId(actionProfileId, ContentType.ACTION_PROFILE,
+      .map(actionProfileId -> profileAssociationService.deleteByMasterWrapperId(actionProfileId, ContentType.ACTION_PROFILE,
         ContentType.MAPPING_PROFILE, tenantId))
       .collect(Collectors.toList());
 
