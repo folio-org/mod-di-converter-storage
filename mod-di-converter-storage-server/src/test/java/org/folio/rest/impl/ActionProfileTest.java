@@ -414,6 +414,62 @@ public class ActionProfileTest extends AbstractRestVerticleTest {
   }
 
   @Test
+  public void shouldReuseExistingActionWrapperId() {
+    var actionProfileDto = postActionProfile(new ActionProfileUpdateDto()
+      .withProfile(new ActionProfile()
+        .withName("Test Action Profile")
+        .withAction(CREATE)
+        .withFolioRecord(INSTANCE)));
+
+    var mappingProfileDto = postMappingProfile(new MappingProfileUpdateDto()
+      .withProfile(new MappingProfile()
+        .withName("Test Mapping Profile with relations")
+        .withExistingRecordType(EntityType.INSTANCE)
+        .withIncomingRecordType(EntityType.INSTANCE))
+      .withAddedRelations(List.of(new ProfileAssociation()
+        .withMasterProfileType(ProfileType.ACTION_PROFILE)
+        .withMasterProfileId(actionProfileDto.getId())
+        .withDetailProfileType(ProfileType.MAPPING_PROFILE))));
+
+    String actionProfileWrapperId = mappingProfileDto.getAddedRelations().get(0).getMasterWrapperId();
+    String actionProfileId = actionProfileDto.getId();
+    String mappingProfileId = mappingProfileDto.getId();
+
+    RestAssured.given()
+      .spec(spec)
+      .body(actionProfileDto
+        .withDeletedRelations(List.of(new ProfileAssociation()
+          .withMasterProfileType(ProfileType.ACTION_PROFILE)
+          .withMasterProfileId(actionProfileId)
+          .withDetailProfileType(ProfileType.MAPPING_PROFILE)
+          .withDetailProfileId(mappingProfileId))))
+      .when()
+      .put(ACTION_PROFILES_PATH + "/" + actionProfileDto.getProfile().getId())
+      .then()
+      .statusCode(HttpStatus.SC_OK)
+      .body("id", is(actionProfileId))
+      .body("name", is(actionProfileDto.getProfile().getName()));
+
+    RestAssured.given()
+      .spec(spec)
+      .body(actionProfileDto
+        .withDeletedRelations(List.of())
+        .withAddedRelations(List.of(new ProfileAssociation()
+          .withMasterProfileType(ProfileType.ACTION_PROFILE)
+          .withMasterProfileId(actionProfileId)
+          .withDetailProfileType(ProfileType.MAPPING_PROFILE)
+          .withDetailProfileId(mappingProfileId))))
+      .when()
+      .put(ACTION_PROFILES_PATH + "/" + actionProfileDto.getProfile().getId())
+      .then()
+      .statusCode(HttpStatus.SC_OK)
+      .body("id", is(actionProfileDto.getId()))
+      .body("name", is(actionProfileDto.getProfile().getName()));
+
+    // TODO need to check that existing actionProfileWrapperId is used after second linking
+  }
+
+  @Test
   public void shouldReturnNotFoundOnGetById() {
     RestAssured.given()
       .spec(spec)

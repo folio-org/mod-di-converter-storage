@@ -16,7 +16,6 @@ import org.folio.rest.jaxrs.model.EntityTypeCollection;
 import org.folio.rest.jaxrs.model.ProfileAssociation;
 import org.folio.rest.jaxrs.model.ProfileSnapshotWrapper;
 import org.folio.rest.jaxrs.model.ProfileType;
-import org.folio.rest.jaxrs.model.ProfileWrapper;
 import org.folio.rest.jaxrs.model.UserInfo;
 import org.folio.services.association.CommonProfileAssociationService;
 import org.folio.services.association.ProfileAssociationService;
@@ -142,40 +141,69 @@ public abstract class AbstractProfileService<T, S, D> implements ProfileService<
       return Future.succeededFuture(true);
     }
     Promise<Boolean> result = Promise.promise();
-    List<Future<List<ProfileWrapper>>> futures = new ArrayList<>();
-    fillNeededProfilesIfNeeded(profileAssociations, tenantId, futures);
-
-    GenericCompositeFuture.all(futures).onSuccess(r -> {
-      associationService.wrapAssociationProfiles(profileAssociations, new ArrayList<>(), new HashMap<>(), tenantId)
-        .compose(e -> profileAssociationService.save(e, tenantId))
-        .onComplete(ar -> {
-          if (ar.succeeded()) {
-            result.complete(true);
-          } else {
-            result.fail(ar.cause());
-          }
-        });
-    }).onFailure(result::fail);
+    GenericCompositeFuture.all(fillProfileDataIfNeeded(profileAssociations, tenantId))
+      .onSuccess(r ->
+        associationService.wrapAssociationProfiles(profileAssociations, new ArrayList<>(), new HashMap<>(), tenantId)
+          .compose(e -> profileAssociationService.save(e, tenantId))
+          .onComplete(ar -> {
+            if (ar.succeeded()) {
+              result.complete(true);
+            } else {
+              result.fail(ar.cause());
+            }
+          })
+      ).onFailure(result::fail);
     return result.future();
   }
 
-  private void fillNeededProfilesIfNeeded(List<ProfileAssociation> profileAssociations, String tenantId, List<Future<List<ProfileWrapper>>> futures) {
+  private List<Future<Void>> fillProfileDataIfNeeded(List<ProfileAssociation> profileAssociations, String tenantId) {
+    List<Future<Void>> futures = new ArrayList<>();
+
     for (int i = 0; i < profileAssociations.size(); i++) {
-      if (profileAssociations.get(i).getDetailProfileType() == ProfileType.ACTION_PROFILE &&
+      ProfileAssociation profileAssociation = profileAssociations.get(i);
+      if (profileAssociation.getDetailProfileType() == ProfileType.ACTION_PROFILE &&
         (profileAssociations.size() == i + 1 || profileAssociations.get(i + 1).getMasterProfileType() != ProfileType.ACTION_PROFILE)) {
-        ProfileAssociation tmpActionProfileAssoc = profileAssociations.get(i);
-        String actionProfileId = profileAssociations.get(i).getDetailProfileId();
-        futures.add(profileWrapperDao.getWrapperByProfileId(actionProfileId, ProfileType.ACTION_PROFILE, tenantId)
-          .compose(o -> {
-            if (o.size() == 1) {
-              tmpActionProfileAssoc.setDetailWrapperId(o.get(0).getId());
-              return Future.succeededFuture();
-            } else {
-              return Future.failedFuture(new NotFoundException(format("Mapping Profile is NOT exists for this Action Profile with id '%s' ", actionProfileId)));
-            }
-          }));
+
+        futures.add(fillActionProfileDetailWrapper(profileAssociation, tenantId));
+
+      } else if (profileAssociation.getMasterProfileType() == ProfileType.ACTION_PROFILE
+        && profileAssociation.getDetailProfileType() == ProfileType.MAPPING_PROFILE
+        && profileAssociation.getMasterWrapperId() == null) {
+
+        futures.add(fillActionProfileMasterWrapper(profileAssociation, tenantId));
       }
     }
+    return futures;
+  }
+
+  private Future<Void> fillActionProfileDetailWrapper(ProfileAssociation actionProfileAssociation, String tenantId) {
+    String actionProfileId = actionProfileAssociation.getDetailProfileId();
+    return profileWrapperDao.getWrapperByProfileId(actionProfileId, ProfileType.ACTION_PROFILE, tenantId)
+      .compose(profileWrappers -> {
+        if (profileWrappers.size() == 1) {
+          actionProfileAssociation.setDetailWrapperId(profileWrappers.get(0).getId());
+          return Future.succeededFuture();
+        }
+        if (profileWrappers.size() > 1) {
+          return Future.failedFuture(new IllegalStateException(format("Found several wrappers for Action Profile with id '%s' ", actionProfileId)));
+        }
+        return Future.failedFuture(new NotFoundException(format("Mapping Profile does NOT exist for this Action Profile with id '%s' ", actionProfileId)));
+      });
+  }
+
+  private Future<Void> fillActionProfileMasterWrapper(ProfileAssociation actionProfileAssociation, String tenantId) {
+    String actionProfileId = actionProfileAssociation.getMasterProfileId();
+    return profileWrapperDao.getWrapperByProfileId(actionProfileId, ProfileType.ACTION_PROFILE, tenantId)
+      .compose(profileWrappers -> {
+        if (profileWrappers.size() == 1) {
+          actionProfileAssociation.setMasterWrapperId(profileWrappers.get(0).getId());
+          return Future.succeededFuture();
+        }
+        if (profileWrappers.size() > 1) {
+          return Future.failedFuture(new IllegalStateException(format("Found several wrappers for Action Profile with id '%s' ", actionProfileId)));
+        }
+        return Future.succeededFuture();
+      });
   }
 
   @Override
