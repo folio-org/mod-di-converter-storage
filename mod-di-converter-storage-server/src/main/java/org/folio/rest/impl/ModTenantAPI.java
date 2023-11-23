@@ -49,6 +49,7 @@ public class ModTenantAPI extends TenantAPI {
   private static final String DEFAULT_QM_AUTHORITY_UPDATE_JOB_PROFILE = "templates/db_scripts/defaultData/default_qm_authority_update_job_profile.sql";
   private static final String DEFAULT_QM_MARC_BIB_UPDATE_JOB_PROFILE = "templates/db_scripts/defaultData/default_qm_marc_bib_update_job_profile.sql";
   private static final String DEFAULT_QM_HOLDINGS_UPDATE_JOB_PROFILE = "templates/db_scripts/defaultData/default_qm_holdings_update_job_profile.sql";
+  private static final String DEFAULT_QM_AUTHORITY_CREATE_JOB_PROFILE = "templates/db_scripts/defaultData/default_qm_authority_create_job_profile.sql";
   private static final String DEFAULT_ECS_INSTANCE_AND_MARC_BIB_CREATE_JOB_PROFILE = "templates/db_scripts/defaultData/default_ecs_instance_and_marc_bib_create_job_profile.sql";
   private static final String RENAME_MODULE = "templates/db_scripts/rename_module.sql";
 
@@ -95,6 +96,7 @@ public class ModTenantAPI extends TenantAPI {
         .compose(m -> runSqlScript(DEFAULT_QM_AUTHORITY_UPDATE_JOB_PROFILE, headers, context))
         .compose(m -> runSqlScript(DEFAULT_QM_MARC_BIB_UPDATE_JOB_PROFILE, headers, context))
         .compose(m -> runSqlScript(DEFAULT_QM_HOLDINGS_UPDATE_JOB_PROFILE, headers, context))
+        .compose(m -> runSqlScript(DEFAULT_QM_AUTHORITY_CREATE_JOB_PROFILE, headers, context))
         .compose(m -> profileMigrationService.migrateDataImportProfiles(headers, context))
         .compose(m -> runSqlScript(DEFAULT_ECS_INSTANCE_AND_MARC_BIB_CREATE_JOB_PROFILE, headers, context))
         .map(num));
