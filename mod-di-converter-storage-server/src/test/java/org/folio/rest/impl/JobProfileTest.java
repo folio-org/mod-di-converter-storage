@@ -77,7 +77,8 @@ public class JobProfileTest extends AbstractRestVerticleTest {
     "1a338fcd-3efc-4a03-b007-394eeb0d5fb9", //DEFAULT_DELETE_MARC_AUTHORITY_JOB_PROFILE_ID
     "cf6f2718-5aa5-482a-bba5-5bc9b75614da", //DEFAULT_QM_MARC_BIB_UPDATE_JOB_PROFILE_ID
     "6cb347c6-c0b0-4363-89fc-32cedede87ba", //DEFAULT_QM_HOLDINGS_UPDATE_JOB_PROFILE_ID
-    "c7fcbc40-c4c0-411d-b569-1fc6bc142a92" //DEFAULT_QM_AUTHORITY_UPDATE_JOB_PROFILE_ID
+    "c7fcbc40-c4c0-411d-b569-1fc6bc142a92",
+    "6eefa4c6-bbf7-4845-ad82-de7fc4abd0e3"//DEFAULT_QM_AUTHORITY_CREATE_JOB_PROFILE_ID
   );
 
   static JobProfileUpdateDto jobProfile_1 = new JobProfileUpdateDto()

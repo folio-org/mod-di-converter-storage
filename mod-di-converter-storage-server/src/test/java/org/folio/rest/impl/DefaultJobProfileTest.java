@@ -28,6 +28,7 @@ public class DefaultJobProfileTest extends AbstractRestVerticleTest {
   private static final String DEFAULT_QM_MARC_BIB_UPDATE_JOB_PROFILE_ID = "cf6f2718-5aa5-482a-bba5-5bc9b75614da";
   private static final String DEFAULT_QM_HOLDINGS_UPDATE_JOB_PROFILE_ID = "6cb347c6-c0b0-4363-89fc-32cedede87ba";
   private static final String DEFAULT_QM_AUTHORITY_UPDATE_JOB_PROFILE_ID = "c7fcbc40-c4c0-411d-b569-1fc6bc142a92";
+  private static final String DEFAULT_QM_AUTHORITY_CREATE_JOB_PROFILE_ID = "6eefa4c6-bbf7-4845-ad82-de7fc4abd0e3";
 
   @Test
   public void shouldReturnDefaultProfilesListOnGet() {
@@ -48,7 +49,7 @@ public class DefaultJobProfileTest extends AbstractRestVerticleTest {
       .get(JOB_PROFILES_PATH + "?showHidden=true")
       .then()
       .statusCode(HttpStatus.SC_OK)
-      .body("totalRecords", is(12));
+      .body("totalRecords", is(13));
   }
 
   @Test
@@ -87,6 +88,18 @@ public class DefaultJobProfileTest extends AbstractRestVerticleTest {
       .then()
       .statusCode(HttpStatus.SC_OK).extract().as(JobProfile.class);
     Assert.assertEquals( "Default - Create Holdings and SRS MARC Holdings", profile.getName());
+    Assert.assertEquals( JobProfile.DataType.MARC, profile.getDataType());
+  }
+
+  @Test
+  public void shouldReturnAuthorityCreateProfileOnGetById() {
+    final var profile = RestAssured.given()
+      .spec(spec)
+      .when()
+      .get(JOB_PROFILES_PATH + "/" + DEFAULT_QM_AUTHORITY_CREATE_JOB_PROFILE_ID)
+      .then()
+      .statusCode(HttpStatus.SC_OK).extract().as(JobProfile.class);
+    Assert.assertEquals( "quickMARC - Default Create authority", profile.getName());
     Assert.assertEquals( JobProfile.DataType.MARC, profile.getDataType());
   }
 
