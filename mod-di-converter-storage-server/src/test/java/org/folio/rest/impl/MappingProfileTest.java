@@ -70,7 +70,8 @@ public class MappingProfileTest extends AbstractRestVerticleTest {
     "991c0300-44a6-47e3-8ea2-b01bb56a38cc", //DEFAULT_CREATE_DERIVE_INSTANCE_MAPPING_PROFILE_ID
     "e0fbaad5-10c0-40d5-9228-498b351dbbaa", //DEFAULT_CREATE_DERIVE_HOLDINGS_MAPPING_PROFILE_ID
     "13cf7adf-c7a7-4c2e-838f-14d0ac36ec0a", //DEFAULT_CREATE_HOLDINGS_MAPPING_PROFILE_ID
-    "6a0ec1de-68eb-4833-bdbf-0741db25c314"
+    "6a0ec1de-68eb-4833-bdbf-0741db25c314",
+    "6a0ec1de-68eb-4833-bdbf-0741db85c314" //DEFAULT_CREATE_AUTHORITIES_MAPPING_PROFILE_ID
   );
 
   public static MappingProfileUpdateDto mappingProfile_1 = new MappingProfileUpdateDto()
