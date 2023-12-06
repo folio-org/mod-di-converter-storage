@@ -37,14 +37,37 @@ public interface ProfileAssociationService { //NOSONAR
   Future<Optional<ProfileAssociation>> getById(String id, ContentType masterType, ContentType detailType, String tenantId);
 
   /**
-   * Saves ProfileAssociation entity
+   * Searches for count of associations uses wrapper by wrapperId
    *
-   * @param entity     ProfileAssociation to save
-   * @param masterType a master type in association
-   * @param detailType a detail type in association
-   * @param tenantId   tenantId
-   * @return future with saved entity
+   * @param wrapperId   wrapper id
+   * @param masterType  a master type in association
+   * @param detailType  a detail type in association
+   * @param tenantId    tenant id
+   * @return future with count of associations
    */
+  Future<Integer> getAssociationsCountByWrapperId(String wrapperId, ContentType masterType, ContentType detailType, String tenantId);
+
+  /**
+   * Search for associations by master and detail ids and their types
+   *
+   * @param masterId    masterId
+   * @param detailId    detailId
+   * @param masterType  a master type in association
+   * @param detailType  a detail type in association
+   * @param tenantId    tenant id
+   * @return  future with association
+   */
+  Future<ProfileAssociation> getProfileAssociation(String masterId, String detailId, ContentType masterType, ContentType detailType, String tenantId);
+
+    /**
+     * Saves ProfileAssociation entity
+     *
+     * @param entity     ProfileAssociation to save
+     * @param masterType a master type in association
+     * @param detailType a detail type in association
+     * @param tenantId   tenantId
+     * @return future with saved entity
+     */
   Future<ProfileAssociation> save(ProfileAssociation entity, ContentType masterType, ContentType detailType, String tenantId);
 
   /**

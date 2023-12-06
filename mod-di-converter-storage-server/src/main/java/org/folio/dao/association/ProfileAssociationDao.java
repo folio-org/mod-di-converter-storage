@@ -45,6 +45,29 @@ public interface ProfileAssociationDao {
   Future<Optional<ProfileAssociation>> getById(String id, ProfileSnapshotWrapper.ContentType masterType, ProfileSnapshotWrapper.ContentType detailType, String tenantId);
 
   /**
+   * Searches for count of associations uses wrapper by wrapperId
+   *
+   * @param wrapperId   wrapper id
+   * @param masterType  a master type in association
+   * @param detailType  a detail type in association
+   * @param tenantId    tenant id
+   * @return future with count of associations
+   */
+  Future<Integer> getAssociationCountByWrapperId(String wrapperId, ProfileSnapshotWrapper.ContentType masterType, ProfileSnapshotWrapper.ContentType detailType, String tenantId);
+
+  /**
+   * Search for associations by master and detail ids and their types
+   *
+   * @param masterId    masterId
+   * @param detailId    detailId
+   * @param masterType  a master type in association
+   * @param detailType  a detail type in association
+   * @param tenantId    tenant id
+   * @return  future with association
+   */
+  Future<ProfileAssociation> getProfileAssociation(String masterId, String detailId, ProfileSnapshotWrapper.ContentType masterType, ProfileSnapshotWrapper.ContentType detailType, String tenantId);
+
+  /**
    * Updates ProfileAssociation entity in database
    *
    * @param entity     ProfileAssociation entity to update
