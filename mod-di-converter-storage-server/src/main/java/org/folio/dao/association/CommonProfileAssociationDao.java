@@ -41,7 +41,6 @@ public class CommonProfileAssociationDao implements ProfileAssociationDao {
   private static final String MASTER_WRAPPER_ID_FIELD = "masterWrapperId";
   private static final String DETAIL_WRAPPER_ID_FIELD = "detailWrapperId";
   private static final String JOB_PROFILE_ID_FIELD = "jobProfileId";
-  private static final String CET_COUNT_ASSOCIATION_USES_WRAPPER = "SELECT count(*) cnt FROM %s WHERE %s = '%s'";
   private static final String CRITERIA_BY_MASTER_ID_AND_DETAIL_ID_WHERE_CLAUSE =
     "WHERE (left(lower(%1$s.jsonb->>'masterProfileId'),600) LIKE lower('%2$s')) " +
       "AND (lower(%1$s.jsonb->>'detailProfileId') LIKE lower('%3$s'))";
@@ -104,28 +103,6 @@ public class CommonProfileAssociationDao implements ProfileAssociationDao {
     return promise.future()
       .map(Results::getResults)
       .map(profiles -> profiles.isEmpty() ? Optional.empty() : Optional.of(profiles.get(0)));
-  }
-
-  @Override
-  public Future<Integer> getAssociationCountByWrapperId(String wrapperId, ContentType masterType, ContentType detailType, String tenantId) {
-    Promise<Integer> promise = Promise.promise();
-    try {
-      String preparedSql = format(CET_COUNT_ASSOCIATION_USES_WRAPPER, getAssociationTableName(masterType, detailType),
-        DETAIL_WRAPPER_ID_FIELD, wrapperId);
-
-      pgClientFactory.createInstance((tenantId)).select(preparedSql, selectAr -> {
-        if (selectAr.succeeded()) {
-          promise.complete((selectAr.result() == null) ? 0 : selectAr.result().iterator().next().getInteger("cnt"));
-        } else {
-          LOGGER.warn("getAssociationCountByWrapperId:: Error querying associations count uses wrapper with wrapperId: {}", wrapperId, selectAr.cause());
-          promise.fail(selectAr.cause());
-        }
-      });
-    } catch (Exception e) {
-      LOGGER.warn("getAssociationCountByWrapperId:: Error querying associations count uses wrapper with wrapperId: {}", wrapperId, e);
-      promise.fail(e);
-    }
-    return promise.future();
   }
 
   @Override
@@ -204,26 +181,6 @@ public class CommonProfileAssociationDao implements ProfileAssociationDao {
     }
     return promise.future().map(updateResult -> updateResult.rowCount() == 1);
   }
-
-  @Override
-  public Future<ProfileAssociation> getProfileAssociation(String masterId, String detailId, ContentType masterType, ContentType detailType, String tenantId) {
-    Promise<Results<ProfileAssociation>> promise = Promise.promise();
-    try {
-      /* Setting WHERE clause explicitly here because incorrect query is created by CQLWrapper by default due to
-      presence of 2 definitions of mapping tables in schema.json and the query is generated based on outdated definition */
-      CQLWrapper filter = new CQLWrapper()
-        .setWhereClause(String.format(CRITERIA_BY_MASTER_ID_AND_DETAIL_ID_WHERE_CLAUSE,
-          getAssociationTableName(masterType, detailType), masterId, detailId));
-
-      String[] fieldList = {"*"};
-      pgClientFactory.createInstance(tenantId).get(getAssociationTableName(masterType, detailType), ProfileAssociation.class, fieldList, filter, false, promise);
-    } catch (Exception e) {
-      LOGGER.warn("deleteByMasterIdAndDetailId:: Error deleting by master id {} and detail id {}", masterId, detailId, e);
-      return Future.failedFuture(e);
-    }
-    return promise.future().map(profileAssociationResults -> profileAssociationResults.getResults().get(0));
-  }
-
 
   /**
    * Returns association table name by masterType and detailType

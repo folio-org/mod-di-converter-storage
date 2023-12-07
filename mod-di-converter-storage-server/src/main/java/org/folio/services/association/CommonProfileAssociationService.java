@@ -69,11 +69,6 @@ public class CommonProfileAssociationService implements ProfileAssociationServic
   }
 
   @Override
-  public Future<Integer> getAssociationsCountByWrapperId(String wrapperId, ContentType masterType, ContentType detailType, String tenantId) {
-    return profileAssociationDao.getAssociationCountByWrapperId(wrapperId, masterType, detailType, tenantId);
-  }
-
-  @Override
   public Future<ProfileAssociation> save(ProfileAssociation entity, ContentType masterType, ContentType detailType, String tenantId) {
     entity.setId(UUID.randomUUID().toString());
     return wrapAssociationProfiles(new ArrayList<>(List.of(entity)), new ArrayList<>(), new HashMap<>(), tenantId)
@@ -219,11 +214,6 @@ public class CommonProfileAssociationService implements ProfileAssociationServic
   @Override
   public Future<Boolean> deleteByMasterIdAndDetailId(String masterId, String detailId, ContentType masterType, ContentType detailType, String tenantId) {
     return profileAssociationDao.deleteByMasterIdAndDetailId(masterId, detailId, masterType, detailType, tenantId);
-  }
-
-  @Override
-  public Future<ProfileAssociation> getProfileAssociation(String masterId, String detailId, ContentType masterType, ContentType detailType, String tenantId) {
-    return profileAssociationDao.getProfileAssociation(masterId, detailId, masterType, detailType, tenantId);
   }
 
   /**
