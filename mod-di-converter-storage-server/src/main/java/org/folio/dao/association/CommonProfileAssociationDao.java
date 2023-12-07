@@ -41,7 +41,7 @@ public class CommonProfileAssociationDao implements ProfileAssociationDao {
   private static final String MASTER_WRAPPER_ID_FIELD = "masterWrapperId";
   private static final String DETAIL_WRAPPER_ID_FIELD = "detailWrapperId";
   private static final String JOB_PROFILE_ID_FIELD = "jobProfileId";
-  private static final String DELETE_BY_MASTER_ID_AND_DETAIL_ID_WHERE_CLAUSE =
+  private static final String CRITERIA_BY_MASTER_ID_AND_DETAIL_ID_WHERE_CLAUSE =
     "WHERE (left(lower(%1$s.jsonb->>'masterProfileId'),600) LIKE lower('%2$s')) " +
       "AND (lower(%1$s.jsonb->>'detailProfileId') LIKE lower('%3$s'))";
   private static final Logger LOGGER = LogManager.getLogger();
@@ -172,7 +172,7 @@ public class CommonProfileAssociationDao implements ProfileAssociationDao {
     try {
       /* Setting WHERE clause explicitly here because incorrect query is created by CQLWrapper by default due to
       presence of 2 definitions of mapping tables in schema.json and the query is generated based on outdated definition */
-      CQLWrapper filter = new CQLWrapper().setWhereClause(String.format(DELETE_BY_MASTER_ID_AND_DETAIL_ID_WHERE_CLAUSE,
+      CQLWrapper filter = new CQLWrapper().setWhereClause(String.format(CRITERIA_BY_MASTER_ID_AND_DETAIL_ID_WHERE_CLAUSE,
         getAssociationTableName(masterType, detailType), masterId, detailId));
       pgClientFactory.createInstance(tenantId).delete(getAssociationTableName(masterType, detailType), filter, promise);
     } catch (Exception e) {
