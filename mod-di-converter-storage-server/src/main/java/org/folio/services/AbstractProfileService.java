@@ -144,17 +144,29 @@ public abstract class AbstractProfileService<T, S, D> implements ProfileService<
                                                                   ContentType masterContentType,
                                                                   ContentType detailContentType,
                                                                   String tenantId) {
-    return profileAssociationService.getProfileAssociation(association.getMasterProfileId(), association.getDetailProfileId(), masterContentType, detailContentType, tenantId)
-      .compose(filledProfileAssociation -> profileAssociationService.getAssociationsCountByWrapperId(filledProfileAssociation.getDetailWrapperId(), masterContentType, detailContentType, tenantId)
-        .compose(associationsByWrapperId -> {
-          Future<Boolean> profileAssociationDeletionFuture = profileAssociationService.deleteByMasterIdAndDetailId(association.getMasterProfileId(), association.getDetailProfileId(), masterContentType, detailContentType, tenantId);
-          if (associationsByWrapperId == 1) {
-            Future<Boolean> profileWrapperDeletionFuture = profileWrapperDao.deleteById(filledProfileAssociation.getDetailWrapperId(), tenantId);
-            return profileAssociationDeletionFuture.compose(deleted -> profileWrapperDeletionFuture);
-          } else {
-            return profileAssociationDeletionFuture;
-          }
-        }));
+    return profileAssociationService
+      .deleteByMasterIdAndDetailId(association.getMasterProfileId(), association.getDetailProfileId(),
+        masterContentType, detailContentType, tenantId);
+
+//    return profileAssociationService.
+//      getProfileAssociation(association.getMasterProfileId(), association.getDetailProfileId(),
+//        masterContentType, detailContentType, tenantId)
+//      .compose(filledProfileAssociation -> profileAssociationService
+//        .getAssociationsCountByWrapperId(filledProfileAssociation.getDetailWrapperId(),
+//          masterContentType, detailContentType, tenantId)
+//        .compose(associationsByWrapperId -> {
+//          Future<Boolean> profileAssociationDeletionFuture =
+//            profileAssociationService.deleteByMasterIdAndDetailId(
+//              association.getMasterProfileId(), association.getDetailProfileId(),
+//              masterContentType, detailContentType, tenantId);
+//          if (associationsByWrapperId == 1) {
+//            Future<Boolean> profileWrapperDeletionFuture =
+//              profileWrapperDao.deleteById(filledProfileAssociation.getDetailWrapperId(), tenantId);
+//            return profileAssociationDeletionFuture.compose(deleted -> profileWrapperDeletionFuture);
+//          } else {
+//            return profileAssociationDeletionFuture;
+//          }
+//        }));
   }
 
   private Future<Boolean> saveRelatedAssociations(List<ProfileAssociation> profileAssociations, String tenantId) {

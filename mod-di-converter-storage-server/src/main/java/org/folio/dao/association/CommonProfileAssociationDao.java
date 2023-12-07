@@ -115,7 +115,7 @@ public class CommonProfileAssociationDao implements ProfileAssociationDao {
 
       pgClientFactory.createInstance((tenantId)).select(preparedSql, selectAr -> {
         if (selectAr.succeeded()) {
-          promise.complete(selectAr.result().iterator().next().getInteger("cnt"));
+          promise.complete((selectAr.result() == null) ? 0 : selectAr.result().iterator().next().getInteger("cnt"));
         } else {
           LOGGER.warn("getAssociationCountByWrapperId:: Error querying associations count uses wrapper with wrapperId: {}", wrapperId, selectAr.cause());
           promise.fail(selectAr.cause());
@@ -216,7 +216,7 @@ public class CommonProfileAssociationDao implements ProfileAssociationDao {
           getAssociationTableName(masterType, detailType), masterId, detailId));
 
       String[] fieldList = {"*"};
-      pgClientFactory.createInstance(tenantId).get(getAssociationTableName(masterType, detailType), ProfileAssociation.class, fieldList, filter, true, promise);
+      pgClientFactory.createInstance(tenantId).get(getAssociationTableName(masterType, detailType), ProfileAssociation.class, fieldList, filter, false, promise);
     } catch (Exception e) {
       LOGGER.warn("deleteByMasterIdAndDetailId:: Error deleting by master id {} and detail id {}", masterId, detailId, e);
       return Future.failedFuture(e);
