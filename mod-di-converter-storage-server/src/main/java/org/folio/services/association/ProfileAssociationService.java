@@ -36,15 +36,15 @@ public interface ProfileAssociationService { //NOSONAR
    */
   Future<Optional<ProfileAssociation>> getById(String id, ContentType masterType, ContentType detailType, String tenantId);
 
-  /**
-   * Saves ProfileAssociation entity
-   *
-   * @param entity     ProfileAssociation to save
-   * @param masterType a master type in association
-   * @param detailType a detail type in association
-   * @param tenantId   tenantId
-   * @return future with saved entity
-   */
+    /**
+     * Saves ProfileAssociation entity
+     *
+     * @param entity     ProfileAssociation to save
+     * @param masterType a master type in association
+     * @param detailType a detail type in association
+     * @param tenantId   tenantId
+     * @return future with saved entity
+     */
   Future<ProfileAssociation> save(ProfileAssociation entity, ContentType masterType, ContentType detailType, String tenantId);
 
   /**
