@@ -1,5 +1,6 @@
-## 2023-XX-XX 2.1.3
+## 2023-12-08 2.1.3
 * [MODDICONV-346](https://issues.folio.org/browse/MODDICONV-346) Fix unlinking for action-mapping associations
+* [MODDICONV-354](https://issues.folio.org/browse/MODDICONV-354) Unable to link action profile to job profile after unlinking manipulations with action profile
 
 ## 2023-11-13 2.1.2
 * [MODDICONV-345](https://issues.folio.org/browse/MODDICONV-345) Set wrapper ids at jsonb for migrated relations
