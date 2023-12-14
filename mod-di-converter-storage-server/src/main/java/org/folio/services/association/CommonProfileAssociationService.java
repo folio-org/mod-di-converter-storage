@@ -26,6 +26,7 @@ import org.folio.rest.jaxrs.model.ProfileSnapshotWrapper;
 import org.folio.rest.jaxrs.model.ProfileSnapshotWrapper.ContentType;
 import org.folio.rest.jaxrs.model.ProfileType;
 import org.folio.rest.jaxrs.model.ProfileWrapper;
+import org.folio.rest.jaxrs.model.ReactToType;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -202,8 +203,9 @@ public class CommonProfileAssociationService implements ProfileAssociationServic
   }
 
   @Override
-  public Future<Boolean> delete(String masterWrapperId, String detailWrapperId, ContentType masterType, ContentType detailType, String tenantId, String jobProfileId) {
-    return profileAssociationDao.delete(masterWrapperId, detailWrapperId, masterType, detailType, tenantId, jobProfileId);
+  public Future<Boolean> delete(String masterWrapperId, String detailWrapperId, ContentType masterType, ContentType detailType,
+                                String jobProfileId, ReactToType reactTo, String tenantId) {
+    return profileAssociationDao.delete(masterWrapperId, detailWrapperId, masterType, detailType, jobProfileId, reactTo, tenantId);
   }
 
   @Override
@@ -212,8 +214,13 @@ public class CommonProfileAssociationService implements ProfileAssociationServic
   }
 
   @Override
-  public Future<Boolean> deleteByMasterIdAndDetailId(String masterId, String detailId, ContentType masterType, ContentType detailType, String tenantId) {
-    return profileAssociationDao.deleteByMasterIdAndDetailId(masterId, detailId, masterType, detailType, tenantId);
+  public Future<Boolean> deleteByMasterIdAndDetailId(String masterId, String detailId, ContentType masterType,
+                                                     ContentType detailType, ReactToType reactTo,
+                                                     String tenantId) {
+    LOGGER.info("deleteByMasterIdAndDetailId : masterId={}, detailId={}, masterType={}, detailType={}, reactTo={}",
+      masterId, detailId, masterType.value(), detailType.value(), reactTo.value());
+
+    return profileAssociationDao.deleteByMasterIdAndDetailId(masterId, detailId, masterType, detailType, reactTo, tenantId);
   }
 
   /**

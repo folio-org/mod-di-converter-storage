@@ -44,7 +44,7 @@ import static org.folio.rest.jaxrs.model.ProfileType.MAPPING_PROFILE;
  */
 public abstract class AbstractProfileService<T, S, D> implements ProfileService<T, S, D> {
 
-  private static final Logger logger = LogManager.getLogger();
+  private static final Logger LOGGER = LogManager.getLogger();
   private static final String GET_USER_URL = "/users?query=id==";
   private static final String DELETE_PROFILE_ERROR_MESSAGE = "Can not delete profile by id '%s' cause profile associated with other profiles";
 
@@ -132,11 +132,15 @@ public abstract class AbstractProfileService<T, S, D> implements ProfileService<
     ProfileSnapshotWrapper.ContentType detailContentType =
       ProfileSnapshotWrapper.ContentType.fromValue(association.getDetailProfileType().name());
 
+    LOGGER.debug("deleteAssociation: masterContentType={}, detailContentType={}, reactTo={}",
+      masterContentType.value(), detailContentType.value(), association.getReactTo().value());
+
     if (association.getMasterProfileType() == ACTION_PROFILE && association.getDetailProfileType() == MAPPING_PROFILE) {
       return deleteMappingToActionProfileAssociation(association, masterContentType, detailContentType, tenantId);
     } else {
       return profileAssociationService.delete(association.getMasterWrapperId(),
-        association.getDetailWrapperId(), masterContentType, detailContentType, tenantId, association.getJobProfileId());
+        association.getDetailWrapperId(), masterContentType, detailContentType, association.getJobProfileId(),
+        association.getReactTo(), tenantId);
     }
   }
 
@@ -144,9 +148,8 @@ public abstract class AbstractProfileService<T, S, D> implements ProfileService<
                                                                   ContentType masterContentType,
                                                                   ContentType detailContentType,
                                                                   String tenantId) {
-    return profileAssociationService
-      .deleteByMasterIdAndDetailId(association.getMasterProfileId(), association.getDetailProfileId(),
-        masterContentType, detailContentType, tenantId);
+    return profileAssociationService.deleteByMasterIdAndDetailId(association.getMasterProfileId(),
+      association.getDetailProfileId(), masterContentType, detailContentType, association.getReactTo(), tenantId);
   }
 
   private Future<Boolean> saveRelatedAssociations(List<ProfileAssociation> profileAssociations, String tenantId) {
@@ -379,7 +382,7 @@ public abstract class AbstractProfileService<T, S, D> implements ProfileService<
       if (ar.succeeded()) {
         result.complete(profilesCollection);
       } else {
-        logger.warn("fetchRelationsForCollection:: Error during fetching related profiles", ar.cause());
+        LOGGER.warn("fetchRelationsForCollection:: Error during fetching related profiles", ar.cause());
         result.fail(ar.cause());
       }
     });
@@ -409,7 +412,7 @@ public abstract class AbstractProfileService<T, S, D> implements ProfileService<
       if (ar.succeeded()) {
         result.complete(profile);
       } else {
-        logger.warn("fetchRelations:: Error during fetching related profiles", ar.cause());
+        LOGGER.warn("fetchRelations:: Error during fetching related profiles", ar.cause());
         result.fail(ar.cause());
       }
     });
@@ -445,11 +448,11 @@ public abstract class AbstractProfileService<T, S, D> implements ProfileService<
             int recordCount = response.getInteger("totalRecords");
             if (recordCount > 1) {
               String errorMessage = "lookupUser:: There are more then one user by requested user id : " + userId;
-              logger.warn(errorMessage);
+              LOGGER.warn(errorMessage);
               promise.fail(errorMessage);
             } else if (recordCount == 0) {
               String errorMessage = "No user found by user id :" + userId;
-              logger.warn(errorMessage);
+              LOGGER.warn(errorMessage);
               promise.fail(errorMessage);
             } else {
               JsonObject jsonUser = response.getJsonArray("users").getJsonObject(0);

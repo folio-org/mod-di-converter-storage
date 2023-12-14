@@ -11,6 +11,7 @@ import org.folio.rest.jaxrs.model.ProfileAssociation;
 import org.folio.rest.jaxrs.model.ProfileAssociationCollection;
 import org.folio.rest.jaxrs.model.ProfileSnapshotWrapper;
 import org.folio.rest.jaxrs.model.ProfileSnapshotWrapper.ContentType;
+import org.folio.rest.jaxrs.model.ReactToType;
 import org.folio.rest.persist.Criteria.Criteria;
 import org.folio.rest.persist.Criteria.Criterion;
 import org.folio.rest.persist.cql.CQLWrapper;
@@ -43,7 +44,12 @@ public class CommonProfileAssociationDao implements ProfileAssociationDao {
   private static final String JOB_PROFILE_ID_FIELD = "jobProfileId";
   private static final String CRITERIA_BY_MASTER_ID_AND_DETAIL_ID_WHERE_CLAUSE =
     "WHERE (left(lower(%1$s.jsonb->>'masterProfileId'),600) LIKE lower('%2$s')) " +
-      "AND (lower(%1$s.jsonb->>'detailProfileId') LIKE lower('%3$s'))";
+      "AND (lower(%1$s.jsonb->>'detailProfileId') LIKE lower('%3$s')) " +
+      "AND (lower(%1$s.jsonb->>'reactTo') LIKE lower('%4$s'))";
+
+  private static final String CRITERIA_BY_REACT_TO_WHERE_CLAUSE =
+    "WHERE (lower(%1$s.jsonb->>'reactTo') LIKE lower('%2$s'))";
+
   private static final Logger LOGGER = LogManager.getLogger();
   private static final String CORRECT_PROFILE_ASSOCIATION_TYPES_MESSAGE = "Correct ProfileAssociation types: " +
     "ACTION_PROFILE_TO_ACTION_PROFILE, " +
@@ -137,14 +143,15 @@ public class CommonProfileAssociationDao implements ProfileAssociationDao {
   }
 
   @Override
-  public Future<Boolean> delete(String masterWrapperId, String detailWrapperId, ProfileSnapshotWrapper.ContentType masterType, ProfileSnapshotWrapper.ContentType detailType, String tenantId, String jobProfileId) {
+  public Future<Boolean> delete(String masterWrapperId, String detailWrapperId, ProfileSnapshotWrapper.ContentType masterType,
+                                ProfileSnapshotWrapper.ContentType detailType, String jobProfileId, ReactToType reactTo, String tenantId) {
     Promise<RowSet<Row>> promise = Promise.promise();
     try {
       CQLWrapper filter = getCQLWrapper(getAssociationTableName(masterType, detailType),
         MASTER_WRAPPER_ID_FIELD + "==" + masterWrapperId + " AND " + DETAIL_WRAPPER_ID_FIELD + "==" + detailWrapperId +
           // if jobProfileId field defined in jsonb - perform matching on it, if not - match all records.
-          " AND (" + JOB_PROFILE_ID_FIELD + "==" + jobProfileId + " OR (cql.allRecords=1 NOT " + JOB_PROFILE_ID_FIELD + "=\"\"))");
-
+          " AND (" + JOB_PROFILE_ID_FIELD + "==" + jobProfileId + " OR (cql.allRecords=1 NOT " + JOB_PROFILE_ID_FIELD + "=\"\"))")
+        .setWhereClause(String.format(CRITERIA_BY_REACT_TO_WHERE_CLAUSE, getAssociationTableName(masterType, detailType), reactTo.value()));
       pgClientFactory.createInstance(tenantId).delete(getAssociationTableName(masterType, detailType), filter, promise);
     } catch (Exception e) {
       LOGGER.warn("delete:: Error deleting by master wrapper id {} and detail wrapper id {}", masterWrapperId, detailWrapperId, e);
@@ -167,13 +174,14 @@ public class CommonProfileAssociationDao implements ProfileAssociationDao {
   }
 
   @Override
-  public Future<Boolean> deleteByMasterIdAndDetailId(String masterId, String detailId, ContentType masterType, ContentType detailType, String tenantId) {
+  public Future<Boolean> deleteByMasterIdAndDetailId(String masterId, String detailId, ContentType masterType,
+                                                     ContentType detailType, ReactToType reactTo, String tenantId) {
     Promise<RowSet<Row>> promise = Promise.promise();
     try {
       /* Setting WHERE clause explicitly here because incorrect query is created by CQLWrapper by default due to
       presence of 2 definitions of mapping tables in schema.json and the query is generated based on outdated definition */
       CQLWrapper filter = new CQLWrapper().setWhereClause(String.format(CRITERIA_BY_MASTER_ID_AND_DETAIL_ID_WHERE_CLAUSE,
-        getAssociationTableName(masterType, detailType), masterId, detailId));
+        getAssociationTableName(masterType, detailType), masterId, detailId, reactTo.value()));
       pgClientFactory.createInstance(tenantId).delete(getAssociationTableName(masterType, detailType), filter, promise);
     } catch (Exception e) {
       LOGGER.warn("deleteByMasterIdAndDetailId:: Error deleting by master id {} and detail id {}", masterId, detailId, e);

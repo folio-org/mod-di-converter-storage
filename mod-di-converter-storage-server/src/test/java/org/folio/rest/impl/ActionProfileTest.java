@@ -16,6 +16,7 @@ import org.folio.rest.jaxrs.model.ProfileAssociation;
 import org.folio.rest.jaxrs.model.ProfileSnapshotWrapper;
 import org.folio.rest.jaxrs.model.ProfileSnapshotWrapper.ContentType;
 import org.folio.rest.jaxrs.model.ProfileType;
+import org.folio.rest.jaxrs.model.ReactToType;
 import org.folio.rest.jaxrs.model.Tags;
 import org.folio.rest.persist.Criteria.Criterion;
 import org.folio.rest.persist.PostgresClient;
@@ -379,7 +380,8 @@ public class ActionProfileTest extends AbstractRestVerticleTest {
       .withAddedRelations(List.of(new ProfileAssociation()
         .withMasterProfileType(ProfileType.ACTION_PROFILE)
         .withMasterProfileId(actionProfileDto.getId())
-        .withDetailProfileType(ProfileType.MAPPING_PROFILE))));
+        .withDetailProfileType(ProfileType.MAPPING_PROFILE)
+        .withReactTo(ReactToType.MATCH))));
 
     RestAssured.given()
       .spec(spec)
@@ -388,6 +390,7 @@ public class ActionProfileTest extends AbstractRestVerticleTest {
           .withMasterProfileType(ProfileType.ACTION_PROFILE)
           .withMasterProfileId(actionProfileDto.getProfile().getId())
           .withDetailProfileType(ProfileType.MAPPING_PROFILE)
+          .withReactTo(ReactToType.MATCH)
           .withDetailProfileId(mappingProfileDto.getAddedRelations().get(0).getDetailProfileId()))))
       .when()
       .put(ACTION_PROFILES_PATH + "/" + actionProfileDto.getProfile().getId())
@@ -480,7 +483,8 @@ public class ActionProfileTest extends AbstractRestVerticleTest {
           .withMasterProfileType(ProfileType.ACTION_PROFILE)
           .withMasterProfileId(actionProfileDto1.getId())
           .withDetailProfileType(ProfileType.MAPPING_PROFILE)
-          .withDetailProfileId(associatedMappingProfile.getId()))))
+          .withDetailProfileId(associatedMappingProfile.getId())
+          .withReactTo(ReactToType.MATCH))))
       .when()
       .put(ACTION_PROFILES_PATH + "/" + actionProfileDto1.getProfile().getId())
       .then()
@@ -537,7 +541,8 @@ public class ActionProfileTest extends AbstractRestVerticleTest {
           .withMasterProfileType(ProfileType.ACTION_PROFILE)
           .withMasterProfileId(actionProfileId)
           .withDetailProfileType(ProfileType.MAPPING_PROFILE)
-          .withDetailProfileId(mappingProfileId))))
+          .withDetailProfileId(mappingProfileId)
+          .withReactTo(ReactToType.MATCH))))
       .when()
       .put(ACTION_PROFILES_PATH + "/" + actionProfileDto.getProfile().getId())
       .then()
