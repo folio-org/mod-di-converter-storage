@@ -215,12 +215,10 @@ public class CommonProfileAssociationService implements ProfileAssociationServic
 
   @Override
   public Future<Boolean> deleteByMasterIdAndDetailId(String masterId, String detailId, ContentType masterType,
-                                                     ContentType detailType, ReactToType reactTo,
-                                                     String tenantId) {
-    LOGGER.info("deleteByMasterIdAndDetailId : masterId={}, detailId={}, masterType={}, detailType={}, reactTo={}",
-      masterId, detailId, masterType.value(), detailType.value(), reactTo.value());
-
-    return profileAssociationDao.deleteByMasterIdAndDetailId(masterId, detailId, masterType, detailType, reactTo, tenantId);
+                                                     ContentType detailType, String tenantId) {
+    LOGGER.debug("deleteByMasterIdAndDetailId : masterId={}, detailId={}, masterType={}, detailType={}",
+      masterId, detailId, masterType.value(), detailType.value());
+    return profileAssociationDao.deleteByMasterIdAndDetailId(masterId, detailId, masterType, detailType, tenantId);
   }
 
   /**

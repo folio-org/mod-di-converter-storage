@@ -143,6 +143,5 @@ public interface ProfileAssociationService { //NOSONAR
    * @return - boolean result of operation
    */
   Future<Boolean> deleteByMasterIdAndDetailId(String masterId, String detailId, ContentType masterType,
-                                              ContentType detailType, ReactToType reactTo,
-                                              String tenantId);
+                                              ContentType detailType, String tenantId);
 }

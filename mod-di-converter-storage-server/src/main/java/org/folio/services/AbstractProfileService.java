@@ -149,7 +149,7 @@ public abstract class AbstractProfileService<T, S, D> implements ProfileService<
                                                                   ContentType detailContentType,
                                                                   String tenantId) {
     return profileAssociationService.deleteByMasterIdAndDetailId(association.getMasterProfileId(),
-      association.getDetailProfileId(), masterContentType, detailContentType, association.getReactTo(), tenantId);
+      association.getDetailProfileId(), masterContentType, detailContentType, tenantId);
   }
 
   private Future<Boolean> saveRelatedAssociations(List<ProfileAssociation> profileAssociations, String tenantId) {

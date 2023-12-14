@@ -103,5 +103,5 @@ public interface ProfileAssociationDao {
    * @return - boolean result of operation
    */
   Future<Boolean> deleteByMasterIdAndDetailId(String masterId, String detailId, ProfileSnapshotWrapper.ContentType masterType,
-                                              ProfileSnapshotWrapper.ContentType detailType, ReactToType reactTo, String tenantId);
+                                              ProfileSnapshotWrapper.ContentType detailType, String tenantId);
 }
