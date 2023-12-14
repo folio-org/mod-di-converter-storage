@@ -132,12 +132,11 @@ public abstract class AbstractProfileService<T, S, D> implements ProfileService<
     ProfileSnapshotWrapper.ContentType detailContentType =
       ProfileSnapshotWrapper.ContentType.fromValue(association.getDetailProfileType().name());
 
-    LOGGER.debug("deleteAssociation: masterContentType={}, detailContentType={}, reactTo={}",
-      masterContentType.value(), detailContentType.value(), association.getReactTo().value());
-
     if (association.getMasterProfileType() == ACTION_PROFILE && association.getDetailProfileType() == MAPPING_PROFILE) {
       return deleteMappingToActionProfileAssociation(association, masterContentType, detailContentType, tenantId);
     } else {
+      LOGGER.debug("deleteAssociation: masterContentType={}, detailContentType={}, reactTo={}",
+        masterContentType.value(), detailContentType.value(), association.getReactTo());
       return profileAssociationService.delete(association.getMasterWrapperId(),
         association.getDetailWrapperId(), masterContentType, detailContentType, association.getJobProfileId(),
         association.getReactTo(), tenantId);
