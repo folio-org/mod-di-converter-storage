@@ -4,6 +4,7 @@ import io.vertx.core.Future;
 import org.folio.rest.jaxrs.model.ProfileAssociation;
 import org.folio.rest.jaxrs.model.ProfileAssociationCollection;
 import org.folio.rest.jaxrs.model.ProfileSnapshotWrapper;
+import org.folio.rest.jaxrs.model.ReactToType;
 
 import java.util.Optional;
 
@@ -77,7 +78,8 @@ public interface ProfileAssociationDao {
    * @param jobProfileId - job profile id (optional)
    * @return - boolean result of operation
    */
-  Future<Boolean> delete(String masterWrapperId, String detailWrapperId, ProfileSnapshotWrapper.ContentType masterType, ProfileSnapshotWrapper.ContentType detailType, String tenantId, String jobProfileId);
+  Future<Boolean> delete(String masterWrapperId, String detailWrapperId, ProfileSnapshotWrapper.ContentType masterType,
+                         ProfileSnapshotWrapper.ContentType detailType, String jobProfileId, ReactToType reactTo, String tenantId);
 
   /**
    * Delete profile associations for particular master profile by wrapperId
@@ -100,5 +102,6 @@ public interface ProfileAssociationDao {
    * @param tenantId     - tenant id
    * @return - boolean result of operation
    */
-  Future<Boolean> deleteByMasterIdAndDetailId(String masterId, String detailId, ProfileSnapshotWrapper.ContentType masterType, ProfileSnapshotWrapper.ContentType detailType, String tenantId);
+  Future<Boolean> deleteByMasterIdAndDetailId(String masterId, String detailId, ProfileSnapshotWrapper.ContentType masterType,
+                                              ProfileSnapshotWrapper.ContentType detailType, String tenantId);
 }

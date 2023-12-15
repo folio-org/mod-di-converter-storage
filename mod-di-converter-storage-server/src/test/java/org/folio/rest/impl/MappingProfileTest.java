@@ -19,6 +19,7 @@ import org.folio.rest.jaxrs.model.MappingRule;
 import org.folio.rest.jaxrs.model.ProfileAssociation;
 import org.folio.rest.jaxrs.model.ProfileType;
 import org.folio.rest.jaxrs.model.ProfileSnapshotWrapper;
+import org.folio.rest.jaxrs.model.ReactToType;
 import org.folio.rest.jaxrs.model.Tags;
 import org.folio.rest.persist.Criteria.Criterion;
 import org.folio.rest.persist.PostgresClient;
@@ -63,7 +64,7 @@ public class MappingProfileTest extends AbstractRestVerticleTest {
   private static final String PROFILE_WRAPPERS_TABLE = "profile_wrappers";
 
   private static final String MAPPING_PROFILE_UUID = "608ab35e-5f8b-49c3-bcf1-1fb5e57d5130";
-  private List<String> defaultMappingProfileIds = Arrays.asList(
+  private final List<String> defaultMappingProfileIds = Arrays.asList(
     "d0ebbc2e-2f0f-11eb-adc1-0242ac120002", //OCLC_CREATE_MAPPING_PROFILE_ID
     "862000b9-84ea-4cae-a223-5fc0552f2b42", //OCLC_UPDATE_MAPPING_PROFILE_ID
     "f90864ef-8030-480f-a43f-8cdd21233252", //OCLC_UPDATE_MARC_BIB_MAPPING_PROFILE_ID
@@ -100,7 +101,7 @@ public class MappingProfileTest extends AbstractRestVerticleTest {
       .withIncomingRecordType(EntityType.MARC_BIBLIOGRAPHIC)
       .withExistingRecordType(EntityType.INSTANCE));
 
-  private static MappingProfileUpdateDto mappingProfileNotEmptyChildAndParent = new MappingProfileUpdateDto()
+  private static final MappingProfileUpdateDto mappingProfileNotEmptyChildAndParent = new MappingProfileUpdateDto()
     .withProfile(new MappingProfile()
       .withName("Mapping profile with child and parent")
       .withIncomingRecordType(EntityType.MARC_BIBLIOGRAPHIC)
@@ -808,6 +809,7 @@ public class MappingProfileTest extends AbstractRestVerticleTest {
       .withAddedRelations(List.of(new ProfileAssociation()
         .withMasterProfileType(ProfileType.ACTION_PROFILE)
         .withMasterProfileId(actionProfileDto.getId())
+        .withReactTo(ReactToType.MATCH)
         .withDetailProfileType(ProfileType.MAPPING_PROFILE))));
 
     RestAssured.given()
@@ -823,6 +825,7 @@ public class MappingProfileTest extends AbstractRestVerticleTest {
           .withMasterProfileType(ProfileType.ACTION_PROFILE)
           .withMasterProfileId(actionProfileDto.getProfile().getId())
           .withDetailProfileType(ProfileType.MAPPING_PROFILE)
+          .withReactTo(ReactToType.MATCH)
           .withDetailProfileId(mappingProfileDto.getAddedRelations().get(0).getDetailProfileId()))))
       .when()
       .put(MAPPING_PROFILES_PATH + "/" + mappingProfileDto.getProfile().getId())
@@ -862,7 +865,8 @@ public class MappingProfileTest extends AbstractRestVerticleTest {
       .withAddedRelations(List.of(new ProfileAssociation()
         .withMasterProfileType(ProfileType.ACTION_PROFILE)
         .withMasterProfileId(actionProfileDto.getId())
-        .withDetailProfileType(ProfileType.MAPPING_PROFILE))));
+        .withDetailProfileType(ProfileType.MAPPING_PROFILE)
+        .withReactTo(ReactToType.MATCH))));
 
     String actionProfileWrapperId = mappingProfileDto.getAddedRelations().get(0).getMasterWrapperId();
     String actionProfileId = actionProfileDto.getId();
@@ -881,6 +885,7 @@ public class MappingProfileTest extends AbstractRestVerticleTest {
           .withMasterProfileType(ProfileType.ACTION_PROFILE)
           .withMasterProfileId(actionProfileId)
           .withDetailProfileType(ProfileType.MAPPING_PROFILE)
+          .withReactTo(ReactToType.MATCH)
           .withDetailProfileId(mappingProfileId))))
       .when()
       .put(MAPPING_PROFILES_PATH + "/" + mappingProfileDto.getProfile().getId())

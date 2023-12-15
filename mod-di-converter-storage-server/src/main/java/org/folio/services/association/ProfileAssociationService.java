@@ -6,6 +6,7 @@ import org.folio.rest.jaxrs.model.ProfileAssociation;
 import org.folio.rest.jaxrs.model.ProfileAssociationCollection;
 import org.folio.rest.jaxrs.model.ProfileSnapshotWrapper;
 import org.folio.rest.jaxrs.model.ProfileSnapshotWrapper.ContentType;
+import org.folio.rest.jaxrs.model.ReactToType;
 
 import java.util.List;
 import java.util.Optional;
@@ -117,7 +118,8 @@ public interface ProfileAssociationService { //NOSONAR
    * @param jobProfileId - job profile id (optional)
    * @return - boolean result of operation
    */
-  Future<Boolean> delete(String masterWrapperId, String detailWrapperId, ContentType masterType, ContentType detailType, String tenantId, String jobProfileId);
+  Future<Boolean> delete(String masterWrapperId, String detailWrapperId, ContentType masterType, ContentType detailType, String jobProfileId,
+                         ReactToType reactTo, String tenantId);
 
   /**
    * Delete profile associations for particular master profile by wrapperId
@@ -140,5 +142,6 @@ public interface ProfileAssociationService { //NOSONAR
    * @param tenantId     - tenant id
    * @return - boolean result of operation
    */
-  Future<Boolean> deleteByMasterIdAndDetailId(String masterId, String detailId, ContentType masterType, ContentType detailType, String tenantId);
+  Future<Boolean> deleteByMasterIdAndDetailId(String masterId, String detailId, ContentType masterType,
+                                              ContentType detailType, String tenantId);
 }

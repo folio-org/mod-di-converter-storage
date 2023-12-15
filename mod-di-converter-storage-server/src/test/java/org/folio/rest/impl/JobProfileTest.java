@@ -22,6 +22,7 @@ import org.folio.rest.jaxrs.model.ProfileAssociation;
 import org.folio.rest.jaxrs.model.ProfileSnapshotWrapper;
 import org.folio.rest.jaxrs.model.ProfileSnapshotWrapper.ContentType;
 import org.folio.rest.jaxrs.model.ProfileType;
+import org.folio.rest.jaxrs.model.ReactToType;
 import org.folio.rest.jaxrs.model.Tags;
 import org.folio.rest.persist.Criteria.Criterion;
 import org.folio.rest.persist.PostgresClient;
@@ -445,6 +446,7 @@ public class JobProfileTest extends AbstractRestVerticleTest {
         .withMasterProfileId(jobProfileToUpdate.getProfile().getId())
         .withMasterProfileType(ProfileType.JOB_PROFILE)
         .withDetailProfileType(ProfileType.MATCH_PROFILE)
+        .withReactTo(ReactToType.MATCH)
         .withOrder(1),
       JOB_PROFILE, MATCH_PROFILE);
 
