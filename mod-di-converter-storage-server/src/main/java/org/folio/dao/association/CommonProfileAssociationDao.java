@@ -149,8 +149,10 @@ public class CommonProfileAssociationDao implements ProfileAssociationDao {
       CQLWrapper filter = getCQLWrapper(getAssociationTableName(masterType, detailType),
         MASTER_WRAPPER_ID_FIELD + "==" + masterWrapperId + " AND " + DETAIL_WRAPPER_ID_FIELD + "==" + detailWrapperId +
           // if jobProfileId field defined in jsonb - perform matching on it, if not - match all records.
-          " AND (" + JOB_PROFILE_ID_FIELD + "==" + jobProfileId + " OR (cql.allRecords=1 NOT " + JOB_PROFILE_ID_FIELD + "=\"\"))")
-        .setWhereClause(String.format(CRITERIA_BY_REACT_TO_WHERE_CLAUSE, getAssociationTableName(masterType, detailType), reactTo.value()));
+          " AND (" + JOB_PROFILE_ID_FIELD + "==" + jobProfileId + " OR (cql.allRecords=1 NOT " + JOB_PROFILE_ID_FIELD + "=\"\"))");
+      if (reactTo != null) {
+        filter.setWhereClause(String.format(CRITERIA_BY_REACT_TO_WHERE_CLAUSE, getAssociationTableName(masterType, detailType), reactTo.value()));
+      }
       pgClientFactory.createInstance(tenantId).delete(getAssociationTableName(masterType, detailType), filter, promise);
     } catch (Exception e) {
       LOGGER.warn("delete:: Error deleting by master wrapper id {} and detail wrapper id {}", masterWrapperId, detailWrapperId, e);
