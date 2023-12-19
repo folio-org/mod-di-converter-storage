@@ -1,8 +1,11 @@
-## 2023-12-08 2.1.3
+## 2023-12-19 v2.1.4
+* [MODDICONV-355](https://issues.folio.org/browse/MODDICONV-355) Fix unlinking of an action profile if it was used twice in the job profile
+
+## 2023-12-08 v2.1.3
 * [MODDICONV-346](https://issues.folio.org/browse/MODDICONV-346) Fix unlinking for action-mapping associations
 * [MODDICONV-354](https://issues.folio.org/browse/MODDICONV-354) Unable to link action profile to job profile after unlinking manipulations with action profile
 
-## 2023-11-13 2.1.2
+## 2023-11-13 v2.1.2
 * [MODDICONV-345](https://issues.folio.org/browse/MODDICONV-345) Set wrapper ids at jsonb for migrated relations
 
 ## 2023-11-06 v2.1.1
