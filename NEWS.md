@@ -1,3 +1,6 @@
+## 2023-12-20 v2.1.5
+* [MODDICONV-344](https://issues.folio.org/browse/MODDICONV-344) Fix error when re-using the Action profile already used for multiple Job Profiles
+
 ## 2023-12-19 v2.1.4
 * [MODDICONV-355](https://issues.folio.org/browse/MODDICONV-355) Fix unlinking of an action profile if it was used twice in the job profile
 
