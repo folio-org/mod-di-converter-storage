@@ -199,7 +199,7 @@ public abstract class AbstractProfileService<T, S, D> implements ProfileService<
     return profileWrapperDao.getWrapperByProfileId(actionProfileId, ACTION_PROFILE, tenantId)
       .compose(profileWrappers -> {
         if (profileWrappers.size() == 0) {
-          return Future.failedFuture(new NotFoundException(format("Mapping Profile does NOT exist for this Action Profile with id '%s' ", actionProfileId)));
+          return Future.failedFuture(new NotFoundException(format("Wrapper does NOT exist for this Action Profile with id '%s' ", actionProfileId)));
         }
         actionProfileAssociation.setDetailWrapperId(profileWrappers.get(0).getId());
         return Future.succeededFuture();
