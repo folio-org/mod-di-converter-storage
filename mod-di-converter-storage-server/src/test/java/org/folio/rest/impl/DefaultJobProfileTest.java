@@ -3,6 +3,7 @@ package org.folio.rest.impl;
 import io.restassured.RestAssured;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
 import org.apache.http.HttpStatus;
+import org.folio.rest.jaxrs.model.ProfileSnapshotWrapper;
 import org.folio.rest.jaxrs.model.Tags;
 import org.folio.rest.jaxrs.model.JobProfile;
 import org.folio.rest.jaxrs.model.JobProfileUpdateDto;
@@ -16,11 +17,13 @@ import java.util.Arrays;
 import java.util.Collections;
 
 import static org.folio.rest.impl.JobProfileTest.JOB_PROFILES_PATH;
+import static org.folio.rest.impl.snapshot.JobProfileSnapshotTest.PROFILE_SNAPSHOT_PATH;
+import static org.folio.rest.impl.snapshot.JobProfileSnapshotTest.PROFILE_TYPE_PARAM;
+import static org.folio.rest.jaxrs.model.ProfileSnapshotWrapper.ContentType.JOB_PROFILE;
 import static org.hamcrest.Matchers.is;
 
 @RunWith(VertxUnitRunner.class)
 public class DefaultJobProfileTest extends AbstractRestVerticleTest {
-
 
   private static final String DEFAULT_MARC_AUTHORITY_PROFILE_ID = "6eefa4c6-bbf7-4845-ad82-de7fc5abd0e3";
   private static final String DEFAULT_MARC_HOLDINGS_PROFILE_ID = "80898dee-449f-44dd-9c8e-37d5eb469b1d";
@@ -60,8 +63,8 @@ public class DefaultJobProfileTest extends AbstractRestVerticleTest {
       .get(JOB_PROFILES_PATH + "/" + DEFAULT_MARC_AUTHORITY_PROFILE_ID)
       .then()
       .statusCode(HttpStatus.SC_OK).extract().as(JobProfile.class);
-    Assert.assertEquals( "Default - Create SRS MARC Authority", profile.getName());
-    Assert.assertEquals( JobProfile.DataType.MARC, profile.getDataType());
+    Assert.assertEquals("Default - Create SRS MARC Authority", profile.getName());
+    Assert.assertEquals(JobProfile.DataType.MARC, profile.getDataType());
   }
 
   @Test
@@ -87,8 +90,8 @@ public class DefaultJobProfileTest extends AbstractRestVerticleTest {
       .get(JOB_PROFILES_PATH + "/" + DEFAULT_MARC_HOLDINGS_PROFILE_ID)
       .then()
       .statusCode(HttpStatus.SC_OK).extract().as(JobProfile.class);
-    Assert.assertEquals( "Default - Create Holdings and SRS MARC Holdings", profile.getName());
-    Assert.assertEquals( JobProfile.DataType.MARC, profile.getDataType());
+    Assert.assertEquals("Default - Create Holdings and SRS MARC Holdings", profile.getName());
+    Assert.assertEquals(JobProfile.DataType.MARC, profile.getDataType());
   }
 
   @Test
@@ -99,8 +102,21 @@ public class DefaultJobProfileTest extends AbstractRestVerticleTest {
       .get(JOB_PROFILES_PATH + "/" + DEFAULT_QM_AUTHORITY_CREATE_JOB_PROFILE_ID)
       .then()
       .statusCode(HttpStatus.SC_OK).extract().as(JobProfile.class);
-    Assert.assertEquals( "quickMARC - Default Create authority", profile.getName());
-    Assert.assertEquals( JobProfile.DataType.MARC, profile.getDataType());
+    Assert.assertEquals("quickMARC - Default Create authority", profile.getName());
+    Assert.assertEquals(JobProfile.DataType.MARC, profile.getDataType());
+  }
+
+  @Test
+  public void shouldReturnAuthorityCreateProfileSnapshotOnGetById() {
+    final var profile = RestAssured.given()
+      .spec(spec)
+      .when()
+      .queryParam(PROFILE_TYPE_PARAM, JOB_PROFILE.value())
+      .get(PROFILE_SNAPSHOT_PATH + "/" + DEFAULT_QM_AUTHORITY_CREATE_JOB_PROFILE_ID)
+      .then()
+      .statusCode(HttpStatus.SC_OK).extract().as(ProfileSnapshotWrapper.class);
+    Assert.assertEquals(1, profile.getChildSnapshotWrappers().size());
+    Assert.assertNotNull(profile.getContent());
   }
 
   @Test
@@ -111,8 +127,8 @@ public class DefaultJobProfileTest extends AbstractRestVerticleTest {
       .get(JOB_PROFILES_PATH + "/" + DEFAULT_DERIVE_MARC_HOLDINGS_PROFILE_ID)
       .then()
       .statusCode(HttpStatus.SC_OK).extract().as(JobProfile.class);
-    Assert.assertEquals( "quickMARC - Create Holdings and SRS MARC Holdings", profile.getName());
-    Assert.assertEquals( JobProfile.DataType.MARC, profile.getDataType());
+    Assert.assertEquals("quickMARC - Create Holdings and SRS MARC Holdings", profile.getName());
+    Assert.assertEquals(JobProfile.DataType.MARC, profile.getDataType());
   }
 
   @Test

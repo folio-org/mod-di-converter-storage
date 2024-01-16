@@ -47,12 +47,12 @@ import static org.folio.rest.jaxrs.model.ProfileSnapshotWrapper.ContentType.MATC
 public class JobProfileSnapshotTest extends AbstractRestVerticleTest {
 
   private static final String JOB_PROFILE_SNAPSHOT_PATH = "/data-import-profiles/jobProfileSnapshots";
-  private static final String PROFILE_SNAPSHOT_PATH = "/data-import-profiles/profileSnapshots";
+  public static final String PROFILE_SNAPSHOT_PATH = "/data-import-profiles/profileSnapshots";
   private static final String JOB_PROFILES_PATH = "/data-import-profiles/jobProfiles";
   private static final String ACTION_PROFILES_PATH = "/data-import-profiles/actionProfiles";
   private static final String MATCH_PROFILES_PATH = "/data-import-profiles/matchProfiles";
   private static final String MAPPING_PROFILES_PATH = "/data-import-profiles/mappingProfiles";
-  private static final String PROFILE_TYPE_PARAM = "profileType";
+  public static final String PROFILE_TYPE_PARAM = "profileType";
   private static final String JOB_PROFILE_ID_PARAM = "jobProfileId";
 
   private static final String JOB_TO_MATCH_PROFILES_TABLE_NAME = "job_to_match_profiles";
