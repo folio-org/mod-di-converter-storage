@@ -174,6 +174,13 @@ SET jsonb =  '{
         "subfields": []
       },
       {
+        "name": "accountNo",
+        "enabled": false,
+        "path": "invoice.accountNo",
+        "value": "",
+        "subfields": []
+      },
+      {
         "name": "folioInvoiceNo",
         "enabled": false,
         "path": "invoice.folioInvoiceNo",
@@ -548,6 +555,13 @@ SET jsonb =  '{
         "name": "accountingCode",
         "enabled": true,
         "path": "invoice.accountingCode",
+        "value": "",
+        "subfields": []
+      },
+      {
+        "name": "accountNo",
+        "enabled": false,
+        "path": "invoice.accountNo",
         "value": "",
         "subfields": []
       },
@@ -930,6 +944,13 @@ SET jsonb =  '{
         "subfields": []
       },
       {
+        "name": "accountNo",
+        "enabled": false,
+        "path": "invoice.accountNo",
+        "value": "",
+        "subfields": []
+      },
+      {
         "name": "folioInvoiceNo",
         "enabled": false,
         "path": "invoice.folioInvoiceNo",
@@ -1304,6 +1325,13 @@ SET jsonb =  '{
         "name": "accountingCode",
         "enabled": true,
         "path": "invoice.accountingCode",
+        "value": "",
+        "subfields": []
+      },
+      {
+        "name": "accountNo",
+        "enabled": false,
+        "path": "invoice.accountNo",
         "value": "",
         "subfields": []
       },
@@ -1686,6 +1714,13 @@ SET jsonb =  '{
         "subfields": []
       },
       {
+        "name": "accountNo",
+        "enabled": false,
+        "path": "invoice.accountNo",
+        "value": "",
+        "subfields": []
+      },
+      {
         "name": "folioInvoiceNo",
         "enabled": false,
         "path": "invoice.folioInvoiceNo",
@@ -2038,6 +2073,13 @@ SET jsonb =  '{
         "name": "accountingCode",
         "enabled": true,
         "path": "invoice.accountingCode",
+        "value": "",
+        "subfields": []
+      },
+      {
+        "name": "accountNo",
+        "enabled": false,
+        "path": "invoice.accountNo",
         "value": "",
         "subfields": []
       },
@@ -2420,6 +2462,13 @@ SET jsonb =  '{
         "subfields": []
       },
       {
+        "name": "accountNo",
+        "enabled": false,
+        "path": "invoice.accountNo",
+        "value": "",
+        "subfields": []
+      },
+      {
         "name": "folioInvoiceNo",
         "enabled": false,
         "path": "invoice.folioInvoiceNo",
@@ -2798,6 +2847,13 @@ SET jsonb =  '{
         "subfields": []
       },
       {
+        "name": "accountNo",
+        "enabled": false,
+        "path": "invoice.accountNo",
+        "value": "",
+        "subfields": []
+      },
+      {
         "name": "folioInvoiceNo",
         "enabled": false,
         "path": "invoice.folioInvoiceNo",
@@ -3154,6 +3210,13 @@ SET jsonb =  '{
         "subfields": []
       },
       {
+        "name": "accountNo",
+        "enabled": false,
+        "path": "invoice.accountNo",
+        "value": "",
+        "subfields": []
+      },
+      {
         "name": "folioInvoiceNo",
         "enabled": false,
         "path": "invoice.folioInvoiceNo",
@@ -3506,6 +3569,13 @@ SET jsonb =  '{
         "name": "accountingCode",
         "enabled": true,
         "path": "invoice.accountingCode",
+        "value": "",
+        "subfields": []
+      },
+      {
+        "name": "accountNo",
+        "enabled": false,
+        "path": "invoice.accountNo",
         "value": "",
         "subfields": []
       },
@@ -3888,6 +3958,13 @@ SET jsonb =  '{
         "subfields": []
       },
       {
+        "name": "accountNo",
+        "enabled": false,
+        "path": "invoice.accountNo",
+        "value": "",
+        "subfields": []
+      },
+      {
         "name": "folioInvoiceNo",
         "enabled": false,
         "path": "invoice.folioInvoiceNo",
@@ -4262,6 +4339,13 @@ SET jsonb =  '{
         "name": "accountingCode",
         "enabled": true,
         "path": "invoice.accountingCode",
+        "value": "",
+        "subfields": []
+      },
+      {
+        "name": "accountNo",
+        "enabled": false,
+        "path": "invoice.accountNo",
         "value": "",
         "subfields": []
       },
