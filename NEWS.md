@@ -1,3 +1,6 @@
+## 2023-XX-XX 2.2.0
+* [MODDICONV-305](https://issues.folio.org/browse/MODDICONV-305) For Quesnelia (R2 2023) remove "permissions" interface dependency
+
 ## 2023-XX-XX 2.1.3
 * [MODDICONV-346](https://issues.folio.org/browse/MODDICONV-346) Fix unlinking for action-mapping associations
 * [MODDICONV-353](https://issues.folio.org/browse/MODDICONV-353) Add quickMARC - Default Create authority job profile
