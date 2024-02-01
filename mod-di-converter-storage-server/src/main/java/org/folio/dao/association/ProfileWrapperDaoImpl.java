@@ -99,7 +99,8 @@ public class ProfileWrapperDaoImpl implements ProfileWrapperDao {
     if (profileId == null) {
       return Future.failedFuture("get:: Getting profile wrapper - profile id is empty");
     }
-    String query = format(SELECT_QUERY_ON_GETTING_PROFILE_WRAPPER, convertToPsqlStandard(tenantId), TABLE_NAME, profileTypeToColumn.get(profileType.value()));
+    String query = format(SELECT_QUERY_ON_GETTING_PROFILE_WRAPPER, convertToPsqlStandard(tenantId),
+      TABLE_NAME, profileTypeToColumn.get(profileType.value()));
 
     Tuple queryParams = Tuple.of(profileId);
     pgClientFactory.createInstance(tenantId).execute(query, queryParams, promise);

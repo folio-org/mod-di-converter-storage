@@ -179,10 +179,9 @@ public abstract class AbstractProfileService<T, S, D> implements ProfileService<
       associationsAmount = i + 1;
       ProfileAssociation profileAssociation = profileAssociations.get(i);
       if (profileAssociation.getDetailProfileType() == ACTION_PROFILE &&
-        (profileAssociations.size() == associationsAmount ||
-          profileAssociations.get(associationsAmount).getMasterProfileType() != ACTION_PROFILE)) {
+        (profileAssociations.size() == associationsAmount || profileAssociations.get(associationsAmount).getMasterProfileType() != ACTION_PROFILE)) {
 
-        futures.add(fillActionProfileDetailWrapper(profileAssociation, tenantId));
+        //futures.add(fillActionProfileDetailWrapper(profileAssociation, tenantId));
 
       } else if (profileAssociation.getMasterProfileType() == ACTION_PROFILE
         && profileAssociation.getDetailProfileType() == MAPPING_PROFILE
