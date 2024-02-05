@@ -143,15 +143,19 @@ public class CommonProfileAssociationDao implements ProfileAssociationDao {
 
   @Override
   public Future<Boolean> delete(String masterWrapperId, String detailWrapperId, ProfileSnapshotWrapper.ContentType masterType,
-                                ProfileSnapshotWrapper.ContentType detailType, String jobProfileId, ReactToType reactTo, String tenantId) {
+                                ProfileSnapshotWrapper.ContentType detailType, String jobProfileId, ReactToType reactTo, Integer order, String tenantId) {
     Promise<RowSet<Row>> promise = Promise.promise();
     try {
       CQLWrapper filter = getCQLWrapper(getAssociationTableName(masterType, detailType),
-        MASTER_WRAPPER_ID_FIELD + "==" + masterWrapperId + " AND " + DETAIL_WRAPPER_ID_FIELD + "==" + detailWrapperId +
+        MASTER_WRAPPER_ID_FIELD + "==" + masterWrapperId + " AND " + DETAIL_WRAPPER_ID_FIELD + "==" + detailWrapperId
           // if jobProfileId field defined in jsonb - perform matching on it, if not - match all records.
-          " AND (" + JOB_PROFILE_ID_FIELD + "==" + jobProfileId + " OR (cql.allRecords=1 NOT " + JOB_PROFILE_ID_FIELD + "=\"\"))");
+          + " AND (order == " + order + ")"
+          + " AND (" + JOB_PROFILE_ID_FIELD + "==" + jobProfileId + " OR (cql.allRecords=1 NOT " + JOB_PROFILE_ID_FIELD + "=\"\"))");
       if (reactTo != null) {
-        filter.setWhereClause(String.format(CRITERIA_BY_REACT_TO_WHERE_CLAUSE, getAssociationTableName(masterType, detailType), reactTo.value()));
+        String whereClause = filter.getWhereClause()
+          + " AND " + String.format("(lower(%1$s.jsonb->>'reactTo') LIKE lower('%2$s'))", getAssociationTableName(masterType, detailType), reactTo.value());
+        filter.setWhereClause(whereClause);
+        //filter.setWhereClause(String.format(CRITERIA_BY_REACT_TO_WHERE_CLAUSE, getAssociationTableName(masterType, detailType), reactTo.value()));
       }
       pgClientFactory.createInstance(tenantId).delete(getAssociationTableName(masterType, detailType), filter, promise);
     } catch (Exception e) {

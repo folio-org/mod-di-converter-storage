@@ -230,13 +230,12 @@ public class JobProfileSnapshotTest extends AbstractRestVerticleTest {
     ProfileSnapshotWrapper actionProfileSnapshot = matchProfileSnapshot.getChildSnapshotWrappers().get(0);
     ActionProfile actualActionProfile = DatabindCodec.mapper().convertValue(actionProfileSnapshot.getContent(), ActionProfile.class);
     Assert.assertEquals(actionProfile.getId(), actualActionProfile.getId());
-//TODO: investigate
-//    Assert.assertEquals(1, actionProfileSnapshot.getChildSnapshotWrappers().size());
+    Assert.assertEquals(1, actionProfileSnapshot.getChildSnapshotWrappers().size());
 
-//    ProfileSnapshotWrapper mappingProfileSnapshot = actionProfileSnapshot.getChildSnapshotWrappers().get(0);
-//    MappingProfile mappingActionProfile = DatabindCodec.mapper().convertValue(mappingProfileSnapshot.getContent(), MappingProfile.class);
-//    Assert.assertEquals(mappingProfile.getId(), mappingActionProfile.getId());
-//    Assert.assertEquals(0, mappingProfileSnapshot.getChildSnapshotWrappers().size());
+    ProfileSnapshotWrapper mappingProfileSnapshot = actionProfileSnapshot.getChildSnapshotWrappers().get(0);
+    MappingProfile mappingActionProfile = DatabindCodec.mapper().convertValue(mappingProfileSnapshot.getContent(), MappingProfile.class);
+    Assert.assertEquals(mappingProfile.getId(), mappingActionProfile.getId());
+    Assert.assertEquals(0, mappingProfileSnapshot.getChildSnapshotWrappers().size());
     async.complete();
   }
 

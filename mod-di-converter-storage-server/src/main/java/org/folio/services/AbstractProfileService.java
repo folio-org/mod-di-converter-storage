@@ -139,7 +139,7 @@ public abstract class AbstractProfileService<T, S, D> implements ProfileService<
         masterContentType.value(), detailContentType.value(), association.getReactTo());
       return profileAssociationService.delete(association.getMasterWrapperId(),
         association.getDetailWrapperId(), masterContentType, detailContentType, association.getJobProfileId(),
-        association.getReactTo(), tenantId);
+        association.getReactTo(), association.getOrder(), tenantId);
     }
   }
 
@@ -181,7 +181,7 @@ public abstract class AbstractProfileService<T, S, D> implements ProfileService<
       if (profileAssociation.getDetailProfileType() == ACTION_PROFILE &&
         (profileAssociations.size() == associationsAmount || profileAssociations.get(associationsAmount).getMasterProfileType() != ACTION_PROFILE)) {
 
-        //futures.add(fillActionProfileDetailWrapper(profileAssociation, tenantId));
+        futures.add(fillActionProfileDetailWrapper(profileAssociation, tenantId));
 
       } else if (profileAssociation.getMasterProfileType() == ACTION_PROFILE
         && profileAssociation.getDetailProfileType() == MAPPING_PROFILE
