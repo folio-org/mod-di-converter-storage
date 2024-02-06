@@ -156,7 +156,7 @@ public class CommonProfileAssociationDao implements ProfileAssociationDao {
       pgClientFactory.createInstance(tenantId).delete(getAssociationTableName(masterType, detailType), filter, promise);
     } catch (Exception e) {
       LOGGER.warn("delete:: Error deleting by master wrapper id {}, detail wrapper id {}, with reactTo {} and order {}",
-        masterWrapperId, detailWrapperId, reactTo.value(), order, e);
+        masterWrapperId, detailWrapperId, (reactTo != null ? reactTo.value() : null) , order, e);
       return Future.failedFuture(e);
     }
     return promise.future().map(updateResult -> updateResult.rowCount() == 1);

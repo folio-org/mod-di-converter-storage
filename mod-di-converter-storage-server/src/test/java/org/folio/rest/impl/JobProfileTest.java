@@ -606,7 +606,7 @@ public class JobProfileTest extends AbstractRestVerticleTest {
       .then()
       .statusCode(HttpStatus.SC_OK)
       .extract().body().as(ProfileAssociationCollection.class);
-    Assert.assertTrue(profileAssociationCollection.getTotalRecords() == 2);
+    Assert.assertEquals(2, profileAssociationCollection.getTotalRecords().intValue());
 
     RestAssured.given()
       .spec(spec)
@@ -632,7 +632,7 @@ public class JobProfileTest extends AbstractRestVerticleTest {
       .then()
       .statusCode(HttpStatus.SC_OK)
       .extract().body().as(ProfileAssociationCollection.class);
-    Assert.assertTrue(profileAssociationCollection.getTotalRecords() == 1);
+    Assert.assertEquals(1, profileAssociationCollection.getTotalRecords().intValue());
 
   }
 
@@ -799,7 +799,7 @@ public class JobProfileTest extends AbstractRestVerticleTest {
        .then()
        .statusCode(HttpStatus.SC_OK)
        .extract().body().as(ProfileAssociationCollection.class);
-    Assert.assertTrue(profileAssociationCollection.getTotalRecords() == 4);
+    Assert.assertEquals(4,profileAssociationCollection.getTotalRecords().intValue());
 
      RestAssured.given()
        .spec(spec)
@@ -825,7 +825,7 @@ public class JobProfileTest extends AbstractRestVerticleTest {
        .then()
        .statusCode(HttpStatus.SC_OK)
        .extract().body().as(ProfileAssociationCollection.class);
-     Assert.assertTrue(profileAssociationCollection.getTotalRecords() == 3);
+     Assert.assertEquals(3, profileAssociationCollection.getTotalRecords().intValue());
 
      ProfileAssociation profileAssociation2deleteWithNullOrder =
        profileAssociationCollection.getProfileAssociations().get(0).withOrder(null);
@@ -854,7 +854,7 @@ public class JobProfileTest extends AbstractRestVerticleTest {
       .then()
       .statusCode(HttpStatus.SC_OK)
       .extract().body().as(ProfileAssociationCollection.class);
-    Assert.assertTrue(profileAssociationCollection.getTotalRecords() == 2);
+    Assert.assertEquals(2, profileAssociationCollection.getTotalRecords().intValue());
   }
 
   @Test
