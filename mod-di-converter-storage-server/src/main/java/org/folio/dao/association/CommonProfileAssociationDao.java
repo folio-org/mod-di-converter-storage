@@ -45,10 +45,8 @@ public class CommonProfileAssociationDao implements ProfileAssociationDao {
   private static final String CRITERIA_BY_MASTER_ID_AND_DETAIL_ID_WHERE_CLAUSE =
     "WHERE (left(lower(%1$s.jsonb->>'masterProfileId'),600) LIKE lower('%2$s')) " +
       "AND (lower(%1$s.jsonb->>'detailProfileId') LIKE lower('%3$s'))";
-
-  private static final String CRITERIA_BY_REACT_TO_WHERE_CLAUSE =
-    "WHERE (lower(%1$s.jsonb->>'reactTo') LIKE lower('%2$s'))";
-
+  private static final String CRITERIA_BY_REACT_TO_CLAUSE =
+    "(lower(%1$s.jsonb->>'reactTo') LIKE lower('%2$s'))";
   private static final Logger LOGGER = LogManager.getLogger();
   private static final String CORRECT_PROFILE_ASSOCIATION_TYPES_MESSAGE = "Correct ProfileAssociation types: " +
     "ACTION_PROFILE_TO_ACTION_PROFILE, " +
@@ -148,18 +146,17 @@ public class CommonProfileAssociationDao implements ProfileAssociationDao {
     try {
       CQLWrapper filter = getCQLWrapper(getAssociationTableName(masterType, detailType),
         MASTER_WRAPPER_ID_FIELD + "==" + masterWrapperId + " AND " + DETAIL_WRAPPER_ID_FIELD + "==" + detailWrapperId
-          // if jobProfileId field defined in jsonb - perform matching on it, if not - match all records.
           + " AND (order == " + (order == null ? 0 : order) + ")"
           + " AND (" + JOB_PROFILE_ID_FIELD + "==" + jobProfileId + " OR (cql.allRecords=1 NOT " + JOB_PROFILE_ID_FIELD + "=\"\"))");
       if (reactTo != null) {
         String whereClause = filter.getWhereClause()
-          + " AND " + String.format("(lower(%1$s.jsonb->>'reactTo') LIKE lower('%2$s'))", getAssociationTableName(masterType, detailType), reactTo.value());
+          + " AND " + String.format(CRITERIA_BY_REACT_TO_CLAUSE, getAssociationTableName(masterType, detailType), reactTo.value());
         filter.setWhereClause(whereClause);
-        //filter.setWhereClause(String.format(CRITERIA_BY_REACT_TO_WHERE_CLAUSE, getAssociationTableName(masterType, detailType), reactTo.value()));
       }
       pgClientFactory.createInstance(tenantId).delete(getAssociationTableName(masterType, detailType), filter, promise);
     } catch (Exception e) {
-      LOGGER.warn("delete:: Error deleting by master wrapper id {} and detail wrapper id {}", masterWrapperId, detailWrapperId, e);
+      LOGGER.warn("delete:: Error deleting by master wrapper id {}, detail wrapper id {}, with reactTo {} and order {}",
+        masterWrapperId, detailWrapperId, reactTo.value(), order, e);
       return Future.failedFuture(e);
     }
     return promise.future().map(updateResult -> updateResult.rowCount() == 1);

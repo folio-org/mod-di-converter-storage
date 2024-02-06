@@ -781,15 +781,6 @@ public class JobProfileTest extends AbstractRestVerticleTest {
        .body("dataType", is(jobProfile.getProfile().getDataType().value()))
        .extract().body().asPrettyString();
 
-//    Object resp = RestAssured.given()
-//      .spec(spec)
-//      .when()
-//      .get(JOB_PROFILES_PATH + "?withRelations=true")
-//      .then()
-//      .statusCode(HttpStatus.SC_OK)
-//      .extract().as(Object.class);
-//    Assert.assertNotNull(resp);
-
     Object resp2 = RestAssured.given()
       .spec(spec)
       .when()
@@ -835,6 +826,35 @@ public class JobProfileTest extends AbstractRestVerticleTest {
        .statusCode(HttpStatus.SC_OK)
        .extract().body().as(ProfileAssociationCollection.class);
      Assert.assertTrue(profileAssociationCollection.getTotalRecords() == 3);
+
+     ProfileAssociation profileAssociation2deleteWithNullOrder =
+       profileAssociationCollection.getProfileAssociations().get(0).withOrder(null);
+
+     RestAssured.given()
+      .spec(spec)
+      .body(jobProfile
+        .withAddedRelations(null)
+        .withDeletedRelations(List.of(profileAssociation2deleteWithNullOrder))
+      )
+      .when()
+      .put(JOB_PROFILES_PATH + "/" + jobProfile.getProfile().getId())
+      .then()
+      .statusCode(HttpStatus.SC_OK)
+      .body("id", is(jobProfile.getProfile().getId()))
+      .body("name", is(jobProfile.getProfile().getName()))
+      .body("dataType", is(jobProfile.getProfile().getDataType().value()))
+      .extract().body().asPrettyString();
+
+    profileAssociationCollection = RestAssured.given()
+      .spec(spec)
+      .queryParam("master", MATCH_PROFILE.value())
+      .queryParam("detail", ACTION_PROFILE.value())
+      .when()
+      .get(ASSOCIATED_PROFILES_PATH)
+      .then()
+      .statusCode(HttpStatus.SC_OK)
+      .extract().body().as(ProfileAssociationCollection.class);
+    Assert.assertTrue(profileAssociationCollection.getTotalRecords() == 2);
   }
 
   @Test
