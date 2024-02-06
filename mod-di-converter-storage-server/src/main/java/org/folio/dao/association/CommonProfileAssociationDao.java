@@ -149,7 +149,7 @@ public class CommonProfileAssociationDao implements ProfileAssociationDao {
       CQLWrapper filter = getCQLWrapper(getAssociationTableName(masterType, detailType),
         MASTER_WRAPPER_ID_FIELD + "==" + masterWrapperId + " AND " + DETAIL_WRAPPER_ID_FIELD + "==" + detailWrapperId
           // if jobProfileId field defined in jsonb - perform matching on it, if not - match all records.
-          + " AND (order == " + order + ")"
+          + " AND (order == " + (order == null ? 0 : order) + ")"
           + " AND (" + JOB_PROFILE_ID_FIELD + "==" + jobProfileId + " OR (cql.allRecords=1 NOT " + JOB_PROFILE_ID_FIELD + "=\"\"))");
       if (reactTo != null) {
         String whereClause = filter.getWhereClause()
