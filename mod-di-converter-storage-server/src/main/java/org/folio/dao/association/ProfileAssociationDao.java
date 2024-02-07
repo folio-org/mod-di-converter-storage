@@ -74,12 +74,14 @@ public interface ProfileAssociationDao {
    * @param detailWrapperId     - UUID of detailProfile wrapper
    * @param masterType   - master Profile Type
    * @param detailType   - detail Profile Type
-   * @param tenantId     - tenant id
    * @param jobProfileId - job profile id (optional)
+   * @param reactTo      - reactTo of ReactToType
+   * @param order        - order
+   * @param tenantId     - tenant id
    * @return - boolean result of operation
    */
   Future<Boolean> delete(String masterWrapperId, String detailWrapperId, ProfileSnapshotWrapper.ContentType masterType,
-                         ProfileSnapshotWrapper.ContentType detailType, String jobProfileId, ReactToType reactTo, String tenantId);
+                         ProfileSnapshotWrapper.ContentType detailType, String jobProfileId, ReactToType reactTo, Integer order, String tenantId);
 
   /**
    * Delete profile associations for particular master profile by wrapperId

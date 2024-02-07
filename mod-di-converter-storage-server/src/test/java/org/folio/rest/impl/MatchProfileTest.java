@@ -542,9 +542,20 @@ public class MatchProfileTest extends AbstractRestVerticleTest {
       .withMasterProfileId(profileToDelete.getProfile().getId())
       .withOrder(1);
 
-    ProfileAssociation matchToMatchAssociation = postProfileAssociation(profileAssociation.withDetailProfileId(associatedMatchProfile.getProfile().getId()).withMasterProfileId(profileToDelete.getProfile().getId()).withMasterProfileType(ProfileType.MATCH_PROFILE).withDetailProfileType(ProfileType.MATCH_PROFILE),
+    ProfileAssociation matchToMatchAssociation =
+      postProfileAssociation(
+        profileAssociation.withDetailProfileId(associatedMatchProfile.getProfile().getId())
+          .withMasterProfileId(profileToDelete.getProfile().getId())
+          .withMasterProfileType(ProfileType.MATCH_PROFILE)
+          .withDetailProfileType(ProfileType.MATCH_PROFILE),
       MATCH_PROFILE, MATCH_PROFILE);
-    ProfileAssociation matchToActionAssociation = postProfileAssociation(profileAssociation.withDetailProfileId(associatedActionProfile.getProfile().getId()).withMasterProfileId(profileToDelete.getProfile().getId()).withMasterProfileType(ProfileType.MATCH_PROFILE).withDetailProfileType(ProfileType.ACTION_PROFILE),
+
+    ProfileAssociation matchToActionAssociation =
+      postProfileAssociation(
+        profileAssociation.withDetailProfileId(associatedActionProfile.getProfile().getId())
+          .withMasterProfileId(profileToDelete.getProfile().getId())
+          .withMasterProfileType(ProfileType.MATCH_PROFILE)
+          .withDetailProfileType(ProfileType.ACTION_PROFILE),
       MATCH_PROFILE, ACTION_PROFILE);
 
     // deleting match profile
@@ -865,7 +876,8 @@ public class MatchProfileTest extends AbstractRestVerticleTest {
               .withDetailProfileType(ProfileType.ACTION_PROFILE)
               .withMasterProfileType(ProfileType.MATCH_PROFILE)
               .withOrder(0)
-              .withTriggered(false).withReactTo(ReactToType.MATCH),
+              .withTriggered(false)
+              .withReactTo(ReactToType.MATCH),
             new ProfileAssociation()
               .withMasterProfileId(action.getProfile().getId())
               .withDetailProfileId(createdMappings.get(i).getId())
