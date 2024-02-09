@@ -1,3 +1,6 @@
+## 2024-02-09 v2.1.6
+* [MODDICONV-361](https://folio-org.atlassian.net/browse/MODDICONV-361) Adjust link/unlink logic for Action profiles
+
 ## 2023-12-20 v2.1.5
 * [MODDICONV-344](https://issues.folio.org/browse/MODDICONV-344) Fix error when re-using the Action profile already used for multiple Job Profiles
 
