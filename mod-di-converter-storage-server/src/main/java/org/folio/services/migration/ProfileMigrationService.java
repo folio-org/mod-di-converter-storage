@@ -20,11 +20,4 @@ public interface ProfileMigrationService {
    * @return - future with result. True if successful, false otherwise
    */
   Future<Boolean> migrateDataImportProfiles(Map<String, String> headers, Context context);
-
-  /**
-   * Map profileSnapshotItems to the profileAssociations and sort them in valid order.
-   * @param snapshotItems - list with retrieved snapshot items
-   * @return - sorted list with profileAssocations
-   */
-  List<ProfileAssociation> sortSnapshots(List<ProfileSnapshotItem> snapshotItems);
 }

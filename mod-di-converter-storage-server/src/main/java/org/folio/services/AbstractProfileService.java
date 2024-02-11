@@ -158,8 +158,8 @@ public abstract class AbstractProfileService<T, S, D> implements ProfileService<
     Promise<Boolean> result = Promise.promise();
     GenericCompositeFuture.all(fillProfileDataIfNeeded(profileAssociations, tenantId))
       .onSuccess(r ->
-        associationService.wrapAssociationProfiles(profileAssociations, new ArrayList<>(), new HashMap<>(), tenantId)
-          .compose(e -> profileAssociationService.save(e, tenantId))
+        associationService.wrapAssociationProfiles(profileAssociations, tenantId)
+          .compose(e -> profileAssociationService.save(profileAssociations, tenantId))
           .onComplete(ar -> {
             if (ar.succeeded()) {
               result.complete(true);
