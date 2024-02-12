@@ -26,7 +26,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import javax.ws.rs.NotFoundException;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;

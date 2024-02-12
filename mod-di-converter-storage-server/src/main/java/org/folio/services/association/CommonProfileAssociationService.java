@@ -5,6 +5,7 @@ import io.vertx.core.Future;
 import io.vertx.core.Handler;
 import io.vertx.core.Promise;
 import io.vertx.core.json.Json;
+import org.apache.commons.collections4.ListUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.folio.dao.ProfileDao;
@@ -74,7 +75,7 @@ public class CommonProfileAssociationService implements ProfileAssociationServic
   public Future<ProfileAssociation> save(ProfileAssociation entity, ContentType masterType, ContentType detailType, String tenantId) {
     entity.setId(UUID.randomUUID().toString());
     return wrapAssociationProfiles(new ArrayList<>(List.of(entity)), tenantId)
-      .compose((result) -> profileAssociationDao.save(entity, masterType, detailType, tenantId).map(entity));
+      .compose(result -> profileAssociationDao.save(entity, masterType, detailType, tenantId).map(entity));
   }
 
   @Override
@@ -97,8 +98,37 @@ public class CommonProfileAssociationService implements ProfileAssociationServic
     return result.future();
   }
 
+  /**
+   * Processes a list of {@link ProfileAssociation} objects to ensure each association has its corresponding
+   * master and detail profile wrappers properly set up. This method iterates through each profile association,
+   * checking if the master and detail profiles have corresponding wrapper IDs. If a wrapper ID is missing,
+   * the method attempts to create a new wrapper for that profile and update the association with the new wrapper ID.
+   * This ensures that each profile association is linked to its respective master and detail profile wrappers,
+   * facilitating further operations on these associations.
+   * <p>
+   * This method performs the following steps for each {@link ProfileAssociation} in the provided list:
+   * <ul>
+   *     <li>Checks if the master profile ID is non-null and lacks a corresponding master wrapper ID. If so,
+   *     it either retrieves the existing wrapper ID from a local cache or creates a new wrapper, updating
+   *     the association with the new master wrapper ID.</li>
+   *     <li>Repeats the above step for the detail profile, ensuring it also has a corresponding detail wrapper ID.</li>
+   * </ul>
+   * <p>
+   * If the input list of profile associations is null, the method returns a failed future with an appropriate error message.
+   * If the list is empty, it returns a succeeded future with no further action, as there are no associations to process.
+   *
+   * @param profileAssociations the list of {@link ProfileAssociation} objects to be processed. Can be null or empty.
+   * @param tenantId the tenant ID used for scoping the operations within a specific tenant's data.
+   * @return a {@link Future<Void>} that indicates the completion of the operation. The future fails if the input list is null
+   *         or if any error occurs during the processing of the profile associations. Otherwise, it succeeds once all associations
+   *         have been processed and their corresponding wrappers are properly set.
+   */
   public Future<Void> wrapAssociationProfiles(List<ProfileAssociation> profileAssociations,
                                               String tenantId) {
+
+    if (profileAssociations == null) {
+      return Future.failedFuture("Associations list is null");
+    }
     if (profileAssociations.isEmpty()) {
       return Future.succeededFuture();
     }

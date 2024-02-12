@@ -2,10 +2,7 @@ package org.folio.services.migration;
 
 import io.vertx.core.Context;
 import io.vertx.core.Future;
-import org.folio.dao.snapshot.ProfileSnapshotItem;
-import org.folio.rest.jaxrs.model.ProfileAssociation;
 
-import java.util.List;
 import java.util.Map;
 
 /**
