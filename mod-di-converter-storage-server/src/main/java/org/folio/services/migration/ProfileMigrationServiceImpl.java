@@ -43,11 +43,11 @@ public class ProfileMigrationServiceImpl implements ProfileMigrationService {
           return runScript(tenantId, INIT_WRAPPERS)
             .compose(ar -> runScript(tenantId, UPDATE_SCHEMA_FOR_MIGRATION));
         } else {
-          LOGGER.info("Migration will not execute. profile_wrappers table is NOT empty already.");
+          LOGGER.info("migrateDataImportProfiles:: Migration will not execute. profile_wrappers table is NOT empty already.");
           return Future.succeededFuture(true);
         }
       })
-      .onFailure(th -> LOGGER.error("Something happened during the profile migration", th));
+      .onFailure(th -> LOGGER.error("migrateDataImportProfiles:: Something happened during the profile migration", th));
   }
 
   private Future<Boolean> runScript(String tenantId, String sqlPath) {

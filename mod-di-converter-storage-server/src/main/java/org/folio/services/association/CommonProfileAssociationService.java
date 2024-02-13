@@ -142,7 +142,7 @@ public class CommonProfileAssociationService implements ProfileAssociationServic
               profileAssociation.setMasterWrapperId(profileIdToWrapperId.get(profileAssociation.getMasterProfileId()));
             } else {
               return saveWrapper(tenantId, profileAssociation.getMasterProfileType(), profileAssociation.getMasterProfileId())
-                .onFailure(th -> LOGGER.error("Something happened while saving master wrapper for association: {}", Json.encode(profileAssociation), th))
+                .onFailure(th -> LOGGER.error("wrapAssociationProfiles:: Something happened while saving master wrapper for association: {}", Json.encode(profileAssociation), th))
                 .compose(result -> {
                   profileIdToWrapperId.put(result.getProfileId(), result.getId());
                   profileAssociation.setMasterWrapperId(result.getId());
@@ -155,7 +155,7 @@ public class CommonProfileAssociationService implements ProfileAssociationServic
         .compose(ar -> {
           if (profileAssociation.getDetailProfileId() != null && profileAssociation.getDetailWrapperId() == null) {
             return saveWrapper(tenantId, profileAssociation.getDetailProfileType(), profileAssociation.getDetailProfileId())
-              .onFailure(th -> LOGGER.error("Something happened while saving detail wrapper for association: {}", Json.encode(profileAssociation),  th))
+              .onFailure(th -> LOGGER.error("wrapAssociationProfiles:: Something happened while saving detail wrapper for association: {}", Json.encode(profileAssociation),  th))
               .compose(result -> {
                 profileIdToWrapperId.put(result.getProfileId(), result.getId());
                 profileAssociation.setDetailWrapperId(result.getId());

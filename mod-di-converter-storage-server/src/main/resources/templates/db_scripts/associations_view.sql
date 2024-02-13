@@ -24,7 +24,7 @@ CREATE OR REPLACE VIEW associations_view
     SELECT association_id, master_id, masterwrapperid, master, master_type, detail_id, detailwrapperid, detail_type, detail_order, detail, react_to, job_profile_id
     FROM get_profile_association_snapshot('action_to_mapping_profiles', 'action_profiles', 'ACTION_PROFILE', 'mapping_profiles', 'MAPPING_PROFILE')
       UNION ALL
-    SELECT ASSOCIATION.ID AS association_id, CAST(ASSOCIATION.JSONB ->> 'jobProfileId' AS UUID) AS master_id, ASSOCIATION.MASTERWRAPPERID, json_agg(JOB.jsonb) AS master, 'JOB_PROFILE' AS master_type, DETAIL.ID AS detail_id, ASSOCIATION.DETAILWRAPPERID, 'ACTION_PROFILE' AS detail_type, 0 AS detail_order, CAST( MASTER.JSONB AS JSON ) AS detail, null AS react_to, CAST(ASSOCIATION.JSONB ->> 'jobProfileId' AS UUID) AS job_profile_id
+    SELECT ASSOCIATION.ID AS association_id, CAST(ASSOCIATION.JSONB ->> 'jobProfileId' AS UUID) AS master_id, ASSOCIATION.MASTERWRAPPERID, json_agg(JOB.jsonb) AS master, 'JOB_PROFILE' AS master_type, DETAIL.ID AS detail_id, ASSOCIATION.DETAILWRAPPERID, 'ACTION_PROFILE' AS detail_type, 0 AS detail_order, json_agg(DETAIL.JSONB) AS detail, null AS react_to, CAST(ASSOCIATION.JSONB ->> 'jobProfileId' AS UUID) AS job_profile_id
     FROM MATCH_TO_ACTION_PROFILES ASSOCIATION
     INNER JOIN PROFILE_WRAPPERS MASTERWRAPPER ON ASSOCIATION.MASTERWRAPPERID = MASTERWRAPPER.ID
     INNER JOIN PROFILE_WRAPPERS DETAILWRAPPER ON ASSOCIATION.DETAILWRAPPERID = DETAILWRAPPER.ID
