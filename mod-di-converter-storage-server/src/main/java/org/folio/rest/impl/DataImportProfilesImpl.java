@@ -48,6 +48,7 @@ import javax.ws.rs.BadRequestException;
 import javax.ws.rs.NotFoundException;
 import javax.ws.rs.core.Response;
 import java.nio.charset.StandardCharsets;
+import java.util.Optional;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Base64;
@@ -161,27 +162,22 @@ public class DataImportProfilesImpl implements DataImportProfiles {
     vertxContext.runOnContext(v -> {
       try {
         entity.getProfile().setMetadata(getMetadata(okapiHeaders));
-        validateProfile(OperationType.CREATE, entity.getProfile(), jobProfileService, tenantId).onComplete(errors -> {
+        composeFutureErrors(
+          validateProfile(OperationType.CREATE, entity.getProfile(), jobProfileService, tenantId),
+          validateJobProfileLinkedActionProfiles(entity),
+          validateJobProfileLinkedMatchProfile(entity)
+        ).onComplete(errors -> {
           if (errors.failed()) {
             logger.warn(PROFILE_VALIDATE_ERROR_MESSAGE, errors.cause());
             asyncResultHandler.handle(Future.succeededFuture(ExceptionHelper.mapExceptionToResponse(errors.cause())));
           } else if (errors.result().getTotalRecords() > 0) {
             asyncResultHandler.handle(Future.succeededFuture(PostDataImportProfilesJobProfilesResponse.respond422WithApplicationJson(errors.result())));
           } else {
-            validateJobProfileRelations(entity).onComplete(relationsErrors -> {
-              if (relationsErrors.failed()) {
-                logger.warn(PROFILE_VALIDATE_ERROR_MESSAGE, relationsErrors.cause());
-                asyncResultHandler.handle(Future.succeededFuture(ExceptionHelper.mapExceptionToResponse(relationsErrors.cause())));
-              } else if (relationsErrors.result().getTotalRecords() > 0) {
-                asyncResultHandler.handle(Future.succeededFuture(PostDataImportProfilesJobProfilesResponse.respond422WithApplicationJson(relationsErrors.result())));
-              } else {
-                jobProfileService.saveProfile(entity, new OkapiConnectionParams(okapiHeaders))
-                  .map(profile -> (Response) PostDataImportProfilesJobProfilesResponse
-                    .respond201WithApplicationJson(entity.withProfile(profile).withId(profile.getId()), PostDataImportProfilesJobProfilesResponse.headersFor201()))
-                  .otherwise(ExceptionHelper::mapExceptionToResponse)
-                  .onComplete(asyncResultHandler);
-              }
-            });
+            jobProfileService.saveProfile(entity, new OkapiConnectionParams(okapiHeaders))
+              .map(profile -> (Response) PostDataImportProfilesJobProfilesResponse
+                .respond201WithApplicationJson(entity.withProfile(profile).withId(profile.getId()), PostDataImportProfilesJobProfilesResponse.headersFor201()))
+              .otherwise(ExceptionHelper::mapExceptionToResponse)
+              .onComplete(asyncResultHandler);
           }
         });
       } catch (Exception e) {
@@ -218,7 +214,11 @@ public class DataImportProfilesImpl implements DataImportProfiles {
         jobProfileService.isProfileDtoValidForUpdate(id, entity, canDeleteOrUpdateProfile(id, JOB_PROFILES), tenantId).compose(isDtoValidForUpdate -> {
           if (isDtoValidForUpdate) {
             entity.getProfile().setMetadata(getMetadata(okapiHeaders));
-            return validateProfile(OperationType.UPDATE, entity.getProfile(), jobProfileService, tenantId).compose(errors -> {
+            return composeFutureErrors(
+              validateProfile(OperationType.UPDATE, entity.getProfile(), jobProfileService, tenantId),
+              validateJobProfileLinkedActionProfiles(entity),
+              validateJobProfileLinkedMatchProfile(entity)
+            ).compose(errors -> {
               entity.getProfile().setId(id);
               return errors.getTotalRecords() > 0 ?
                 Future.succeededFuture(PutDataImportProfilesJobProfilesByIdResponse.respond422WithApplicationJson(errors)) :
@@ -899,60 +899,94 @@ public class DataImportProfilesImpl implements DataImportProfiles {
     return validateConditions;
   }
 
-  private Future<Errors> validateJobProfileRelations(JobProfileUpdateDto jobDto) {
+  private Future<Errors> validateJobProfileLinkedMatchProfile(JobProfileUpdateDto jobProfileUpdateDto) {
+    Promise<Errors> promise = Promise.promise();
+
+    var matchProfileIds = jobProfileUpdateDto.getAddedRelations()
+      .stream()
+      .filter(element -> element.getDetailProfileType().equals(ProfileType.MATCH_PROFILE)
+        || element.getMasterProfileType().equals(ProfileType.MATCH_PROFILE))
+      .map(element -> element.getDetailProfileType().equals(ProfileType.MATCH_PROFILE)
+        ? element.getDetailProfileId() : element.getMasterProfileId())
+      .distinct()
+      .collect(Collectors.toList());
+
+    var futures = matchProfileIds.stream()
+      .map(id -> matchProfileService.getProfileById(id, false, tenantId))
+      .collect(Collectors.toList());
+
+    GenericCompositeFuture.all(futures)
+      .map(it -> zipWithIndex(it.result().<Optional<MappingProfile>>list()))
+      .onSuccess(entries -> {
+        var idStr = entries.stream()
+          .filter(entry -> entry.getValue().isEmpty())
+          .map(entry -> String.format("'%s'", matchProfileIds.get(entry.getKey())))
+          .collect(Collectors.joining(", "));
+        if (StringUtils.isBlank(idStr)) {
+          promise.complete(new Errors().withTotalRecords(0));
+        } else {
+          logger.warn("validateJobProfileLinkedMatchProfile:: Linked MatchProfiles with ids {} not founded", idStr);
+          promise.fail(new NotFoundException((String.format("Linked MatchProfiles with ids %s was not found", idStr))));
+        }
+      })
+      .onFailure(promise::fail);
+
+    return promise.future();
+  }
+
+  private Future<Errors> validateJobProfileLinkedActionProfiles(JobProfileUpdateDto jobProfileUpdateDto) {
     Promise<Errors> promise = Promise.promise();
     List<Error> errors = new LinkedList<>();
 
-    var actionToMatchIds = jobDto.getAddedRelations()
+    var actionToParentProfileTypes = jobProfileUpdateDto.getAddedRelations()
       .stream()
-      .filter(association -> association.getDetailProfileType().equals(ProfileType.ACTION_PROFILE))
-      .map(association -> new AbstractMap.SimpleEntry<>(association.getDetailProfileId(), Optional.ofNullable(association.getMasterProfileId())))
-      .collect(Collectors.toList());
+      .filter(association -> association.getDetailProfileType() == ProfileType.ACTION_PROFILE)
+      .map(association -> new AbstractMap.SimpleEntry<>(association.getDetailProfileId(), List.of(association.getMasterProfileType())))
+      .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue,
+        (oldList, newList) -> {
+          var combinedList = new ArrayList<>(oldList);
+          combinedList.addAll(newList);
+          return combinedList;
+        },
+        LinkedHashMap::new
+      ));
 
-    var actionIds = actionToMatchIds.stream().map(AbstractMap.SimpleEntry::getKey).collect(Collectors.toList());
-    var nullableMatchIds = actionToMatchIds.stream().map(AbstractMap.SimpleEntry::getValue).collect(Collectors.toList());
-    var addedMatchProfiles = new ArrayList<String>();
-
-    var actionFutures = actionIds.stream()
+    var actionIds = new ArrayList<>(actionToParentProfileTypes.keySet());
+    var futures = actionIds.stream()
       .map(id -> actionProfileService.getProfileById(id, false, tenantId))
       .collect(Collectors.toList());
 
-    return GenericCompositeFuture.all(actionFutures).compose(actionComposite -> {
-      if (actionComposite.succeeded()) {
-        zipWithIndex(actionComposite.result().<Optional<ActionProfile>>list()).forEach(entry -> {
-          var actionOpt = entry.getValue();
-          actionOpt.ifPresentOrElse(profile -> {
-            if (profile.getAction() == ActionProfile.Action.UPDATE) {
-              nullableMatchIds.get(entry.getKey())
-                .ifPresentOrElse(addedMatchProfiles::add, () -> {
-                  logger.warn("validateJobProfileRelations:: Missing linked MatchProfile for ActionProfile {} with action UPDATE", entry.getValue());
-                  errors.add(new Error().withMessage(String.format("Action with id '%s' require linked MatchProfile", actionIds.get(entry.getKey()))));
-                });
+    GenericCompositeFuture.all(futures)
+      .map(it -> zipWithIndex(it.result().<Optional<ActionProfile>>list()))
+      .onSuccess(entries -> {
+        var notFoundedIds = new ArrayList<String>();
+        entries.forEach(entry -> entry.getValue().ifPresentOrElse(profile -> {
+            if (!isLinkedActionProfileValid(profile, actionToParentProfileTypes.get(profile.getId()))) {
+              logger.warn("validateJobProfileLinkedActionProfiles:: Missing linked MatchProfile for ActionProfile {} with action UPDATE", actionIds.get(entry.getKey()));
+              errors.add(new Error().withMessage(String.format("ActionProfile with id '%s' require linked MatchProfile", actionIds.get(entry.getKey()))));
             }
-          }, () -> promise.fail(new NotFoundException((String.format("Linked action profile with id '%s' was not found", actionIds.get(entry.getKey()))))));
-        });
-      } else {
-        promise.fail(actionComposite.cause());
-      }
-      var matchFutures = addedMatchProfiles.stream()
-        .map(id -> matchProfileService.getProfileById(id, false, tenantId))
-        .collect(Collectors.toList());
-      return GenericCompositeFuture.all(matchFutures);
-    }).compose(matchComposite -> {
-      if (matchComposite.succeeded()) {
-        zipWithIndex(matchComposite.result().<Optional<ActionProfile>>list()).forEach(entry -> {
-          if (entry.getValue().isEmpty()) {
-            promise.fail(new NotFoundException((String.format("Linked mapping profile with id '%s' was not found", addedMatchProfiles.get(entry.getKey())))));
-          }
-        });
-      } else {
-        promise.fail(matchComposite.cause());
-      }
-      if (!promise.future().failed()) {
-        promise.complete(new Errors().withErrors(errors).withTotalRecords(errors.size()));
-      }
-      return promise.future();
-    });
+          }, () -> notFoundedIds.add(String.format("'%s'", actionIds.get(entry.getKey()))))
+        );
+        if (notFoundedIds.isEmpty()) {
+          promise.complete(new Errors().withErrors(errors).withTotalRecords(errors.size()));
+        } else {
+          var idStr = String.join(", ", notFoundedIds);
+          logger.warn("Linked ActionProfiles with ids {} not founded", idStr);
+          promise.fail(new NotFoundException((String.format("Linked ActionProfiles with ids %s was not found", idStr))));
+        }
+      })
+      .onFailure(promise::fail);
+
+    return promise.future();
+  }
+
+  private boolean isLinkedActionProfileValid(ActionProfile actionProfile, List<ProfileType> masterProfileTypes) {
+    if (actionProfile.getAction() == ActionProfile.Action.UPDATE) {
+      return masterProfileTypes
+        .stream()
+        .allMatch(it -> it.equals(ProfileType.MATCH_PROFILE));
+    }
+    return true;
   }
 
   private <T> List<Map.Entry<Integer, T>> zipWithIndex(List<T> list) {
