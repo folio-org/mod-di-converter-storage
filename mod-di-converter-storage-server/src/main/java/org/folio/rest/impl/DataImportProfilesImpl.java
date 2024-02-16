@@ -902,15 +902,7 @@ public class DataImportProfilesImpl implements DataImportProfiles {
   private Future<Errors> validateJobProfileLinkedMatchProfile(JobProfileUpdateDto jobProfileUpdateDto) {
     Promise<Errors> promise = Promise.promise();
 
-    var matchProfileIds = jobProfileUpdateDto.getAddedRelations()
-      .stream()
-      .filter(element -> element.getDetailProfileType().equals(ProfileType.MATCH_PROFILE)
-        || element.getMasterProfileType().equals(ProfileType.MATCH_PROFILE))
-      .map(element -> element.getDetailProfileType().equals(ProfileType.MATCH_PROFILE)
-        ? element.getDetailProfileId() : element.getMasterProfileId())
-      .distinct()
-      .collect(Collectors.toList());
-
+    var matchProfileIds = addedProfileIdsByType(jobProfileUpdateDto, ProfileType.MATCH_PROFILE);
     var futures = matchProfileIds.stream()
       .map(id -> matchProfileService.getProfileById(id, false, tenantId))
       .collect(Collectors.toList());
@@ -938,19 +930,7 @@ public class DataImportProfilesImpl implements DataImportProfiles {
     Promise<Errors> promise = Promise.promise();
     List<Error> errors = new LinkedList<>();
 
-    var actionToParentProfileTypes = jobProfileUpdateDto.getAddedRelations()
-      .stream()
-      .filter(association -> association.getDetailProfileType() == ProfileType.ACTION_PROFILE)
-      .map(association -> new AbstractMap.SimpleEntry<>(association.getDetailProfileId(), List.of(association.getMasterProfileType())))
-      .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue,
-        (oldList, newList) -> {
-          var combinedList = new ArrayList<>(oldList);
-          combinedList.addAll(newList);
-          return combinedList;
-        },
-        LinkedHashMap::new
-      ));
-
+    var actionToParentProfileTypes = addedActionToMasterProfileTypes(jobProfileUpdateDto);
     var actionIds = new ArrayList<>(actionToParentProfileTypes.keySet());
     var futures = actionIds.stream()
       .map(id -> actionProfileService.getProfileById(id, false, tenantId))
@@ -978,6 +958,32 @@ public class DataImportProfilesImpl implements DataImportProfiles {
       .onFailure(promise::fail);
 
     return promise.future();
+  }
+
+  private List<String> addedProfileIdsByType(JobProfileUpdateDto jobProfileUpdateDto, ProfileType type) {
+  return jobProfileUpdateDto.getAddedRelations()
+      .stream()
+      .filter(element -> element.getDetailProfileType().equals(type)
+        || element.getMasterProfileType().equals(type))
+      .map(element -> element.getDetailProfileType().equals(type)
+        ? element.getDetailProfileId() : element.getMasterProfileId())
+      .distinct()
+      .collect(Collectors.toList());
+  }
+
+  private Map<String, List<ProfileType>> addedActionToMasterProfileTypes(JobProfileUpdateDto jobProfileUpdateDto) {
+    return jobProfileUpdateDto.getAddedRelations()
+      .stream()
+      .filter(association -> association.getDetailProfileType() == ProfileType.ACTION_PROFILE)
+      .map(association -> new AbstractMap.SimpleEntry<>(association.getDetailProfileId(), List.of(association.getMasterProfileType())))
+      .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue,
+        (oldList, newList) -> {
+          var combinedList = new ArrayList<>(oldList);
+          combinedList.addAll(newList);
+          return combinedList;
+        },
+        LinkedHashMap::new
+      ));
   }
 
   private boolean isLinkedActionProfileValid(ActionProfile actionProfile, List<ProfileType> masterProfileTypes) {
