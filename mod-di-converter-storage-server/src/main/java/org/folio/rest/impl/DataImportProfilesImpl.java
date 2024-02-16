@@ -926,7 +926,7 @@ public class DataImportProfilesImpl implements DataImportProfiles {
           promise.complete(new Errors().withTotalRecords(0));
         } else {
           logger.warn("validateJobProfileLinkedMatchProfile:: Linked MatchProfiles with ids {} not founded", idStr);
-          promise.fail(new NotFoundException((String.format("Linked MatchProfiles with ids %s was not found", idStr))));
+          promise.fail(new NotFoundException((String.format("Linked MatchProfiles with ids %s were not found", idStr))));
         }
       })
       .onFailure(promise::fail);
@@ -963,7 +963,7 @@ public class DataImportProfilesImpl implements DataImportProfiles {
         entries.forEach(entry -> entry.getValue().ifPresentOrElse(profile -> {
             if (!isLinkedActionProfileValid(profile, actionToParentProfileTypes.get(profile.getId()))) {
               logger.warn("validateJobProfileLinkedActionProfiles:: Missing linked MatchProfile for ActionProfile {} with action UPDATE", actionIds.get(entry.getKey()));
-              errors.add(new Error().withMessage(String.format("ActionProfile with id '%s' require linked MatchProfile", actionIds.get(entry.getKey()))));
+              errors.add(new Error().withMessage(String.format("ActionProfile with id '%s' and action UPDATE requires linked MatchProfile", actionIds.get(entry.getKey()))));
             }
           }, () -> notFoundedIds.add(String.format("'%s'", actionIds.get(entry.getKey()))))
         );
@@ -971,8 +971,8 @@ public class DataImportProfilesImpl implements DataImportProfiles {
           promise.complete(new Errors().withErrors(errors).withTotalRecords(errors.size()));
         } else {
           var idStr = String.join(", ", notFoundedIds);
-          logger.warn("Linked ActionProfiles with ids {} not founded", idStr);
-          promise.fail(new NotFoundException((String.format("Linked ActionProfiles with ids %s was not found", idStr))));
+          logger.warn("validateJobProfileLinkedActionProfiles:: Linked ActionProfiles with ids {} not founded", idStr);
+          promise.fail(new NotFoundException((String.format("Linked ActionProfiles with ids %s were not found", idStr))));
         }
       })
       .onFailure(promise::fail);
