@@ -1,3 +1,6 @@
+## 2024-02-XX 2.2.1
+* [MODDICONV-334](https://folio-org.atlassian.net/browse/MODDICONV-334) Disallow linking MARC Update action to a MARC Modify
+
 ## 2023-XX-XX 2.2.0
 * [MODDICONV-305](https://issues.folio.org/browse/MODDICONV-305) For Quesnelia (R2 2023) remove "permissions" interface dependency
 
