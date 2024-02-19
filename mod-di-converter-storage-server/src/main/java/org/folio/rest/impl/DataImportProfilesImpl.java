@@ -1,6 +1,5 @@
 package org.folio.rest.impl;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Context;
 import io.vertx.core.Future;
@@ -10,6 +9,7 @@ import io.vertx.core.Vertx;
 import io.vertx.core.impl.future.CompositeFutureImpl;
 import io.vertx.core.json.JsonObject;
 
+import io.vertx.core.json.jackson.DatabindCodec;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
@@ -945,7 +945,7 @@ public class DataImportProfilesImpl implements DataImportProfiles {
                 ).collect(Collectors.toList());
 
             existMappingProfiles.forEach(mappingWrapper -> {
-              var mappingProfile = new ObjectMapper().convertValue(mappingWrapper.getContent(), MappingProfile.class);
+              var mappingProfile = DatabindCodec.mapper().convertValue(mappingWrapper.getContent(), MappingProfile.class);
               validateAssociations(actionProfileUpdateDto.getProfile(), mappingProfile, errors, INVALID_ACTION_PROFILE_NEW_RECORD_TYPE_LINKED_TO_MAPPING_PROFILE);
             });
             promise.complete(new Errors().withErrors(errors));
@@ -997,7 +997,7 @@ public class DataImportProfilesImpl implements DataImportProfiles {
                 .collect(Collectors.toList());
 
             existActionProfiles.forEach(actionWrapper -> {
-              var actionProfile = new ObjectMapper().convertValue(actionWrapper.getContent(), ActionProfile.class);
+              var actionProfile = DatabindCodec.mapper().convertValue(actionWrapper.getContent(), ActionProfile.class);
               validateAssociations(actionProfile, mappingProfileUpdateDto.getProfile(), errors, INVALID_MAPPING_PROFILE_NEW_RECORD_TYPE_LINKED_TO_ACTION_PROFILE);
             });
             promise.complete(new Errors().withErrors(errors));
