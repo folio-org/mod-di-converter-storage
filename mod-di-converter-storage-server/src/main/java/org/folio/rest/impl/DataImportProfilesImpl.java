@@ -77,6 +77,7 @@ public class DataImportProfilesImpl implements DataImportProfiles {
   private static final String INVALID_RECORD_TYPE_LINKED_ACTION_PROFILE_TO_MAPPING_PROFILE = "Action profile '%s' can not be linked to this Mapping profile. FolioRecord and ExistingRecordType types are different";
   private static final String INVALID_MAPPING_PROFILE_NEW_RECORD_TYPE_LINKED_TO_ACTION_PROFILE = "Can not update MappingProfile recordType and linked ActionProfile recordType are different";
   private static final String INVALID_ACTION_PROFILE_NEW_RECORD_TYPE_LINKED_TO_MAPPING_PROFILE = "Can not update ActionProfile recordType and linked MappingProfile recordType are different";
+  private static final String INVALID_ACTION_PROFILE_ACTION_TYPE = "Cant create ActionProfile for MARCbib record type with Create action";
 
   static final Map<String, String> ERROR_CODES_TYPES_RELATION = Map.of(
     "mappingProfile", "The field mapping profile",
@@ -510,7 +511,7 @@ public class DataImportProfilesImpl implements DataImportProfiles {
       try {
         entity.getProfile().setMetadata(getMetadata(okapiHeaders));
         composeFutureErrors(
-          validateProfile(OperationType.CREATE, entity.getProfile(), actionProfileService, tenantId),
+          validateActionProfile(OperationType.CREATE, entity.getProfile(), tenantId),
           validateActionProfileAddedRelationsFolioRecord(entity, tenantId)).onComplete(errors -> {
           if (errors.failed()) {
             logger.warn(format(PROFILE_VALIDATE_ERROR_MESSAGE, entity.getClass().getSimpleName()), errors.cause());
@@ -560,7 +561,7 @@ public class DataImportProfilesImpl implements DataImportProfiles {
           if (isDtoValidForUpdate) {
             entity.getProfile().setMetadata(getMetadata(okapiHeaders));
             return composeFutureErrors(
-              validateProfile(OperationType.UPDATE, entity.getProfile(), actionProfileService, tenantId),
+              validateActionProfile(OperationType.UPDATE, entity.getProfile(), tenantId),
               validateActionProfileChildProfilesFolioRecord(entity, tenantId, id),
               validateActionProfileAddedRelationsFolioRecord(entity, tenantId)
             ).compose(errors -> {
@@ -894,6 +895,17 @@ public class DataImportProfilesImpl implements DataImportProfiles {
         List<Error> fieldsValidationErrors = validateRepeatableFields(mappingProfile);
         errors.withTotalRecords(errors.getTotalRecords() + fieldsValidationErrors.size())
           .getErrors().addAll(fieldsValidationErrors);
+        return errors;
+      });
+  }
+
+  private Future<Errors> validateActionProfile(OperationType operationType, ActionProfile actionProfile, String tenantId) {
+    return validateProfile(operationType, actionProfile, actionProfileService, tenantId)
+      .map(errors -> {
+        if (ActionProfile.FolioRecord.MARC_BIBLIOGRAPHIC == actionProfile.getFolioRecord() && ActionProfile.Action.CREATE == actionProfile.getAction()) {
+          logger.warn("validateActionProfile:: {}", INVALID_ACTION_PROFILE_ACTION_TYPE);
+          errors.withTotalRecords(errors.getTotalRecords() + 1).getErrors().add(new Error().withMessage(INVALID_ACTION_PROFILE_ACTION_TYPE));
+        }
         return errors;
       });
   }

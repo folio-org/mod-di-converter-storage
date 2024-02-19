@@ -508,7 +508,7 @@ public class MappingProfileTest extends AbstractRestVerticleTest {
       .spec(spec)
       .body(new ActionProfileUpdateDto().withProfile(new ActionProfile()
         .withName("testActionProfile")
-        .withAction(CREATE)
+        .withAction(UPDATE)
         .withFolioRecord(MARC_BIBLIOGRAPHIC)))
       .when()
       .post(ACTION_PROFILES_PATH);
@@ -929,7 +929,7 @@ public class MappingProfileTest extends AbstractRestVerticleTest {
     var actionProfileUpdateDto = postActionProfile(new ActionProfileUpdateDto()
       .withProfile(new ActionProfile()
         .withName("Test Action Profile")
-        .withAction(CREATE)
+        .withAction(UPDATE)
         .withFolioRecord(MARC_BIBLIOGRAPHIC)));
 
     RestAssured.given()

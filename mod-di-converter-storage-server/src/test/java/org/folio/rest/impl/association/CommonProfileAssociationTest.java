@@ -39,8 +39,7 @@ import org.junit.runner.RunWith;
 import java.util.Arrays;
 import java.util.UUID;
 
-import static org.folio.rest.jaxrs.model.ActionProfile.Action.CREATE;
-import static org.folio.rest.jaxrs.model.ActionProfile.FolioRecord.INSTANCE;
+import static org.folio.rest.jaxrs.model.ActionProfile.Action.UPDATE;
 import static org.folio.rest.jaxrs.model.ActionProfile.FolioRecord.MARC_BIBLIOGRAPHIC;
 import static org.folio.rest.jaxrs.model.JobProfile.DataType.MARC;
 import static org.folio.rest.jaxrs.model.ProfileSnapshotWrapper.ContentType.ACTION_PROFILE;
@@ -84,16 +83,16 @@ public class CommonProfileAssociationTest extends AbstractRestVerticleTest {
 
   ActionProfileUpdateDto actionProfile1 = new ActionProfileUpdateDto()
     .withProfile(new ActionProfile().withName("testActionProfile1").withDescription("test-description")
-      .withAction(CREATE).withFolioRecord(MARC_BIBLIOGRAPHIC));
+      .withAction(UPDATE).withFolioRecord(MARC_BIBLIOGRAPHIC));
   ActionProfileUpdateDto actionProfile2 = new ActionProfileUpdateDto()
     .withProfile(new ActionProfile().withName("testActionProfile2").withDescription("test-description")
-      .withAction(CREATE).withFolioRecord(MARC_BIBLIOGRAPHIC));
+      .withAction(UPDATE).withFolioRecord(MARC_BIBLIOGRAPHIC));
   ActionProfileUpdateDto actionProfile3 = new ActionProfileUpdateDto()
     .withProfile(new ActionProfile().withName("testActionProfile3").withDescription("test-description")
-      .withAction(CREATE).withFolioRecord(MARC_BIBLIOGRAPHIC));
+      .withAction(UPDATE).withFolioRecord(MARC_BIBLIOGRAPHIC));
   ActionProfileUpdateDto actionProfile4 = new ActionProfileUpdateDto()
     .withProfile(new ActionProfile().withName("testActionProfile4")
-      .withAction(CREATE).withFolioRecord(MARC_BIBLIOGRAPHIC));
+      .withAction(UPDATE).withFolioRecord(MARC_BIBLIOGRAPHIC));
 
   MappingProfileUpdateDto mappingProfile1 = new MappingProfileUpdateDto()
     .withProfile(new MappingProfile().withName("testMappingProfile1").withDescription("test-description")
@@ -483,7 +482,7 @@ public class CommonProfileAssociationTest extends AbstractRestVerticleTest {
         .withId(actionProfileId)
         .withName("Existing ActionProfile")
         .withFolioRecord(MARC_BIBLIOGRAPHIC)
-        .withAction(CREATE)
+        .withAction(UPDATE)
         .withDeleted(false)
         .withHidden(false)
         .withDescription("test-description")));
