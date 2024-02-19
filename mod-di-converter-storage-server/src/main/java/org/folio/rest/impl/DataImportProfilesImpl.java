@@ -80,6 +80,7 @@ public class DataImportProfilesImpl implements DataImportProfiles {
   private static final String INVALID_RECORD_TYPE_LINKED_ACTION_PROFILE_TO_MAPPING_PROFILE = "Action profile '%s' can not be linked to this Mapping profile. FolioRecord and ExistingRecordType types are different";
   private static final String INVALID_MAPPING_PROFILE_NEW_RECORD_TYPE_LINKED_TO_ACTION_PROFILE = "Can not update MappingProfile recordType and linked ActionProfile recordType are different";
   private static final String INVALID_ACTION_PROFILE_NEW_RECORD_TYPE_LINKED_TO_MAPPING_PROFILE = "Can not update ActionProfile recordType and linked MappingProfile recordType are different";
+  private static final String INVALID_ACTION_PROFILE_LINKED_TO_JOB_PROFILE = "ActionProfile with id '%s' and action UPDATE requires linked MatchProfile";
 
   static final Map<String, String> ERROR_CODES_TYPES_RELATION = Map.of(
     "mappingProfile", "The field mapping profile",
@@ -909,16 +910,16 @@ public class DataImportProfilesImpl implements DataImportProfiles {
 
     GenericCompositeFuture.all(futures)
       .map(it -> zipWithIndex(it.result().<Optional<MappingProfile>>list()))
-      .onSuccess(entries -> {
-        var idStr = entries.stream()
-          .filter(entry -> entry.getValue().isEmpty())
-          .map(entry -> String.format("'%s'", matchProfileIds.get(entry.getKey())))
-          .collect(Collectors.joining(", "));
-        if (StringUtils.isBlank(idStr)) {
+      .map(entries -> entries.stream()
+        .filter(entry -> entry.getValue().isEmpty())
+        .map(entry -> String.format("'%s'", matchProfileIds.get(entry.getKey())))
+        .collect(Collectors.joining(", ")))
+      .onSuccess(ids -> {
+        if (StringUtils.isBlank(ids)) {
           promise.complete(new Errors().withTotalRecords(0));
         } else {
-          logger.warn("validateJobProfileLinkedMatchProfile:: Linked MatchProfiles with ids {} not founded", idStr);
-          promise.fail(new NotFoundException((String.format("Linked MatchProfiles with ids %s were not found", idStr))));
+          logger.warn("validateJobProfileLinkedMatchProfile:: Linked MatchProfiles with ids {} not founded", ids);
+          promise.fail(new NotFoundException((String.format("Linked MatchProfiles with ids %s were not found", ids))));
         }
       })
       .onFailure(promise::fail);
@@ -943,7 +944,7 @@ public class DataImportProfilesImpl implements DataImportProfiles {
         entries.forEach(entry -> entry.getValue().ifPresentOrElse(profile -> {
             if (!isLinkedActionProfileValid(profile, actionToParentProfileTypes.get(profile.getId()))) {
               logger.warn("validateJobProfileLinkedActionProfiles:: Missing linked MatchProfile for ActionProfile {} with action UPDATE", actionIds.get(entry.getKey()));
-              errors.add(new Error().withMessage(String.format("ActionProfile with id '%s' and action UPDATE requires linked MatchProfile", actionIds.get(entry.getKey()))));
+              errors.add(new Error().withMessage(String.format(INVALID_ACTION_PROFILE_LINKED_TO_JOB_PROFILE, actionIds.get(entry.getKey()))));
             }
           }, () -> notFoundedIds.add(String.format("'%s'", actionIds.get(entry.getKey()))))
         );
