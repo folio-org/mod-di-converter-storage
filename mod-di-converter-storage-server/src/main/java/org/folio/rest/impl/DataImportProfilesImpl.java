@@ -909,7 +909,7 @@ public class DataImportProfilesImpl implements DataImportProfiles {
       .collect(Collectors.toList());
 
     GenericCompositeFuture.all(futures)
-      .map(it -> zipWithIndex(it.result().<Optional<MappingProfile>>list()))
+      .map(it -> zipWithIndex(it.result().<Optional<MatchProfile>>list()))
       .map(entries -> entries.stream()
         .filter(entry -> entry.getValue().isEmpty())
         .map(entry -> String.format("'%s'", matchProfileIds.get(entry.getKey())))
