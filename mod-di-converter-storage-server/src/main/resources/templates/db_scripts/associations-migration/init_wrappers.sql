@@ -43,7 +43,8 @@ $$
         where mapping_profile_id = (r.jsonb ->> 'detailProfileId')::uuid;
 
         if mapping_wrapper_id is null or action_wrapper_id is null then
-          raise warning 'BAD DATA, action_to_mapping_profiles id: %', r.id;
+          raise debug 'Incorrect data, action_to_mapping_profiles id: %, action_wrapper_id: %, mapping_wrapper_id: %',
+            r.id, action_wrapper_id, mapping_wrapper_id;
           continue;
         end if;
 
@@ -53,6 +54,7 @@ $$
                               '{detailWrapperId}', to_jsonb(mapping_wrapper_id), true)
         WHERE id = r.id;
       END LOOP;
+      RAISE NOTICE 'PROFILES_MIGRATION:: updated action_to_mapping_profiles';
   END
 $$;
 
@@ -82,7 +84,8 @@ $$
         where job_profile_id = (r.jsonb ->> 'masterProfileId')::uuid;
 
         if job_wrapper_id is null or match_wrapper_id is null then
-          raise warning 'BAD DATA, job_to_match_profiles id: %', r.id;
+          raise debug 'Incorrect data: job_to_match_profiles id: %, match_wrapper_id: %, job_wrapper_id: %',
+            r.id, match_wrapper_id, job_wrapper_id;
           continue;
         end if;
 
@@ -122,7 +125,8 @@ $$
         where job_profile_id = (r.jsonb ->> 'masterProfileId')::uuid;
 
         if job_wrapper_id is null or action_wrapper_id is null then
-          raise warning 'BAD DATA, job_to_action_profiles id: %', r.id;
+          raise debug 'Incorrect data: job_to_action_profiles id: %, action_wrapper_id: %, job_wrapper_id: %',
+            r.id, action_wrapper_id, job_wrapper_id;
           continue;
         end if;
 
@@ -221,7 +225,8 @@ $$
           and associated_job_profile_id = (r.jsonb ->> 'jobProfileId')::uuid;
 
         if match_wrapper_id is null or action_wrapper_id is null then
-          raise warning 'BAD DATA, match_to_action_profiles id: %', r.id;
+          raise debug 'Incorrect data: match_to_action_profiles id: %, jobProfileId: %, action_wrapper_id: %, match_wrapper_id: %',
+            r.id, (r.jsonb ->> 'jobProfileId')::uuid, action_wrapper_id, match_wrapper_id;
           continue;
         end if;
 
