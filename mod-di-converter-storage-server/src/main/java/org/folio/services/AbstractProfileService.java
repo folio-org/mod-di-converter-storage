@@ -26,7 +26,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import javax.ws.rs.NotFoundException;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -158,8 +157,8 @@ public abstract class AbstractProfileService<T, S, D> implements ProfileService<
     Promise<Boolean> result = Promise.promise();
     GenericCompositeFuture.all(fillProfileDataIfNeeded(profileAssociations, tenantId))
       .onSuccess(r ->
-        associationService.wrapAssociationProfiles(profileAssociations, new ArrayList<>(), new HashMap<>(), tenantId)
-          .compose(e -> profileAssociationService.save(e, tenantId))
+        associationService.wrapAssociationProfiles(profileAssociations, tenantId)
+          .compose(e -> profileAssociationService.save(profileAssociations, tenantId))
           .onComplete(ar -> {
             if (ar.succeeded()) {
               result.complete(true);
