@@ -404,6 +404,16 @@
       "run": "after",
       "snippetPath": "associations-migration/actualize_wrappers_ids_at_relations_jsonb.sql",
       "fromModuleVersion": "mod-di-converter-storage-2.1.2"
+    },
+    {
+      "run": "after",
+      "snippetPath": "data-migration/set_account_no.sql",
+      "fromModuleVersion": "mod-di-converter-storage-2.2.0"
+    },
+    {
+      "run": "after",
+      "snippet": "ALTER TABLE profile_wrappers ADD IF NOT EXISTS associated_job_profile_id uuid NULL;",
+      "fromModuleVersion": "mod-di-converter-storage-2.2.0"
     }
   ]
 }
