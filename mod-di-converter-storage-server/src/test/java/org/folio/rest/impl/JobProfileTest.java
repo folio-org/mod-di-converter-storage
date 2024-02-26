@@ -21,6 +21,7 @@ import static org.folio.rest.impl.ActionProfileTest.ACTION_PROFILES_PATH;
 import static org.folio.rest.impl.ActionProfileTest.ACTION_PROFILES_TABLE_NAME;
 import static org.folio.rest.impl.MatchProfileTest.MATCH_PROFILES_PATH;
 import static org.folio.rest.jaxrs.model.ActionProfile.Action.CREATE;
+import static org.folio.rest.jaxrs.model.ActionProfile.Action.UPDATE;
 import static org.folio.rest.jaxrs.model.ActionProfile.FolioRecord.INSTANCE;
 import static org.folio.rest.jaxrs.model.ActionProfile.FolioRecord.MARC_BIBLIOGRAPHIC;
 import static org.folio.rest.jaxrs.model.JobProfile.DataType.*;
@@ -881,7 +882,7 @@ public class JobProfileTest extends AbstractRestVerticleTest {
         .withProfile(new ActionProfile()
           .withId(actionProfileId)
           .withName("testAction")
-          .withAction(CREATE)
+          .withAction(UPDATE)
           .withFolioRecord(MARC_BIBLIOGRAPHIC)))
       .when()
       .post(ACTION_PROFILES_PATH);

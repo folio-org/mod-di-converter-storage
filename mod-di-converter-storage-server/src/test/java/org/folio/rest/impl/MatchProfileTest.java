@@ -59,7 +59,7 @@ import static org.folio.rest.impl.association.CommonProfileAssociationTest.MAPPI
 import static org.folio.rest.impl.association.CommonProfileAssociationTest.MATCH_PROFILES_TABLE;
 import static org.folio.rest.impl.association.CommonProfileAssociationTest.MATCH_TO_ACTION_PROFILES;
 import static org.folio.rest.impl.association.CommonProfileAssociationTest.MATCH_TO_MATCH_PROFILES;
-import static org.folio.rest.jaxrs.model.ActionProfile.Action.CREATE;
+import static org.folio.rest.jaxrs.model.ActionProfile.Action.UPDATE;
 import static org.folio.rest.jaxrs.model.ActionProfile.FolioRecord.MARC_BIBLIOGRAPHIC;
 import static org.folio.rest.jaxrs.model.MatchDetail.MatchCriterion.EXACTLY_MATCHES;
 import static org.folio.rest.jaxrs.model.MatchExpression.DataValueType.VALUE_FROM_RECORD;
@@ -530,7 +530,7 @@ public class MatchProfileTest extends AbstractRestVerticleTest {
       .spec(spec)
       .body(new ActionProfileUpdateDto().withProfile(new ActionProfile()
         .withName("testAction")
-        .withAction(CREATE)
+        .withAction(UPDATE)
         .withFolioRecord(MARC_BIBLIOGRAPHIC)))
       .when()
       .post(ACTION_PROFILES_PATH);

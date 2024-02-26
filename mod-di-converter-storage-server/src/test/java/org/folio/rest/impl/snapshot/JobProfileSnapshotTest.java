@@ -32,10 +32,11 @@ import org.junit.runner.RunWith;
 
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.List;
+
 import java.util.UUID;
 
 import static org.folio.rest.jaxrs.model.ActionProfile.Action.CREATE;
+import static org.folio.rest.jaxrs.model.ActionProfile.Action.UPDATE;
 import static org.folio.rest.jaxrs.model.ActionProfile.FolioRecord.INSTANCE;
 import static org.folio.rest.jaxrs.model.ActionProfile.FolioRecord.MARC_BIBLIOGRAPHIC;
 import static org.folio.rest.jaxrs.model.JobProfile.DataType.MARC;
@@ -82,7 +83,7 @@ public class JobProfileSnapshotTest extends AbstractRestVerticleTest {
 
   private ActionProfileUpdateDto actionProfile = new ActionProfileUpdateDto()
     .withProfile(new ActionProfile().withName("testActionProfile1").withDescription("test-description")
-      .withAction(CREATE).withFolioRecord(MARC_BIBLIOGRAPHIC));
+      .withAction(UPDATE).withFolioRecord(MARC_BIBLIOGRAPHIC));
 
   private MappingProfileUpdateDto mappingProfile = new MappingProfileUpdateDto()
     .withProfile(new MappingProfile().withName("testMappingProfile1").withDescription("test-description")
