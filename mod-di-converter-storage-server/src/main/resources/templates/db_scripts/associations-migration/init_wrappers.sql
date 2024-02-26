@@ -1,3 +1,5 @@
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp" WITH SCHEMA public;
+
 /*
 This script will migrate job profiles to utilize profile wrappers. The order of DML is important to ensure consistent
 state before and after migration.
