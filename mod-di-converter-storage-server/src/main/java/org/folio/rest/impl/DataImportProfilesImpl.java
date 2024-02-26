@@ -83,7 +83,7 @@ public class DataImportProfilesImpl implements DataImportProfiles {
   private static final String INVALID_ACTION_TYPE_LINKED_ACTION_PROFILE_TO_MAPPING_PROFILE = "Unable to complete requested change. " +
     "MARC Update Action profiles can only be linked with MARC Update Mapping profiles and MARC Modify Action profiles can only be linked with MARC Modify Mapping profiles. " +
     "Please ensure your Action and Mapping profiles are of like types and try again.";
-  private static final String INVALID_ACTION_PROFILE_ACTION_TYPE = "Cant create ActionProfile for MARCbib record type with Create action";
+  private static final String INVALID_ACTION_PROFILE_ACTION_TYPE = "Can't create ActionProfile for MARC Bib record type with Create action";
 
   static final Map<String, String> ERROR_CODES_TYPES_RELATION = Map.of(
     "mappingProfile", "The field mapping profile",

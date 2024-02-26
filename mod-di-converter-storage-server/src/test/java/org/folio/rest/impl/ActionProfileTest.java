@@ -190,7 +190,7 @@ public class ActionProfileTest extends AbstractRestVerticleTest {
       .post(ACTION_PROFILES_PATH)
       .then()
       .statusCode(HttpStatus.SC_UNPROCESSABLE_ENTITY)
-      .body("errors[0].message", is("Cant create ActionProfile for MARCbib record type with Create action"));
+      .body("errors[0].message", is("Can't create ActionProfile for MARC Bib record type with Create action"));
   }
 
   @Test
@@ -311,7 +311,7 @@ public class ActionProfileTest extends AbstractRestVerticleTest {
       .put(ACTION_PROFILES_PATH + "/" + actionProfile_4.getProfile().getId())
       .then()
       .statusCode(HttpStatus.SC_UNPROCESSABLE_ENTITY)
-      .body("errors[0].message", is("Cant create ActionProfile for MARCbib record type with Create action"));
+      .body("errors[0].message", is("Can't create ActionProfile for MARC Bib record type with Create action"));
   }
 
   @Test
