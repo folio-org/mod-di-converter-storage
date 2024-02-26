@@ -1024,7 +1024,7 @@ public class JobProfileTest extends AbstractRestVerticleTest {
         .withProfile(new ActionProfile()
           .withId(actionProfileId)
           .withName("testAction")
-          .withAction(CREATE)
+          .withAction(UPDATE)
           .withFolioRecord(MARC_BIBLIOGRAPHIC)))
       .when()
       .post(ACTION_PROFILES_PATH);

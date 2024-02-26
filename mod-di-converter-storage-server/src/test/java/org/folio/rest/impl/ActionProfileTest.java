@@ -16,6 +16,7 @@ import org.folio.rest.jaxrs.model.ProfileAssociation;
 import org.folio.rest.jaxrs.model.ProfileSnapshotWrapper;
 import org.folio.rest.jaxrs.model.ProfileSnapshotWrapper.ContentType;
 import org.folio.rest.jaxrs.model.ProfileType;
+import org.folio.rest.jaxrs.model.MappingDetail;
 import org.folio.rest.jaxrs.model.Tags;
 import org.folio.rest.persist.Criteria.Criterion;
 import org.folio.rest.persist.PostgresClient;
@@ -33,6 +34,8 @@ import java.util.stream.Collectors;
 import static java.util.Collections.singletonList;
 import static org.folio.rest.impl.MappingProfileTest.MAPPING_PROFILES_PATH;
 import static org.folio.rest.jaxrs.model.ActionProfile.Action.CREATE;
+import static org.folio.rest.jaxrs.model.ActionProfile.Action.MODIFY;
+import static org.folio.rest.jaxrs.model.ActionProfile.Action.UPDATE;
 import static org.folio.rest.jaxrs.model.ActionProfile.FolioRecord.INSTANCE;
 import static org.folio.rest.jaxrs.model.ActionProfile.FolioRecord.MARC_BIBLIOGRAPHIC;
 import static org.folio.rest.jaxrs.model.ProfileSnapshotWrapper.ContentType.ACTION_PROFILE;
@@ -94,12 +97,12 @@ public class ActionProfileTest extends AbstractRestVerticleTest {
   static ActionProfileUpdateDto actionProfile_4 = new ActionProfileUpdateDto()
     .withProfile(new ActionProfile().withId(ACTION_PROFILE_UUID).withName("OLA")
       .withTags(new Tags().withTagList(Arrays.asList("lorem", "ipsum", "dolor")))
-      .withAction(CREATE)
+      .withAction(UPDATE)
       .withFolioRecord(MARC_BIBLIOGRAPHIC));
   static ActionProfileUpdateDto actionProfileNotEmptyChildAndParent = new ActionProfileUpdateDto()
     .withProfile(new ActionProfile()
       .withName("Action profile with child and parent")
-      .withAction(CREATE)
+      .withAction(UPDATE)
       .withParentProfiles(List.of(new ProfileSnapshotWrapper().withId(UUID.randomUUID().toString())))
       .withChildProfiles(List.of(new ProfileSnapshotWrapper().withId(UUID.randomUUID().toString())))
       .withFolioRecord(MARC_BIBLIOGRAPHIC));
@@ -175,15 +178,19 @@ public class ActionProfileTest extends AbstractRestVerticleTest {
   }
 
   @Test
-  public void shouldReturnBadRequestOnPost() {
-    createProfiles();
+  public void shouldReturnBadRequestOnPostWithMarcbibRecordAndCreateAction() {
     RestAssured.given()
       .spec(spec)
-      .body(new JsonObject().toString())
+      .body(new ActionProfileUpdateDto()
+        .withProfile(new ActionProfile()
+          .withName("Invalid Action Profile")
+          .withAction(CREATE)
+          .withFolioRecord(MARC_BIBLIOGRAPHIC)))
       .when()
       .post(ACTION_PROFILES_PATH)
       .then()
-      .statusCode(HttpStatus.SC_UNPROCESSABLE_ENTITY);
+      .statusCode(HttpStatus.SC_UNPROCESSABLE_ENTITY)
+      .body("errors[0].message", is("Can't create ActionProfile for MARC Bib record type with Create action"));
   }
 
   @Test
@@ -285,6 +292,26 @@ public class ActionProfileTest extends AbstractRestVerticleTest {
         .then()
         .statusCode(HttpStatus.SC_BAD_REQUEST);
     }
+  }
+
+  @Test
+  public void shouldReturnBadRequestOnPutWithMarcbibRecordAndCreateAction() {
+    RestAssured.given()
+      .spec(spec)
+      .body(actionProfile_4)
+      .when()
+      .post(ACTION_PROFILES_PATH)
+      .then()
+      .statusCode(HttpStatus.SC_CREATED);
+
+    RestAssured.given()
+      .spec(spec)
+      .body(actionProfile_4.withProfile(actionProfile_4.getProfile().withAction(CREATE)))
+      .when()
+      .put(ACTION_PROFILES_PATH + "/" + actionProfile_4.getProfile().getId())
+      .then()
+      .statusCode(HttpStatus.SC_UNPROCESSABLE_ENTITY)
+      .body("errors[0].message", is("Can't create ActionProfile for MARC Bib record type with Create action"));
   }
 
   @Test
@@ -878,6 +905,39 @@ public class ActionProfileTest extends AbstractRestVerticleTest {
   }
 
   @Test
+  public void shouldNotCreateActionProfilesWhenDifferentActionType() {
+    var mappingProfileUpdateDto = postMappingProfile(new MappingProfileUpdateDto()
+      .withProfile(new MappingProfile()
+        .withName("Test Mapping Profile")
+        .withTags(new Tags().withTagList(Arrays.asList("lorem", "ipsum", "dolor")))
+        .withMappingDetails(new MappingDetail().withMarcMappingOption(MappingDetail.MarcMappingOption.UPDATE))
+        .withExistingRecordType(EntityType.MARC_BIBLIOGRAPHIC)
+        .withIncomingRecordType(EntityType.MARC_BIBLIOGRAPHIC)));
+
+    RestAssured.given()
+      .spec(spec)
+      .body(new ActionProfileUpdateDto()
+        .withProfile(new ActionProfile()
+          .withName("Test Action Profile")
+          .withAction(MODIFY)
+          .withFolioRecord(MARC_BIBLIOGRAPHIC))
+        .withAddedRelations(List.of(
+          new ProfileAssociation()
+            .withDetailProfileType(ProfileType.MAPPING_PROFILE)
+            .withDetailProfileId(mappingProfileUpdateDto.getId())
+            .withMasterProfileType(ProfileType.ACTION_PROFILE))))
+      .when()
+      .post(ACTION_PROFILES_PATH)
+      .then()
+      .statusCode(HttpStatus.SC_UNPROCESSABLE_ENTITY)
+      .body("errors", hasItem(
+        hasEntry(is("message"),
+          is("Unable to complete requested change. MARC Update Action profiles can only be linked with MARC Update " +
+            "Mapping profiles and MARC Modify Action profiles can only be linked with MARC Modify Mapping profiles. Please ensure your Action and Mapping profiles are of like types and try again.")
+        )));
+  }
+
+  @Test
   public void shouldNotUpdateActionProfilesWhenDifferentFolioRecord() {
     var mappingProfileUpdateDto = postMappingProfile(new MappingProfileUpdateDto()
       .withProfile(new MappingProfile()
@@ -895,7 +955,7 @@ public class ActionProfileTest extends AbstractRestVerticleTest {
     var actionProfileUpdateDto = postActionProfile(new ActionProfileUpdateDto()
       .withProfile(new ActionProfile()
         .withName("Test Action Profile")
-        .withAction(CREATE)
+        .withAction(UPDATE)
         .withFolioRecord(MARC_BIBLIOGRAPHIC))
       .withAddedRelations(List.of(
         new ProfileAssociation()
@@ -908,7 +968,7 @@ public class ActionProfileTest extends AbstractRestVerticleTest {
       .body(new ActionProfileUpdateDto()
         .withProfile(new ActionProfile()
           .withName("Test Action Profile")
-          .withAction(CREATE)
+          .withAction(UPDATE)
           .withFolioRecord(MARC_BIBLIOGRAPHIC))
         .withAddedRelations(List.of(
           new ProfileAssociation()
@@ -951,6 +1011,45 @@ public class ActionProfileTest extends AbstractRestVerticleTest {
   }
 
   @Test
+  public void shouldNotUpdateActionProfilesWhenDifferentActionType() {
+    var mappingProfileUpdateDto = postMappingProfile(new MappingProfileUpdateDto()
+      .withProfile(new MappingProfile()
+        .withName("Test Mapping Profile")
+        .withTags(new Tags().withTagList(Arrays.asList("lorem", "ipsum", "dolor")))
+        .withMappingDetails(new MappingDetail().withMarcMappingOption(MappingDetail.MarcMappingOption.UPDATE))
+        .withExistingRecordType(EntityType.MARC_BIBLIOGRAPHIC)
+        .withIncomingRecordType(EntityType.MARC_BIBLIOGRAPHIC)));
+
+    var actionProfileUpdateDto = postActionProfile(new ActionProfileUpdateDto()
+      .withProfile(new ActionProfile()
+        .withName("Test Action Profile")
+        .withAction(MODIFY)
+        .withFolioRecord(MARC_BIBLIOGRAPHIC)));
+
+    RestAssured.given()
+      .spec(spec)
+      .body(new ActionProfileUpdateDto()
+        .withProfile(new ActionProfile()
+          .withName("Test Action Profile")
+          .withAction(MODIFY)
+          .withFolioRecord(MARC_BIBLIOGRAPHIC))
+        .withAddedRelations(List.of(
+          new ProfileAssociation()
+            .withDetailProfileType(ProfileType.MAPPING_PROFILE)
+            .withDetailProfileId(mappingProfileUpdateDto.getProfile().getId())
+            .withMasterProfileType(ProfileType.ACTION_PROFILE))))
+      .when()
+      .put(ACTION_PROFILES_PATH + "/" + actionProfileUpdateDto.getProfile().getId())
+      .then()
+      .statusCode(HttpStatus.SC_UNPROCESSABLE_ENTITY)
+      .body("errors", hasItem(
+        hasEntry(is("message"),
+          is("Unable to complete requested change. MARC Update Action profiles can only be linked with MARC Update " +
+            "Mapping profiles and MARC Modify Action profiles can only be linked with MARC Modify Mapping profiles. Please ensure your Action and Mapping profiles are of like types and try again.")
+        )));
+  }
+
+  @Test
   public void shouldReturnBadRequestIfChildOrParentProfileIsNotEmptyOnPost() {
     RestAssured.given()
       .spec(spec)
@@ -968,7 +1067,7 @@ public class ActionProfileTest extends AbstractRestVerticleTest {
     var actionProfileUpdateDto = postActionProfile(new ActionProfileUpdateDto()
       .withProfile(new ActionProfile()
         .withName("Test Action Profile")
-        .withAction(CREATE)
+        .withAction(UPDATE)
         .withFolioRecord(MARC_BIBLIOGRAPHIC)));
 
 
@@ -988,7 +1087,7 @@ public class ActionProfileTest extends AbstractRestVerticleTest {
                                                                   Boolean expectedRemove9SubfieldFlag) {
     var actionProfile = new ActionProfileUpdateDto()
       .withProfile(new ActionProfile().withName("test:" + folioRecord)
-        .withAction(CREATE)
+        .withAction(UPDATE)
         .withFolioRecord(folioRecord)
         .withRemove9Subfields(incomingRemove9SubfieldFlag));
 
