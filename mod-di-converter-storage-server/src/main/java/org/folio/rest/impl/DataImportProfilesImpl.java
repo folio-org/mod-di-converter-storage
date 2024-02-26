@@ -908,6 +908,8 @@ public class DataImportProfilesImpl implements DataImportProfiles {
   }
 
   private Future<Errors> validateJobProfileLinkedMatchProfile(JobProfileUpdateDto jobProfileUpdateDto) {
+    logger.debug("validateJobProfileLinkedMatchProfile:: Validating MatchProfiles added to JobProfile {}", jobProfileUpdateDto.getProfile().getId());
+
     Promise<Errors> promise = Promise.promise();
 
     var matchProfileIds = addedProfileIdsByType(jobProfileUpdateDto, ProfileType.MATCH_PROFILE);
@@ -935,6 +937,8 @@ public class DataImportProfilesImpl implements DataImportProfiles {
   }
 
   private Future<Errors> validateJobProfileLinkedActionProfiles(JobProfileUpdateDto jobProfileUpdateDto) {
+    logger.debug("validateJobProfileLinkedActionProfiles:: Validating ActionProfiles added to JobProfile {}", jobProfileUpdateDto.getProfile().getId());
+
     Promise<Errors> promise = Promise.promise();
     List<Error> errors = new LinkedList<>();
 
