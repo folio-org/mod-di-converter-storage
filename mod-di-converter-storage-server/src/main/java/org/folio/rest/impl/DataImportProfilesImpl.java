@@ -9,6 +9,7 @@ import io.vertx.core.Vertx;
 import io.vertx.core.impl.future.CompositeFutureImpl;
 import io.vertx.core.json.JsonObject;
 
+import io.vertx.core.json.jackson.DatabindCodec;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
@@ -28,6 +29,7 @@ import org.folio.rest.jaxrs.model.MappingProfile;
 import org.folio.rest.jaxrs.model.MappingProfileCollection;
 import org.folio.rest.jaxrs.model.MappingProfileUpdateDto;
 import org.folio.rest.jaxrs.model.MappingRule;
+import org.folio.rest.jaxrs.model.MappingDetail;
 import org.folio.rest.jaxrs.model.MatchProfile;
 import org.folio.rest.jaxrs.model.MatchProfileCollection;
 import org.folio.rest.jaxrs.model.MatchProfileUpdateDto;
@@ -57,6 +59,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 import static java.lang.String.format;
@@ -77,6 +80,9 @@ public class DataImportProfilesImpl implements DataImportProfiles {
   private static final String INVALID_RECORD_TYPE_LINKED_ACTION_PROFILE_TO_MAPPING_PROFILE = "Action profile '%s' can not be linked to this Mapping profile. FolioRecord and ExistingRecordType types are different";
   private static final String INVALID_MAPPING_PROFILE_NEW_RECORD_TYPE_LINKED_TO_ACTION_PROFILE = "Can not update MappingProfile recordType and linked ActionProfile recordType are different";
   private static final String INVALID_ACTION_PROFILE_NEW_RECORD_TYPE_LINKED_TO_MAPPING_PROFILE = "Can not update ActionProfile recordType and linked MappingProfile recordType are different";
+  private static final String INVALID_ACTION_TYPE_LINKED_ACTION_PROFILE_TO_MAPPING_PROFILE = "Unable to complete requested change. " +
+    "MARC Update Action profiles can only be linked with MARC Update Mapping profiles and MARC Modify Action profiles can only be linked with MARC Modify Mapping profiles. " +
+    "Please ensure your Action and Mapping profiles are of like types and try again.";
   private static final String INVALID_ACTION_PROFILE_ACTION_TYPE = "Cant create ActionProfile for MARCbib record type with Create action";
 
   static final Map<String, String> ERROR_CODES_TYPES_RELATION = Map.of(
@@ -915,7 +921,6 @@ public class DataImportProfilesImpl implements DataImportProfiles {
       return Future.succeededFuture(new Errors().withTotalRecords(0));
     }
 
-    var recordType = actionProfileUpdateDto.getProfile().getFolioRecord();
     var errors = new LinkedList<Error>();
     Promise<Errors> promise = Promise.promise();
 
@@ -925,13 +930,8 @@ public class DataImportProfilesImpl implements DataImportProfiles {
       .filter(profileAssociation -> profileAssociation.getDetailProfileType() == ProfileType.MAPPING_PROFILE)
       .map(profileAssociation -> mappingProfileService.getProfileById(profileAssociation.getDetailProfileId(), false, tenantId))
       .map(futureMappingProfile -> futureMappingProfile.onSuccess(optionalMappingProfile ->
-        optionalMappingProfile.ifPresent(mappingProfile -> {
-          if (!Objects.equals(mappingProfile.getExistingRecordType().value(), recordType.value())) {
-            logger.info("validateActionProfileAddedRelationsFolioRecord:: Can not update ActionProfile with ID:{} because FolioRecord:{}, linked MappingProfile FolioRecord:{}",
-              actionProfileUpdateDto.getProfile().getId(), recordType.value(), mappingProfile.getExistingRecordType().value());
-            errors.add(new Error().withMessage(String.format(INVALID_RECORD_TYPE_LINKED_MAPPING_PROFILE_TO_ACTION_PROFILE, mappingProfile.getName())));
-          }
-        })
+        optionalMappingProfile.ifPresent(mappingProfile -> validateAssociations(actionProfileUpdateDto.getProfile(), mappingProfile, errors,
+          String.format(INVALID_RECORD_TYPE_LINKED_MAPPING_PROFILE_TO_ACTION_PROFILE, mappingProfile.getName())))
       ))
       .collect(Collectors.toList());
     GenericCompositeFuture.all(futures)
@@ -942,7 +942,6 @@ public class DataImportProfilesImpl implements DataImportProfiles {
   }
 
   private Future<Errors> validateActionProfileChildProfilesFolioRecord(ActionProfileUpdateDto actionProfileUpdateDto, String tenantId, String id) {
-    var recordType = actionProfileUpdateDto.getProfile().getFolioRecord();
     var errors = new LinkedList<Error>();
     var deletedRelations = actionProfileUpdateDto.getDeletedRelations();
     Promise<Errors> promise = Promise.promise();
@@ -953,21 +952,13 @@ public class DataImportProfilesImpl implements DataImportProfiles {
             var existMappingProfiles = CollectionUtils.isEmpty(deletedRelations) ? actionProfile.getChildProfiles() :
               actionProfile.getChildProfiles().stream()
                 .filter(profileSnapshotWrapper -> profileSnapshotWrapper.getContentType() == ContentType.MAPPING_PROFILE)
-                .filter(profileSnapshotWrapper -> {
-                  for (ProfileAssociation deletedRelation : deletedRelations) {
-                    if (Objects.equals(deletedRelation.getDetailProfileId(), profileSnapshotWrapper.getProfileId())) {
-                      return false;
-                    }
-                  }
-                  return true;
-                }).collect(Collectors.toList());
+                .filter(profileSnapshotWrapper -> deletedRelations.stream()
+                  .noneMatch(rel -> Objects.equals(rel.getDetailProfileId(), profileSnapshotWrapper.getProfileId()))
+                ).collect(Collectors.toList());
 
-            existMappingProfiles.forEach(mappingProfile -> {
-              if (!Objects.equals(((Map) mappingProfile.getContent()).get("existingRecordType"), recordType.value())) {
-                logger.info("validateActionProfileChildProfilesFolioRecord:: Can not update ActionProfile with ID:{} because FolioRecord:{}, linked MappingProfile FolioRecord:{}",
-                  id, recordType.value(), mappingProfile.getContentType());
-                errors.add(new Error().withMessage(INVALID_ACTION_PROFILE_NEW_RECORD_TYPE_LINKED_TO_MAPPING_PROFILE));
-              }
+            existMappingProfiles.forEach(mappingWrapper -> {
+              var mappingProfile = DatabindCodec.mapper().convertValue(mappingWrapper.getContent(), MappingProfile.class);
+              validateAssociations(actionProfileUpdateDto.getProfile(), mappingProfile, errors, INVALID_ACTION_PROFILE_NEW_RECORD_TYPE_LINKED_TO_MAPPING_PROFILE);
             });
             promise.complete(new Errors().withErrors(errors));
           }, () -> promise.fail(new NotFoundException(String.format("Action profile with id '%s' was not found", id)))
@@ -982,7 +973,6 @@ public class DataImportProfilesImpl implements DataImportProfiles {
       return Future.succeededFuture(new Errors().withTotalRecords(0));
     }
 
-    var recordType = mappingProfileUpdateDto.getProfile().getExistingRecordType();
     var errors = new LinkedList<Error>();
     Promise<Errors> promise = Promise.promise();
 
@@ -992,13 +982,8 @@ public class DataImportProfilesImpl implements DataImportProfiles {
       .filter(profileAssociation -> profileAssociation.getMasterProfileType() == ProfileType.ACTION_PROFILE)
       .map(profileAssociation -> actionProfileService.getProfileById(profileAssociation.getMasterProfileId(), false, tenantId))
       .map(futureActionProfile -> futureActionProfile.onSuccess(optionalActionProfile ->
-        optionalActionProfile.ifPresent(actionProfile -> {
-          if (!Objects.equals(actionProfile.getFolioRecord().value(), recordType.value())) {
-            logger.info("validateMappingProfileAddedRelationsFolioRecord:: Can not update MappingProfile with ID:{} because FolioRecord:{}, linked ActionProfile FolioRecord:{}",
-              mappingProfileUpdateDto.getProfile().getId(), recordType.value(), actionProfile.getFolioRecord().value());
-            errors.add(new Error().withMessage(String.format(INVALID_RECORD_TYPE_LINKED_ACTION_PROFILE_TO_MAPPING_PROFILE, actionProfile.getName())));
-          }
-        })
+        optionalActionProfile.ifPresent(actionProfile -> validateAssociations(actionProfile, mappingProfileUpdateDto.getProfile(), errors,
+          String.format(INVALID_RECORD_TYPE_LINKED_ACTION_PROFILE_TO_MAPPING_PROFILE, actionProfile.getName())))
       ))
       .collect(Collectors.toList());
     GenericCompositeFuture.all(futures)
@@ -1009,7 +994,6 @@ public class DataImportProfilesImpl implements DataImportProfiles {
   }
 
   private Future<Errors> validateMappingProfileExistProfilesFolioRecord(MappingProfileUpdateDto mappingProfileUpdateDto, String tenantId, String id) {
-    var recordType = mappingProfileUpdateDto.getProfile().getExistingRecordType();
     var errors = new LinkedList<Error>();
     var deletedRelations = mappingProfileUpdateDto.getDeletedRelations();
     Promise<Errors> promise = Promise.promise();
@@ -1020,22 +1004,13 @@ public class DataImportProfilesImpl implements DataImportProfiles {
             var existActionProfiles = CollectionUtils.isEmpty(deletedRelations) ? mappingProfile.getParentProfiles() :
               mappingProfile.getParentProfiles().stream()
                 .filter(profileSnapshotWrapper -> profileSnapshotWrapper.getContentType() == ContentType.ACTION_PROFILE)
-                .filter(profileSnapshotWrapper -> {
-                  for (ProfileAssociation deletedRelation : deletedRelations) {
-                    if (Objects.equals(deletedRelation.getMasterProfileId(), profileSnapshotWrapper.getProfileId())) {
-                      return false;
-                    }
-                  }
-                  return true;
-                }).collect(Collectors.toList());
+                .filter(profileSnapshotWrapper -> deletedRelations.stream()
+                  .noneMatch(deletedRelation -> Objects.equals(deletedRelation.getMasterProfileId(), profileSnapshotWrapper.getProfileId())))
+                .collect(Collectors.toList());
 
-            existActionProfiles.forEach(actionProfile -> {
-              if (!Objects.equals(((Map) actionProfile.getContent())
-                .get("folioRecord"), mappingProfileUpdateDto.getProfile().getExistingRecordType().value())) {
-                logger.info("validateMappingProfileExistProfilesFolioRecord:: Can not update MappingProfile with ID:{} because FolioRecord:{}, linked ActionProfile with ID:{} FolioRecord:{}",
-                  id, recordType.value(), actionProfile.getProfileId(), actionProfile.getContentType().value());
-                errors.add(new Error().withMessage(INVALID_MAPPING_PROFILE_NEW_RECORD_TYPE_LINKED_TO_ACTION_PROFILE));
-              }
+            existActionProfiles.forEach(actionWrapper -> {
+              var actionProfile = DatabindCodec.mapper().convertValue(actionWrapper.getContent(), ActionProfile.class);
+              validateAssociations(actionProfile, mappingProfileUpdateDto.getProfile(), errors, INVALID_MAPPING_PROFILE_NEW_RECORD_TYPE_LINKED_TO_ACTION_PROFILE);
             });
             promise.complete(new Errors().withErrors(errors));
           }, () -> promise.fail(new NotFoundException(String.format("Mapping profile with id '%s' was not found", id)))
@@ -1044,6 +1019,25 @@ public class DataImportProfilesImpl implements DataImportProfiles {
       .onFailure(promise::fail);
 
     return promise.future();
+  }
+
+  private void validateAssociations(ActionProfile actionProfile, MappingProfile mappingProfile, List<Error> errors, String errMsg) {
+    var mappingRecordType = mappingProfile.getExistingRecordType().value();
+    var actionRecordType = actionProfile.getFolioRecord().value();
+    if (!actionRecordType.equals(mappingRecordType)) {
+      logger.info("validateAssociations:: Can not create or update profile. MappingProfile with ID:{} FolioRecord:{}, linked ActionProfile with ID:{} FolioRecord:{}",
+        mappingProfile.getId(), mappingRecordType, actionProfile.getId(), actionRecordType);
+      errors.add(new Error().withMessage(errMsg));
+      return;
+    }
+
+    Optional.ofNullable(mappingProfile.getMappingDetails())
+      .map(MappingDetail::getMarcMappingOption)
+      .filter(option -> !option.value().equals(actionProfile.getAction().value()))
+      .ifPresent(option -> {
+        logger.info("validateAssociations:: Can not create or update profile. ActionProfile Action:{}, linked MappingProfile Option:{}", actionProfile.getAction().value(), option);
+        errors.add(new Error().withMessage(INVALID_ACTION_TYPE_LINKED_ACTION_PROFILE_TO_MAPPING_PROFILE));
+      });
   }
 
   @SafeVarargs
