@@ -54,7 +54,6 @@ public class ProfileMigrationServiceImpl implements ProfileMigrationService {
       })
       .onFailure(th -> {
         LOGGER.error("migrateDataImportProfiles:: Something happened during the profile migration", th);
-        throw new CompletionException(th);
       });
   }
 

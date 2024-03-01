@@ -294,10 +294,3 @@ $$;
 insert into metadata_internal(id, jsonb, creation_date)
   values (public.uuid_generate_v4(), '{"name": "Migration of profiles to the use of wrappers"}', now()::timestamptz);
 
-/*
-  To check the results of the migration. Could be remove after migration.
- */
-drop table if exists snapshots_new;
-create table snapshots_new as
-  select job_profile_id, s.get_profile_snapshot ->> 'association_id' as association_id, s.get_profile_snapshot as snapshot
-    from (select jp.id job_profile_id, get_profile_snapshot(jp.id, 'JOB_PROFILE', 'job_profiles', jp.id::TEXT)  from job_profiles jp) s;
