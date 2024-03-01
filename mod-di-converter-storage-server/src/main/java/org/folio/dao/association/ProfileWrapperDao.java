@@ -51,4 +51,12 @@ public interface ProfileWrapperDao {
    * @return future with founded ProfileWrapper
    */
   Future<List<ProfileWrapper>> getWrapperByProfileId(String profileId, ProfileType profileType, String tenantId);
+
+  /**
+   * Get count of the strings in the table
+   * @param tenantId - tenant id
+   * @param tableName - table name
+   * @return future with count of string in the table
+   */
+  Future<Integer> getLinesCount(String tenantId, String tableName);
 }

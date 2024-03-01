@@ -32,3 +32,4 @@ WHERE masterwrapperid IS NOT NULL AND detailwrapperid IS NOT NULL AND jsonb->>'m
 UPDATE ${myuniversity}_${mymodule}.job_to_match_profiles
 SET jsonb = jsonb_set(jsonb_set(jsonb, '{masterWrapperId}', to_jsonb(masterwrapperid), true),'{detailWrapperId}', to_jsonb(detailWrapperId), true)
 WHERE masterwrapperid IS NOT NULL AND detailwrapperid IS NOT NULL AND jsonb->>'masterWrapperId' IS NULL AND jsonb->>'detailWrapperId' IS NULL;
+

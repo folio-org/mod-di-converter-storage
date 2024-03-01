@@ -3,7 +3,7 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp" WITH SCHEMA public;
 /*
 This script will migrate job profiles to utilize profile wrappers. The order of DML is important to ensure consistent
 state before and after migration.
- */
+*/
 
 -- create unique wrappers for each job profile
 insert into profile_wrappers (id, profile_type, job_profile_id)
@@ -224,7 +224,7 @@ $$
         into match_wrapper_id
         from profile_wrappers
         where match_profile_id = (r.jsonb ->> 'masterProfileId')::uuid
-          and associated_job_profile_id = (r.jsonb ->> 'jobProfileId')::uuid;
+            and associated_job_profile_id = (r.jsonb ->> 'jobProfileId')::uuid;
 
         if match_wrapper_id is null or action_wrapper_id is null then
           raise debug 'Incorrect data: match_to_action_profiles id: %, jobProfileId: %, action_wrapper_id: %, match_wrapper_id: %',
@@ -280,3 +280,10 @@ $$
     RAISE NOTICE 'PROFILES_MIGRATION:: updated action_to_action_profiles';
   END
 $$;
+
+/*
+ System table for saving migration history.
+ */
+insert into metadata_internal(id, jsonb, creation_date)
+  values (public.uuid_generate_v4(), '{"name": "Migration of profiles to the use of wrappers"}', now()::timestamptz);
+
