@@ -305,7 +305,7 @@
     },
     {
       "tableName": "metadata_internal",
-      "fromModuleVersion": "mod-di-converter-storage-2.1.7",
+      "fromModuleVersion": "mod-di-converter-storage-2.1.8",
       "withMetadata": true
     }
   ],
@@ -413,12 +413,7 @@
     {
       "run": "after",
       "snippet": "ALTER TABLE profile_wrappers ADD IF NOT EXISTS associated_job_profile_id uuid NULL;",
-      "fromModuleVersion": "mod-di-converter-storage-2.1.7"
-    },
-    {
-      "run": "after",
-      "snippetPath": "data-migration/set_account_no.sql",
-      "fromModuleVersion": "mod-di-converter-storage-2.2.0"
+      "fromModuleVersion": "mod-di-converter-storage-2.1.8"
     }
   ]
 }
