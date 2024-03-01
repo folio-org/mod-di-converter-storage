@@ -1,3 +1,11 @@
+/**
+To be able to check the migration results in the future. Could be remove after migration.
+ */
+drop table if exists snapshots_old;
+create table snapshots_old as
+  select job_profile_id, s.get_profile_snapshot ->> 'association_id' as association_id, s.get_profile_snapshot as snapshot
+    from (select jp.id job_profile_id, get_profile_snapshot(jp.id, 'JOB_PROFILE', 'job_profiles', jp.id::TEXT) from job_profiles jp) s;
+
 /*
  Migration will start automatically when profile_wrappers table is empty.
  This function cleans this table: removes FKeys, disables triggers,

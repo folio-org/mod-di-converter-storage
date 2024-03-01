@@ -1,11 +1,4 @@
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp" WITH SCHEMA public;
-/**
-To be able to check the migration results in the future. Could be remove after migration.
- */
-drop table if exists snapshots_old;
-create table snapshots_old as
-  select job_profile_id, s.get_profile_snapshot ->> 'association_id' as association_id, s.get_profile_snapshot as snapshot
-    from (select jp.id job_profile_id, get_profile_snapshot(jp.id, 'JOB_PROFILE', 'job_profiles', jp.id::TEXT) from job_profiles jp) s;
 
 /*
 This script will migrate job profiles to utilize profile wrappers. The order of DML is important to ensure consistent
