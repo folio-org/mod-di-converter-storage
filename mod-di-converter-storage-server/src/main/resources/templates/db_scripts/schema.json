@@ -302,6 +302,11 @@
           "removeAccents": false
         }
       ]
+    },
+    {
+      "tableName": "metadata_internal",
+      "fromModuleVersion": "mod-di-converter-storage-2.2.0",
+      "withMetadata": true
     }
   ],
   "scripts": [

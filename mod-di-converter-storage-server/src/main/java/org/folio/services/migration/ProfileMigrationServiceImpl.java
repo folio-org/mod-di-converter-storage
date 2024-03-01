@@ -18,6 +18,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.Map;
+import java.util.concurrent.CompletionException;
 
 import static java.lang.String.format;
 
@@ -26,8 +27,11 @@ public class ProfileMigrationServiceImpl implements ProfileMigrationService {
   private static final Logger LOGGER = LogManager.getLogger();
   private static final String UPDATE_SCHEMA_FOR_MIGRATION = "templates/db_scripts/associations-migration/actualize_schema_for_migrations.sql";
   private static final String INIT_WRAPPERS = "templates/db_scripts/associations-migration/init_wrappers.sql";
+  private static final String REMOVE_WRAPPERS = "templates/db_scripts/associations-migration/clean_profile_wrappers.sql";
   private static final String TENANT_PLACEHOLDER = "${myuniversity}";
   private static final String MODULE_PLACEHOLDER = "${mymodule}";
+  private static final String SYSTEM_TABLE_NAME = "metadata_internal";
+
   @Autowired
   protected PostgresClientFactory pgClientFactory;
   @Autowired
@@ -37,17 +41,37 @@ public class ProfileMigrationServiceImpl implements ProfileMigrationService {
   public Future<Boolean> migrateDataImportProfiles(Map<String, String> headers, Context context) {
     String tenantId = new OkapiConnectionParams(headers).getTenantId();
     LOGGER.info("Profile migration started...");
-    return profileWrapperDao.checkIfDataInTableExists(tenantId)
-      .compose(isDataPresent -> {
-        if (!isDataPresent) {
-          return runScript(tenantId, INIT_WRAPPERS)
-            .compose(ar -> runScript(tenantId, UPDATE_SCHEMA_FOR_MIGRATION));
+
+    return profileWrapperDao.getLinesCount(tenantId, SYSTEM_TABLE_NAME)
+      .compose(isRowCount -> {
+        if (isRowCount == 0) {
+          return profileWrapperDao.checkIfDataInTableExists(tenantId)
+            .compose(isDataPresent -> processMigration(isDataPresent, tenantId));
         } else {
-          LOGGER.info("migrateDataImportProfiles:: Migration will not execute. profile_wrappers table is NOT empty already.");
+          LOGGER.info("migrateDataImportProfiles:: Migration already executed.");
           return Future.succeededFuture(true);
         }
       })
-      .onFailure(th -> LOGGER.error("migrateDataImportProfiles:: Something happened during the profile migration", th));
+      .onFailure(th -> {
+        LOGGER.error("migrateDataImportProfiles:: Something happened during the profile migration", th);
+        throw new CompletionException(th);
+      });
+  }
+
+  private Future<Boolean> processMigration(Boolean isDataPresent, String tenantId) {
+    if (!isDataPresent) {
+      return runScriptChain(tenantId, INIT_WRAPPERS, UPDATE_SCHEMA_FOR_MIGRATION);
+    } else {
+      return runScriptChain(tenantId, REMOVE_WRAPPERS, INIT_WRAPPERS, UPDATE_SCHEMA_FOR_MIGRATION);
+    }
+  }
+
+  private Future<Boolean> runScriptChain(String tenantId, String... scripts) {
+    Future<Boolean> future = Future.succeededFuture(true);
+    for (String script : scripts) {
+      future = future.compose(ar -> runScript(tenantId, script));
+    }
+    return future;
   }
 
   private Future<Boolean> runScript(String tenantId, String sqlPath) {

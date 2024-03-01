@@ -1,9 +1,16 @@
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp" WITH SCHEMA public;
+/**
+To be able to check the migration results in the future. Could be remove after migration.
+ */
+drop table if exists snapshots_old;
+create table snapshots_old as
+  select job_profile_id, s.get_profile_snapshot ->> 'association_id' as association_id, s.get_profile_snapshot as snapshot
+    from (select jp.id job_profile_id, get_profile_snapshot(jp.id, 'JOB_PROFILE', 'job_profiles', jp.id::TEXT) from job_profiles jp) s;
 
 /*
 This script will migrate job profiles to utilize profile wrappers. The order of DML is important to ensure consistent
 state before and after migration.
- */
+*/
 
 -- create unique wrappers for each job profile
 insert into profile_wrappers (id, profile_type, job_profile_id)
@@ -224,7 +231,7 @@ $$
         into match_wrapper_id
         from profile_wrappers
         where match_profile_id = (r.jsonb ->> 'masterProfileId')::uuid
-          and associated_job_profile_id = (r.jsonb ->> 'jobProfileId')::uuid;
+            and associated_job_profile_id = (r.jsonb ->> 'jobProfileId')::uuid;
 
         if match_wrapper_id is null or action_wrapper_id is null then
           raise debug 'Incorrect data: match_to_action_profiles id: %, jobProfileId: %, action_wrapper_id: %, match_wrapper_id: %',
@@ -280,3 +287,17 @@ $$
     RAISE NOTICE 'PROFILES_MIGRATION:: updated action_to_action_profiles';
   END
 $$;
+
+/*
+ System table for saving migration history.
+ */
+insert into metadata_internal(id, jsonb, creation_date)
+  values (public.uuid_generate_v4(), '{"name": "Migration of profiles to the use of wrappers"}', now()::timestamptz);
+
+/*
+  To check the results of the migration. Could be remove after migration.
+ */
+drop table if exists snapshots_new;
+create table snapshots_new as
+  select job_profile_id, s.get_profile_snapshot ->> 'association_id' as association_id, s.get_profile_snapshot as snapshot
+    from (select jp.id job_profile_id, get_profile_snapshot(jp.id, 'JOB_PROFILE', 'job_profiles', jp.id::TEXT)  from job_profiles jp) s;
