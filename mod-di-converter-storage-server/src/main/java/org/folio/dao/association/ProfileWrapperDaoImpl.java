@@ -27,16 +27,12 @@ import static org.folio.rest.persist.PostgresClient.convertToPsqlStandard;
 @Repository
 public class ProfileWrapperDaoImpl implements ProfileWrapperDao {
   private static final Logger LOGGER = LogManager.getLogger();
-  private static final String ID_FIELD = "'id'";
   private static final String TABLE_NAME = "profile_wrappers";
-  private static final String INSERT_QUERY = "INSERT INTO %s.%s (id, profile_type, %s) VALUES ($1, $2, $3)";
-
+   private static final String INSERT_QUERY = "INSERT INTO %s.%s (id, profile_type, %s) VALUES ($1, $2, $3)";
   private static final String SELECT_ON_EMPTY_TABLE_QUERY = "SELECT EXISTS (SELECT * FROM %s.%s LIMIT 1)";
-
+  private static final String SQL_LINES_COUNT = "select count(id) from %s.%s";
   private static final String SELECT_QUERY = "SELECT * FROM %s.%s WHERE id = $1";
-
   private static final String SELECT_QUERY_ON_GETTING_PROFILE_WRAPPER = "SELECT * FROM %s.%s WHERE %s = $1";
-
   private static final Map<String, String> profileTypeToColumn;
 
   static {
@@ -89,6 +85,16 @@ public class ProfileWrapperDaoImpl implements ProfileWrapperDao {
 
     pgClientFactory.createInstance(tenantId).execute(query, promise);
     return promise.future().map(this::mapResultSetIfExists);
+
+  }
+
+  @Override
+  public Future<Integer> getLinesCount(String tenantId, String tableName) {
+    Promise<RowSet<Row>> promise = Promise.promise();
+    String query = format(SQL_LINES_COUNT, convertToPsqlStandard(tenantId), tableName);
+
+    pgClientFactory.createInstance(tenantId).execute(query, promise);
+    return promise.future().map(resultSet -> resultSet.iterator().next().getInteger(0));
 
   }
 
