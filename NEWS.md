@@ -1,3 +1,6 @@
+## 2024-03-XX 2.2.2
+* [MODDICORE-398](https://folio-org.atlassian.net/browse/MODDICORE-398) Upgrade mod-di-converter-storage to RMB 35.2.0, Vert.x 4.5.4
+
 ## 2024-02-XX 2.2.1
 * [MODDICONV-334](https://folio-org.atlassian.net/browse/MODDICONV-334) Disallow linking MARC Update action to a MARC Modify
 * [MODDICONV-367](https://folio-org.atlassian.net/browse/MODDICONV-367) Disallow action profile creation for MARCbib record with 'Create' action type
