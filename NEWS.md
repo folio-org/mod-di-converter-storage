@@ -1,9 +1,8 @@
-## 2024-02-XX 2.2.1
+## 2024-03-XX 2.2.0
+* [MODDICORE-398](https://folio-org.atlassian.net/browse/MODDICORE-398) Upgrade mod-di-converter-storage to RMB 35.2.0, Vert.x 4.5.4
 * [MODDICONV-334](https://folio-org.atlassian.net/browse/MODDICONV-334) Disallow linking MARC Update action to a MARC Modify
 * [MODDICONV-367](https://folio-org.atlassian.net/browse/MODDICONV-367) Disallow action profile creation for MARCbib record with 'Create' action type
 * [MODDICONV-294](https://folio-org.atlassian.net/browse/MODDICONV-294) Disallow creation of JobProfile containing Update without Match
-
-## 2023-XX-XX 2.2.0
 * [MODDICONV-305](https://issues.folio.org/browse/MODDICONV-305) For Quesnelia (R2 2023) remove "permissions" interface dependency
 
 ## 2023-XX-XX 2.1.3
