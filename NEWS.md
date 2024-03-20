@@ -1,13 +1,12 @@
-## 2024-03-XX 2.2.0
+## 2024-03-20 2.2.0
 * [MODDICORE-398](https://folio-org.atlassian.net/browse/MODDICORE-398) Upgrade mod-di-converter-storage to RMB 35.2.0, Vert.x 4.5.4
 * [MODDICONV-334](https://folio-org.atlassian.net/browse/MODDICONV-334) Disallow linking MARC Update action to a MARC Modify
 * [MODDICONV-367](https://folio-org.atlassian.net/browse/MODDICONV-367) Disallow action profile creation for MARCbib record with 'Create' action type
 * [MODDICONV-294](https://folio-org.atlassian.net/browse/MODDICONV-294) Disallow creation of JobProfile containing Update without Match
-* [MODDICONV-305](https://issues.folio.org/browse/MODDICONV-305) For Quesnelia (R2 2023) remove "permissions" interface dependency
-
-## 2023-XX-XX 2.1.3
-* [MODDICONV-346](https://issues.folio.org/browse/MODDICONV-346) Fix unlinking for action-mapping associations
-* [MODDICONV-353](https://issues.folio.org/browse/MODDICONV-353) Add quickMARC - Default Create authority job profile
+* [MODDICONV-305](https://issues.folio.org/browse/MODDICONV-305) Remove "permissions" interface dependency
+* [MODDICONV-364](https://folio-org.atlassian.net/browse/MODDICONV-364) Adjust default QM Authority Create profile to new format
+* [MODDICONV-363](https://folio-org.atlassian.net/browse/MODDICONV-363) Add migration script to provide mapping data for "accountNo" field
+* [MODDICONV-353](https://folio-org.atlassian.net/browse/MODDICONV-353) Create new default profile for create Authority record
 
 ## 2023-10-12 2.1.0
 * [MODDICONV-345](https://issues.folio.org/browse/MODDICONV-345) Set wrapper ids at jsonb for migrated relations
