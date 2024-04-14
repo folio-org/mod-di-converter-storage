@@ -1,0 +1,81 @@
+{
+  "id": "0440f570-d30f-4fab-a80e-e81b13b68b2c",
+  "snapshotId": "c171a322-14d9-4719-9519-962c9a8b8f4c",
+  "matchedId": "0440f570-d30f-4fab-a80e-e81b13b68b2c",
+  "generation": 0,
+  "recordType": "MARC_BIB",
+  "rawRecord": {
+    "id": "0440f570-d30f-4fab-a80e-e81b13b68b2c",
+    "content": "00161nam a2200061 a 4500008002600000245004400026856002900070\u001e160630u16421756ugi 0 a0wd\u001e  \u001faThe Heart Is Deceitful Above All Things\u001e40\u001fuwww.regenia-stanton.name\u001e\u001d"
+  },
+  "parsedRecord": {
+    "id": "0440f570-d30f-4fab-a80e-e81b13b68b2c",
+    "content": {
+      "fields": [
+        {
+          "001": "in00000000011"
+        },
+        {
+          "005": "20240514175556.3"
+        },
+        {
+          "008": "160630u16421756ugi 0 a0wd"
+        },
+        {
+          "245": {
+            "ind1": " ",
+            "ind2": " ",
+            "subfields": [
+              {
+                "a": "The Heart Is Deceitful Above All Things"
+              }
+            ]
+          }
+        },
+        {
+          "856": {
+            "ind1": "4",
+            "ind2": "0",
+            "subfields": [
+              {
+                "u": "www.regenia-stanton.name"
+              }
+            ]
+          }
+        },
+        {
+          "999": {
+            "ind1": "f",
+            "ind2": "f",
+            "subfields": [
+              {
+                "i": "7e2ad1dc-1f3b-4133-a975-2b08411b26c6"
+              },
+              {
+                "s": "0440f570-d30f-4fab-a80e-e81b13b68b2c"
+              }
+            ]
+          }
+        }
+      ],
+      "leader": "00307nam a2200097 a 4500"
+    }
+  },
+  "deleted": false,
+  "order": 0,
+  "externalIdsHolder": {
+    "instanceId": "7e2ad1dc-1f3b-4133-a975-2b08411b26c6",
+    "instanceHrid": "in00000000011"
+  },
+  "additionalInfo": {
+    "suppressDiscovery": false
+  },
+  "state": "OLD",
+  "leaderRecordStatus": "n",
+  "metadata": {
+    "createdDate": "2024-05-14T17:55:56.407+00:00",
+    "createdByUserId": "8ca8e682-af58-40f8-b969-4a133c8a085c",
+    "updatedDate": "2024-05-14T19:09:51.597+00:00",
+    "updatedByUserId": "8ca8e682-af58-40f8-b969-4a133c8a085c"
+  }
+}
