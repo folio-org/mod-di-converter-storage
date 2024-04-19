@@ -1,14 +1,12 @@
-package org.folio.imports;
+package org.folio.graph;
 
 import guru.nidi.graphviz.engine.Format;
 import guru.nidi.graphviz.engine.Graphviz;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.folio.graph.MatchRelationshipEdge;
-import org.folio.graph.NonMatchRelationshipEdge;
-import org.folio.graph.Profile;
+import org.folio.graph.edges.RegularEdge;
+import org.folio.graph.nodes.Profile;
 import org.jgrapht.Graph;
-import org.jgrapht.graph.DefaultEdge;
 import org.jgrapht.nio.Attribute;
 import org.jgrapht.nio.AttributeType;
 import org.jgrapht.nio.DefaultAttribute;
@@ -35,9 +33,10 @@ import java.util.stream.Stream;
 
 public class GraphWriter {
   private final static Logger LOGGER = LogManager.getLogger();
-  private final static DOTExporter<Profile, DefaultEdge> DOT_EXPORTER = new DOTExporter<>();
-  private final static Pattern pattern = Pattern.compile("jp-(\\d+)\\.dot");
+  private final static DOTExporter<Profile, RegularEdge> DOT_EXPORTER = new DOTExporter<>();
   private final static PriorityQueue<Integer> maxHeap = new PriorityQueue<>(Collections.reverseOrder());
+
+  public final static Pattern DOT_FILE_PATTERN = Pattern.compile("jp-(\\d+)\\.dot");
 
   static {
     DOT_EXPORTER.setVertexAttributeProvider((v) -> {
@@ -55,16 +54,12 @@ public class GraphWriter {
     });
     DOT_EXPORTER.setEdgeAttributeProvider((e) -> {
       Map<String, Attribute> map = new LinkedHashMap<>();
-      if (e instanceof MatchRelationshipEdge) {
-        map.put("label", DefaultAttribute.createAttribute(MatchRelationshipEdge.getLabel()));
-      } else if (e instanceof NonMatchRelationshipEdge) {
-        map.put("label", DefaultAttribute.createAttribute(NonMatchRelationshipEdge.getLabel()));
-      }
+      map.put("label", DefaultAttribute.createAttribute(e.getLabel()));
       return map;
     });
   }
 
-  public static synchronized void writeGraph(String repoPath, Graph<Profile, DefaultEdge> graph) {
+  public static synchronized void writeGraph(String repoPath, Graph<Profile, RegularEdge> graph) {
     try {
 
       if (maxHeap.isEmpty()) {
@@ -77,7 +72,7 @@ public class GraphWriter {
 
           fileNames.stream()
             .map(fileName -> {
-              Matcher matcher = pattern.matcher(fileName);
+              Matcher matcher = DOT_FILE_PATTERN.matcher(fileName);
               if (matcher.matches()) {
                 return matcher.group(1);
               } else {
@@ -102,7 +97,7 @@ public class GraphWriter {
     }
   }
 
-  public static void renderGraph(String repoPath, String fileName, Graph<Profile, DefaultEdge> graph) {
+  public static void renderGraph(String fileName, Graph<Profile, RegularEdge> graph) {
     Writer writer = new StringWriter();
     DOT_EXPORTER.exportGraph(graph, writer);
     try {

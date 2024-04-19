@@ -1,4 +1,4 @@
-package org.folio.graph;
+package org.folio.graph.nodes;
 
 import java.util.Map;
 

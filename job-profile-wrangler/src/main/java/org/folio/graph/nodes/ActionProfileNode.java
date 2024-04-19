@@ -1,8 +1,8 @@
-package org.folio.graph;
+package org.folio.graph.nodes;
 
 import java.util.Map;
 
-public record ActionProfileNode(String id, String action, String folioRecord) implements Profile {
+public record ActionProfileNode(String action, String folioRecord) implements Profile {
   @Override
   public String getName() {
     return "Action Profile";
@@ -14,6 +14,6 @@ public record ActionProfileNode(String id, String action, String folioRecord) im
   }
 
   public static Profile fromAttributes(Map<String, String> attributes) {
-    return new ActionProfileNode(attributes.get("name"), attributes.get("action"), attributes.get("folioRecord"));
+    return new ActionProfileNode(attributes.get("action"), attributes.get("folioRecord"));
   }
 }

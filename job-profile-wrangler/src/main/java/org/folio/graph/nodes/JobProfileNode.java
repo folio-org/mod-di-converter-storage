@@ -1,8 +1,8 @@
-package org.folio.graph;
+package org.folio.graph.nodes;
 
 import java.util.Map;
 
-public record JobProfileNode(String id, String dataType) implements Profile {
+public record JobProfileNode(String dataType) implements Profile {
   @Override
   public String getName() {
     return "Job Profile";
@@ -14,6 +14,6 @@ public record JobProfileNode(String id, String dataType) implements Profile {
   }
 
   public static Profile fromAttributes(Map<String, String> attributes) {
-    return new JobProfileNode(attributes.get("name"), attributes.get("dataType"));
+    return new JobProfileNode(attributes.get("dataType"));
   }
 }

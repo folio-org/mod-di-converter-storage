@@ -1,11 +1,11 @@
-package org.folio.graph;
+package org.folio.graph.nodes;
 
 import java.util.Map;
 
-public record MatchProfileNode(String id, String incomingRecordType, String existingRecordType) implements Profile {
+public record MappingProfileNode(String incomingRecordType, String existingRecordType) implements Profile {
   @Override
   public String getName() {
-    return "Match Profile";
+    return "Mapping Profile";
   }
 
   @Override
@@ -14,6 +14,6 @@ public record MatchProfileNode(String id, String incomingRecordType, String exis
   }
 
   public static Profile fromAttributes(Map<String, String> attributes) {
-    return new MatchProfileNode(attributes.get("name"), attributes.get("incomingRecordType"), attributes.get("existingRecordType"));
+    return new MappingProfileNode(attributes.get("incomingRecordType"), attributes.get("existingRecordType"));
   }
 }
