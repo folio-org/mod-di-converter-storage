@@ -1,3 +1,6 @@
+## 2024-04-22 v2.2.1
+* [MODDICONV-379](https://folio-org.atlassian.net/browse/MODDICONV-379) Fix profile for ECS Sharing of instances
+
 ## 2024-03-20 2.2.0
 * [MODDICORE-398](https://folio-org.atlassian.net/browse/MODDICORE-398) Upgrade mod-di-converter-storage to RMB 35.2.0, Vert.x 4.5.4
 * [MODDICONV-334](https://folio-org.atlassian.net/browse/MODDICONV-334) Disallow linking MARC Update action to a MARC Modify
