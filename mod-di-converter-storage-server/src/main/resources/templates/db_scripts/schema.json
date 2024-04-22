@@ -417,13 +417,13 @@
     },
     {
       "run": "after",
-      "snippetPath": "data-migration/set_account_no.sql",
-      "fromModuleVersion": "mod-di-converter-storage-2.2.0"
+      "snippetPath": "manipulate_ecs_profile_wrappers.sql",
+      "fromModuleVersion": "mod-di-converter-storage-2.1.9"
     },
     {
       "run": "after",
-      "snippetPath": "manipulate_ecs_profile_wrappers.sql",
-      "fromModuleVersion": "mod-di-converter-storage-2.3.0-SNAPSHOT"
+      "snippetPath": "data-migration/set_account_no.sql",
+      "fromModuleVersion": "mod-di-converter-storage-2.2.0"
     }
   ]
 }
