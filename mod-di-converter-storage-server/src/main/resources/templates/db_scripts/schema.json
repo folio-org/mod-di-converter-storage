@@ -112,7 +112,7 @@
       "foreignKeys": [
         {
           "fieldName": "masterProfileId",
-          "targetTable": "action_profiles",
+          "targetTable": "action_profiles",x
           "tOps": "ADD"
         },
         {
@@ -417,13 +417,13 @@
     },
     {
       "run": "after",
-      "snippetPath": "manipulate_ecs_profile_wrappers.sql",
-      "fromModuleVersion": "mod-di-converter-storage-2.1.8"
+      "snippetPath": "data-migration/set_account_no.sql",
+      "fromModuleVersion": "mod-di-converter-storage-2.2.0"
     },
     {
       "run": "after",
-      "snippetPath": "data-migration/set_account_no.sql",
-      "fromModuleVersion": "mod-di-converter-storage-2.2.0"
+      "snippetPath": "manipulate_ecs_profile_wrappers.sql",
+      "fromModuleVersion": "mod-di-converter-storage-2.2.1"
     }
   ]
 }
