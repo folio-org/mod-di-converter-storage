@@ -305,7 +305,7 @@
     },
     {
       "tableName": "metadata_internal",
-      "fromModuleVersion": "mod-di-converter-storage-2.2.1",
+      "fromModuleVersion": "mod-di-converter-storage-2.1.8",
       "withMetadata": true
     }
   ],
@@ -418,7 +418,7 @@
     {
       "run": "after",
       "snippetPath": "manipulate_ecs_profile_wrappers.sql",
-      "fromModuleVersion": "mod-di-converter-storage-2.1.9"
+      "fromModuleVersion": "mod-di-converter-storage-2.1.8"
     },
     {
       "run": "after",
