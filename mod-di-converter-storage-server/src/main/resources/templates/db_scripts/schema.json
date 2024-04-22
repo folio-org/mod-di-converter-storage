@@ -305,7 +305,7 @@
     },
     {
       "tableName": "metadata_internal",
-      "fromModuleVersion": "mod-di-converter-storage-2.2.0",
+      "fromModuleVersion": "mod-di-converter-storage-2.1.8",
       "withMetadata": true
     }
   ],
