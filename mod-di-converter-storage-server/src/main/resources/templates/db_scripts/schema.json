@@ -112,7 +112,7 @@
       "foreignKeys": [
         {
           "fieldName": "masterProfileId",
-          "targetTable": "action_profiles",x
+          "targetTable": "action_profiles",
           "tOps": "ADD"
         },
         {
