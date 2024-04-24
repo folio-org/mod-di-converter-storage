@@ -1,3 +1,6 @@
+## 2024-04-24 v2.1.9
+* [MODDICONV-376](https://folio-org.atlassian.net/browse/MODDICONV-376) Fix Job Profile used for ESC Instance sharing
+
 ## 2024-03-01 v2.1.8
 * [MODDICONV-365](https://folio-org.atlassian.net/browse/MODDICONV-365) Fix Job Profiles migration issues
 
