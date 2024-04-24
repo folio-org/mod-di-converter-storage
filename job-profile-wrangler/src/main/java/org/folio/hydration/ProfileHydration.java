@@ -63,7 +63,7 @@ public class ProfileHydration {
    * @param repoId The repository ID.
    * @param graph  The graph representing the profiles and their relationships.
    */
-  public void hydrate(String repoId, Graph<Profile, RegularEdge> graph) {
+  public Optional<Object> hydrate(int repoId, Graph<Profile, RegularEdge> graph) {
     // Generate a unique epoch for the profile names
     LocalDateTime currentDateTime = LocalDateTime.now();
     DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyyMMddHHmm");
@@ -92,7 +92,7 @@ public class ProfileHydration {
     vertexSet.forEach(node -> {
       if (node instanceof MappingProfileNode) {
         MappingProfile mappingProfile = new MappingProfile()
-          .withName(String.format("%s %s %s", repoId, EPOCH, ((MappingProfileNode) node).id()))
+          .withName(String.format("jp-%03d %s %s", repoId, EPOCH, ((MappingProfileNode) node).id()))
           .withIncomingRecordType(EntityType.fromValue(node.getAttributes().get("incomingRecordType")))
           .withExistingRecordType(EntityType.fromValue(node.getAttributes().get("existingRecordType")));
         createProfileInFolio(node, new MappingProfileUpdateDto().withProfile(mappingProfile),
@@ -100,7 +100,7 @@ public class ProfileHydration {
           payload -> client.createMappingProfile(payload), createdObjectsInFolio);
       } else if (node instanceof ActionProfileNode) {
         ActionProfile actionProfile = new ActionProfile()
-          .withName(String.format("%s %s %s", repoId, EPOCH, ((ActionProfileNode) node).id()))
+          .withName(String.format("jp-%03d %s %s", repoId, EPOCH, ((ActionProfileNode) node).id()))
           .withAction(ActionProfile.Action.fromValue(node.getAttributes().get("action")))
           .withFolioRecord(ActionProfile.FolioRecord.fromValue(node.getAttributes().get("folioRecord")));
 
@@ -125,7 +125,7 @@ public class ProfileHydration {
           payload -> client.createActionProfile(payload), createdObjectsInFolio);
       } else if (node instanceof MatchProfileNode) {
         MatchProfile matchProfile = new MatchProfile()
-          .withName(String.format("%s %s %s", repoId, EPOCH, ((MatchProfileNode) node).id()))
+          .withName(String.format("jp-%03d %s %s", repoId, EPOCH, ((MatchProfileNode) node).id()))
           .withIncomingRecordType(EntityType.fromValue(node.getAttributes().get("incomingRecordType")))
           .withExistingRecordType(EntityType.fromValue(node.getAttributes().get("existingRecordType")));
         createProfileInFolio(node, new MatchProfileUpdateDto().withProfile(matchProfile), MatchProfileUpdateDto.class,
@@ -142,12 +142,12 @@ public class ProfileHydration {
     jobProfile.ifPresent(profile -> jobProfileUpdateDto.setProfile(
       new JobProfile()
         .withDataType(JobProfile.DataType.fromValue(profile.getAttributes().get("dataType")))
-        .withName(String.format("%s %s", repoId, EPOCH))
+        .withName(String.format("jp-%03d %s", repoId, EPOCH))
     ));
 
     if (jobProfile.isEmpty() || jobProfileUpdateDto.getProfile() == null) {
       LOGGER.error("No Job Profile found");
-      return;
+      return Optional.empty();
     }
 
     List<ProfileAssociation> profileAssociations = new ArrayList<>();
@@ -198,6 +198,8 @@ public class ProfileHydration {
     createProfileInFolio(jobProfile.get(), jobProfileUpdateDto, JobProfileUpdateDto.class,
       payload -> client.createJobProfile(payload),
       createdObjectsInFolio);
+
+    return Optional.of(createdObjectsInFolio.get(jobProfile.get()));
   }
 
   /**

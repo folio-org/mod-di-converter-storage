@@ -104,7 +104,7 @@ public class GraphWriter {
 
       // Generate a new ID for the DOT file
       Integer newId = maxHeap.peek() != null ? maxHeap.peek() + 1 : 1;
-      Path filePath = Paths.get(repoPath, "jp-" + newId + ".dot");
+      Path filePath = Paths.get(repoPath, "jp-" + String.format("%03d", newId) + ".dot");
 
       // Write the graph to the DOT file
       try (FileWriter writer = new FileWriter(filePath.toFile())) {

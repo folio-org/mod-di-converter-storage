@@ -8,6 +8,7 @@ import org.folio.graph.edges.RegularEdge;
 import org.folio.graph.nodes.Profile;
 import org.folio.http.FolioClient;
 import org.folio.imports.RepoImport;
+import org.folio.rest.jaxrs.model.JobProfileUpdateDto;
 import org.jgrapht.Graph;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -18,6 +19,7 @@ import java.util.Optional;
 import java.util.function.Supplier;
 
 import static org.folio.Constants.REPO_PATH;
+import static org.junit.Assert.assertTrue;
 
 public class ProfileHydrationTest {
 
@@ -46,6 +48,8 @@ public class ProfileHydrationTest {
     Graph<Profile, RegularEdge> g1 = GraphReader.read(REPO_PATH, repoId);
 
     ProfileHydration profileHydration = new ProfileHydration(client);
-    profileHydration.hydrate("jp-8", g1);
+    var jobProfile = profileHydration.hydrate(repoId, g1);
+    assertTrue(jobProfile.isPresent());
+    assertTrue(jobProfile.get() instanceof JobProfileUpdateDto);
   }
 }
