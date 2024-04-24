@@ -1,23 +1,23 @@
 package org.folio.graph;
 
-import org.folio.graph.edges.RegularEdge;
-import org.folio.graph.nodes.Profile;
-import org.jgrapht.Graph;
+import com.google.common.io.Resources;
+import org.folio.imports.RepoImport;
 import org.junit.Test;
 
-import java.util.List;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 
-import static org.junit.Assert.*;
+import static org.folio.Constants.REPO_PATH;
+import static org.junit.Assert.assertTrue;
 
 public class GraphWriterTest {
 
-  public static final String REPO_PATH = "/Users/okolawole/git/folio/mod-di-converter-storage/" +
-    "job-profile-wrangler/src/main/resources/repository";
 
   @Test
-  public void renderGraph() {
-    Graph<Profile, RegularEdge> g1 = GraphReader.read(REPO_PATH, 19);
-    assertNotNull(g1);
-    GraphWriter.renderGraph("output", g1);
+  public void renderGraph() throws IOException {
+    String content = Resources.toString(Resources.getResource("job_profile_snapshot.json"), StandardCharsets.UTF_8);
+    var repoObject = RepoImport.fromString(REPO_PATH, content);
+    assertTrue(repoObject.isPresent());
+    GraphWriter.renderGraph("output", repoObject.get().graph());
   }
 }

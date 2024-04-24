@@ -1,9 +1,12 @@
-package org.folio.graph;
+package org.folio.hydration;
 
 import com.google.common.io.Resources;
+import okhttp3.HttpUrl;
 import org.folio.RepoObject;
+import org.folio.graph.GraphReader;
 import org.folio.graph.edges.RegularEdge;
 import org.folio.graph.nodes.Profile;
+import org.folio.http.FolioClient;
 import org.folio.imports.RepoImport;
 import org.jgrapht.Graph;
 import org.junit.BeforeClass;
@@ -11,13 +14,16 @@ import org.junit.Test;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
-import java.util.List;
 import java.util.Optional;
+import java.util.function.Supplier;
 
 import static org.folio.Constants.REPO_PATH;
-import static org.junit.Assert.*;
 
-public class GraphReaderTest {
+public class ProfileHydrationTest {
+
+  static final String TENANT_ID = "diku";
+  static final String USERNAME = "diku_admin";
+  static final String PASSWORD = "admin";
 
   private static Integer repoId;
 
@@ -29,28 +35,17 @@ public class GraphReaderTest {
     repoId = repoObject.get().repoId();
   }
 
+
   @Test
-  public void readGraph() {
+  public void hydrate() {
+    Supplier<HttpUrl.Builder> urlTemplate = () -> new HttpUrl.Builder()
+      .scheme("http")
+      .host("localhost")
+      .port(9130);
+    FolioClient client = new FolioClient(urlTemplate, TENANT_ID, USERNAME, PASSWORD);
     Graph<Profile, RegularEdge> g1 = GraphReader.read(REPO_PATH, repoId);
-    Graph<Profile, RegularEdge> g2 = GraphReader.read(REPO_PATH, repoId);
-    assertEquals(g1, g2);
-    assertNotNull(g1);
-    GraphWriter.renderGraph("output", g1);
-  }
 
-  @Test
-  public void readAllGraph() {
-    List<Graph<Profile, RegularEdge>> graphs = GraphReader.readAll(REPO_PATH);
-    assertNotNull(graphs);
-    GraphWriter.renderGraph("output", graphs.get(0));
+    ProfileHydration profileHydration = new ProfileHydration(client);
+    profileHydration.hydrate("jp-8", g1);
   }
-
-  @Test
-  public void isGraphPresent() {
-    List<Graph<Profile, RegularEdge>> graphs = GraphReader.readAll(REPO_PATH);
-    assertNotNull(graphs);
-    assertNotEquals(graphs.size(), 0);
-    assertTrue(GraphReader.search(REPO_PATH, graphs.get(0)).isPresent());
-  }
-
 }

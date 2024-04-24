@@ -16,6 +16,14 @@ public class RegularEdge extends DefaultEdge {
     return label;
   }
 
+  public Object getSource() {
+    return super.getSource();
+  }
+
+  public Object getTarget() {
+    return super.getTarget();
+  }
+
   @Override
   public String toString() {
     return "(" + getSource() + " : " + getTarget() + " : " + label + ")";

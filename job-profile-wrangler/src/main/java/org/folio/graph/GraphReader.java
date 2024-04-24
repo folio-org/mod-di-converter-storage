@@ -1,7 +1,9 @@
 package org.folio.graph;
 
+import org.apache.commons.lang3.tuple.Pair;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.folio.RepoObject;
 import org.folio.graph.edges.MatchRelationshipEdge;
 import org.folio.graph.edges.NonMatchRelationshipEdge;
 import org.folio.graph.edges.RegularEdge;
@@ -22,29 +24,38 @@ import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
+import java.util.regex.Matcher;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import static org.folio.graph.GraphWriter.DOT_FILE_PATTERN;
+
+/**
+ * The GraphReader class provides methods to read and search graphs from DOT files.
+ * It uses the JGraphT library to represent and manipulate the graphs.
+ */
 public class GraphReader {
   private final static Logger LOGGER = LogManager.getLogger();
   private final static DOTImporter<Profile, RegularEdge> DOT_IMPORTER = new DOTImporter<>();
 
   static {
+    // Configure the DOTImporter to create vertices based on the "name" attribute
     DOT_IMPORTER.setVertexWithAttributesFactory((id, attrs) -> {
       Map<String, String> normalAttrs = normalizeAttributes(attrs);
       String name = normalAttrs.get("name");
       switch (name) {
         case "Job Profile" -> {
-          return JobProfileNode.fromAttributes(normalAttrs);
+          return JobProfileNode.fromAttributes(id, normalAttrs);
         }
         case "Match Profile" -> {
-          return MatchProfileNode.fromAttributes(normalAttrs);
+          return MatchProfileNode.fromAttributes(id, normalAttrs);
         }
         case "Action Profile" -> {
-          return ActionProfileNode.fromAttributes(normalAttrs);
+          return ActionProfileNode.fromAttributes(id, normalAttrs);
         }
         case "Mapping Profile" -> {
-          return MappingProfileNode.fromAttributes(normalAttrs);
+          return MappingProfileNode.fromAttributes(id, normalAttrs);
         }
         default -> {
           LOGGER.error("Unrecognized profile: '{}'", normalAttrs);
@@ -53,6 +64,7 @@ public class GraphReader {
       }
     });
 
+    // Configure the DOTImporter to create edges based on the "label" attribute
     DOT_IMPORTER.setEdgeWithAttributesFactory((attrs -> attrs.entrySet()
       .stream()
       .filter(entry -> entry.getKey().equals("label"))
@@ -70,6 +82,13 @@ public class GraphReader {
     ));
   }
 
+  /**
+   * Reads a graph from a DOT file specified by the repository path and ID.
+   *
+   * @param repoPath The path to the repository containing the DOT files.
+   * @param id       The ID of the graph to read.
+   * @return The read graph.
+   */
   public static Graph<Profile, RegularEdge> read(String repoPath, int id) {
     Path filePath = Paths.get(repoPath, "jp-" + id + ".dot");
     Graph<Profile, RegularEdge> g = new SimpleDirectedGraph<>(RegularEdge.class);
@@ -77,6 +96,12 @@ public class GraphReader {
     return g;
   }
 
+  /**
+   * Reads all graphs from DOT files in the specified repository path.
+   *
+   * @param repoPath The path to the repository containing the DOT files.
+   * @return A list of all read graphs.
+   */
   public static List<Graph<Profile, RegularEdge>> readAll(String repoPath) {
     List<Graph<Profile, RegularEdge>> graphs = new ArrayList<>();
     try (Stream<Path> stream = Files.list(Paths.get(repoPath))) {
@@ -94,22 +119,48 @@ public class GraphReader {
     return graphs;
   }
 
-  public static boolean isGraphPresent(String repoPath,
-                                       Graph<Profile, RegularEdge> graph) {
+  /**
+   * Searches for a graph in the specified repository path that matches the given graph.
+   *
+   * @param repoPath The path to the repository containing the DOT files.
+   * @param graph    The graph to search for.
+   * @return An Optional containing the found RepoObject, or an empty Optional if not found.
+   */
+  public static Optional<RepoObject> search(String repoPath,
+                                            Graph<Profile, RegularEdge> graph) {
     try (Stream<Path> stream = Files.list(Paths.get(repoPath))) {
       return stream
         .filter(Files::isRegularFile)
-        .anyMatch(filePath -> {
+        .map(filePath -> {
           Graph<Profile, RegularEdge> g = new SimpleDirectedGraph<>(RegularEdge.class);
           DOT_IMPORTER.importGraph(g, filePath.toFile());
-          return graph.equals(g);
+          return Pair.of(filePath, g);
+        })
+        .filter(pair -> areGraphsEqual(graph, pair.getRight()))
+        .findFirst()
+        .map(pair -> {
+          String fileName = pair.getLeft().getFileName().toString();
+          Matcher matcher = DOT_FILE_PATTERN.matcher(fileName);
+          if (matcher.matches()) {
+            String repoId = matcher.group(1);
+            return new RepoObject(Integer.parseInt(repoId), pair.getRight());
+          } else {
+            LOGGER.error("Invalid format: {}", fileName);
+            return null;
+          }
         });
     } catch (IOException e) {
       LOGGER.error("An error occurred while reading the directory.", e);
     }
-    return false;
+    return Optional.empty();
   }
 
+  /**
+   * Normalizes the attributes by converting them to a Map<String, String>.
+   *
+   * @param attrs The attributes to normalize.
+   * @return The normalized attributes as a Map<String, String>.
+   */
   private static Map<String, String> normalizeAttributes(Map<String, Attribute> attrs) {
     return attrs
       .entrySet()
@@ -118,5 +169,68 @@ public class GraphReader {
         Map.Entry::getKey,
         entry -> entry.getValue().toString()
       ));
+  }
+
+  /**
+   * Compares two graphs for equality using a custom comparator.
+   *
+   * @param graph1 The first graph to compare.
+   * @param graph2 The second graph to compare.
+   * @return true if the graphs are equal, false otherwise.
+   */
+  public static boolean areGraphsEqual(Graph<Profile, RegularEdge> graph1, Graph<Profile, RegularEdge> graph2) {
+    // Check if the graphs have the same number of vertices and edges
+    if (graph1.vertexSet().size() != graph2.vertexSet().size() ||
+      graph1.edgeSet().size() != graph2.edgeSet().size()) {
+      return false;
+    }
+
+    // Compare each node in the graphs using the custom comparator
+    for (Profile node1 : graph1.vertexSet()) {
+      boolean found = false;
+      for (Profile node2 : graph2.vertexSet()) {
+        if (!node1.getClass().equals(node2.getClass())) {
+          continue;
+        }
+        if (node1.getComparator().compare(node1, node2) == 0) {
+          found = true;
+          break;
+        }
+      }
+      if (!found) {
+        return false;
+      }
+    }
+
+    // Compare the edges in the graphs
+    for (RegularEdge edge1 : graph1.edgeSet()) {
+      Profile source1 = graph1.getEdgeSource(edge1);
+      Profile target1 = graph1.getEdgeTarget(edge1);
+
+      boolean found = false;
+      for (RegularEdge edge2 : graph2.edgeSet()) {
+        Profile source2 = graph2.getEdgeSource(edge2);
+        Profile target2 = graph2.getEdgeTarget(edge2);
+
+        if (!source1.getClass().equals(source2.getClass())) {
+          continue;
+        }
+
+        if (!target1.getClass().equals(target2.getClass())) {
+          continue;
+        }
+
+        if (source1.getComparator().compare(source1, source2) == 0 &&
+          target1.getComparator().compare(target1, target2) == 0) {
+          found = true;
+          break;
+        }
+      }
+      if (!found) {
+        return false;
+      }
+    }
+
+    return true;
   }
 }

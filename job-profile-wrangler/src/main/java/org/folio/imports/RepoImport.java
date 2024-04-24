@@ -1,119 +1,84 @@
 package org.folio.imports;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.node.ArrayNode;
-import okhttp3.HttpUrl;
-import okhttp3.OkHttpClient;
-import okhttp3.Request;
-import okhttp3.Response;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.folio.JobProfileGetter;
+import org.folio.RepoObject;
 import org.folio.graph.GraphReader;
+import org.folio.graph.GraphWriter;
+import org.folio.graph.edges.MatchRelationshipEdge;
+import org.folio.graph.edges.NonMatchRelationshipEdge;
 import org.folio.graph.edges.RegularEdge;
 import org.folio.graph.nodes.ActionProfileNode;
-import org.folio.graph.GraphWriter;
 import org.folio.graph.nodes.JobProfileNode;
 import org.folio.graph.nodes.MappingProfileNode;
 import org.folio.graph.nodes.MatchProfileNode;
-import org.folio.graph.edges.MatchRelationshipEdge;
-import org.folio.graph.edges.NonMatchRelationshipEdge;
 import org.folio.graph.nodes.Profile;
+import org.folio.http.FolioClient;
 import org.jgrapht.Graph;
 import org.jgrapht.graph.SimpleDirectedGraph;
 
-import java.io.IOException;
-import java.util.List;
 import java.util.Optional;
-import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.LinkedBlockingDeque;
-import java.util.function.Supplier;
 
 import static org.folio.Constants.OBJECT_MAPPER;
-import static org.folio.Constants.OKAPI_TOKEN_HEADER;
 
 public class RepoImport implements Runnable {
   private final static Logger LOGGER = LogManager.getLogger();
-  private final OkHttpClient client;
-  private final Supplier<HttpUrl.Builder> urlBuilder;
-  private final String token;
+  private final FolioClient client;
   private final String repoPath;
-  final private ExecutorService executor;
-  private final BlockingQueue<JsonNode> blockingQueue = new LinkedBlockingDeque<>(5);
 
-  public RepoImport(OkHttpClient client, Supplier<HttpUrl.Builder> urlBuilder,
-                    String token, ExecutorService executor, String repoPath) {
+
+  public RepoImport(FolioClient client, String repoPath) {
     this.client = client;
-    this.urlBuilder = urlBuilder;
-    if (token == null) {
-      throw new RuntimeException("Couldn't get okapi token");
-    }
-    this.token = token;
-    this.executor = executor;
     this.repoPath = repoPath;
   }
 
   @Override
   public void run() {
-
-    CompletableFuture
-      .runAsync(new JobProfileGetter(client, urlBuilder, token, blockingQueue), executor);
-
-    try {
-      Supplier<HttpUrl.Builder> profileSnapshotsUrlBuilder = () -> urlBuilder.get()
-        .addPathSegments("data-import-profiles/profileSnapshots")
-        .addQueryParameter("profileType", "JOB_PROFILE");
-
-      JsonNode content = blockingQueue.take();
-      JsonNode jobProfiles = content.get("jobProfiles");
-      if (jobProfiles instanceof ArrayNode jobProfilesArr) {
-        jobProfilesArr.forEach(profile -> {
-          String profileId = profile.get("id").asText();
-          HttpUrl url = profileSnapshotsUrlBuilder.get()
-            .addPathSegment(profileId)
-            .addQueryParameter("jobProfileId", profileId)
-            .build();
-          Request request = new Request.Builder()
-            .url(url)
-            .addHeader(OKAPI_TOKEN_HEADER, token)
-            .get()
-            .build();
-          try (Response response = client.newCall(request).execute()) {
-            String result = response.body().string();
-            JsonNode jsonNode = OBJECT_MAPPER.readTree(result);
-            Graph<Profile, RegularEdge> g = new SimpleDirectedGraph<>(RegularEdge.class);
-
-            addProfileToGraph(g, jsonNode);
-
-            if (!GraphReader.isGraphPresent(repoPath, g)) {
-              GraphWriter.writeGraph(repoPath, g);
-            } else {
-              LOGGER.info("Graph already exists. graph={}", g);
-            }
-          } catch (IOException e) {
-            LOGGER.error("Something happened while querying for profile snapshot", e);
-          }
-        });
-      }
-    } catch (InterruptedException e) {
-      LOGGER.warn("VertexBuilder interrupted");
-    }
+    client.getJobProfiles()
+      .forEach(profile -> {
+        String profileId = profile.get("id").asText();
+        Optional<JsonNode> jobProfileSnapshotOptional = client.getJobProfileSnapshot(profileId);
+        jobProfileSnapshotOptional.ifPresent(json -> fromString(repoPath, json));
+      });
 
     LOGGER.info("DONE");
   }
 
+  public static Optional<RepoObject> fromString(String repoPath, String json) throws JsonProcessingException {
+    JsonNode jsonNode = OBJECT_MAPPER.readTree(json);
+    return fromString(repoPath, jsonNode);
+  }
+
+  public static Optional<RepoObject> fromString(String repoPath, JsonNode jsonNode) {
+    Graph<Profile, RegularEdge> g = new SimpleDirectedGraph<>(RegularEdge.class);
+    addProfileToGraph(g, jsonNode);
+    var searched = GraphReader.search(repoPath, g);
+    if (searched.isEmpty()) {
+      Optional<Integer> repoId = GraphWriter.writeGraph(repoPath, g);
+      if (repoId.isPresent()) {
+        return Optional.of(new RepoObject(repoId.get(), g));
+      }
+    } else {
+      LOGGER.info("Graph already exists. graph={}", g);
+      return searched;
+    }
+    return Optional.empty();
+  }
+
   // recursive function to add profile to a graph object.
-  private Optional<Profile> addProfileToGraph(Graph<Profile, RegularEdge> graph, JsonNode jobProfileSnapshot) {
-    String contentType = jobProfileSnapshot.path("contentType").asText();
+  private static Optional<Profile> addProfileToGraph(Graph<Profile, RegularEdge> graph, JsonNode profileSnapshot) {
+    String contentType = profileSnapshot.path("contentType").asText();
 
     switch (contentType) {
       case "JOB_PROFILE" -> {
-        String dataType = jobProfileSnapshot.path("content").path("dataType").asText();
-        JobProfileNode node = new JobProfileNode(dataType);
+        String dataType = profileSnapshot.path("content").path("dataType").asText();
+        String id = profileSnapshot.path("profileWrapperId").asText();
+        int order = profileSnapshot.path("order").asInt();
+        JobProfileNode node = new JobProfileNode(id, dataType, order);
         graph.addVertex(node);
-        JsonNode childSnapshotWrappers = jobProfileSnapshot.get("childSnapshotWrappers");
+        JsonNode childSnapshotWrappers = profileSnapshot.get("childSnapshotWrappers");
         if (childSnapshotWrappers != null && childSnapshotWrappers.isArray()) {
           for (JsonNode childSnapshotWrapper : childSnapshotWrappers) {
             Optional<Profile> profile = addProfileToGraph(graph, childSnapshotWrapper);
@@ -123,11 +88,13 @@ public class RepoImport implements Runnable {
         return Optional.of(node);
       }
       case "MATCH_PROFILE" -> {
-        String incomingRecordType = jobProfileSnapshot.path("content").path("incomingRecordType").asText();
-        String existingRecordType = jobProfileSnapshot.path("content").path("existingRecordType").asText();
-        MatchProfileNode node = new MatchProfileNode(incomingRecordType, existingRecordType);
+        String incomingRecordType = profileSnapshot.path("content").path("incomingRecordType").asText();
+        String existingRecordType = profileSnapshot.path("content").path("existingRecordType").asText();
+        String id = profileSnapshot.path("profileWrapperId").asText();
+        int order = profileSnapshot.path("order").asInt();
+        MatchProfileNode node = new MatchProfileNode(id, incomingRecordType, existingRecordType, order);
         graph.addVertex(node);
-        JsonNode childSnapshotWrappers = jobProfileSnapshot.get("childSnapshotWrappers");
+        JsonNode childSnapshotWrappers = profileSnapshot.get("childSnapshotWrappers");
         if (childSnapshotWrappers != null && childSnapshotWrappers.isArray()) {
           for (JsonNode childSnapshotWrapper : childSnapshotWrappers) {
             Optional<Profile> profile = addProfileToGraph(graph, childSnapshotWrapper);
@@ -138,7 +105,7 @@ public class RepoImport implements Runnable {
               } else if ("MATCH".equals(reactTo)) {
                 graph.addEdge(node, value, new MatchRelationshipEdge());
               } else {
-                graph.addEdge(node, value);
+                LOGGER.warn("Found invalid relationship for matching on match profile: {}", node);
               }
             });
           }
@@ -146,48 +113,33 @@ public class RepoImport implements Runnable {
         return Optional.of(node);
       }
       case "ACTION_PROFILE" -> {
-        String folioRecord = jobProfileSnapshot.path("content").path("folioRecord").asText();
-        String actionType = jobProfileSnapshot.path("content").path("action").asText();
-        ActionProfileNode node = new ActionProfileNode(actionType, folioRecord);
+        String folioRecord = profileSnapshot.path("content").path("folioRecord").asText();
+        String actionType = profileSnapshot.path("content").path("action").asText();
+        String id = profileSnapshot.path("profileWrapperId").asText();
+        int order = profileSnapshot.path("order").asInt();
+        ActionProfileNode node = new ActionProfileNode(id, actionType, folioRecord, order);
         graph.addVertex(node);
-        JsonNode childSnapshotWrappers = jobProfileSnapshot.get("childSnapshotWrappers");
+        JsonNode childSnapshotWrappers = profileSnapshot.get("childSnapshotWrappers");
         if (childSnapshotWrappers != null && childSnapshotWrappers.isArray()) {
           for (JsonNode childSnapshotWrapper : childSnapshotWrappers) {
             Optional<Profile> profile = addProfileToGraph(graph, childSnapshotWrapper);
-            profile.ifPresent(value -> {
-              String reactTo = childSnapshotWrapper.path("reactTo").asText();
-              if ("NON_MATCH".equals(reactTo)) {
-                graph.addEdge(node, value, new NonMatchRelationshipEdge());
-              } else if ("MATCH".equals(reactTo)) {
-                graph.addEdge(node, value, new MatchRelationshipEdge());
-              } else {
-                graph.addEdge(node, value);
-              }
-            });
+            profile.ifPresent(value -> graph.addEdge(node, value));
           }
         }
         return Optional.of(node);
       }
       case "MAPPING_PROFILE" -> {
-        String incomingRecordType = jobProfileSnapshot.path("content").path("incomingRecordType").asText();
-        String existingRecordType = jobProfileSnapshot.path("content").path("existingRecordType").asText();
-        MappingProfileNode node = new MappingProfileNode(incomingRecordType, existingRecordType);
+        String incomingRecordType = profileSnapshot.path("content").path("incomingRecordType").asText();
+        String existingRecordType = profileSnapshot.path("content").path("existingRecordType").asText();
+        String id = profileSnapshot.path("profileWrapperId").asText();
+        int order = profileSnapshot.path("order").asInt();
+        MappingProfileNode node = new MappingProfileNode(id, incomingRecordType, existingRecordType, order);
         graph.addVertex(node);
-        JsonNode childSnapshotWrappers = jobProfileSnapshot.get("childSnapshotWrappers");
-        if (childSnapshotWrappers != null && childSnapshotWrappers.isArray()) {
-          for (JsonNode childSnapshotWrapper : childSnapshotWrappers) {
-            Optional<Profile> profile = addProfileToGraph(graph, childSnapshotWrapper);
-            profile.ifPresent(value -> {
-              String reactTo = childSnapshotWrapper.path("reactTo").asText();
-              if ("NON_MATCH".equals(reactTo)) {
-                graph.addEdge(node, value, new NonMatchRelationshipEdge());
-              } else if ("MATCH".equals(reactTo)) {
-                graph.addEdge(node, value, new MatchRelationshipEdge());
-              } else {
-                graph.addEdge(node, value);
-              }
-            });
-          }
+        JsonNode childSnapshotWrappers = profileSnapshot.get("childSnapshotWrappers");
+        if (childSnapshotWrappers != null && childSnapshotWrappers.isArray() &&
+        !childSnapshotWrappers.isEmpty()) {
+          LOGGER.warn("Found {} childSnapshotWrappers for mapping profile: {}", childSnapshotWrappers.size(),
+            node);
         }
         return Optional.of(node);
       }

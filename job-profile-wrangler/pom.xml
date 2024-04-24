@@ -59,6 +59,11 @@
       <version>2.20.0</version>
     </dependency>
     <dependency>
+      <groupId>org.folio</groupId>
+      <artifactId>mod-di-converter-storage-server</artifactId>
+      <version>${project.parent.version}</version>
+    </dependency>
+    <dependency>
       <groupId>junit</groupId>
       <artifactId>junit</artifactId>
       <version>${junit.version}</version>
