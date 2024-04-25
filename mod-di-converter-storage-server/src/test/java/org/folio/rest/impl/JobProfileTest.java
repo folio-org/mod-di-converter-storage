@@ -7,22 +7,8 @@ import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
 import org.apache.http.HttpStatus;
-import org.folio.rest.jaxrs.model.ActionProfile;
-import org.folio.rest.jaxrs.model.ActionProfileUpdateDto;
-import org.folio.rest.jaxrs.model.EntityType;
-import org.folio.rest.jaxrs.model.JobProfile;
-import org.folio.rest.jaxrs.model.JobProfileCollection;
-import org.folio.rest.jaxrs.model.JobProfileUpdateDto;
-import org.folio.rest.jaxrs.model.MappingProfile;
-import org.folio.rest.jaxrs.model.MappingProfileUpdateDto;
-import org.folio.rest.jaxrs.model.MatchProfile;
-import org.folio.rest.jaxrs.model.MatchProfileUpdateDto;
-import org.folio.rest.jaxrs.model.ProfileAssociation;
-import org.folio.rest.jaxrs.model.ProfileAssociationCollection;
-import org.folio.rest.jaxrs.model.ProfileSnapshotWrapper;
-import org.folio.rest.jaxrs.model.ProfileType;
-import org.folio.rest.jaxrs.model.ReactToType;
-import org.folio.rest.jaxrs.model.Tags;
+import org.folio.rest.jaxrs.model.*;
+import org.folio.rest.jaxrs.model.ProfileSnapshotWrapper.ContentType;
 import org.folio.rest.persist.Criteria.Criterion;
 import org.folio.rest.persist.PostgresClient;
 import org.junit.Assert;
@@ -40,7 +26,7 @@ import static org.folio.rest.jaxrs.model.ActionProfile.Action.UPDATE;
 import static org.folio.rest.jaxrs.model.ActionProfile.FolioRecord.INSTANCE;
 import static org.folio.rest.jaxrs.model.ActionProfile.FolioRecord.MARC_BIBLIOGRAPHIC;
 import static org.folio.rest.jaxrs.model.JobProfile.DataType.*;
-import static org.folio.rest.jaxrs.model.ProfileType.*;
+import static org.folio.rest.jaxrs.model.ProfileSnapshotWrapper.ContentType.*;
 import static org.folio.rest.jaxrs.model.ReactToType.MATCH;
 import static org.folio.rest.jaxrs.model.ReactToType.NON_MATCH;
 import static org.hamcrest.Matchers.*;
@@ -469,7 +455,7 @@ public class JobProfileTest extends AbstractRestVerticleTest {
       .statusCode(HttpStatus.SC_UNPROCESSABLE_ENTITY)
       .body("errors", hasItem(
         hasEntry(is("message"),
-          is("Modify action cannot be used right after a Match"))
+          is("Modify action cannot be used right after the Match"))
       ));
   }
 
@@ -1231,7 +1217,7 @@ public class JobProfileTest extends AbstractRestVerticleTest {
       .statusCode(HttpStatus.SC_UNPROCESSABLE_ENTITY)
       .body("errors", hasItem(
         hasEntry(is("message"),
-          is("Modify action cannot be used right after a Match"))
+          is("Modify action cannot be used right after the Match"))
       ));
   }
 
@@ -1506,7 +1492,7 @@ public class JobProfileTest extends AbstractRestVerticleTest {
     }
   }
 
-  private ProfileAssociation postProfileAssociation(ProfileAssociation profileAssociation, ProfileType masterType, ProfileType detailType) {
+  private ProfileAssociation postProfileAssociation(ProfileAssociation profileAssociation, ContentType masterType, ContentType detailType) {
     Response createResponse = RestAssured.given()
       .spec(spec)
       .queryParam("master", masterType.value())
