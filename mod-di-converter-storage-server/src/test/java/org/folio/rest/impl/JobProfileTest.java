@@ -455,7 +455,7 @@ public class JobProfileTest extends AbstractRestVerticleTest {
       .statusCode(HttpStatus.SC_UNPROCESSABLE_ENTITY)
       .body("errors", hasItem(
         hasEntry(is("message"),
-          is("Modify action cannot be used right after the Match"))
+          is("Modify action cannot be used right after a Match"))
       ));
   }
 
@@ -1217,7 +1217,7 @@ public class JobProfileTest extends AbstractRestVerticleTest {
       .statusCode(HttpStatus.SC_UNPROCESSABLE_ENTITY)
       .body("errors", hasItem(
         hasEntry(is("message"),
-          is("Modify action cannot be used right after the Match"))
+          is("Modify action cannot be used right after a Match"))
       ));
   }
 

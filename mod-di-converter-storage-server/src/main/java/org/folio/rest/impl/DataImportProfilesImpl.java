@@ -88,7 +88,7 @@ public class DataImportProfilesImpl implements DataImportProfiles {
   private static final String INVALID_ACTION_PROFILE_ACTION_TYPE = "Can't create ActionProfile for MARC Bib record type with Create action";
   private static final String INVALID_ACTION_PROFILE_LINKED_TO_JOB_PROFILE = "ActionProfile with id '%s' and action UPDATE requires linked MatchProfile";
   public static final String LINKED_ACTION_PROFILES_WERE_NOT_FOUND = "Linked ActionProfiles with ids %s were not found";
-  public static final String MODIFY_ACTION_CANNOT_BE_USED_RIGHT_AFTER_THE_MATCH = "Modify action cannot be used right after the Match";
+  public static final String MODIFY_ACTION_CANNOT_BE_USED_RIGHT_AFTER_THE_MATCH = "Modify action cannot be used right after a Match";
   public static final String MODIFY_ACTION_CANNOT_BE_USED_AS_A_STANDALONE_ACTION = "Modify action cannot be used as a standalone action";
 
   static final Map<String, String> ERROR_CODES_TYPES_RELATION = Map.of(
