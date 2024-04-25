@@ -86,9 +86,6 @@ public class DataImportProfilesImpl implements DataImportProfiles {
     "Please ensure your Action and Mapping profiles are of like types and try again.";
   private static final String INVALID_ACTION_PROFILE_ACTION_TYPE = "Can't create ActionProfile for MARC Bib record type with Create action";
   private static final String INVALID_ACTION_PROFILE_LINKED_TO_JOB_PROFILE = "ActionProfile with id '%s' and action UPDATE requires linked MatchProfile";
-  private static final String LINKED_ACTION_PROFILES_WERE_NOT_FOUND = "Linked ActionProfiles with ids %s were not found";
-  private static final String MODIFY_ACTION_CANNOT_BE_USED_RIGHT_AFTER_THE_MATCH = "Modify action cannot be used right after a Match";
-  private static final String MODIFY_ACTION_CANNOT_BE_USED_AS_A_STANDALONE_ACTION = "Modify action cannot be used as a standalone action";
 
   static final Map<String, String> ERROR_CODES_TYPES_RELATION = Map.of(
     "mappingProfile", "The field mapping profile",
@@ -226,8 +223,7 @@ public class DataImportProfilesImpl implements DataImportProfiles {
             return composeFutureErrors(
               validateProfile(OperationType.UPDATE, entity.getProfile(), jobProfileService, tenantId),
               validateJobProfileLinkedActionProfiles(entity),
-              validateJobProfileLinkedMatchProfile(entity),
-              validateJobProfileUnlinkedProfiles(entity)
+              validateJobProfileLinkedMatchProfile(entity)
             ).compose(errors -> {
               entity.getProfile().setId(id);
               return errors.getTotalRecords() > 0 ?
@@ -245,15 +241,6 @@ public class DataImportProfilesImpl implements DataImportProfiles {
         asyncResultHandler.handle(Future.succeededFuture(ExceptionHelper.mapExceptionToResponse(e)));
       }
     });
-  }
-
-  private Future<Errors> validateJobProfileUnlinkedProfiles(JobProfileUpdateDto entity) {
-    List<Error> errors = new LinkedList<>();
-    String jobProfileId = entity.getProfile().getId();
-    return profileSnapshotService.getSnapshotAssociations(jobProfileId, ProfileType.JOB_PROFILE, jobProfileId, tenantId)
-//      .compose(profileSnapshotWrapperOptional -> profileSnapshotWrapperOptional.map(Future::succeededFuture)
-//        .orElseGet(() -> Future.failedFuture(String.format("Profile snapshot not found by id '%s'", entity.getProfile().getId()))))
-      .compose(profileSnapshotWrapper -> Future.succeededFuture(new Errors().withErrors(errors).withTotalRecords(errors.size())));
   }
 
   @Override
@@ -794,8 +781,8 @@ public class DataImportProfilesImpl implements DataImportProfiles {
     );
   }
 
-  private ProfileType mapContentTypeOrNull(String detailType) {
-    return Arrays.stream(ProfileType.values())
+  private ContentType mapContentTypeOrNull(String detailType) {
+    return Arrays.stream(ContentType.values())
       .filter(it -> it.value().equals(detailType))
       .findFirst()
       .orElse(null);
@@ -1090,10 +1077,10 @@ public class DataImportProfilesImpl implements DataImportProfiles {
         optionalActionProfile.ifPresentOrElse(actionProfile -> {
             var existMappingProfiles = CollectionUtils.isEmpty(deletedRelations) ? actionProfile.getChildProfiles() :
               actionProfile.getChildProfiles().stream()
-                .filter(profileSnapshotWrapper -> profileSnapshotWrapper.getContentType() == ProfileType.MAPPING_PROFILE)
+                .filter(profileSnapshotWrapper -> profileSnapshotWrapper.getContentType() == ContentType.MAPPING_PROFILE)
                 .filter(profileSnapshotWrapper -> deletedRelations.stream()
                   .noneMatch(rel -> Objects.equals(rel.getDetailProfileId(), profileSnapshotWrapper.getProfileId()))
-                ).toList();
+                ).collect(Collectors.toList());
 
             existMappingProfiles.forEach(mappingWrapper -> {
               var mappingProfile = DatabindCodec.mapper().convertValue(mappingWrapper.getContent(), MappingProfile.class);
@@ -1142,10 +1129,10 @@ public class DataImportProfilesImpl implements DataImportProfiles {
         optionalMappingProfile.ifPresentOrElse(mappingProfile -> {
             var existActionProfiles = CollectionUtils.isEmpty(deletedRelations) ? mappingProfile.getParentProfiles() :
               mappingProfile.getParentProfiles().stream()
-                .filter(profileSnapshotWrapper -> profileSnapshotWrapper.getContentType() == ProfileType.ACTION_PROFILE)
+                .filter(profileSnapshotWrapper -> profileSnapshotWrapper.getContentType() == ContentType.ACTION_PROFILE)
                 .filter(profileSnapshotWrapper -> deletedRelations.stream()
                   .noneMatch(deletedRelation -> Objects.equals(deletedRelation.getMasterProfileId(), profileSnapshotWrapper.getProfileId())))
-                .toList();
+                .collect(Collectors.toList());
 
             existActionProfiles.forEach(actionWrapper -> {
               var actionProfile = DatabindCodec.mapper().convertValue(actionWrapper.getContent(), ActionProfile.class);
@@ -1200,11 +1187,11 @@ public class DataImportProfilesImpl implements DataImportProfiles {
     return errorList;
   }
 
-  private ProfileType mapContentType(String contentType) {
+  private ContentType mapContentType(String contentType) {
     try {
-      return ProfileType.fromValue(contentType);
+      return ContentType.fromValue(contentType);
     } catch (IllegalArgumentException e) {
-      String message = "The specified type: %s is wrong. It should be " + Arrays.toString(ProfileType.values());
+      String message = "The specified type: %s is wrong. It should be " + Arrays.toString(ContentType.values());
       throw new BadRequestException(format(message, contentType), e);
     }
   }
