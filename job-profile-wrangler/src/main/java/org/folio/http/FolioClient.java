@@ -41,6 +41,16 @@ public class FolioClient {
     this.token = token;
   }
 
+  public FolioClient(Supplier<HttpUrl.Builder> baseUrlBuilderSupplier, String tenantId, String username, String password) {
+    this.baseUrlBuilderSupplier = baseUrlBuilderSupplier;
+
+    Optional<String> okapiToken = getOkapiToken(baseUrlBuilderSupplier.get(), tenantId, username, password);
+    if (okapiToken.isEmpty()) {
+      throw new RuntimeException("Could not get okapi token");
+    }
+    this.token = okapiToken.get();
+  }
+
   protected void setHttpClient(OkHttpClient client) {
     httpClient = client;
   }
@@ -208,7 +218,8 @@ public class FolioClient {
         .map(Cookie::value)
         .findFirst();
     } catch (IOException e) {
-      throw new RuntimeException(e);
+      LOGGER.error("Something happened while getting token", e);
+      return Optional.empty();
     }
   }
 }

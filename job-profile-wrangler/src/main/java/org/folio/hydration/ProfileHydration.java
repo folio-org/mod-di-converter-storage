@@ -53,7 +53,7 @@ public class ProfileHydration {
 
   private final FolioClient client;
 
-  private final String PROFILE_NAME_PATTERN = "jp-%03d %s %s";
+  private final String profileNamePattern = "jp-%03d %s %s";
 
   public ProfileHydration(FolioClient client) {
     this.client = client;
@@ -95,7 +95,7 @@ public class ProfileHydration {
     vertexSet.forEach(node -> {
       if (node instanceof MappingProfileNode mappingProfileNode) {
         MappingProfile mappingProfile = new MappingProfile()
-          .withName(String.format(PROFILE_NAME_PATTERN, repoId, EPOCH, mappingProfileNode.id()))
+          .withName(String.format(profileNamePattern, repoId, EPOCH, mappingProfileNode.id()))
           .withIncomingRecordType(EntityType.fromValue(mappingProfileNode.getAttributes().get("incomingRecordType")))
           .withExistingRecordType(EntityType.fromValue(mappingProfileNode.getAttributes().get("existingRecordType")));
         createProfileInFolio(mappingProfileNode, new MappingProfileUpdateDto().withProfile(mappingProfile),
@@ -103,7 +103,7 @@ public class ProfileHydration {
           client::createMappingProfile, createdObjectsInFolio);
       } else if (node instanceof ActionProfileNode actionProfileNode) {
         ActionProfile actionProfile = new ActionProfile()
-          .withName(String.format(PROFILE_NAME_PATTERN, repoId, EPOCH, actionProfileNode.id()))
+          .withName(String.format(profileNamePattern, repoId, EPOCH, actionProfileNode.id()))
           .withAction(ActionProfile.Action.fromValue(actionProfileNode.getAttributes().get("action")))
           .withFolioRecord(ActionProfile.FolioRecord.fromValue(actionProfileNode.getAttributes().get("folioRecord")));
 
@@ -128,7 +128,7 @@ public class ProfileHydration {
           client::createActionProfile, createdObjectsInFolio);
       } else if (node instanceof MatchProfileNode matchProfileNode) {
         MatchProfile matchProfile = new MatchProfile()
-          .withName(String.format(PROFILE_NAME_PATTERN, repoId, EPOCH, matchProfileNode.id()))
+          .withName(String.format(profileNamePattern, repoId, EPOCH, matchProfileNode.id()))
           .withIncomingRecordType(EntityType.fromValue(matchProfileNode.getAttributes().get("incomingRecordType")))
           .withExistingRecordType(EntityType.fromValue(matchProfileNode.getAttributes().get("existingRecordType")));
         createProfileInFolio(matchProfileNode, new MatchProfileUpdateDto().withProfile(matchProfile), MatchProfileUpdateDto.class,

@@ -188,51 +188,33 @@ public class GraphReader {
     }
 
     // Compare each node in the graphs using the custom comparator
-    for (Profile node1 : graph1.vertexSet()) {
-      boolean found = false;
-      for (Profile node2 : graph2.vertexSet()) {
-        if (!node1.getClass().equals(node2.getClass())) {
-          continue;
-        }
-        if (node1.getComparator().compare(node1, node2) == 0) {
-          found = true;
-          break;
-        }
-      }
-      if (!found) {
-        return false;
-      }
+    boolean areNodesEqual = graph1.vertexSet().stream()
+      .allMatch(node1 -> graph2.vertexSet().stream()
+        .anyMatch(node2 -> node1.getClass().equals(node2.getClass())
+          && node1.getComparator().compare(node1, node2) == 0));
+
+    if (!areNodesEqual) {
+      return false;
     }
 
     // Compare the edges in the graphs
-    for (RegularEdge edge1 : graph1.edgeSet()) {
-      Profile source1 = graph1.getEdgeSource(edge1);
-      Profile target1 = graph1.getEdgeTarget(edge1);
+    boolean areEdgesEqual = graph1.edgeSet().stream()
+      .allMatch(edge1 -> {
+        Profile source1 = graph1.getEdgeSource(edge1);
+        Profile target1 = graph1.getEdgeTarget(edge1);
 
-      boolean found = false;
-      for (RegularEdge edge2 : graph2.edgeSet()) {
-        Profile source2 = graph2.getEdgeSource(edge2);
-        Profile target2 = graph2.getEdgeTarget(edge2);
+        return graph2.edgeSet().stream()
+          .anyMatch(edge2 -> {
+            Profile source2 = graph2.getEdgeSource(edge2);
+            Profile target2 = graph2.getEdgeTarget(edge2);
 
-        if (!source1.getClass().equals(source2.getClass())) {
-          continue;
-        }
+            return source1.getClass().equals(source2.getClass())
+              && target1.getClass().equals(target2.getClass())
+              && source1.getComparator().compare(source1, source2) == 0
+              && target1.getComparator().compare(target1, target2) == 0;
+          });
+      });
 
-        if (!target1.getClass().equals(target2.getClass())) {
-          continue;
-        }
-
-        if (source1.getComparator().compare(source1, source2) == 0 &&
-          target1.getComparator().compare(target1, target2) == 0) {
-          found = true;
-          break;
-        }
-      }
-      if (!found) {
-        return false;
-      }
-    }
-
-    return true;
+    return areEdgesEqual;
   }
 }

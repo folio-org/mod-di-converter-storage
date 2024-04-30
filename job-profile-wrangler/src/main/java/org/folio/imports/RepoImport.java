@@ -67,25 +67,18 @@ public class RepoImport implements Runnable {
     return Optional.empty();
   }
 
-  // recursive function to add profile to a graph object.
   private static Optional<Profile> addProfileToGraph(Graph<Profile, RegularEdge> graph, JsonNode profileSnapshot) {
     String contentType = profileSnapshot.path("contentType").asText();
 
-    switch (contentType) {
+    return switch (contentType) {
       case "JOB_PROFILE" -> {
         String dataType = profileSnapshot.path("content").path("dataType").asText();
         String id = profileSnapshot.path("profileWrapperId").asText();
         int order = profileSnapshot.path("order").asInt();
         JobProfileNode node = new JobProfileNode(id, dataType, order);
         graph.addVertex(node);
-        JsonNode childSnapshotWrappers = profileSnapshot.get("childSnapshotWrappers");
-        if (childSnapshotWrappers != null && childSnapshotWrappers.isArray()) {
-          for (JsonNode childSnapshotWrapper : childSnapshotWrappers) {
-            Optional<Profile> profile = addProfileToGraph(graph, childSnapshotWrapper);
-            profile.ifPresent(value -> graph.addEdge(node, value));
-          }
-        }
-        return Optional.of(node);
+        addChildProfilesToGraph(graph, profileSnapshot, node);
+        yield Optional.of(node);
       }
       case "MATCH_PROFILE" -> {
         String incomingRecordType = profileSnapshot.path("content").path("incomingRecordType").asText();
@@ -94,23 +87,8 @@ public class RepoImport implements Runnable {
         int order = profileSnapshot.path("order").asInt();
         MatchProfileNode node = new MatchProfileNode(id, incomingRecordType, existingRecordType, order);
         graph.addVertex(node);
-        JsonNode childSnapshotWrappers = profileSnapshot.get("childSnapshotWrappers");
-        if (childSnapshotWrappers != null && childSnapshotWrappers.isArray()) {
-          for (JsonNode childSnapshotWrapper : childSnapshotWrappers) {
-            Optional<Profile> profile = addProfileToGraph(graph, childSnapshotWrapper);
-            profile.ifPresent(value -> {
-              String reactTo = childSnapshotWrapper.path("reactTo").asText();
-              if ("NON_MATCH".equals(reactTo)) {
-                graph.addEdge(node, value, new NonMatchRelationshipEdge());
-              } else if ("MATCH".equals(reactTo)) {
-                graph.addEdge(node, value, new MatchRelationshipEdge());
-              } else {
-                LOGGER.warn("Found invalid relationship for matching on match profile: {}", node);
-              }
-            });
-          }
-        }
-        return Optional.of(node);
+        addChildMatchProfilesToGraph(graph, profileSnapshot, node);
+        yield Optional.of(node);
       }
       case "ACTION_PROFILE" -> {
         String folioRecord = profileSnapshot.path("content").path("folioRecord").asText();
@@ -119,14 +97,8 @@ public class RepoImport implements Runnable {
         int order = profileSnapshot.path("order").asInt();
         ActionProfileNode node = new ActionProfileNode(id, actionType, folioRecord, order);
         graph.addVertex(node);
-        JsonNode childSnapshotWrappers = profileSnapshot.get("childSnapshotWrappers");
-        if (childSnapshotWrappers != null && childSnapshotWrappers.isArray()) {
-          for (JsonNode childSnapshotWrapper : childSnapshotWrappers) {
-            Optional<Profile> profile = addProfileToGraph(graph, childSnapshotWrapper);
-            profile.ifPresent(value -> graph.addEdge(node, value));
-          }
-        }
-        return Optional.of(node);
+        addChildProfilesToGraph(graph, profileSnapshot, node);
+        yield Optional.of(node);
       }
       case "MAPPING_PROFILE" -> {
         String incomingRecordType = profileSnapshot.path("content").path("incomingRecordType").asText();
@@ -136,15 +108,40 @@ public class RepoImport implements Runnable {
         MappingProfileNode node = new MappingProfileNode(id, incomingRecordType, existingRecordType, order);
         graph.addVertex(node);
         JsonNode childSnapshotWrappers = profileSnapshot.get("childSnapshotWrappers");
-        if (childSnapshotWrappers != null && childSnapshotWrappers.isArray() &&
-        !childSnapshotWrappers.isEmpty()) {
-          LOGGER.warn("Found {} childSnapshotWrappers for mapping profile: {}", childSnapshotWrappers.size(),
-            node);
+        if (childSnapshotWrappers != null && childSnapshotWrappers.isArray() && !childSnapshotWrappers.isEmpty()) {
+          LOGGER.warn("Found {} childSnapshotWrappers for mapping profile: {}", childSnapshotWrappers.size(), node);
         }
-        return Optional.of(node);
+        yield Optional.of(node);
       }
-      default -> {
-        return Optional.empty();
+      default -> Optional.empty();
+    };
+  }
+
+  private static void addChildProfilesToGraph(Graph<Profile, RegularEdge> graph, JsonNode profileSnapshot, Profile node) {
+    JsonNode childSnapshotWrappers = profileSnapshot.get("childSnapshotWrappers");
+    if (childSnapshotWrappers != null && childSnapshotWrappers.isArray()) {
+      for (JsonNode childSnapshotWrapper : childSnapshotWrappers) {
+        Optional<Profile> profile = addProfileToGraph(graph, childSnapshotWrapper);
+        profile.ifPresent(value -> graph.addEdge(node, value));
+      }
+    }
+  }
+
+  private static void addChildMatchProfilesToGraph(Graph<Profile, RegularEdge> graph, JsonNode profileSnapshot, MatchProfileNode node) {
+    JsonNode childSnapshotWrappers = profileSnapshot.get("childSnapshotWrappers");
+    if (childSnapshotWrappers != null && childSnapshotWrappers.isArray()) {
+      for (JsonNode childSnapshotWrapper : childSnapshotWrappers) {
+        Optional<Profile> profile = addProfileToGraph(graph, childSnapshotWrapper);
+        profile.ifPresent(value -> {
+          String reactTo = childSnapshotWrapper.path("reactTo").asText();
+          if ("NON_MATCH".equals(reactTo)) {
+            graph.addEdge(node, value, new NonMatchRelationshipEdge());
+          } else if ("MATCH".equals(reactTo)) {
+            graph.addEdge(node, value, new MatchRelationshipEdge());
+          } else {
+            LOGGER.warn("Found invalid relationship for matching on match profile: {}", node);
+          }
+        });
       }
     }
   }
