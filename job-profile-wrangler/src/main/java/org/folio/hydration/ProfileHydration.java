@@ -251,7 +251,7 @@ public class ProfileHydration {
    * @param profile The Profile object.
    * @return The corresponding ProfileType.
    */
-  public static ProfileType getProfileType(Profile profile) {
+  protected static ProfileType getProfileType(Profile profile) {
     if (profile instanceof MappingProfileNode) {
       return ProfileType.MAPPING_PROFILE;
     } else if (profile instanceof MatchProfileNode) {

@@ -136,4 +136,18 @@ public class FolioClientTest {
     Optional<JsonNode> createdActionProfile = folioClient.createActionProfile(actionProfile);
     assertNotNull(createdActionProfile);
   }
+
+  @Test
+  public void testCreateMappingProfile() throws IOException {
+    String actionProfile = "{}";
+
+    when(baseUrlBuilder.addPathSegments(anyString())).thenReturn(baseUrlBuilder);
+    when(baseUrlBuilder.build()).thenReturn(HttpUrl.get("http://example.com"));
+
+    String content = Resources.toString(Resources.getResource("mapping_profile_response.json"), StandardCharsets.UTF_8);
+    when(body.string()).thenReturn(content);
+
+    Optional<JsonNode> createdActionProfile = folioClient.createMappingProfile(actionProfile);
+    assertNotNull(createdActionProfile);
+  }
 }
