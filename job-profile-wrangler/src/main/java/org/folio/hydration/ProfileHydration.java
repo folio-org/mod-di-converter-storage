@@ -53,7 +53,7 @@ public class ProfileHydration {
 
   private final FolioClient client;
 
-  private final String profileNamePattern = "jp-%03d %s %s";
+  private static final String profileNamePattern = "jp-%03d %s %s";
 
   public ProfileHydration(FolioClient client) {
     this.client = client;

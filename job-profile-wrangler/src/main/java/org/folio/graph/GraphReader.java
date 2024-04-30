@@ -198,7 +198,8 @@ public class GraphReader {
     }
 
     // Compare the edges in the graphs
-    boolean areEdgesEqual = graph1.edgeSet().stream()
+
+    return graph1.edgeSet().stream()
       .allMatch(edge1 -> {
         Profile source1 = graph1.getEdgeSource(edge1);
         Profile target1 = graph1.getEdgeTarget(edge1);
@@ -214,7 +215,5 @@ public class GraphReader {
               && target1.getComparator().compare(target1, target2) == 0;
           });
       });
-
-    return areEdgesEqual;
   }
 }

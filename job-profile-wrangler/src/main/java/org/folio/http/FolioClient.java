@@ -46,7 +46,7 @@ public class FolioClient {
 
     Optional<String> okapiToken = getOkapiToken(baseUrlBuilderSupplier.get(), tenantId, username, password);
     if (okapiToken.isEmpty()) {
-      throw new RuntimeException("Could not get okapi token");
+      throw new IllegalStateException("Could not get okapi token");
     }
     this.token = okapiToken.get();
   }
