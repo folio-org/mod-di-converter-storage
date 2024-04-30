@@ -49,9 +49,11 @@ import static org.folio.Constants.OBJECT_MAPPER;
  * It creates match, action, mapping, and job profiles in FOLIO, establishing the necessary associations between them.
  */
 public class ProfileHydration {
-  private final static Logger LOGGER = LogManager.getLogger();
+  private static final Logger LOGGER = LogManager.getLogger();
 
   private final FolioClient client;
+
+  private final String PROFILE_NAME_PATTERN = "jp-%03d %s %s";
 
   public ProfileHydration(FolioClient client) {
     this.client = client;
@@ -91,22 +93,22 @@ public class ProfileHydration {
 
     // Create profiles in FOLIO based on their type
     vertexSet.forEach(node -> {
-      if (node instanceof MappingProfileNode) {
+      if (node instanceof MappingProfileNode mappingProfileNode) {
         MappingProfile mappingProfile = new MappingProfile()
-          .withName(String.format("jp-%03d %s %s", repoId, EPOCH, ((MappingProfileNode) node).id()))
-          .withIncomingRecordType(EntityType.fromValue(node.getAttributes().get("incomingRecordType")))
-          .withExistingRecordType(EntityType.fromValue(node.getAttributes().get("existingRecordType")));
-        createProfileInFolio(node, new MappingProfileUpdateDto().withProfile(mappingProfile),
+          .withName(String.format(PROFILE_NAME_PATTERN, repoId, EPOCH, mappingProfileNode.id()))
+          .withIncomingRecordType(EntityType.fromValue(mappingProfileNode.getAttributes().get("incomingRecordType")))
+          .withExistingRecordType(EntityType.fromValue(mappingProfileNode.getAttributes().get("existingRecordType")));
+        createProfileInFolio(mappingProfileNode, new MappingProfileUpdateDto().withProfile(mappingProfile),
           MappingProfileUpdateDto.class,
           client::createMappingProfile, createdObjectsInFolio);
-      } else if (node instanceof ActionProfileNode) {
+      } else if (node instanceof ActionProfileNode actionProfileNode) {
         ActionProfile actionProfile = new ActionProfile()
-          .withName(String.format("jp-%03d %s %s", repoId, EPOCH, ((ActionProfileNode) node).id()))
-          .withAction(ActionProfile.Action.fromValue(node.getAttributes().get("action")))
-          .withFolioRecord(ActionProfile.FolioRecord.fromValue(node.getAttributes().get("folioRecord")));
+          .withName(String.format(PROFILE_NAME_PATTERN, repoId, EPOCH, actionProfileNode.id()))
+          .withAction(ActionProfile.Action.fromValue(actionProfileNode.getAttributes().get("action")))
+          .withFolioRecord(ActionProfile.FolioRecord.fromValue(actionProfileNode.getAttributes().get("folioRecord")));
 
-        Optional<RegularEdge> edge = graph.edgesOf(node)
-          .stream().filter(e -> e.getSource().equals(node))
+        Optional<RegularEdge> edge = graph.edgesOf(actionProfileNode)
+          .stream().filter(e -> e.getSource().equals(actionProfileNode))
           .findFirst();
         ActionProfileUpdateDto actionProfileUpdateDto = new ActionProfileUpdateDto()
           .withProfile(actionProfile);
@@ -121,15 +123,15 @@ public class ProfileHydration {
               .withDetailProfileId(mappingProfile.getId())));
         }
 
-        createProfileInFolio(node, actionProfileUpdateDto,
+        createProfileInFolio(actionProfileNode, actionProfileUpdateDto,
           ActionProfileUpdateDto.class,
           client::createActionProfile, createdObjectsInFolio);
-      } else if (node instanceof MatchProfileNode) {
+      } else if (node instanceof MatchProfileNode matchProfileNode) {
         MatchProfile matchProfile = new MatchProfile()
-          .withName(String.format("jp-%03d %s %s", repoId, EPOCH, ((MatchProfileNode) node).id()))
-          .withIncomingRecordType(EntityType.fromValue(node.getAttributes().get("incomingRecordType")))
-          .withExistingRecordType(EntityType.fromValue(node.getAttributes().get("existingRecordType")));
-        createProfileInFolio(node, new MatchProfileUpdateDto().withProfile(matchProfile), MatchProfileUpdateDto.class,
+          .withName(String.format(PROFILE_NAME_PATTERN, repoId, EPOCH, matchProfileNode.id()))
+          .withIncomingRecordType(EntityType.fromValue(matchProfileNode.getAttributes().get("incomingRecordType")))
+          .withExistingRecordType(EntityType.fromValue(matchProfileNode.getAttributes().get("existingRecordType")));
+        createProfileInFolio(matchProfileNode, new MatchProfileUpdateDto().withProfile(matchProfile), MatchProfileUpdateDto.class,
           client::createMatchProfile, createdObjectsInFolio);
       }
     });
@@ -206,12 +208,12 @@ public class ProfileHydration {
   /**
    * Creates a profile in FOLIO using the provided update DTO and creator function.
    *
-   * @param node                         The profile node.
-   * @param updateDto                    The update DTO for the profile.
-   * @param updateDtoClassType           The class type of the update DTO.
-   * @param creator                      The function to create the profile in FOLIO.
-   * @param correspondingObjectsInFolio  The map to store the created objects in FOLIO.
-   * @param <U>                          The type of the update DTO.
+   * @param node                        The profile node.
+   * @param updateDto                   The update DTO for the profile.
+   * @param updateDtoClassType          The class type of the update DTO.
+   * @param creator                     The function to create the profile in FOLIO.
+   * @param correspondingObjectsInFolio The map to store the created objects in FOLIO.
+   * @param <U>                         The type of the update DTO.
    */
   private <U> void createProfileInFolio(Profile node, U updateDto, Class<U> updateDtoClassType,
                                         Function<String, Optional<JsonNode>> creator,

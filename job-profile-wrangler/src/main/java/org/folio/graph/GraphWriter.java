@@ -37,15 +37,15 @@ import java.util.stream.Stream;
  * It uses the JGraphT library for graph operations and the Graphviz library for rendering graphs.
  */
 public class GraphWriter {
-  private final static Logger LOGGER = LogManager.getLogger();
-  private final static DOTExporter<Profile, RegularEdge> DOT_EXPORTER = new DOTExporter<>();
-  private final static PriorityQueue<Integer> maxHeap = new PriorityQueue<>(Collections.reverseOrder());
+  private static final Logger LOGGER = LogManager.getLogger();
+  private static final DOTExporter<Profile, RegularEdge> DOT_EXPORTER = new DOTExporter<>();
+  private static final PriorityQueue<Integer> maxHeap = new PriorityQueue<>(Collections.reverseOrder());
 
-  public final static Pattern DOT_FILE_PATTERN = Pattern.compile("jp-(\\d+)\\.dot");
+  public static final Pattern DOT_FILE_PATTERN = Pattern.compile("jp-(\\d+)\\.dot");
 
   static {
     // Set the vertex attribute provider for the DOT exporter
-    DOT_EXPORTER.setVertexAttributeProvider((v) -> {
+    DOT_EXPORTER.setVertexAttributeProvider(v -> {
       Map<String, Attribute> graphvizMap = v.getAttributes()
         .entrySet()
         .stream()
@@ -60,7 +60,7 @@ public class GraphWriter {
     });
 
     // Set the edge attribute provider for the DOT exporter
-    DOT_EXPORTER.setEdgeAttributeProvider((e) -> {
+    DOT_EXPORTER.setEdgeAttributeProvider(e -> {
       Map<String, Attribute> map = new LinkedHashMap<>();
       map.put("label", DefaultAttribute.createAttribute(e.getLabel()));
       return map;
@@ -79,47 +79,48 @@ public class GraphWriter {
    * @return an Optional containing the ID of the generated file, or an empty Optional if an error occurred
    */
   public static synchronized Optional<Integer> writeGraph(String repoPath, Graph<Profile, RegularEdge> graph) {
-    try {
-      if (maxHeap.isEmpty()) {
-        // If the maxHeap is empty, read the existing DOT files in the repository and populate the maxHeap
-        try (Stream<Path> stream = Files.list(Paths.get(repoPath))) {
-          List<String> fileNames = stream
-            .filter(Files::isRegularFile)
-            .map(Path::getFileName)
-            .map(Path::toString)
-            .toList();
 
-          fileNames.stream()
-            .map(fileName -> {
-              Matcher matcher = DOT_FILE_PATTERN.matcher(fileName);
-              if (matcher.matches()) {
-                return matcher.group(1);
-              } else {
-                LOGGER.error("Invalid format: {}", fileName);
-                return null;
-              }
-            }).filter(Objects::nonNull)
-            .forEach(id -> maxHeap.add(Integer.parseInt(id)));
-        } catch (IOException e) {
-          LOGGER.error("An error occurred while reading the directory.", e);
-        }
+    if (maxHeap.isEmpty()) {
+      // If the maxHeap is empty, read the existing DOT files in the repository and populate the maxHeap
+      try (Stream<Path> stream = Files.list(Paths.get(repoPath))) {
+        List<String> fileNames = stream
+          .filter(Files::isRegularFile)
+          .map(Path::getFileName)
+          .map(Path::toString)
+          .toList();
+
+        fileNames.stream()
+          .map(fileName -> {
+            Matcher matcher = DOT_FILE_PATTERN.matcher(fileName);
+            if (matcher.matches()) {
+              return matcher.group(1);
+            } else {
+              LOGGER.error("Invalid format: {}", fileName);
+              return null;
+            }
+          }).filter(Objects::nonNull)
+          .forEach(id -> maxHeap.add(Integer.parseInt(id)));
+      } catch (IOException e) {
+        LOGGER.error("An error occurred while reading the directory.", e);
+        return Optional.empty();
       }
+    }
 
-      // Generate a new ID for the DOT file
-      Integer newId = maxHeap.peek() != null ? maxHeap.peek() + 1 : 1;
-      Path filePath = Paths.get(repoPath, genGraphFileName(newId));
+    // Generate a new ID for the DOT file
+    Integer newId = maxHeap.peek() != null ? maxHeap.peek() + 1 : 1;
+    Path filePath = Paths.get(repoPath, genGraphFileName(newId));
 
-      // Write the graph to the DOT file
-      try (FileWriter writer = new FileWriter(filePath.toFile())) {
-        DOT_EXPORTER.exportGraph(graph, writer);
-      }
-
-      maxHeap.add(newId);
-      return Optional.of(newId);
+    // Write the graph to the DOT file
+    try (FileWriter writer = new FileWriter(filePath.toFile())) {
+      DOT_EXPORTER.exportGraph(graph, writer);
     } catch (IOException e) {
       LOGGER.error("An error occurred while writing to the file.", e);
       return Optional.empty();
     }
+
+    maxHeap.add(newId);
+    return Optional.of(newId);
+
   }
 
   /**

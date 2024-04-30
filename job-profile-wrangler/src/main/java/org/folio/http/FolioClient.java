@@ -31,18 +31,18 @@ import static org.folio.Constants.OKAPI_TOKEN_HEADER;
 
 public class FolioClient {
   private static final Logger LOGGER = LogManager.getLogger();
-  OkHttpClient HTTP_CLIENT = new OkHttpClient();
+  OkHttpClient httpClient = new OkHttpClient();
 
-  private final String TOKEN;
+  private final String token;
   private final Supplier<HttpUrl.Builder> baseUrlBuilderSupplier;
 
   public FolioClient(Supplier<HttpUrl.Builder> baseUrlBuilderSupplier, String token) {
     this.baseUrlBuilderSupplier = baseUrlBuilderSupplier;
-    this.TOKEN = token;
+    this.token = token;
   }
 
   protected void setHttpClient(OkHttpClient client) {
-    HTTP_CLIENT = client;
+    httpClient = client;
   }
 
   public Stream<JsonNode> getJobProfiles() {
@@ -55,57 +55,56 @@ public class FolioClient {
     final AtomicInteger totalRecords = new AtomicInteger(0);
 
     return Stream.generate(() -> {
-        try {
-          if (queryParamOffset.get() > totalRecords.get()) {
-            return null;
-          }
 
-          HttpUrl.Builder intermediateUrlBuilder = baseUrlBuilderSupplier.get()
-            .addPathSegments("data-import-profiles/jobProfiles")
-            .addQueryParameter("limit", Integer.toString(queryParamLimit))
-            .addQueryParameter("offset", Integer.toString(queryParamOffset.get()));
+        if (queryParamOffset.get() > totalRecords.get()) {
+          return null;
+        }
 
-          List<String> queryQueryParamList = new ArrayList<>();
-          if (queryParams != null && !queryParams.isEmpty()) {
-            for (var entry : queryParams.entrySet()) {
-              if (!entry.getKey().equals("query")) {
-                intermediateUrlBuilder.addQueryParameter(entry.getKey(), entry.getValue());
-              } else {
-                queryQueryParamList.add(entry.getValue());
-              }
+        HttpUrl.Builder intermediateUrlBuilder = baseUrlBuilderSupplier.get()
+          .addPathSegments("data-import-profiles/jobProfiles")
+          .addQueryParameter("limit", Integer.toString(queryParamLimit))
+          .addQueryParameter("offset", Integer.toString(queryParamOffset.get()));
+
+        List<String> queryQueryParamList = new ArrayList<>();
+        if (queryParams != null && !queryParams.isEmpty()) {
+          for (var entry : queryParams.entrySet()) {
+            if (!entry.getKey().equals("query")) {
+              intermediateUrlBuilder.addQueryParameter(entry.getKey(), entry.getValue());
+            } else {
+              queryQueryParamList.add(entry.getValue());
             }
           }
-          queryQueryParamList.add("cql.allRecords=1 sortBy id");
-          String query = String.join(" and ", queryQueryParamList);
-          intermediateUrlBuilder.addQueryParameter("query", query);
-          HttpUrl url = intermediateUrlBuilder.build();
-          LOGGER.info("Query: {}", url);
-          Request request = new Request.Builder()
-            .url(url)
-            .addHeader(OKAPI_TOKEN_HEADER, TOKEN)
-            .get()
-            .build();
+        }
+        queryQueryParamList.add("cql.allRecords=1 sortBy id");
+        String query = String.join(" and ", queryQueryParamList);
+        intermediateUrlBuilder.addQueryParameter("query", query);
+        HttpUrl url = intermediateUrlBuilder.build();
+        LOGGER.info("Query: {}", url);
+        Request request = new Request.Builder()
+          .url(url)
+          .addHeader(OKAPI_TOKEN_HEADER, token)
+          .get()
+          .build();
 
-          try (Response response = HTTP_CLIENT.newCall(request).execute()) {
-            if (!response.isSuccessful()) throw new IOException("Unexpected code " + response);
+        try (Response response = httpClient.newCall(request).execute()) {
+          if (!response.isSuccessful()) throw new IOException("Unexpected code " + response);
 
-            assert response.body() != null;
-            String result = response.body().string();
-            JsonNode jsonNode = OBJECT_MAPPER.readTree(result);
+          assert response.body() != null;
+          String result = response.body().string();
+          JsonNode jsonNode = OBJECT_MAPPER.readTree(result);
 
-            if (queryParamOffset.get() == 0) {
-              totalRecords.set(jsonNode.get("totalRecords").asInt());
-              if (totalRecords.get() == 0) {
-                return null;
-              }
+          if (queryParamOffset.get() == 0) {
+            totalRecords.set(jsonNode.get("totalRecords").asInt());
+            if (totalRecords.get() == 0) {
+              return null;
             }
-
-            queryParamOffset.getAndAdd(queryParamLimit);
-            return StreamSupport.stream(jsonNode.get("jobProfiles").spliterator(), false);
           }
-        } catch (Exception e) {
+
+          queryParamOffset.getAndAdd(queryParamLimit);
+          return StreamSupport.stream(jsonNode.get("jobProfiles").spliterator(), false);
+        } catch (IOException e) {
           LOGGER.error(e);
-          throw new RuntimeException(e);
+          return null;
         }
       }).takeWhile(Objects::nonNull)
       .flatMap(Function.identity());
@@ -121,11 +120,11 @@ public class FolioClient {
 
     Request request = new Request.Builder()
       .url(url)
-      .addHeader(OKAPI_TOKEN_HEADER, TOKEN)
+      .addHeader(OKAPI_TOKEN_HEADER, token)
       .get()
       .build();
 
-    try (Response response = HTTP_CLIENT.newCall(request).execute()) {
+    try (Response response = httpClient.newCall(request).execute()) {
       assert response.body() != null;
       String result = response.body().string();
       return Optional.of(OBJECT_MAPPER.readTree(result));
@@ -142,6 +141,7 @@ public class FolioClient {
 
     return createObjInFolio(url, jobProfile);
   }
+
   public Optional<JsonNode> createMatchProfile(String matchProfile) {
     HttpUrl url = baseUrlBuilderSupplier.get()
       .addPathSegments("data-import-profiles/matchProfiles")
@@ -171,11 +171,11 @@ public class FolioClient {
 
     Request request = new Request.Builder()
       .url(url)
-      .addHeader(OKAPI_TOKEN_HEADER, TOKEN)
+      .addHeader(OKAPI_TOKEN_HEADER, token)
       .post(body)
       .build();
 
-    try (Response response = HTTP_CLIENT.newCall(request).execute()) {
+    try (Response response = httpClient.newCall(request).execute()) {
       assert response.body() != null;
       String result = response.body().string();
       return Optional.of(OBJECT_MAPPER.readTree(result));
@@ -185,7 +185,7 @@ public class FolioClient {
     return Optional.empty();
   }
 
-  private Optional<String> getOkapiToken(HttpUrl.Builder baseUrlBuilder, String tenantId, String username, String password) {
+  protected Optional<String> getOkapiToken(HttpUrl.Builder baseUrlBuilder, String tenantId, String username, String password) {
     HttpUrl url = baseUrlBuilder
       .addPathSegments("authn/login-with-expiry")
       .build();
@@ -197,7 +197,7 @@ public class FolioClient {
         .put("password", password).toString(), JSON_MEDIA_TYPE))
       .build();
 
-    try (Response response = HTTP_CLIENT.newCall(request).execute()) {
+    try (Response response = httpClient.newCall(request).execute()) {
       if (!response.isSuccessful()) throw new IOException("Unexpected code " + response);
       List<String> cookies = response.headers("Set-Cookie");
       return cookies

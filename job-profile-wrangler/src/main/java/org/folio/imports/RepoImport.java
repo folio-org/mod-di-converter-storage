@@ -24,7 +24,7 @@ import java.util.Optional;
 import static org.folio.Constants.OBJECT_MAPPER;
 
 public class RepoImport implements Runnable {
-  private final static Logger LOGGER = LogManager.getLogger();
+  private static final Logger LOGGER = LogManager.getLogger();
   private final FolioClient client;
   private final String repoPath;
 
