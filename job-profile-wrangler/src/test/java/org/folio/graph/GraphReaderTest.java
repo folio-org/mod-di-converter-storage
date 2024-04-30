@@ -15,7 +15,11 @@ import java.util.List;
 import java.util.Optional;
 
 import static org.folio.Constants.REPO_PATH;
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
 
 public class GraphReaderTest {
 
@@ -35,18 +39,17 @@ public class GraphReaderTest {
     Graph<Profile, RegularEdge> g2 = GraphReader.read(REPO_PATH, repoId);
     assertEquals(g1, g2);
     assertNotNull(g1);
-    GraphWriter.renderGraph("output", g1);
   }
 
   @Test
   public void readAllGraph() {
     List<Graph<Profile, RegularEdge>> graphs = GraphReader.readAll(REPO_PATH);
     assertNotNull(graphs);
-    GraphWriter.renderGraph("output", graphs.get(0));
+    assertFalse(graphs.isEmpty());
   }
 
   @Test
-  public void isGraphPresent() {
+  public void search() {
     List<Graph<Profile, RegularEdge>> graphs = GraphReader.readAll(REPO_PATH);
     assertNotNull(graphs);
     assertNotEquals(graphs.size(), 0);

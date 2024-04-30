@@ -104,7 +104,7 @@ public class GraphWriter {
 
       // Generate a new ID for the DOT file
       Integer newId = maxHeap.peek() != null ? maxHeap.peek() + 1 : 1;
-      Path filePath = Paths.get(repoPath, "jp-" + String.format("%03d", newId) + ".dot");
+      Path filePath = Paths.get(repoPath, genGraphFileName(newId));
 
       // Write the graph to the DOT file
       try (FileWriter writer = new FileWriter(filePath.toFile())) {
@@ -120,12 +120,19 @@ public class GraphWriter {
   }
 
   /**
+   * Generate a file name for a repo identifier
+   */
+  public static String genGraphFileName(Integer repoId) {
+    return String.format("jp-%03d", repoId) + ".dot";
+  }
+
+  /**
    * Renders the graph to an SVG file with the specified file name.
    *
    * @param fileName the name of the output SVG file (without the extension)
    * @param graph    the graph to be rendered
    */
-  public static void renderGraph(String fileName, Graph<Profile, RegularEdge> graph) {
+  public static Optional<File> renderGraph(String fileName, Graph<Profile, RegularEdge> graph) {
     Writer writer = new StringWriter();
 
     // Export the graph to the DOT format
@@ -133,12 +140,13 @@ public class GraphWriter {
 
     try {
       // Render the graph to an SVG file using Graphviz
-      Graphviz.fromString(writer.toString())
+      return Optional.of(Graphviz.fromString(writer.toString())
         .render(Format.SVG)
-        .toFile(new File(fileName + ".svg"));
+        .toFile(new File(fileName + ".svg")));
     } catch (IOException e) {
       LOGGER.error("Error during rendering of graph", e);
     }
+    return Optional.empty();
   }
 
   /**

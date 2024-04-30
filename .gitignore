@@ -1,6 +1,6 @@
 .idea/
 *.iml
-output.svg
+*.svg
 node_modules/
 /target
 /src/main/java/org/folio/rest/client/*

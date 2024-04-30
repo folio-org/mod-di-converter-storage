@@ -1,54 +1,74 @@
 package org.folio.hydration;
 
 import com.google.common.io.Resources;
-import okhttp3.HttpUrl;
-import org.folio.RepoObject;
-import org.folio.graph.GraphReader;
+import org.folio.graph.edges.MatchRelationshipEdge;
 import org.folio.graph.edges.RegularEdge;
+import org.folio.graph.nodes.ActionProfileNode;
+import org.folio.graph.nodes.JobProfileNode;
+import org.folio.graph.nodes.MappingProfileNode;
+import org.folio.graph.nodes.MatchProfileNode;
 import org.folio.graph.nodes.Profile;
 import org.folio.http.FolioClient;
-import org.folio.imports.RepoImport;
+import org.folio.rest.jaxrs.model.ActionProfile;
+import org.folio.rest.jaxrs.model.EntityType;
 import org.folio.rest.jaxrs.model.JobProfileUpdateDto;
 import org.jgrapht.Graph;
-import org.junit.BeforeClass;
+import org.jgrapht.graph.DefaultDirectedGraph;
+import org.junit.Before;
 import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.mockito.Mock;
+import org.mockito.junit.MockitoJUnitRunner;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.Optional;
-import java.util.function.Supplier;
 
-import static org.folio.Constants.REPO_PATH;
+import static org.folio.Constants.OBJECT_MAPPER;
 import static org.junit.Assert.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.when;
 
+@RunWith(MockitoJUnitRunner.class)
 public class ProfileHydrationTest {
 
-  static final String TENANT_ID = "diku";
-  static final String USERNAME = "diku_admin";
-  static final String PASSWORD = "admin";
+  @Mock
+  private FolioClient folioClient;
 
-  private static Integer repoId;
+  private Graph<Profile, RegularEdge> graph;
 
-  @BeforeClass
-  public static void setup() throws IOException {
-    String content = Resources.toString(Resources.getResource("job_profile_snapshot.json"), StandardCharsets.UTF_8);
-    Optional<RepoObject> repoObject = RepoImport.fromString(REPO_PATH, content);
-    if (repoObject.isEmpty()) throw new RuntimeException("Could not create object in repo");
-    repoId = repoObject.get().repoId();
+  @Before
+  public void setUp() {
+    graph = new DefaultDirectedGraph<>(RegularEdge.class);
+
+    Profile jobProfile = new JobProfileNode("1", "MARC", 0);
+    Profile matchProfile = new MatchProfileNode("2", EntityType.MARC_BIBLIOGRAPHIC.toString(), EntityType.INSTANCE.toString(), 0);
+    Profile actionProfile = new ActionProfileNode("3", ActionProfile.Action.CREATE.toString(), ActionProfile.FolioRecord.INSTANCE.toString(), 0);
+    Profile mappingProfile = new MappingProfileNode("4",EntityType.MARC_BIBLIOGRAPHIC.toString(), EntityType.INSTANCE.toString(), 0);
+
+    graph.addVertex(jobProfile);
+    graph.addVertex(matchProfile);
+    graph.addVertex(actionProfile);
+    graph.addVertex(mappingProfile);
+    graph.addEdge(jobProfile, matchProfile, new RegularEdge());
+    graph.addEdge(matchProfile, actionProfile, new MatchRelationshipEdge());
+    graph.addEdge(actionProfile, mappingProfile, new RegularEdge());
   }
 
 
   @Test
-  public void hydrate() {
-    Supplier<HttpUrl.Builder> urlTemplate = () -> new HttpUrl.Builder()
-      .scheme("http")
-      .host("localhost")
-      .port(9130);
-    FolioClient client = new FolioClient(urlTemplate, TENANT_ID, USERNAME, PASSWORD);
-    Graph<Profile, RegularEdge> g1 = GraphReader.read(REPO_PATH, repoId);
+  public void hydrate() throws IOException {
+    String mappingProfileResponse = Resources.toString(Resources.getResource("mapping_profile_response.json"), StandardCharsets.UTF_8);
+    String actionProfileResponse = Resources.toString(Resources.getResource("action_profile_response.json"), StandardCharsets.UTF_8);
+    String matchProfileResponse = Resources.toString(Resources.getResource("match_profile_response.json"), StandardCharsets.UTF_8);
+    String jobProfileResponse = Resources.toString(Resources.getResource("job_profile_response.json"), StandardCharsets.UTF_8);
+    when(folioClient.createMappingProfile(any())).thenReturn(Optional.of(OBJECT_MAPPER.readTree(mappingProfileResponse)));
+    when(folioClient.createActionProfile(any())).thenReturn(Optional.of(OBJECT_MAPPER.readTree(actionProfileResponse)));
+    when(folioClient.createMatchProfile(any())).thenReturn(Optional.of(OBJECT_MAPPER.readTree(matchProfileResponse)));
+    when(folioClient.createJobProfile(any())).thenReturn(Optional.of(OBJECT_MAPPER.readTree(jobProfileResponse)));
 
-    ProfileHydration profileHydration = new ProfileHydration(client);
-    var jobProfile = profileHydration.hydrate(repoId, g1);
+    ProfileHydration profileHydration = new ProfileHydration(folioClient);
+    var jobProfile = profileHydration.hydrate(1, graph);
     assertTrue(jobProfile.isPresent());
     assertTrue(jobProfile.get() instanceof JobProfileUpdateDto);
   }

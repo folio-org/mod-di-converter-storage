@@ -31,7 +31,7 @@ import static org.folio.Constants.OKAPI_TOKEN_HEADER;
 
 public class FolioClient {
   private final static Logger LOGGER = LogManager.getLogger();
-  final static OkHttpClient HTTP_CLIENT = new OkHttpClient();
+  OkHttpClient HTTP_CLIENT = new OkHttpClient();
 
   private final String TOKEN;
   private final Supplier<HttpUrl.Builder> baseUrlBuilderSupplier;
@@ -44,6 +44,15 @@ public class FolioClient {
       throw new RuntimeException("Could not get okapi token");
     }
     this.TOKEN = okapiToken.get();
+  }
+
+  public FolioClient(Supplier<HttpUrl.Builder> baseUrlBuilderSupplier, String token) {
+    this.baseUrlBuilderSupplier = baseUrlBuilderSupplier;
+    this.TOKEN = token;
+  }
+
+  protected void setHttpClient(OkHttpClient client) {
+    HTTP_CLIENT = client;
   }
 
   public Stream<JsonNode> getJobProfiles() {
@@ -186,7 +195,7 @@ public class FolioClient {
     return Optional.empty();
   }
 
-  private static Optional<String> getOkapiToken(HttpUrl.Builder baseUrlBuilder, String tenantId, String username, String password) {
+  private Optional<String> getOkapiToken(HttpUrl.Builder baseUrlBuilder, String tenantId, String username, String password) {
     HttpUrl url = baseUrlBuilder
       .addPathSegments("authn/login-with-expiry")
       .build();

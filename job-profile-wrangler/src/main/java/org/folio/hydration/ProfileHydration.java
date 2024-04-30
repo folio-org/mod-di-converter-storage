@@ -97,7 +97,7 @@ public class ProfileHydration {
           .withExistingRecordType(EntityType.fromValue(node.getAttributes().get("existingRecordType")));
         createProfileInFolio(node, new MappingProfileUpdateDto().withProfile(mappingProfile),
           MappingProfileUpdateDto.class,
-          payload -> client.createMappingProfile(payload), createdObjectsInFolio);
+          client::createMappingProfile, createdObjectsInFolio);
       } else if (node instanceof ActionProfileNode) {
         ActionProfile actionProfile = new ActionProfile()
           .withName(String.format("jp-%03d %s %s", repoId, EPOCH, ((ActionProfileNode) node).id()))
@@ -122,14 +122,14 @@ public class ProfileHydration {
 
         createProfileInFolio(node, actionProfileUpdateDto,
           ActionProfileUpdateDto.class,
-          payload -> client.createActionProfile(payload), createdObjectsInFolio);
+          client::createActionProfile, createdObjectsInFolio);
       } else if (node instanceof MatchProfileNode) {
         MatchProfile matchProfile = new MatchProfile()
           .withName(String.format("jp-%03d %s %s", repoId, EPOCH, ((MatchProfileNode) node).id()))
           .withIncomingRecordType(EntityType.fromValue(node.getAttributes().get("incomingRecordType")))
           .withExistingRecordType(EntityType.fromValue(node.getAttributes().get("existingRecordType")));
         createProfileInFolio(node, new MatchProfileUpdateDto().withProfile(matchProfile), MatchProfileUpdateDto.class,
-          payload -> client.createMatchProfile(payload), createdObjectsInFolio);
+          client::createMatchProfile, createdObjectsInFolio);
       }
     });
 
@@ -196,7 +196,7 @@ public class ProfileHydration {
     jobProfileUpdateDto.setAddedRelations(profileAssociations);
 
     createProfileInFolio(jobProfile.get(), jobProfileUpdateDto, JobProfileUpdateDto.class,
-      payload -> client.createJobProfile(payload),
+      client::createJobProfile,
       createdObjectsInFolio);
 
     return Optional.of(createdObjectsInFolio.get(jobProfile.get()));
@@ -224,23 +224,6 @@ public class ProfileHydration {
       correspondingObjectsInFolio.put(node, createdUpdateDto);
     } catch (JsonProcessingException e) {
       LOGGER.error(e.getMessage(), e);
-    }
-  }
-
-  /**
-   * Invokes the getProfile() method on the given object using reflection.
-   *
-   * @param obj The object to invoke the method on.
-   * @return The profile object returned by the getProfile() method.
-   */
-  public static Object invokeGetProfile(Object obj) {
-    try {
-      Class<?> clazz = obj.getClass();
-      Method getProfileMethod = clazz.getMethod("getProfile");
-      return getProfileMethod.invoke(obj);
-    } catch (NoSuchMethodException | IllegalAccessException | InvocationTargetException e) {
-      LOGGER.error(e.getMessage(), e);
-      return null;
     }
   }
 

@@ -90,7 +90,7 @@ public class GraphReader {
    * @return The read graph.
    */
   public static Graph<Profile, RegularEdge> read(String repoPath, int id) {
-    Path filePath = Paths.get(repoPath, "jp-" + String.format("%03d", id) + ".dot");
+    Path filePath = Paths.get(repoPath, GraphWriter.genGraphFileName(id));
     Graph<Profile, RegularEdge> g = new SimpleDirectedGraph<>(RegularEdge.class);
     DOT_IMPORTER.importGraph(g, filePath.toFile());
     return g;
