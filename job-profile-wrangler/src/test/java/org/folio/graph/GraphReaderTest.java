@@ -6,15 +6,16 @@ import org.folio.graph.edges.RegularEdge;
 import org.folio.graph.nodes.Profile;
 import org.folio.imports.RepoImport;
 import org.jgrapht.Graph;
+import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
+import org.junit.rules.TemporaryFolder;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Optional;
 
-import static org.folio.Constants.REPO_PATH;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotEquals;
@@ -22,6 +23,18 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
 public class GraphReaderTest {
+
+  public static final String REPO_PATH;
+  private static final TemporaryFolder tempDir = new TemporaryFolder();
+
+  static {
+    try {
+      tempDir.create();
+    } catch (IOException e) {
+      throw new RuntimeException(e);
+    }
+    REPO_PATH = tempDir.getRoot().getAbsolutePath();
+  }
 
   private static Integer repoId;
 
@@ -31,6 +44,11 @@ public class GraphReaderTest {
     Optional<RepoObject> repoObject = RepoImport.fromString(REPO_PATH, content);
     if (repoObject.isEmpty()) throw new RuntimeException("Could not create object in repo");
     repoId = repoObject.get().repoId();
+  }
+
+  @AfterClass
+  public static void cleanup() {
+    tempDir.delete();
   }
 
   @Test
