@@ -108,4 +108,32 @@ public class FolioClientTest {
     Optional<JsonNode> createdJobProfile = folioClient.createJobProfile(jobProfile);
     assertNotNull(createdJobProfile);
   }
+
+  @Test
+  public void testCreateMatchProfile() throws IOException {
+    String matchProfile = "{}";
+
+    when(baseUrlBuilder.addPathSegments(anyString())).thenReturn(baseUrlBuilder);
+    when(baseUrlBuilder.build()).thenReturn(HttpUrl.get("http://example.com"));
+
+    String content = Resources.toString(Resources.getResource("match_profile_response.json"), StandardCharsets.UTF_8);
+    when(body.string()).thenReturn(content);
+
+    Optional<JsonNode> createdMatchProfile = folioClient.createMatchProfile(matchProfile);
+    assertNotNull(createdMatchProfile);
+  }
+
+  @Test
+  public void testCreateActionProfile() throws IOException {
+    String actionProfile = "{}";
+
+    when(baseUrlBuilder.addPathSegments(anyString())).thenReturn(baseUrlBuilder);
+    when(baseUrlBuilder.build()).thenReturn(HttpUrl.get("http://example.com"));
+
+    String content = Resources.toString(Resources.getResource("action_profile_response.json"), StandardCharsets.UTF_8);
+    when(body.string()).thenReturn(content);
+
+    Optional<JsonNode> createdActionProfile = folioClient.createActionProfile(actionProfile);
+    assertNotNull(createdActionProfile);
+  }
 }

@@ -68,6 +68,7 @@ public class ProfileHydration {
     LocalDateTime currentDateTime = LocalDateTime.now();
     DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyyMMddHHmm");
     String formattedDateTime = currentDateTime.format(formatter);
+    @SuppressWarnings("java:S2245")
     String randomLetters = RandomStringUtils.random(5, 'A', 'Z', true, false);
     final String EPOCH = formattedDateTime + "-" + randomLetters;
 

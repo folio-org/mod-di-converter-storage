@@ -30,21 +30,11 @@ import static org.folio.Constants.OKAPI_TENANT_HEADER;
 import static org.folio.Constants.OKAPI_TOKEN_HEADER;
 
 public class FolioClient {
-  private final static Logger LOGGER = LogManager.getLogger();
+  private static final Logger LOGGER = LogManager.getLogger();
   OkHttpClient HTTP_CLIENT = new OkHttpClient();
 
   private final String TOKEN;
   private final Supplier<HttpUrl.Builder> baseUrlBuilderSupplier;
-
-  public FolioClient(Supplier<HttpUrl.Builder> baseUrlBuilderSupplier, String tenantId, String username, String password) {
-    this.baseUrlBuilderSupplier = baseUrlBuilderSupplier;
-
-    Optional<String> okapiToken = getOkapiToken(baseUrlBuilderSupplier.get(), tenantId, username, password);
-    if (okapiToken.isEmpty()) {
-      throw new RuntimeException("Could not get okapi token");
-    }
-    this.TOKEN = okapiToken.get();
-  }
 
   public FolioClient(Supplier<HttpUrl.Builder> baseUrlBuilderSupplier, String token) {
     this.baseUrlBuilderSupplier = baseUrlBuilderSupplier;

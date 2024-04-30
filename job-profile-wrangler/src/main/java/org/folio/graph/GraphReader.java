@@ -36,8 +36,8 @@ import static org.folio.graph.GraphWriter.DOT_FILE_PATTERN;
  * It uses the JGraphT library to represent and manipulate the graphs.
  */
 public class GraphReader {
-  private final static Logger LOGGER = LogManager.getLogger();
-  private final static DOTImporter<Profile, RegularEdge> DOT_IMPORTER = new DOTImporter<>();
+  private static final Logger LOGGER = LogManager.getLogger();
+  private static final DOTImporter<Profile, RegularEdge> DOT_IMPORTER = new DOTImporter<>();
 
   static {
     // Configure the DOTImporter to create vertices based on the "name" attribute
@@ -81,6 +81,8 @@ public class GraphReader {
       .orElse(new RegularEdge())
     ));
   }
+
+  private GraphReader() {}
 
   /**
    * Reads a graph from a DOT file specified by the repository path and ID.

@@ -20,16 +20,8 @@ public class ProfileDepthFirstIterator extends DepthFirstIterator<Profile, Regul
     return intComparator.compare(source1.getOrder(), source2.getOrder());
   };
 
-  public ProfileDepthFirstIterator(Graph<Profile, RegularEdge> g) {
-    super(g);
-  }
-
   public ProfileDepthFirstIterator(Graph<Profile, RegularEdge> g, Profile startVertex) {
     super(g, startVertex);
-  }
-
-  public ProfileDepthFirstIterator(Graph<Profile, RegularEdge> g, Iterable<Profile> startVertices) {
-    super(g, startVertices);
   }
 
   /**

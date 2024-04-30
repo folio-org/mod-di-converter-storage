@@ -67,6 +67,9 @@ public class GraphWriter {
     });
   }
 
+  private GraphWriter() {
+  }
+
   /**
    * Writes the graph to a DOT file in the specified repository path.
    * The file name is generated automatically based on the existing files in the repository.
