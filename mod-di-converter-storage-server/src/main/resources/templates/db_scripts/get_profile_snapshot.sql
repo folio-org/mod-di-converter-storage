@@ -15,6 +15,7 @@ RETURNS TABLE(snapshot json)
 				        CAST(NULL AS uuid) AS masterwrapperid,
                 pw.id AS detailwrapperid,
                 ''%s'' detail_type,
+                null AS master_type,
                 0 AS detail_order,
                 json_agg(job_profile.jsonb) detail,
                 null AS react_to
@@ -29,6 +30,7 @@ RETURNS TABLE(snapshot json)
                 associations_view.masterwrapperid AS masterwrapperid,
                 associations_view.detailwrapperid AS detailwrapperid,
                 associations_view.detail_type AS detail_type,
+                associations_view.detail_type AS master_type,
                 associations_view.detail_order AS detail_order,
                 associations_view.detail AS detail,
                 associations_view.react_to AS react_to

@@ -1,7 +1,9 @@
 package org.folio.dao.snapshot;
 
 import io.vertx.core.Future;
+import org.folio.rest.jaxrs.model.ProfileAssociation;
 import org.folio.rest.jaxrs.model.ProfileSnapshotWrapper;
+import org.folio.rest.jaxrs.model.ProfileType;
 
 import java.util.List;
 import java.util.Optional;
@@ -29,7 +31,7 @@ public interface ProfileSnapshotDao {
   Future<String> save(ProfileSnapshotWrapper entity, String tenantId);
 
   /**
-   * Returns the list of snapshot items, listed in hierarchical order
+   * Returns the list of snapshot associations, listed in hierarchical order
    *
    * @param profileId    profile uuid
    * @param profileType  profile type
@@ -37,5 +39,5 @@ public interface ProfileSnapshotDao {
    * @param tenantId     tenant id
    * @return list of the snapshot items
    */
-  Future<List<ProfileSnapshotItem>> getSnapshotItems(String profileId, ProfileSnapshotWrapper.ContentType profileType, String jobProfileId, String tenantId);
+  Future<List<ProfileAssociation>> getSnapshotAssociations(String profileId, ProfileType profileType, String jobProfileId, String tenantId);
 }

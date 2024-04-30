@@ -19,7 +19,7 @@ import java.util.Collections;
 import static org.folio.rest.impl.JobProfileTest.JOB_PROFILES_PATH;
 import static org.folio.rest.impl.snapshot.JobProfileSnapshotTest.PROFILE_SNAPSHOT_PATH;
 import static org.folio.rest.impl.snapshot.JobProfileSnapshotTest.PROFILE_TYPE_PARAM;
-import static org.folio.rest.jaxrs.model.ProfileSnapshotWrapper.ContentType.JOB_PROFILE;
+import static org.folio.rest.jaxrs.model.ProfileType.JOB_PROFILE;
 import static org.hamcrest.Matchers.is;
 
 @RunWith(VertxUnitRunner.class)

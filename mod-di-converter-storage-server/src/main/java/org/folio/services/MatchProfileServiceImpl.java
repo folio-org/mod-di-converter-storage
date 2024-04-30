@@ -8,6 +8,7 @@ import org.folio.rest.jaxrs.model.MatchProfileCollection;
 import org.folio.rest.jaxrs.model.MatchProfileUpdateDto;
 import org.folio.rest.jaxrs.model.ProfileAssociation;
 import org.folio.rest.jaxrs.model.ProfileSnapshotWrapper;
+import org.folio.rest.jaxrs.model.ProfileType;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
@@ -53,8 +54,8 @@ public class MatchProfileServiceImpl extends AbstractProfileService<MatchProfile
   }
 
   @Override
-  protected ProfileSnapshotWrapper.ContentType getProfileContentType() {
-    return ProfileSnapshotWrapper.ContentType.MATCH_PROFILE;
+  protected ProfileType getProfileContentType() {
+    return ProfileType.MATCH_PROFILE;
   }
 
   @Override

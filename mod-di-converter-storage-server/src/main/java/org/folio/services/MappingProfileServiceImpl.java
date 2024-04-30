@@ -11,7 +11,7 @@ import org.folio.rest.jaxrs.model.MappingProfileCollection;
 import org.folio.rest.jaxrs.model.MappingProfileUpdateDto;
 import org.folio.rest.jaxrs.model.ProfileAssociation;
 import org.folio.rest.jaxrs.model.ProfileSnapshotWrapper;
-import org.folio.rest.jaxrs.model.ProfileSnapshotWrapper.ContentType;
+import org.folio.rest.jaxrs.model.ProfileType;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
@@ -74,8 +74,8 @@ public class MappingProfileServiceImpl extends AbstractProfileService<MappingPro
   }
 
   @Override
-  protected ContentType getProfileContentType() {
-    return ContentType.MAPPING_PROFILE;
+  protected ProfileType getProfileContentType() {
+    return ProfileType.MAPPING_PROFILE;
   }
 
   @Override
@@ -122,8 +122,8 @@ public class MappingProfileServiceImpl extends AbstractProfileService<MappingPro
     List<Future<Boolean>> futures = profileDto.getAddedRelations().stream()
       .filter(profileAssociation -> profileAssociation.getMasterProfileType().equals(ACTION_PROFILE))
       .map(ProfileAssociation::getMasterWrapperId)
-      .map(actionProfileId -> profileAssociationService.deleteByMasterWrapperId(actionProfileId, ContentType.ACTION_PROFILE,
-        ContentType.MAPPING_PROFILE, tenantId))
+      .map(actionProfileId -> profileAssociationService.deleteByMasterWrapperId(actionProfileId, ProfileType.ACTION_PROFILE,
+        ProfileType.MAPPING_PROFILE, tenantId))
       .collect(Collectors.toList());
 
     return GenericCompositeFuture.all(futures)
