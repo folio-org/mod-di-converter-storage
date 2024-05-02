@@ -21,6 +21,7 @@ import static org.folio.rest.impl.ActionProfileTest.ACTION_PROFILES_PATH;
 import static org.folio.rest.impl.ActionProfileTest.ACTION_PROFILES_TABLE_NAME;
 import static org.folio.rest.impl.MatchProfileTest.MATCH_PROFILES_PATH;
 import static org.folio.rest.jaxrs.model.ActionProfile.Action.CREATE;
+import static org.folio.rest.jaxrs.model.ActionProfile.Action.MODIFY;
 import static org.folio.rest.jaxrs.model.ActionProfile.Action.UPDATE;
 import static org.folio.rest.jaxrs.model.ActionProfile.FolioRecord.INSTANCE;
 import static org.folio.rest.jaxrs.model.ActionProfile.FolioRecord.MARC_BIBLIOGRAPHIC;
@@ -314,7 +315,7 @@ public class JobProfileTest extends AbstractRestVerticleTest {
   }
 
   @Test
-  public void shouldReturnBadRequestOnPostJobProfileWithInvalidActionProfileRelation() {
+  public void shouldReturnBadRequestOnPostJobProfileWithUpdateActionProfileWithoutMatchProfile() {
     var actionProfileId = UUID.randomUUID().toString();
     var jobId = UUID.randomUUID().toString();
 
@@ -354,6 +355,108 @@ public class JobProfileTest extends AbstractRestVerticleTest {
         hasEntry(is("message"),
           is(String.format("ActionProfile with id '%s' and action UPDATE requires linked MatchProfile", actionProfileId)))
         ));
+  }
+
+  @Test
+  public void shouldReturnBadRequestOnPostJobProfileWithStandaloneModifyAction() {
+    var actionProfileId = UUID.randomUUID().toString();
+    var jobId = UUID.randomUUID().toString();
+
+    RestAssured.given()
+      .spec(spec)
+      .body(new ActionProfileUpdateDto()
+        .withProfile(new ActionProfile().withName("testAction")
+          .withAction(MODIFY)
+          .withFolioRecord(MARC_BIBLIOGRAPHIC)
+          .withId(actionProfileId)))
+      .when()
+      .post(ACTION_PROFILES_PATH)
+      .then()
+      .statusCode(HttpStatus.SC_CREATED);
+
+    var invalidAssociation = new ProfileAssociation()
+      .withDetailProfileType(ProfileType.ACTION_PROFILE)
+      .withDetailProfileId(actionProfileId)
+      .withMasterProfileType(ProfileType.JOB_PROFILE)
+      .withMasterProfileId(jobId);
+
+    RestAssured.given()
+      .spec(spec)
+      .body(new JobProfileUpdateDto()
+        .withProfile(new JobProfile()
+          .withId(jobId)
+          .withName("testJob")
+          .withDataType(MARC))
+        .withAddedRelations(List.of(invalidAssociation))
+      )
+      .when()
+      .post(JOB_PROFILES_PATH)
+      .then()
+      .statusCode(HttpStatus.SC_UNPROCESSABLE_ENTITY)
+      .body("errors", hasItem(
+        hasEntry(is("message"),
+          is("Modify action cannot be used as a standalone action"))
+      ));
+  }
+
+  @Test
+  public void shouldReturnBadRequestOnPostJobProfileWithStandaloneModifyActionAfterMatch() {
+    var actionProfileId = UUID.randomUUID().toString();
+    var matchProfileId = UUID.randomUUID().toString();
+    var jobId = UUID.randomUUID().toString();
+
+    RestAssured.given()
+      .spec(spec)
+      .body(new MatchProfileUpdateDto()
+        .withProfile(new MatchProfile()
+          .withId(matchProfileId)
+          .withName("testMatch")
+          .withIncomingRecordType(EntityType.MARC_BIBLIOGRAPHIC)
+          .withExistingRecordType(EntityType.INSTANCE)))
+      .when()
+      .post(MATCH_PROFILES_PATH);
+
+    RestAssured.given()
+      .spec(spec)
+      .body(new ActionProfileUpdateDto()
+        .withProfile(new ActionProfile().withName("testAction")
+          .withAction(MODIFY)
+          .withFolioRecord(MARC_BIBLIOGRAPHIC)
+          .withId(actionProfileId)))
+      .when()
+      .post(ACTION_PROFILES_PATH)
+      .then()
+      .statusCode(HttpStatus.SC_CREATED);
+
+    var invalidAssociationActionToMatch = new ProfileAssociation()
+      .withDetailProfileType(ProfileType.ACTION_PROFILE)
+      .withDetailProfileId(actionProfileId)
+      .withMasterProfileType(ProfileType.MATCH_PROFILE)
+      .withMasterProfileId(matchProfileId);
+
+    var invalidAssociationMatchToJobProfile = new ProfileAssociation()
+      .withDetailProfileType(ProfileType.MATCH_PROFILE)
+      .withDetailProfileId(matchProfileId)
+      .withMasterProfileType(ProfileType.JOB_PROFILE)
+      .withMasterProfileId(jobId);
+
+    RestAssured.given()
+      .spec(spec)
+      .body(new JobProfileUpdateDto()
+        .withProfile(new JobProfile()
+          .withId(jobId)
+          .withName("testJob")
+          .withDataType(MARC))
+        .withAddedRelations(List.of(invalidAssociationMatchToJobProfile, invalidAssociationActionToMatch))
+      )
+      .when()
+      .post(JOB_PROFILES_PATH)
+      .then()
+      .statusCode(HttpStatus.SC_UNPROCESSABLE_ENTITY)
+      .body("errors", hasItem(
+        hasEntry(is("message"),
+          is("Modify action cannot be used right after a Match"))
+      ));
   }
 
   @Test
@@ -950,7 +1053,7 @@ public class JobProfileTest extends AbstractRestVerticleTest {
   }
 
   @Test
-  public void shouldReturnBadRequestOnPutWithInvalidAddedRelation() {
+  public void shouldReturnBadRequestOnPutWithUpdateActionProfileWithoutMatchProfile() {
     var actionProfileId = UUID.randomUUID().toString();
 
     var jobProfile = new JobProfileUpdateDto()
@@ -997,6 +1100,124 @@ public class JobProfileTest extends AbstractRestVerticleTest {
       .body("errors", hasItem(
         hasEntry(is("message"),
           is(String.format("ActionProfile with id '%s' and action UPDATE requires linked MatchProfile", actionProfileId)))
+      ));
+  }
+
+  @Test
+  public void shouldReturnBadRequestOnPutWithStandaloneModifyAction() {
+    var actionProfileId = UUID.randomUUID().toString();
+
+    var jobProfile = new JobProfileUpdateDto()
+      .withProfile(new JobProfile()
+        .withName("Bla")
+        .withTags(new Tags().withTagList(Arrays.asList("lorem", "ipsum", "dolor")))
+        .withDataType(MARC));
+
+    RestAssured.given()
+      .spec(spec)
+      .body(new ActionProfileUpdateDto()
+        .withProfile(new ActionProfile().withName("testAction")
+          .withAction(MODIFY)
+          .withFolioRecord(MARC_BIBLIOGRAPHIC)
+          .withId(actionProfileId)))
+      .when()
+      .post(ACTION_PROFILES_PATH)
+      .then()
+      .statusCode(HttpStatus.SC_CREATED);
+
+    var invalidAssociation = new ProfileAssociation()
+      .withDetailProfileType(ProfileType.ACTION_PROFILE)
+      .withDetailProfileId(actionProfileId)
+      .withMasterProfileType(ProfileType.JOB_PROFILE)
+      .withMasterProfileId(jobProfile.getId());
+
+    var jobProfileToUpdate = RestAssured.given()
+      .spec(spec)
+      .body(jobProfile)
+      .when()
+      .post(JOB_PROFILES_PATH)
+      .then()
+      .statusCode(HttpStatus.SC_CREATED)
+      .extract().as(JobProfileUpdateDto.class);
+
+    RestAssured.given()
+      .spec(spec)
+      .body(jobProfileToUpdate.withAddedRelations(List.of(invalidAssociation)))
+      .when()
+      .put(JOB_PROFILES_PATH + "/" + jobProfile.getProfile().getId())
+      .then()
+      .statusCode(HttpStatus.SC_UNPROCESSABLE_ENTITY)
+      .body("errors", hasItem(
+        hasEntry(is("message"),
+          is("Modify action cannot be used as a standalone action"))
+      ));
+  }
+
+  @Test
+  public void shouldReturnBadRequestOnPutWithStandaloneModifyActionAfterMatch() {
+    var actionProfileId = UUID.randomUUID().toString();
+    var matchProfileId = UUID.randomUUID().toString();
+
+    var jobProfile = new JobProfileUpdateDto()
+      .withProfile(new JobProfile()
+        .withName("Bla")
+        .withTags(new Tags().withTagList(Arrays.asList("lorem", "ipsum", "dolor")))
+        .withDataType(MARC));
+
+    RestAssured.given()
+      .spec(spec)
+      .body(new MatchProfileUpdateDto()
+        .withProfile(new MatchProfile()
+          .withId(matchProfileId)
+          .withName("testMatch")
+          .withIncomingRecordType(EntityType.MARC_BIBLIOGRAPHIC)
+          .withExistingRecordType(EntityType.INSTANCE)))
+      .when()
+      .post(MATCH_PROFILES_PATH);
+
+    RestAssured.given()
+      .spec(spec)
+      .body(new ActionProfileUpdateDto()
+        .withProfile(new ActionProfile().withName("testAction")
+          .withAction(MODIFY)
+          .withFolioRecord(MARC_BIBLIOGRAPHIC)
+          .withId(actionProfileId)))
+      .when()
+      .post(ACTION_PROFILES_PATH)
+      .then()
+      .statusCode(HttpStatus.SC_CREATED);
+
+    var invalidAssociationActionToMatch = new ProfileAssociation()
+      .withDetailProfileType(ProfileType.ACTION_PROFILE)
+      .withDetailProfileId(actionProfileId)
+      .withMasterProfileType(ProfileType.MATCH_PROFILE)
+      .withMasterProfileId(matchProfileId);
+
+    var invalidAssociationMatchToJobProfile = new ProfileAssociation()
+      .withDetailProfileType(ProfileType.MATCH_PROFILE)
+      .withDetailProfileId(matchProfileId)
+      .withMasterProfileType(ProfileType.JOB_PROFILE)
+      .withMasterProfileId(jobProfile.getId());
+
+    var jobProfileToUpdate = RestAssured.given()
+      .spec(spec)
+      .body(jobProfile)
+      .when()
+      .post(JOB_PROFILES_PATH)
+      .then()
+      .statusCode(HttpStatus.SC_CREATED)
+      .extract().as(JobProfileUpdateDto.class);
+
+    RestAssured.given()
+      .spec(spec)
+      .body(jobProfileToUpdate.withAddedRelations(List.of(invalidAssociationMatchToJobProfile, invalidAssociationActionToMatch)))
+      .when()
+      .put(JOB_PROFILES_PATH + "/" + jobProfile.getProfile().getId())
+      .then()
+      .statusCode(HttpStatus.SC_UNPROCESSABLE_ENTITY)
+      .body("errors", hasItem(
+        hasEntry(is("message"),
+          is("Modify action cannot be used right after a Match"))
       ));
   }
 
