@@ -86,6 +86,9 @@ public class DataImportProfilesImpl implements DataImportProfiles {
     "Please ensure your Action and Mapping profiles are of like types and try again.";
   private static final String INVALID_ACTION_PROFILE_ACTION_TYPE = "Can't create ActionProfile for MARC Bib record type with Create action";
   private static final String INVALID_ACTION_PROFILE_LINKED_TO_JOB_PROFILE = "ActionProfile with id '%s' and action UPDATE requires linked MatchProfile";
+  private static final String LINKED_ACTION_PROFILES_WERE_NOT_FOUND = "Linked ActionProfiles with ids %s were not found";
+  private static final String MODIFY_ACTION_CANNOT_BE_USED_RIGHT_AFTER_THE_MATCH = "Modify action cannot be used right after a Match";
+  private static final String MODIFY_ACTION_CANNOT_BE_USED_AS_A_STANDALONE_ACTION = "Modify action cannot be used as a standalone action";
 
   static final Map<String, String> ERROR_CODES_TYPES_RELATION = Map.of(
     "mappingProfile", "The field mapping profile",
@@ -946,38 +949,66 @@ public class DataImportProfilesImpl implements DataImportProfiles {
 
   private Future<Errors> validateJobProfileLinkedActionProfiles(JobProfileUpdateDto jobProfileUpdateDto) {
     logger.debug("validateJobProfileLinkedActionProfiles:: Validating ActionProfiles added to JobProfile {}", jobProfileUpdateDto.getProfile().getId());
-
-    Promise<Errors> promise = Promise.promise();
     List<Error> errors = new LinkedList<>();
 
-    var actionToParentProfileTypes = addedActionToMasterProfileTypes(jobProfileUpdateDto);
-    var actionIds = new ArrayList<>(actionToParentProfileTypes.keySet());
-    var futures = actionIds.stream()
+    var actionProfileAssociations = addedActionProfileAssociations(jobProfileUpdateDto);
+    var actionProfileIds = actionProfileAssociations.stream().map(ProfileAssociation::getDetailProfileId).toList();
+    var getProfileFutures = actionProfileIds.stream()
       .map(id -> actionProfileService.getProfileById(id, false, tenantId))
       .collect(Collectors.toList());
 
-    GenericCompositeFuture.all(futures)
-      .map(it -> zipWithIndex(it.result().<Optional<ActionProfile>>list()))
-      .onSuccess(entries -> {
-        var notFoundedIds = new ArrayList<String>();
-        entries.forEach(entry -> entry.getValue().ifPresentOrElse(profile -> {
-            if (!isLinkedActionProfileValid(profile, actionToParentProfileTypes.get(profile.getId()))) {
-              logger.warn("validateJobProfileLinkedActionProfiles:: Missing linked MatchProfile for ActionProfile {} with action UPDATE", actionIds.get(entry.getKey()));
-              errors.add(new Error().withMessage(String.format(INVALID_ACTION_PROFILE_LINKED_TO_JOB_PROFILE, actionIds.get(entry.getKey()))));
-            }
-          }, () -> notFoundedIds.add(String.format("'%s'", actionIds.get(entry.getKey()))))
-        );
-        if (notFoundedIds.isEmpty()) {
-          promise.complete(new Errors().withErrors(errors).withTotalRecords(errors.size()));
-        } else {
+    return GenericCompositeFuture.all(getProfileFutures)
+      .compose(actionProfiles -> {
+        List<ActionProfile> existingActionProfiles = actionProfiles.result().<Optional<ActionProfile>>list().stream()
+          .filter(Optional::isPresent).map(Optional::get).toList();
+
+        var existingActionProfilesIds = existingActionProfiles.stream().map(ActionProfile::getId).toList();
+        var notFoundedIds = actionProfileIds.stream()
+          .filter(id -> !existingActionProfilesIds.contains(id))
+          .map(notFoundedId -> String.format("'%s'", notFoundedId)).toList();
+
+        if (!notFoundedIds.isEmpty()) {
           var idStr = String.join(", ", notFoundedIds);
           logger.warn("validateJobProfileLinkedActionProfiles:: Linked ActionProfiles with ids {} not founded", idStr);
-          promise.fail(new NotFoundException((String.format("Linked ActionProfiles with ids %s were not found", idStr))));
+          return Future.failedFuture(new NotFoundException((String.format(LINKED_ACTION_PROFILES_WERE_NOT_FOUND, idStr))));
         }
+        return Future.succeededFuture(existingActionProfiles);
       })
-      .onFailure(promise::fail);
+      .compose(actionProfiles -> {
+        actionProfileAssociations.forEach(association -> {
+          ActionProfile actionProfile = actionProfiles.stream()
+            .filter(profile -> profile.getId().equals(association.getDetailProfileId()))
+            .findAny().orElseThrow(() -> new NotFoundException(String.format(LINKED_ACTION_PROFILES_WERE_NOT_FOUND, association.getDetailProfileId())));
 
-    return promise.future();
+          if (actionProfile.getAction() == ActionProfile.Action.UPDATE) {
+            validateAddedUpdateActionProfileAssociation(association, actionProfile, errors);
+          }
+          if (actionProfile.getAction() == ActionProfile.Action.MODIFY) {
+            validateAddedModifyActionProfileAssociation(jobProfileUpdateDto, association, actionProfile, errors);
+          }
+        });
+        return Future.succeededFuture(new Errors().withErrors(errors).withTotalRecords(errors.size()));
+      });
+  }
+
+  private static void validateAddedModifyActionProfileAssociation(JobProfileUpdateDto jobProfileUpdateDto, ProfileAssociation association, ActionProfile actionProfile, List<Error> errors) {
+    if (association.getMasterProfileType() == ProfileType.JOB_PROFILE && association.getOrder() == 0
+      && jobProfileUpdateDto.getAddedRelations().size() == 1) {
+      logger.warn("validateAddedModifyActionProfileAssociation:: Modify profile with id {}, used as standalone action", actionProfile.getId());
+      errors.add(new Error().withMessage(MODIFY_ACTION_CANNOT_BE_USED_AS_A_STANDALONE_ACTION));
+
+    }
+    if (association.getMasterProfileType() == ProfileType.MATCH_PROFILE && association.getOrder() == 0) {
+      logger.warn("validateAddedModifyActionProfileAssociation:: Modify profile with id {}, used right after Match profile", actionProfile.getId());
+      errors.add(new Error().withMessage(MODIFY_ACTION_CANNOT_BE_USED_RIGHT_AFTER_THE_MATCH));
+    }
+  }
+
+  private static void validateAddedUpdateActionProfileAssociation(ProfileAssociation association, ActionProfile actionProfile, List<Error> errors) {
+    if (association.getMasterProfileType() != ProfileType.MATCH_PROFILE) {
+      logger.warn("validateAddedUpdateActionProfileAssociation:: Missing linked MatchProfile for ActionProfile {} with action UPDATE", actionProfile.getId());
+      errors.add(new Error().withMessage(String.format(INVALID_ACTION_PROFILE_LINKED_TO_JOB_PROFILE, actionProfile.getId())));
+    }
   }
 
   private List<String> addedProfileIdsByType(JobProfileUpdateDto jobProfileUpdateDto, ProfileType type) {
@@ -991,28 +1022,10 @@ public class DataImportProfilesImpl implements DataImportProfiles {
       .collect(Collectors.toList());
   }
 
-  private Map<String, List<ProfileType>> addedActionToMasterProfileTypes(JobProfileUpdateDto jobProfileUpdateDto) {
+  private List<ProfileAssociation> addedActionProfileAssociations(JobProfileUpdateDto jobProfileUpdateDto) {
     return jobProfileUpdateDto.getAddedRelations()
       .stream()
-      .filter(association -> association.getDetailProfileType() == ProfileType.ACTION_PROFILE)
-      .map(association -> new AbstractMap.SimpleEntry<>(association.getDetailProfileId(), List.of(association.getMasterProfileType())))
-      .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue,
-        (oldList, newList) -> {
-          var combinedList = new ArrayList<>(oldList);
-          combinedList.addAll(newList);
-          return combinedList;
-        },
-        LinkedHashMap::new
-      ));
-  }
-
-  private boolean isLinkedActionProfileValid(ActionProfile actionProfile, List<ProfileType> masterProfileTypes) {
-    if (actionProfile.getAction() == ActionProfile.Action.UPDATE) {
-      return masterProfileTypes
-        .stream()
-        .allMatch(it -> it.equals(ProfileType.MATCH_PROFILE));
-    }
-    return true;
+      .filter(association -> association.getDetailProfileType() == ProfileType.ACTION_PROFILE).toList();
   }
 
   private <T> List<Map.Entry<Integer, T>> zipWithIndex(List<T> list) {
