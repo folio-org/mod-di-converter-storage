@@ -96,23 +96,20 @@ public class ProfileSnapshotServiceImpl implements ProfileSnapshotService {
   @Override
   public Future<ProfileSnapshotWrapper> constructSnapshot(String profileId, ProfileType profileType, String jobProfileId, String tenantId) {
     return getSnapshotAssociations(profileId, profileType, jobProfileId, tenantId)
+      .compose(snapshotAssociations -> {
+        if (CollectionUtils.isEmpty(snapshotAssociations)) {
+          String errorMessage = "getSnapshotAssociations:: Cannot build snapshot for Profile " + profileId;
+          LOGGER.warn(errorMessage);
+          return Future.failedFuture(errorMessage);
+        }
+        return Future.succeededFuture(snapshotAssociations);
+      })
       .compose(snapshotAssociations -> Future.succeededFuture(buildSnapshot(snapshotAssociations)));
   }
 
   @Override
   public Future<List<ProfileAssociation>> getSnapshotAssociations(String profileId, ProfileType profileType, String jobProfileId, String tenantId) {
-    Promise<List<ProfileAssociation>> promise = Promise.promise();
-    return profileSnapshotDao.getSnapshotAssociations(profileId, profileType, jobProfileId, tenantId)
-      .compose(snapshotAssociations -> {
-        if (CollectionUtils.isEmpty(snapshotAssociations)) {
-          String errorMessage = "getSnapshotAssociations:: Cannot build snapshot for Profile " + profileId;
-          LOGGER.warn(errorMessage);
-          promise.fail(errorMessage);
-        } else {
-          promise.complete(snapshotAssociations);
-        }
-        return promise.future();
-      });
+    return profileSnapshotDao.getSnapshotAssociations(profileId, profileType, jobProfileId, tenantId);
   }
 
   /**

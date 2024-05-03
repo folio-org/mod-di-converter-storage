@@ -30,7 +30,7 @@ RETURNS TABLE(snapshot json)
                 associations_view.masterwrapperid AS masterwrapperid,
                 associations_view.detailwrapperid AS detailwrapperid,
                 associations_view.detail_type AS detail_type,
-                associations_view.detail_type AS master_type,
+                associations_view.master_type AS master_type,
                 associations_view.detail_order AS detail_order,
                 associations_view.detail AS detail,
                 associations_view.react_to AS react_to
