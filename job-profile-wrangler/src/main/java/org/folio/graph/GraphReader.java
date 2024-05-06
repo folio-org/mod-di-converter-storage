@@ -58,7 +58,7 @@ public class GraphReader {
           return MappingProfileNode.fromAttributes(id, normalAttrs);
         }
         default -> {
-          LOGGER.error("Unrecognized profile: '{}'", normalAttrs);
+          LOGGER.warn("Unrecognized profile: '{}' id={}", normalAttrs, id);
           return null;
         }
       }
@@ -93,9 +93,9 @@ public class GraphReader {
    */
   public static Graph<Profile, RegularEdge> read(String repoPath, int id) {
     Path filePath = Paths.get(repoPath, GraphWriter.genGraphFileName(id));
-    Graph<Profile, RegularEdge> g = new SimpleDirectedGraph<>(RegularEdge.class);
-    DOT_IMPORTER.importGraph(g, filePath.toFile());
-    return g;
+    Graph<Profile, RegularEdge> simpleGraph = new SimpleDirectedGraph<>(RegularEdge.class);
+    DOT_IMPORTER.importGraph(simpleGraph, filePath.toFile());
+    return simpleGraph;
   }
 
   /**
@@ -115,7 +115,7 @@ public class GraphReader {
           graphs.add(g);
         });
     } catch (IOException e) {
-      LOGGER.error("An error occurred while reading the directory.", e);
+      LOGGER.error("readAll: An error occurred while reading the directory.", e);
     }
 
     return graphs;
@@ -147,7 +147,7 @@ public class GraphReader {
             String repoId = matcher.group(1);
             return new RepoObject(Integer.parseInt(repoId), pair.getRight());
           } else {
-            LOGGER.error("Invalid format: {}", fileName);
+            LOGGER.error("search: invalid format {}", fileName);
             return null;
           }
         });
