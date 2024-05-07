@@ -49,7 +49,7 @@ public interface ProfileSnapshotService {
    * @param profileType  profile type
    * @param jobProfileId job profile id
    * @param tenantId     tenant id
-   * @return future with snapshot {@link ProfileSnapshotWrapper}
+   * @return future with list of associations {@link ProfileAssociation}
    */
   Future<List<ProfileAssociation>> getSnapshotAssociations(String profileId, ProfileType profileType, String jobProfileId, String tenantId);
 }

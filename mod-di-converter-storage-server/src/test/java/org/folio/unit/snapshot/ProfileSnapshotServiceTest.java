@@ -323,6 +323,25 @@ public class ProfileSnapshotServiceTest extends AbstractUnitTest {
     });
   }
 
+  @Test
+  public void shouldReturnSnapshotAssociations(TestContext testContext) {
+    Async async = testContext.async();
+    // given
+    ProfileSnapshotDao mockDao = Mockito.mock(ProfileSnapshotDaoImpl.class);
+    ProfileSnapshotService service = new ProfileSnapshotServiceImpl(mockDao);
+
+    Mockito.when(mockDao.getSnapshotAssociations(jobProfile.getId(), JOB_PROFILE, jobProfile.getId(), TENANT_ID)).thenReturn(Future.succeededFuture(associations));
+
+    // when
+    service.getSnapshotAssociations(jobProfile.getId(), JOB_PROFILE, jobProfile.getId(), TENANT_ID).onComplete(ar -> {
+      // then
+      testContext.assertTrue(ar.succeeded());
+      List<ProfileAssociation> profileAssociations = ar.result();
+      testContext.assertEquals(profileAssociations, associations);
+      async.complete();
+    });
+  }
+
   private void assertExpectedChildOnActualChild(ProfileSnapshotWrapper expected, ProfileSnapshotWrapper actual, TestContext context) {
     context.assertEquals(expected.getId(), actual.getId());
     context.assertEquals(expected.getContentType(), actual.getContentType());

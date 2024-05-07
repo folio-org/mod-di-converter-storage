@@ -98,7 +98,7 @@ public class ProfileSnapshotServiceImpl implements ProfileSnapshotService {
     return getSnapshotAssociations(profileId, profileType, jobProfileId, tenantId)
       .compose(snapshotAssociations -> {
         if (CollectionUtils.isEmpty(snapshotAssociations)) {
-          String errorMessage = "getSnapshotAssociations:: Cannot build snapshot for Profile " + profileId;
+          String errorMessage = "constructSnapshot:: Cannot build snapshot for Profile " + profileId;
           LOGGER.warn(errorMessage);
           return Future.failedFuture(errorMessage);
         }
@@ -113,9 +113,9 @@ public class ProfileSnapshotServiceImpl implements ProfileSnapshotService {
   }
 
   /**
-   * Creates ProfileSnapshotWrapper traversing through collection of profile snapshot items.
+   * Creates ProfileSnapshotWrapper traversing through collection of profile associations.
    *
-   * @param snapshotAssociations list of snapshot items (rows)
+   * @param snapshotAssociations list of profile associations (rows)
    * @return root snapshot (ProfileSnapshotWrapper) with child items (ChildSnapshotWrapper) inside
    */
   private ProfileSnapshotWrapper buildSnapshot(List<ProfileAssociation> snapshotAssociations) {
@@ -149,7 +149,7 @@ public class ProfileSnapshotServiceImpl implements ProfileSnapshotService {
    *
    * @param parentWrapperId      parent wrapper profile id
    * @param childWrappers collection of child snapshot wrappers linked to given parent id
-   * @param snapshotAssociations collection of snapshot items
+   * @param snapshotAssociations collection of profile associations
    */
   private void fillChildSnapshotWrappers(String parentWrapperId, List<ProfileSnapshotWrapper> childWrappers, List<ProfileAssociation> snapshotAssociations) {
     if (parentWrapperId != null) {
