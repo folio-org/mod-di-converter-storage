@@ -1003,23 +1003,31 @@ public class DataImportProfilesImpl implements DataImportProfiles {
             validateAddedUpdateActionProfileAssociation(association, actionProfile, errors);
           }
           if (actionProfile.getAction() == ActionProfile.Action.MODIFY) {
-            validateAddedModifyActionProfileAssociation(profileAssociations, association, actionProfile, errors);
+            validateAddedModifyActionProfileAssociation(profileAssociations, association, actionProfile, actionProfiles, errors);
           }
         });
         return Future.succeededFuture(new Errors().withErrors(errors).withTotalRecords(errors.size()));
       });
   }
 
-  private static void validateAddedModifyActionProfileAssociation(List<ProfileAssociation> profileAssociations, ProfileAssociation association, ActionProfile actionProfile, List<Error> errors) {
-    if (association.getMasterProfileType() == ProfileType.JOB_PROFILE && profileAssociations.size() == 1) {
+  private static void validateAddedModifyActionProfileAssociation(List<ProfileAssociation> profileAssociations, ProfileAssociation association, ActionProfile actionProfile,
+                                                                  List<ActionProfile> actionProfiles, List<Error> errors) {
+    List<ProfileAssociation> notModifyProfileAssociations = getNotModifyProfileAssociations(profileAssociations, actionProfiles);
+
+    if (association.getMasterProfileType() == ProfileType.JOB_PROFILE && notModifyProfileAssociations.isEmpty()) {
       logger.warn("validateAddedModifyActionProfileAssociation:: Modify profile with id {}, used as standalone action", actionProfile.getId());
       errors.add(new Error().withMessage(MODIFY_ACTION_CANNOT_BE_USED_AS_A_STANDALONE_ACTION));
-
     }
+
     if (association.getMasterProfileType() == ProfileType.MATCH_PROFILE && isFirstAtMatchBlock(profileAssociations, association)) {
       logger.warn("validateAddedModifyActionProfileAssociation:: Modify profile with id {}, used right after Match profile", actionProfile.getId());
       errors.add(new Error().withMessage(MODIFY_ACTION_CANNOT_BE_USED_RIGHT_AFTER_THE_MATCH));
     }
+  }
+
+  private static List<ProfileAssociation> getNotModifyProfileAssociations(List<ProfileAssociation> profileAssociations, List<ActionProfile> actionProfiles) {
+    List<String> modifyActionProfileIds = actionProfiles.stream().filter(a -> a.getAction() == ActionProfile.Action.MODIFY).map(ActionProfile::getId).toList();
+    return profileAssociations.stream().filter(p -> !modifyActionProfileIds.contains(p.getDetailProfileId())).toList();
   }
 
   private static boolean isFirstAtMatchBlock(List<ProfileAssociation> profileAssociations, ProfileAssociation association) {

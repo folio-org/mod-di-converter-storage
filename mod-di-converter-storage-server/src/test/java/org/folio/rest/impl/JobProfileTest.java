@@ -416,6 +416,80 @@ public class JobProfileTest extends AbstractRestVerticleTest {
   }
 
   @Test
+  public void shouldReturnBadRequestOnPostJobProfileWithTwoModifyActions() {
+    var actionProfileId = UUID.randomUUID().toString();
+    var jobId = UUID.randomUUID().toString();
+
+    ActionProfileUpdateDto actionProfileModify = RestAssured.given()
+      .spec(spec)
+      .body(new ActionProfileUpdateDto()
+        .withProfile(new ActionProfile().withName("testActionModify")
+          .withAction(MODIFY)
+          .withFolioRecord(MARC_BIBLIOGRAPHIC)
+          .withId(actionProfileId)))
+      .when()
+      .post(ACTION_PROFILES_PATH)
+      .then()
+      .statusCode(HttpStatus.SC_CREATED)
+      .extract().as(ActionProfileUpdateDto.class);
+
+    String mappingProfileIdModify = UUID.randomUUID().toString();
+    MappingProfileUpdateDto mappingProfileModify = RestAssured.given()
+      .spec(spec)
+      .body(new MappingProfileUpdateDto()
+        .withProfile(new MappingProfile().withName("testModify")
+          .withId(mappingProfileIdModify)
+          .withIncomingRecordType(EntityType.MARC_BIBLIOGRAPHIC)
+          .withExistingRecordType(EntityType.MARC_BIBLIOGRAPHIC))
+        .withAddedRelations(
+          List.of(
+            new ProfileAssociation()
+              .withMasterProfileId(actionProfileModify.getId())
+              .withDetailProfileId(mappingProfileIdModify)
+              .withMasterProfileType(ACTION_PROFILE)
+              .withDetailProfileType(ProfileType.MAPPING_PROFILE)
+              .withOrder(0))))
+      .when()
+      .post(MAPPING_PROFILES_PATH)
+      .then()
+      .statusCode(HttpStatus.SC_CREATED)
+      .extract().as(MappingProfileUpdateDto.class);
+
+    var invalidAssociation1 = new ProfileAssociation()
+      .withDetailProfileType(ACTION_PROFILE)
+      .withDetailProfileId(actionProfileModify.getId())
+      .withMasterProfileType(JOB_PROFILE)
+      .withMasterProfileId(jobId)
+      .withOrder(0);
+
+    var invalidAssociation2 = new ProfileAssociation()
+      .withDetailProfileType(ACTION_PROFILE)
+      .withDetailProfileId(actionProfileModify.getId())
+      .withMasterProfileType(JOB_PROFILE)
+      .withMasterProfileId(jobId)
+      .withOrder(2);
+
+    RestAssured.given()
+      .spec(spec)
+      .body(new JobProfileUpdateDto()
+        .withProfile(new JobProfile()
+          .withId(jobId)
+          .withName("testJob")
+          .withDataType(MARC))
+        .withAddedRelations(List.of(invalidAssociation1, invalidAssociation2))
+      )
+      .when()
+      .post(JOB_PROFILES_PATH)
+      .then()
+      .statusCode(HttpStatus.SC_UNPROCESSABLE_ENTITY)
+      .body("errors", hasItem(
+        hasEntry(is("message"),
+          is("Modify action cannot be used as a standalone action"))
+      ));
+  }
+
+
+  @Test
   public void shouldReturnBadRequestOnPutJobProfileWithStandaloneModifyAction() {
     var actionProfileIdCreate = UUID.randomUUID().toString();
     var actionProfileIdModify = UUID.randomUUID().toString();
