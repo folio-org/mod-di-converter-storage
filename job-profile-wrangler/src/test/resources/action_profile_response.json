@@ -1,0 +1,37 @@
+{
+  "id" : "29f0b8a9-422d-4e6d-9963-2357d7c3e28d",
+  "profile" : {
+    "id" : "29f0b8a9-422d-4e6d-9963-2357d7c3e28d",
+    "name" : "test",
+    "description" : "",
+    "action" : "CREATE",
+    "folioRecord" : "INSTANCE",
+    "deleted" : false,
+    "userInfo" : {
+      "firstName" : "DIKU",
+      "lastName" : "ADMINISTRATOR",
+      "userName" : "diku_admin"
+    },
+    "parentProfiles" : [ ],
+    "childProfiles" : [ ],
+    "hidden" : false,
+    "remove9Subfields" : true,
+    "metadata" : {
+      "createdDate" : "2024-04-30T16:17:32.087+00:00",
+      "createdByUserId" : "5da3f1dc-5463-58c4-b24f-bb2f7f9a02e8",
+      "updatedDate" : "2024-04-30T16:17:32.087+00:00",
+      "updatedByUserId" : "5da3f1dc-5463-58c4-b24f-bb2f7f9a02e8"
+    }
+  },
+  "addedRelations" : [ {
+    "masterProfileId" : "29f0b8a9-422d-4e6d-9963-2357d7c3e28d",
+    "detailProfileId" : "bf7b3b86-9b84-11eb-a8b3-0242ac130003",
+    "order" : 0,
+    "triggered" : false,
+    "masterProfileType" : "ACTION_PROFILE",
+    "detailProfileType" : "MAPPING_PROFILE",
+    "masterWrapperId" : "92f33896-27d3-429d-91a0-57e8ebd3d159",
+    "detailWrapperId" : "de1ae19f-6177-418d-ac79-9a5cdc5db6b0"
+  } ],
+  "deletedRelations" : [ ]
+}
