@@ -307,6 +307,35 @@
       "tableName": "metadata_internal",
       "fromModuleVersion": "mod-di-converter-storage-2.1.8",
       "withMetadata": true
+    },
+    {
+      "tableName": "associations",
+      "fromModuleVersion": "mod-di-converter-storage-2.3.0-SNAPSHOT",
+      "withMetadata": true,
+      "foreignKeys": [
+        {
+          "fieldName": "masterWrapperId",
+          "targetTable": "profile_wrappers",
+          "tOps": "ADD"
+        },
+        {
+          "fieldName": "detailWrapperId",
+          "targetTable": "profile_wrappers",
+          "tOps": "ADD"
+        }
+      ],
+      "index": [
+        {
+          "fieldName": "masterProfileId",
+          "tOps": "ADD",
+          "removeAccents": false
+        },
+        {
+          "fieldName": "detailProfileId",
+          "tOps": "ADD",
+          "removeAccents": false
+        }
+      ]
     }
   ],
   "scripts": [
@@ -424,6 +453,16 @@
       "run": "after",
       "snippetPath": "manipulate_ecs_profile_wrappers.sql",
       "fromModuleVersion": "mod-di-converter-storage-2.2.1"
+    },
+    {
+      "run": "after",
+      "snipper": "ALTER TABLE associations ADD IF NOT EXISTS order INT DEFAULT 0;",
+      "fromModuleVersion": "mod-di-converter-storage-2.3.0-SNAPSHOT"
+    },
+    {
+      "run": "after",
+      "snipperPath": "data-migration/populate_associations.sql",
+      "fromModuleVersion": "mod-di-converter-storage-2.3.0-SNAPSHOT"
     }
   ]
 }
