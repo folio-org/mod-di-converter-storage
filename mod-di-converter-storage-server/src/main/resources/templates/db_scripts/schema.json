@@ -312,71 +312,7 @@
       "tableName": "associations",
       "fromModuleVersion": "mod-di-converter-storage-2.3.0-SNAPSHOT",
       "withMetadata": false,
-      "customSnippetPath": "associations-migration/associations_table.sql",
-      "fields": [
-        {
-          "fieldName": "id",
-          "tOps": "ADD",
-          "format": "uuid",
-          "fieldPath": "id"
-        },
-        {
-          "fieldName": "masterWrapperId",
-          "tOps": "ADD",
-          "format": "uuid",
-          "fieldPath": "masterWrapperId",
-          "foreignKey": {
-            "targetTable": "profile_wrappers",
-            "targetFieldName": "id"
-          }
-        },
-        {
-          "fieldName": "detailWrapperId",
-          "tOps": "ADD",
-          "format": "uuid",
-          "fieldPath": "detailWrapperId",
-          "foreignKey": {
-            "targetTable": "profile_wrappers",
-            "targetFieldName": "id"
-          }
-        },
-        {
-          "fieldName": "jobProfileId",
-          "tOps": "ADD",
-          "format": "uuid",
-          "fieldPath": "jobProfileId"
-        },
-        {
-          "fieldName": "detailProfileType",
-          "tOps": "ADD",
-          "format": "text",
-          "fieldPath": "detailProfileType"
-        },
-        {
-          "fieldName": "masterProfileType",
-          "tOps": "ADD",
-          "format": "text",
-          "fieldPath": "masterProfileType"
-        },
-        {
-          "fieldName": "detailProfileId",
-          "tOps": "ADD",
-          "format": "uuid",
-          "fieldPath": "detailProfileId"
-        },
-        {
-          "fieldName": "masterProfileId",
-          "tOps": "ADD",
-          "format": "uuid",
-          "fieldPath": "masterProfileId"
-        },
-        {
-          "fieldName": "order",
-          "tOps": "ADD",
-          "format": "integer",
-          "fieldPath": "order"
-        }
-      ]
+      "customSnippetPath": "associations-migration/associations_table.sql"
     }
   ],
   "scripts": [
@@ -494,11 +430,6 @@
       "run": "after",
       "snippetPath": "manipulate_ecs_profile_wrappers.sql",
       "fromModuleVersion": "mod-di-converter-storage-2.2.1"
-    },
-    {
-      "run": "after",
-      "snipper": "ALTER TABLE associations ADD IF NOT EXISTS order INT DEFAULT 0;",
-      "fromModuleVersion": "mod-di-converter-storage-2.3.0-SNAPSHOT"
     },
     {
       "run": "after",
