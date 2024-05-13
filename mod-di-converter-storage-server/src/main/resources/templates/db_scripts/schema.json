@@ -311,29 +311,70 @@
     {
       "tableName": "associations",
       "fromModuleVersion": "mod-di-converter-storage-2.3.0-SNAPSHOT",
-      "withMetadata": true,
-      "foreignKeys": [
+      "withMetadata": false,
+      "customSnippetPath": "associations-migration/associations_table.sql",
+      "fields": [
+        {
+          "fieldName": "id",
+          "tOps": "ADD",
+          "format": "uuid",
+          "fieldPath": "id"
+        },
         {
           "fieldName": "masterWrapperId",
-          "targetTable": "profile_wrappers",
-          "tOps": "ADD"
+          "tOps": "ADD",
+          "format": "uuid",
+          "fieldPath": "masterWrapperId",
+          "foreignKey": {
+            "targetTable": "profile_wrappers",
+            "targetFieldName": "id"
+          }
         },
         {
           "fieldName": "detailWrapperId",
-          "targetTable": "profile_wrappers",
-          "tOps": "ADD"
-        }
-      ],
-      "index": [
-        {
-          "fieldName": "masterProfileId",
           "tOps": "ADD",
-          "removeAccents": false
+          "format": "uuid",
+          "fieldPath": "detailWrapperId",
+          "foreignKey": {
+            "targetTable": "profile_wrappers",
+            "targetFieldName": "id"
+          }
+        },
+        {
+          "fieldName": "jobProfileId",
+          "tOps": "ADD",
+          "format": "uuid",
+          "fieldPath": "jobProfileId"
+        },
+        {
+          "fieldName": "detailProfileType",
+          "tOps": "ADD",
+          "format": "text",
+          "fieldPath": "detailProfileType"
+        },
+        {
+          "fieldName": "masterProfileType",
+          "tOps": "ADD",
+          "format": "text",
+          "fieldPath": "masterProfileType"
         },
         {
           "fieldName": "detailProfileId",
           "tOps": "ADD",
-          "removeAccents": false
+          "format": "uuid",
+          "fieldPath": "detailProfileId"
+        },
+        {
+          "fieldName": "masterProfileId",
+          "tOps": "ADD",
+          "format": "uuid",
+          "fieldPath": "masterProfileId"
+        },
+        {
+          "fieldName": "order",
+          "tOps": "ADD",
+          "format": "integer",
+          "fieldPath": "order"
         }
       ]
     }
