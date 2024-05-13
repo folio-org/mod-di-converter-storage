@@ -1,0 +1,26 @@
+{
+  "id" : "d3fdbde5-2ce5-40e7-bb2b-edf8436c5c2f",
+  "profile" : {
+    "id" : "d3fdbde5-2ce5-40e7-bb2b-edf8436c5c2f",
+    "name" : "test",
+    "description" : "",
+    "dataType" : "MARC",
+    "deleted" : false,
+    "userInfo" : {
+      "firstName" : "DIKU",
+      "lastName" : "ADMINISTRATOR",
+      "userName" : "diku_admin"
+    },
+    "parentProfiles" : [ ],
+    "childProfiles" : [ ],
+    "hidden" : false,
+    "metadata" : {
+      "createdDate" : "2024-04-30T15:52:31.759+00:00",
+      "createdByUserId" : "5da3f1dc-5463-58c4-b24f-bb2f7f9a02e8",
+      "updatedDate" : "2024-04-30T15:52:31.759+00:00",
+      "updatedByUserId" : "5da3f1dc-5463-58c4-b24f-bb2f7f9a02e8"
+    }
+  },
+  "addedRelations" : [ ],
+  "deletedRelations" : [ ]
+}

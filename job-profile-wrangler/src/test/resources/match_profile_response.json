@@ -1,0 +1,55 @@
+{
+  "id" : "92e8aa6b-bdb8-4f19-b3e2-29de0d55d995",
+  "profile" : {
+    "id" : "92e8aa6b-bdb8-4f19-b3e2-29de0d55d995",
+    "name" : "match profile test",
+    "description" : "",
+    "incomingRecordType" : "MARC_BIBLIOGRAPHIC",
+    "existingRecordType" : "INSTANCE",
+    "matchDetails" : [ {
+      "incomingRecordType" : "MARC_BIBLIOGRAPHIC",
+      "existingRecordType" : "INSTANCE",
+      "incomingMatchExpression" : {
+        "dataValueType" : "VALUE_FROM_RECORD",
+        "fields" : [ {
+          "label" : "field",
+          "value" : "035"
+        }, {
+          "label" : "indicator1",
+          "value" : ""
+        }, {
+          "label" : "indicator2",
+          "value" : ""
+        }, {
+          "label" : "recordSubfield",
+          "value" : "a"
+        } ]
+      },
+      "matchCriterion" : "EXACTLY_MATCHES",
+      "existingMatchExpression" : {
+        "dataValueType" : "VALUE_FROM_RECORD",
+        "fields" : [ {
+          "label" : "field",
+          "value" : "instance.id"
+        } ]
+      }
+    } ],
+    "deleted" : false,
+    "userInfo" : {
+      "firstName" : "DIKU",
+      "lastName" : "ADMINISTRATOR",
+      "userName" : "diku_admin"
+    },
+    "parentProfiles" : [ ],
+    "childProfiles" : [ ],
+    "hidden" : false,
+    "metadata" : {
+      "createdDate" : "2024-04-30T16:20:45.263+00:00",
+      "createdByUserId" : "5da3f1dc-5463-58c4-b24f-bb2f7f9a02e8",
+      "updatedDate" : "2024-04-30T16:20:45.263+00:00",
+      "updatedByUserId" : "5da3f1dc-5463-58c4-b24f-bb2f7f9a02e8"
+    }
+  },
+  "addedRelations" : [ ],
+  "deletedRelations" : [ ]
+}
