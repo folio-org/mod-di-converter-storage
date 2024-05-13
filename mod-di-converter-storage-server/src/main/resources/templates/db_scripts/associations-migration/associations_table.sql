@@ -1,6 +1,9 @@
 DROP TRIGGER set_id_in_jsonb
 ON ${myuniversity}_${mymodule}.associations CASCADE;
 
+ALTER TABLE ${myuniversity}_${mymodule}.associations DROP CONSTRAINT IF EXISTS associations_master_wrapper_fk;
+ALTER TABLE ${myuniversity}_${mymodule}.associations DROP CONSTRAINT IF EXISTS associations_detail_wrapper_fk;
+
 ALTER TABLE ${myuniversity}_${mymodule}.associations
   ADD IF NOT EXISTS id text NULL,
   ADD IF NOT EXISTS job_profile_id uuid NULL,
