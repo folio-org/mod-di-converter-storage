@@ -430,11 +430,6 @@
       "run": "after",
       "snippetPath": "manipulate_ecs_profile_wrappers.sql",
       "fromModuleVersion": "mod-di-converter-storage-2.2.1"
-    },
-    {
-      "run": "after",
-      "snipperPath": "data-migration/populate_associations.sql",
-      "fromModuleVersion": "mod-di-converter-storage-2.3.0-SNAPSHOT"
     }
   ]
 }
