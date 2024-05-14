@@ -113,7 +113,7 @@ public class ProfileSnapshotDaoTest extends AbstractUnitTest {
       context.assertTrue(savedMatchProfileAr.succeeded());
       actionProfileDao.saveProfile(actionProfile, TENANT_ID).onComplete(savedActionProfileAr -> {
         context.assertTrue(savedActionProfileAr.succeeded());
-        commonProfileAssociationService.save(matchToAction1Association, MATCH_PROFILE, ACTION_PROFILE, TENANT_ID).onComplete(savedAssociationAr -> {
+        commonProfileAssociationService.save(matchToAction1Association, TENANT_ID).onComplete(savedAssociationAr -> {
           context.assertTrue(savedAssociationAr.succeeded());
           dao.getSnapshotItems(matchProfile.getId(), MATCH_PROFILE, matchProfile.getId(), TENANT_ID).onComplete(itemsAr -> {
             // then
