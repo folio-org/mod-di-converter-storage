@@ -51,7 +51,8 @@ public class CommonProfileAssociationDao implements ProfileAssociationDao {
   public Future<String> save(ProfileAssociation entity, String tenantId) {
     Promise<RowSet<Row>> promise = Promise.promise();
 
-    LOGGER.trace("save:: Saving profile association, tenant id {}", tenantId);
+    LOGGER.trace("save:: Saving profile association, tenant id {}, masterType {}, detailType {}",
+      tenantId, entity.getMasterProfileType(), entity.getDetailProfileType());
 
     String query = format(INSERT_QUERY, convertToPsqlStandard(tenantId), ASSOCIATION_TABLE);
     Tuple queryParams = Tuple.of(
