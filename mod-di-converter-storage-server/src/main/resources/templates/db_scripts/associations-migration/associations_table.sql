@@ -6,7 +6,7 @@ ALTER TABLE ${myuniversity}_${mymodule}.associations DROP CONSTRAINT IF EXISTS a
 
 ALTER TABLE ${myuniversity}_${mymodule}.associations
   DROP COLUMN IF EXISTS jsonb,
-  ADD IF NOT EXISTS id text NULL,
+  ADD IF NOT EXISTS id uuid NULL,
   ADD IF NOT EXISTS job_profile_id uuid NULL,
   ADD IF NOT EXISTS master_wrapper_id uuid NULL,
   ADD IF NOT EXISTS detail_wrapper_id uuid NULL,

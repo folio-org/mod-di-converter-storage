@@ -72,7 +72,6 @@ public class CommonProfileAssociationService implements ProfileAssociationServic
 
   @Override
   public Future<ProfileAssociation> save(ProfileAssociation entity, String tenantId) {
-    entity.setId(UUID.randomUUID().toString());
     return wrapAssociationProfiles(new ArrayList<>(List.of(entity)), tenantId)
       .compose(result -> profileAssociationDao.save(entity, tenantId).map(entity));
   }

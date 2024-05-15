@@ -6,6 +6,7 @@ import io.vertx.sqlclient.Row;
 import io.vertx.sqlclient.RowIterator;
 import io.vertx.sqlclient.RowSet;
 import io.vertx.sqlclient.Tuple;
+import java.util.UUID;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -39,10 +40,10 @@ public class CommonProfileAssociationDao implements ProfileAssociationDao {
   private static final String DETAIL_WRAPPER_ID_FIELD = "detail_wrapper_id";
   private static final String JOB_PROFILE_ID_FIELD = "jobProfileId";
   private static final String CRITERIA_BY_MASTER_ID_AND_DETAIL_ID_WHERE_CLAUSE =
-    "WHERE (left(lower(%1$s.master_profile_id), 600) LIKE lower('%2$s')) " +
-      "AND (lower(%1$s.detail_profile_id) LIKE lower('%3$s'))";
+    "WHERE %1$s.master_profile_id = '%2$s' " +
+      "AND %1$s.detail_profile_id = '%3$s'";
   private static final String CRITERIA_BY_REACT_TO_CLAUSE =
-    "(lower(%1$s.react_to) LIKE lower('%2$s'))";
+    "%1$s.react_to  = '%2$s'";
 
   private static final Logger LOGGER = LogManager.getLogger();
   private static final String ASSOCIATION_TABLE = "associations";
@@ -56,6 +57,7 @@ public class CommonProfileAssociationDao implements ProfileAssociationDao {
 
   @Override
   public Future<String> save(ProfileAssociation entity, String tenantId) {
+    if (entity.getId() == null) entity.setId(UUID.randomUUID().toString());
     Promise<RowSet<Row>> promise = Promise.promise();
 
     LOGGER.trace("save:: Saving profile association, tenant id {}, masterType {}, detailType {}",
