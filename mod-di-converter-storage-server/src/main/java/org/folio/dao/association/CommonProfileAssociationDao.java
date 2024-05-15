@@ -3,13 +3,16 @@ package org.folio.dao.association;
 import io.vertx.core.Future;
 import io.vertx.core.Promise;
 import io.vertx.sqlclient.Row;
+import io.vertx.sqlclient.RowIterator;
 import io.vertx.sqlclient.RowSet;
 import io.vertx.sqlclient.Tuple;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.folio.dao.PostgresClientFactory;
 import org.folio.rest.jaxrs.model.ProfileAssociation;
 import org.folio.rest.jaxrs.model.ProfileAssociationCollection;
+import org.folio.rest.jaxrs.model.ProfileType;
 import org.folio.rest.persist.Criteria.Criteria;
 import org.folio.rest.persist.Criteria.Criterion;
 import org.folio.rest.persist.cql.CQLWrapper;
@@ -44,6 +47,7 @@ public class CommonProfileAssociationDao implements ProfileAssociationDao {
     "(id, job_profile_id, master_wrapper_id, detail_wrapper_id, master_profile_id, detail_profile_id, " +
     "master_profile_type, detail_profile_type, detail_order) " +
     "VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)";
+  private static final String SELECT_QUERY = "SELECT * FROM %s.%s WHERE id = $1";
   @Autowired
   protected PostgresClientFactory pgClientFactory;
 
@@ -86,17 +90,12 @@ public class CommonProfileAssociationDao implements ProfileAssociationDao {
 
   @Override
   public Future<Optional<ProfileAssociation>> getById(String id, String tenantId) {
-    Promise<Results<ProfileAssociation>> promise = Promise.promise();
-    try {
-      Criteria idCrit = constructCriteria(ID_FIELD, id);
-      pgClientFactory.createInstance(tenantId).get(ASSOCIATION_TABLE, ProfileAssociation.class, new Criterion(idCrit), true, false, promise);
-    } catch (Exception e) {
-      LOGGER.warn("getById:: Error querying {} by id", ProfileAssociation.class.getSimpleName(), e);
-      promise.fail(e);
-    }
-    return promise.future()
-      .map(Results::getResults)
-      .map(profiles -> profiles.isEmpty() ? Optional.empty() : Optional.of(profiles.get(0)));
+    Promise<RowSet<Row>> promise = Promise.promise();
+
+    String query = format(SELECT_QUERY, convertToPsqlStandard(tenantId), ASSOCIATION_TABLE);
+    Tuple queryParams = Tuple.of(id);
+    pgClientFactory.createInstance(tenantId).execute(query, queryParams, promise);
+    return promise.future().map(this::mapResultSetToOptionalProfileAssociation);
   }
 
   @Override
@@ -175,5 +174,45 @@ public class CommonProfileAssociationDao implements ProfileAssociationDao {
       return Future.failedFuture(e);
     }
     return promise.future().map(updateResult -> updateResult.rowCount() == 1);
+  }
+
+  private Optional<ProfileAssociation> mapResultSetToOptionalProfileAssociation(RowSet<Row> resultSet) {
+    RowIterator<Row> iterator = resultSet.iterator();
+    return iterator.hasNext() ? Optional.of(mapRowToProfileAssociation(iterator.next())) : Optional.empty();
+  }
+
+  private ProfileAssociation mapRowToProfileAssociation(Row row) {
+    return new ProfileAssociation()
+      .withId(safeGetString(row, "id"))
+      .withJobProfileId(safeGetString(row, "job_profile_id"))
+      .withMasterWrapperId(safeGetString(row, "master_wrapper_id"))
+      .withDetailWrapperId(safeGetString(row, "detail_wrapper_id"))
+      .withMasterProfileId(safeGetString(row, "master_profile_id"))
+      .withDetailProfileId(safeGetString(row, "detail_profile_id"))
+      .withMasterProfileType(safeGetProfileType(row, "master_profile_type"))
+      .withDetailProfileType(safeGetProfileType(row, "detail_profile_type"))
+      .withOrder(safeGetInteger(row));
+  }
+
+  private String safeGetString(Row row, String columnName) {
+    Object value = row.getValue(columnName);
+    return value != null ? value.toString() : "";
+  }
+
+  private ProfileType safeGetProfileType(Row row, String columnName) {
+    String value = safeGetString(row, columnName);
+    return StringUtils.isNotEmpty(value) ? ProfileType.valueOf(value) : null;
+  }
+
+  private Integer safeGetInteger(Row row) {
+    String value = safeGetString(row, "detail_order");
+    if (StringUtils.isNotEmpty(value)) {
+      try{
+        return Integer.parseInt(value);
+      } catch(NumberFormatException e){
+        LOGGER.warn("Invalid integer value '{}' for column '{}'", value, "detail_order");
+      }
+    }
+    return 0;
   }
 }
