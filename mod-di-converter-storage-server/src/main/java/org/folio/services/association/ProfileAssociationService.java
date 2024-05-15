@@ -9,6 +9,7 @@ import org.folio.rest.jaxrs.model.ProfileSnapshotWrapper.ContentType;
 
 import java.util.List;
 import java.util.Optional;
+import org.folio.rest.jaxrs.model.ReactToType;
 
 /**
  * Generic Profile Association Service
@@ -109,7 +110,7 @@ public interface ProfileAssociationService { //NOSONAR
    * @return - boolean result of operation
    */
   Future<Boolean> delete(String masterWrapperId, String detailWrapperId, ContentType masterType, ContentType detailType, String jobProfileId,
-                         Integer order, String tenantId);
+                         ReactToType reactTo, Integer order, String tenantId);
 
   /**
    * Delete profile associations for particular master profile by wrapperId

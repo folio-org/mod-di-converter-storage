@@ -27,6 +27,7 @@ import org.folio.rest.jaxrs.model.ProfileSnapshotWrapper;
 import org.folio.rest.jaxrs.model.ProfileSnapshotWrapper.ContentType;
 import org.folio.rest.jaxrs.model.ProfileType;
 import org.folio.rest.jaxrs.model.ProfileWrapper;
+import org.folio.rest.jaxrs.model.ReactToType;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -235,10 +236,10 @@ public class CommonProfileAssociationService implements ProfileAssociationServic
 
   @Override
   public Future<Boolean> delete(String masterWrapperId, String detailWrapperId, ContentType masterType, ContentType detailType,
-                                String jobProfileId, Integer order, String tenantId) {
+                                String jobProfileId, ReactToType reactTo, Integer order, String tenantId) {
     LOGGER.debug("delete : masterWrapperId={}, detailWrapperId={}, masterType={}, detailType={}",
       masterWrapperId, detailWrapperId, masterType.value(), detailType.value());
-    return profileAssociationDao.delete(masterWrapperId, detailWrapperId, jobProfileId, order, tenantId);
+    return profileAssociationDao.delete(masterWrapperId, detailWrapperId, jobProfileId, reactTo, order, tenantId);
   }
 
   @Override

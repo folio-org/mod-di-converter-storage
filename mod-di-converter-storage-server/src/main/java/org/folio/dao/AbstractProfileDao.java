@@ -259,7 +259,6 @@ public abstract class AbstractProfileDao<T, S> implements ProfileDao<T, S> {
   protected Future<Boolean> deleteAssociationsWithDetails(Future<SQLConnection> txConnection, String profileId, String tenantId) {
     Promise<Boolean> promise = Promise.promise();
     PostgresClient pgClient = pgClientFactory.createInstance(tenantId);
-
     String deleteQuery = String.format("DELETE FROM associations_view WHERE master_id = '%s'", profileId);
     pgClient.execute(txConnection, deleteQuery, deleteAr -> {
       if (deleteAr.failed()) {

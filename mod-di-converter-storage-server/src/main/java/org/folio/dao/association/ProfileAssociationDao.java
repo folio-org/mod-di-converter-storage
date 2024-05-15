@@ -5,6 +5,7 @@ import org.folio.rest.jaxrs.model.ProfileAssociation;
 import org.folio.rest.jaxrs.model.ProfileAssociationCollection;
 
 import java.util.Optional;
+import org.folio.rest.jaxrs.model.ReactToType;
 
 /**
  * This DAO is for association between 2 profiles (which are called 'master' profile and 'detail' profile).
@@ -65,7 +66,8 @@ public interface ProfileAssociationDao {
    * @param tenantId     - tenant id
    * @return - boolean result of operation
    */
-  Future<Boolean> delete(String masterWrapperId, String detailWrapperId, String jobProfileId, Integer order, String tenantId);
+  Future<Boolean> delete(String masterWrapperId, String detailWrapperId, String jobProfileId, ReactToType reactTo,
+                         Integer order, String tenantId);
 
   /**
    * Delete profile associations for particular master profile by wrapperId

@@ -13,6 +13,7 @@ import org.folio.dao.PostgresClientFactory;
 import org.folio.rest.jaxrs.model.ProfileAssociation;
 import org.folio.rest.jaxrs.model.ProfileAssociationCollection;
 import org.folio.rest.jaxrs.model.ProfileType;
+import org.folio.rest.jaxrs.model.ReactToType;
 import org.folio.rest.persist.Criteria.Criteria;
 import org.folio.rest.persist.Criteria.Criterion;
 import org.folio.rest.persist.cql.CQLWrapper;
@@ -34,19 +35,21 @@ import static org.folio.rest.persist.PostgresClient.convertToPsqlStandard;
 @Repository
 public class CommonProfileAssociationDao implements ProfileAssociationDao {
   private static final String ID_FIELD = "'id'";
-  private static final String MASTER_WRAPPER_ID_FIELD = "masterWrapperId";
-  private static final String DETAIL_WRAPPER_ID_FIELD = "detailWrapperId";
+  private static final String MASTER_WRAPPER_ID_FIELD = "master_wrapper_id";
+  private static final String DETAIL_WRAPPER_ID_FIELD = "detail_wrapper_id";
   private static final String JOB_PROFILE_ID_FIELD = "jobProfileId";
   private static final String CRITERIA_BY_MASTER_ID_AND_DETAIL_ID_WHERE_CLAUSE =
-    "WHERE (left(lower(%1$s.masterProfileId), 600) LIKE lower('%2$s')) " +
-      "AND (lower(%1$s.detailProfileId) LIKE lower('%3$s'))";
+    "WHERE (left(lower(%1$s.master_profile_id), 600) LIKE lower('%2$s')) " +
+      "AND (lower(%1$s.detail_profile_id) LIKE lower('%3$s'))";
+  private static final String CRITERIA_BY_REACT_TO_CLAUSE =
+    "(lower(%1$s.react_to) LIKE lower('%2$s'))";
 
   private static final Logger LOGGER = LogManager.getLogger();
   private static final String ASSOCIATION_TABLE = "associations";
   private static final String INSERT_QUERY = "INSERT INTO %s.%s " +
     "(id, job_profile_id, master_wrapper_id, detail_wrapper_id, master_profile_id, detail_profile_id, " +
-    "master_profile_type, detail_profile_type, detail_order) " +
-    "VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)";
+    "master_profile_type, detail_profile_type, detail_order, react_to) " +
+    "VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)";
   private static final String SELECT_QUERY = "SELECT * FROM %s.%s WHERE id = $1";
   @Autowired
   protected PostgresClientFactory pgClientFactory;
@@ -68,7 +71,8 @@ public class CommonProfileAssociationDao implements ProfileAssociationDao {
       entity.getDetailProfileId(),
       entity.getMasterProfileType(),
       entity.getDetailProfileType(),
-      entity.getOrder());
+      entity.getOrder(),
+      entity.getReactTo());
     pgClientFactory.createInstance(tenantId).execute(query, queryParams, promise);
     return promise.future().map(entity.getId()).onFailure(e -> LOGGER.warn("save:: Error saving profile association", e));
   }
@@ -130,14 +134,19 @@ public class CommonProfileAssociationDao implements ProfileAssociationDao {
   }
 
   @Override
-  public Future<Boolean> delete(String masterWrapperId, String detailWrapperId, String jobProfileId, Integer order, String tenantId) {
+  public Future<Boolean> delete(String masterWrapperId, String detailWrapperId, String jobProfileId,
+                                ReactToType reactTo, Integer order, String tenantId) {
     Promise<RowSet<Row>> promise = Promise.promise();
     try {
       CQLWrapper filter = getCQLWrapper(ASSOCIATION_TABLE,
         MASTER_WRAPPER_ID_FIELD + "==" + masterWrapperId + " AND " + DETAIL_WRAPPER_ID_FIELD + "==" + detailWrapperId
           + " AND (detail_order == " + (order == null ? 0 : order) + ")"
           + " AND (" + JOB_PROFILE_ID_FIELD + "==" + jobProfileId + " OR (cql.allRecords=1 NOT " + JOB_PROFILE_ID_FIELD + "=\"\"))");
-
+      if (reactTo != null) {
+        String whereClause = filter.getWhereClause()
+          + " AND " + String.format(CRITERIA_BY_REACT_TO_CLAUSE, ASSOCIATION_TABLE, reactTo.value());
+        filter.setWhereClause(whereClause);
+      }
       pgClientFactory.createInstance(tenantId).delete(ASSOCIATION_TABLE, filter, promise);
     } catch (Exception e) {
       LOGGER.warn("delete:: Error deleting by master wrapper id {}, detail wrapper id {} and order {}",
@@ -185,13 +194,14 @@ public class CommonProfileAssociationDao implements ProfileAssociationDao {
     return new ProfileAssociation()
       .withId(safeGetString(row, "id"))
       .withJobProfileId(safeGetString(row, "job_profile_id"))
-      .withMasterWrapperId(safeGetString(row, "master_wrapper_id"))
-      .withDetailWrapperId(safeGetString(row, "detail_wrapper_id"))
+      .withMasterWrapperId(safeGetString(row, MASTER_WRAPPER_ID_FIELD))
+      .withDetailWrapperId(safeGetString(row, DETAIL_WRAPPER_ID_FIELD))
       .withMasterProfileId(safeGetString(row, "master_profile_id"))
       .withDetailProfileId(safeGetString(row, "detail_profile_id"))
       .withMasterProfileType(safeGetProfileType(row, "master_profile_type"))
       .withDetailProfileType(safeGetProfileType(row, "detail_profile_type"))
-      .withOrder(safeGetInteger(row));
+      .withOrder(safeGetInteger(row, "detail_order"))
+      .withReactTo(safeGetReactToType(row, "react_to"));
   }
 
   private String safeGetString(Row row, String columnName) {
@@ -204,15 +214,13 @@ public class CommonProfileAssociationDao implements ProfileAssociationDao {
     return StringUtils.isNotEmpty(value) ? ProfileType.valueOf(value) : null;
   }
 
-  private Integer safeGetInteger(Row row) {
-    String value = safeGetString(row, "detail_order");
-    if (StringUtils.isNotEmpty(value)) {
-      try{
-        return Integer.parseInt(value);
-      } catch(NumberFormatException e){
-        LOGGER.warn("Invalid integer value '{}' for column '{}'", value, "detail_order");
-      }
-    }
-    return 0;
+  private ReactToType safeGetReactToType(Row row, String columnName) {
+    String value = safeGetString(row, columnName);
+    return StringUtils.isNotEmpty(value) ? ReactToType.valueOf(value) : null;
+  }
+
+  private Integer safeGetInteger(Row row, String columnName) {
+    String value = safeGetString(row, columnName);
+    return StringUtils.isNotEmpty(value) ? Integer.valueOf(value) : null;
   }
 }
