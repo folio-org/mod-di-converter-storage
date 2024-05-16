@@ -6,6 +6,8 @@ import io.vertx.sqlclient.Row;
 import io.vertx.sqlclient.RowIterator;
 import io.vertx.sqlclient.RowSet;
 import io.vertx.sqlclient.Tuple;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
@@ -18,7 +20,6 @@ import org.folio.rest.jaxrs.model.ReactToType;
 import org.folio.rest.persist.Criteria.Criteria;
 import org.folio.rest.persist.Criteria.Criterion;
 import org.folio.rest.persist.cql.CQLWrapper;
-import org.folio.rest.persist.interfaces.Results;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Repository;
 
@@ -48,9 +49,10 @@ public class CommonProfileAssociationDao implements ProfileAssociationDao {
     "(id, job_profile_id, master_wrapper_id, detail_wrapper_id, master_profile_id, detail_profile_id, " +
     "master_profile_type, detail_profile_type, detail_order, react_to) " +
     "VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)";
-  private static final String SELECT_QUERY = "SELECT * FROM %s.%s WHERE id = $1";
+  private static final String SELECT_BY_ID_QUERY = "SELECT * FROM %s.%s WHERE id = $1";
+  private static final String SELECT_ALL_QUERY = "SELECT * FROM %s.%s";
   private static final String DELETE_BY_MASTER_WRAPPER_ID_QUERY = "DELETE FROM %s.%s WHERE master_wrapper_id  = $1";
-  private static final String DELETE_BY_MASTER_PROFILE_AND_DETAIL_PROFILE_IDS_QUERY = "DELETE FROM %s.%s " +
+  private static final String DELETE_BY_MASTER_AND_DETAIL_PROFILES_IDS_QUERY = "DELETE FROM %s.%s " +
     "WHERE master_profile_id = $1 AND detail_profile_id = $2";
 
   @Autowired
@@ -82,24 +84,24 @@ public class CommonProfileAssociationDao implements ProfileAssociationDao {
 
   @Override
   public Future<ProfileAssociationCollection> getAll(String tenantId) {
-    Promise<Results<ProfileAssociation>> promise = Promise.promise();
-    try {
-      String[] fieldList = {"*"};
-      pgClientFactory.createInstance(tenantId).get(ASSOCIATION_TABLE, ProfileAssociation.class, fieldList, null, true, promise);
-    } catch (Exception e) {
-      LOGGER.warn("getAll:: Error while searching for ProfileAssociations", e);
-      promise.fail(e);
-    }
-    return promise.future().map(profileAssociationResults -> new ProfileAssociationCollection()
-      .withProfileAssociations(profileAssociationResults.getResults())
-      .withTotalRecords(profileAssociationResults.getResultInfo().getTotalRecords()));
+    Promise<RowSet<Row>> promise = Promise.promise();
+      String query = format(SELECT_ALL_QUERY, convertToPsqlStandard(tenantId), ASSOCIATION_TABLE);
+      pgClientFactory.createInstance(tenantId).execute(query, result -> {
+        if (result.failed()) {
+          LOGGER.warn("getAll:: Error while searching for ProfileAssociations", result.cause());
+          promise.fail(result.cause());
+        } else {
+          promise.complete(result.result());
+        }
+      });
+    return promise.future().map(this::mapResultSetToProfileAssociationCollection);
   }
 
   @Override
   public Future<Optional<ProfileAssociation>> getById(String id, String tenantId) {
     Promise<RowSet<Row>> promise = Promise.promise();
 
-    String query = format(SELECT_QUERY, convertToPsqlStandard(tenantId), ASSOCIATION_TABLE);
+    String query = format(SELECT_BY_ID_QUERY, convertToPsqlStandard(tenantId), ASSOCIATION_TABLE);
     Tuple queryParams = Tuple.of(id);
     pgClientFactory.createInstance(tenantId).execute(query, queryParams, promise);
     return promise.future().map(this::mapResultSetToOptionalProfileAssociation);
@@ -177,7 +179,7 @@ public class CommonProfileAssociationDao implements ProfileAssociationDao {
   public Future<Boolean> deleteByMasterIdAndDetailId(String masterId, String detailId, String tenantId) {
     Promise<RowSet<Row>> promise = Promise.promise();
     try {
-      String query = format(DELETE_BY_MASTER_PROFILE_AND_DETAIL_PROFILE_IDS_QUERY, convertToPsqlStandard(tenantId), ASSOCIATION_TABLE);
+      String query = format(DELETE_BY_MASTER_AND_DETAIL_PROFILES_IDS_QUERY, convertToPsqlStandard(tenantId), ASSOCIATION_TABLE);
       Tuple queryParams = Tuple.of(masterId, detailId);
       pgClientFactory.createInstance(tenantId).execute(query, queryParams, promise);
     } catch (Exception e) {
@@ -191,6 +193,16 @@ public class CommonProfileAssociationDao implements ProfileAssociationDao {
     RowIterator<Row> iterator = resultSet.iterator();
     return iterator.hasNext() ? Optional.of(mapRowToProfileAssociation(iterator.next())) : Optional.empty();
   }
+
+  private ProfileAssociationCollection mapResultSetToProfileAssociationCollection(RowSet<Row> resultSet) {
+    List<ProfileAssociation> list = new ArrayList<>();
+    resultSet.forEach(row -> list.add(mapRowToProfileAssociation(row)));
+
+    return new ProfileAssociationCollection()
+      .withProfileAssociations(list)
+      .withTotalRecords(list.size());
+  }
+
 
   private ProfileAssociation mapRowToProfileAssociation(Row row) {
     return new ProfileAssociation()
