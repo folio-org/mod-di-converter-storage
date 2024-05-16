@@ -1137,16 +1137,16 @@ public class ActionProfileTest extends AbstractRestVerticleTest {
     PostgresClient pgClient = PostgresClient.getInstance(vertx, TENANT_ID);
     pgClient.delete(PROFILE_WRAPPERS_TABLE_NAME, new Criterion(), event1 ->
       pgClient.delete(SNAPSHOTS_TABLE_NAME, new Criterion(), event2 ->
-                pgClient.delete(JOB_PROFILES_TABLE_NAME, new Criterion(), event3 ->
-                  pgClient.delete(MATCH_PROFILES_TABLE_NAME, new Criterion(), event4 ->
-                    pgClient.delete(ACTION_PROFILES_TABLE_NAME, new Criterion(), event5 ->
-                        pgClient.delete(MAPPING_PROFILES_TABLE_NAME, new Criterion(), event6 ->
-                          pgClient.delete(ASSOCIATIONS_TABLE_NAME, new Criterion(), event7 ->
-                            pgClient.delete(PROFILE_WRAPPERS_TABLE, new Criterion(), event8 -> {
-                              if (event7.failed()) {
-                                context.fail(event8.cause());
-                              }
-                              async.complete();
-                            }))))))));
+        pgClient.delete(JOB_PROFILES_TABLE_NAME, new Criterion(), event3 ->
+          pgClient.delete(MATCH_PROFILES_TABLE_NAME, new Criterion(), event4 ->
+            pgClient.delete(ACTION_PROFILES_TABLE_NAME, new Criterion(), event5 ->
+                pgClient.delete(MAPPING_PROFILES_TABLE_NAME, new Criterion(), event6 ->
+                  pgClient.delete(ASSOCIATIONS_TABLE_NAME, new Criterion(), event7 ->
+                    pgClient.delete(PROFILE_WRAPPERS_TABLE, new Criterion(), event8 -> {
+                      if (event7.failed()) {
+                        context.fail(event8.cause());
+                      }
+                      async.complete();
+                    }))))))));
   }
 }

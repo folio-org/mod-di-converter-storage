@@ -38,12 +38,9 @@ public class CommonProfileAssociationDao implements ProfileAssociationDao {
   private static final String ID_FIELD = "'id'";
   private static final String MASTER_WRAPPER_ID_FIELD = "master_wrapper_id";
   private static final String DETAIL_WRAPPER_ID_FIELD = "detail_wrapper_id";
-  private static final String JOB_PROFILE_ID_FIELD = "jobProfileId";
-  private static final String CRITERIA_BY_MASTER_ID_AND_DETAIL_ID_WHERE_CLAUSE =
-    "WHERE %1$s.master_profile_id = '%2$s' " +
-      "AND %1$s.detail_profile_id = '%3$s'";
+  private static final String JOB_PROFILE_ID_FIELD = "job_profile_id";
   private static final String CRITERIA_BY_REACT_TO_CLAUSE =
-    "%1$s.react_to  = '%2$s'";
+    "WHERE %s.react_to  = %s";
 
   private static final Logger LOGGER = LogManager.getLogger();
   private static final String ASSOCIATION_TABLE = "associations";
@@ -52,6 +49,10 @@ public class CommonProfileAssociationDao implements ProfileAssociationDao {
     "master_profile_type, detail_profile_type, detail_order, react_to) " +
     "VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)";
   private static final String SELECT_QUERY = "SELECT * FROM %s.%s WHERE id = $1";
+  private static final String DELETE_BY_MASTER_WRAPPER_ID_QUERY = "DELETE FROM %s.%s WHERE master_wrapper_id  = $1";
+  private static final String DELETE_BY_MASTER_PROFILE_AND_DETAIL_PROFILE_IDS_QUERY = "DELETE FROM %s.%s " +
+    "WHERE master_profile_id = $1 AND detail_profile_id = $2";
+
   @Autowired
   protected PostgresClientFactory pgClientFactory;
 
@@ -162,8 +163,9 @@ public class CommonProfileAssociationDao implements ProfileAssociationDao {
   public Future<Boolean> deleteByMasterWrapperId(String wrapperId, String tenantId) {
     Promise<RowSet<Row>> promise = Promise.promise();
     try {
-      CQLWrapper filter = getCQLWrapper(ASSOCIATION_TABLE, "(" + MASTER_WRAPPER_ID_FIELD + "==" + wrapperId + ")");
-      pgClientFactory.createInstance(tenantId).delete(ASSOCIATION_TABLE, filter, promise);
+      String query = format(DELETE_BY_MASTER_WRAPPER_ID_QUERY, convertToPsqlStandard(tenantId), ASSOCIATION_TABLE);
+      Tuple queryParams = Tuple.of(wrapperId);
+      pgClientFactory.createInstance(tenantId).execute(query, queryParams, promise);
     } catch (Exception e) {
       LOGGER.warn("deleteByMasterWrapperId:: Error deleting by master wrapper id {}", wrapperId, e);
       return Future.failedFuture(e);
@@ -175,11 +177,9 @@ public class CommonProfileAssociationDao implements ProfileAssociationDao {
   public Future<Boolean> deleteByMasterIdAndDetailId(String masterId, String detailId, String tenantId) {
     Promise<RowSet<Row>> promise = Promise.promise();
     try {
-      /* Setting WHERE clause explicitly here because incorrect query is created by CQLWrapper by default due to
-      presence of 2 definitions of mapping tables in schema.json and the query is generated based on outdated definition */
-      CQLWrapper filter = new CQLWrapper().setWhereClause(String.format(CRITERIA_BY_MASTER_ID_AND_DETAIL_ID_WHERE_CLAUSE,
-        ASSOCIATION_TABLE, masterId, detailId));
-      pgClientFactory.createInstance(tenantId).delete(ASSOCIATION_TABLE, filter, promise);
+      String query = format(DELETE_BY_MASTER_PROFILE_AND_DETAIL_PROFILE_IDS_QUERY, convertToPsqlStandard(tenantId), ASSOCIATION_TABLE);
+      Tuple queryParams = Tuple.of(masterId, detailId);
+      pgClientFactory.createInstance(tenantId).execute(query, queryParams, promise);
     } catch (Exception e) {
       LOGGER.warn("deleteByMasterIdAndDetailId:: Error deleting by master id {} and detail id {}", masterId, detailId, e);
       return Future.failedFuture(e);
@@ -195,7 +195,7 @@ public class CommonProfileAssociationDao implements ProfileAssociationDao {
   private ProfileAssociation mapRowToProfileAssociation(Row row) {
     return new ProfileAssociation()
       .withId(safeGetString(row, "id"))
-      .withJobProfileId(safeGetString(row, "job_profile_id"))
+      .withJobProfileId(safeGetString(row, JOB_PROFILE_ID_FIELD))
       .withMasterWrapperId(safeGetString(row, MASTER_WRAPPER_ID_FIELD))
       .withDetailWrapperId(safeGetString(row, DETAIL_WRAPPER_ID_FIELD))
       .withMasterProfileId(safeGetString(row, "master_profile_id"))
