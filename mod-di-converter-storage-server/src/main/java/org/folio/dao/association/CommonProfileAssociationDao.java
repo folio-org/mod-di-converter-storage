@@ -17,8 +17,6 @@ import org.folio.rest.jaxrs.model.ProfileAssociation;
 import org.folio.rest.jaxrs.model.ProfileAssociationCollection;
 import org.folio.rest.jaxrs.model.ProfileType;
 import org.folio.rest.jaxrs.model.ReactToType;
-import org.folio.rest.persist.Criteria.Criteria;
-import org.folio.rest.persist.Criteria.Criterion;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Repository;
 
@@ -26,7 +24,6 @@ import javax.ws.rs.NotFoundException;
 import java.util.Optional;
 
 import static java.lang.String.format;
-import static org.folio.dao.util.DaoUtil.constructCriteria;
 import static org.folio.rest.jaxrs.model.ProfileSnapshotWrapper.ContentType;
 import static org.folio.rest.persist.PostgresClient.convertToPsqlStandard;
 
@@ -56,6 +53,18 @@ public class CommonProfileAssociationDao implements ProfileAssociationDao {
     "AND detail_order = COALESCE($3, 0) " +
     "AND (job_profile_id = $4 OR job_profile_id IS NULL)";
   private static final String CRITERIA_BY_REACT_TO_CLAUSE = " AND react_to = $5";
+  private static final String UPDATE_QUERY = "UPDATE %s.%s " +
+    " SET " +
+    "    job_profile_id = $2, " +
+    "    master_wrapper_id = $3, " +
+    "    detail_wrapper_id = $4, " +
+    "    master_profile_id = $5, " +
+    "    detail_profile_id = $6, " +
+    "    master_profile_type = $7, " +
+    "    detail_profile_type = $8, " +
+    "    detail_order = $9, " +
+    "    react_to = $10 " +
+    "WHERE id = $1;";
 
   @Autowired
   protected PostgresClientFactory pgClientFactory;
@@ -115,8 +124,19 @@ public class CommonProfileAssociationDao implements ProfileAssociationDao {
   public Future<ProfileAssociation> update(ProfileAssociation entity, ContentType masterType, ContentType detailType, String tenantId) {
     Promise<ProfileAssociation> promise = Promise.promise();
     try {
-      Criteria idCrit = constructCriteria(ID_FIELD, entity.getId());
-      pgClientFactory.createInstance(tenantId).update(ASSOCIATION_TABLE, entity, new Criterion(idCrit), true, updateResult -> {
+      String query = format(UPDATE_QUERY, convertToPsqlStandard(tenantId), ASSOCIATION_TABLE);
+      Tuple queryParams = Tuple.of(
+        entity.getId(),
+        entity.getJobProfileId(),
+        entity.getMasterWrapperId(),
+        entity.getDetailWrapperId(),
+        entity.getMasterProfileId(),
+        entity.getDetailProfileId(),
+        entity.getMasterProfileType(),
+        entity.getDetailProfileType(),
+        entity.getOrder(),
+        entity.getReactTo());
+      pgClientFactory.createInstance(tenantId).execute(query, queryParams,  updateResult -> {
         if (updateResult.failed()) {
           LOGGER.warn("update:: Could not update {} with id {}", ProfileAssociation.class, entity.getId(), updateResult.cause());
           promise.fail(updateResult.cause());

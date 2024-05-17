@@ -49,16 +49,10 @@ import static org.folio.rest.impl.MappingProfileTest.mappingProfile_1;
 import static org.folio.rest.impl.MappingProfileTest.mappingProfile_2;
 import static org.folio.rest.impl.MappingProfileTest.mappingProfile_3;
 import static org.folio.rest.impl.association.CommonProfileAssociationTest.ACTION_PROFILES_TABLE;
-import static org.folio.rest.impl.association.CommonProfileAssociationTest.ACTION_TO_ACTION_PROFILES;
-import static org.folio.rest.impl.association.CommonProfileAssociationTest.ACTION_TO_MAPPING_PROFILES;
-import static org.folio.rest.impl.association.CommonProfileAssociationTest.ACTION_TO_MATCH_PROFILES;
+import static org.folio.rest.impl.association.CommonProfileAssociationTest.ASSOCIATIONS_TABLE;
 import static org.folio.rest.impl.association.CommonProfileAssociationTest.JOB_PROFILES_TABLE;
-import static org.folio.rest.impl.association.CommonProfileAssociationTest.JOB_TO_ACTION_PROFILES;
-import static org.folio.rest.impl.association.CommonProfileAssociationTest.JOB_TO_MATCH_PROFILES;
 import static org.folio.rest.impl.association.CommonProfileAssociationTest.MAPPING_PROFILES_TABLE;
 import static org.folio.rest.impl.association.CommonProfileAssociationTest.MATCH_PROFILES_TABLE;
-import static org.folio.rest.impl.association.CommonProfileAssociationTest.MATCH_TO_ACTION_PROFILES;
-import static org.folio.rest.impl.association.CommonProfileAssociationTest.MATCH_TO_MATCH_PROFILES;
 import static org.folio.rest.jaxrs.model.ActionProfile.Action.UPDATE;
 import static org.folio.rest.jaxrs.model.ActionProfile.FolioRecord.MARC_BIBLIOGRAPHIC;
 import static org.folio.rest.jaxrs.model.MatchDetail.MatchCriterion.EXACTLY_MATCHES;
@@ -908,14 +902,8 @@ public class MatchProfileTest extends AbstractRestVerticleTest {
   @Override
   public void clearTables(TestContext context) {
     Async async = context.async();
-    deleteTable(PROFILE_WRAPPERS_TABLE)
-      .compose(e -> deleteTable(ACTION_TO_ACTION_PROFILES))
-      .compose(e -> deleteTable(ACTION_TO_MAPPING_PROFILES))
-      .compose(e -> deleteTable(ACTION_TO_MATCH_PROFILES))
-      .compose(e -> deleteTable(JOB_TO_ACTION_PROFILES))
-      .compose(e -> deleteTable(JOB_TO_MATCH_PROFILES))
-      .compose(e -> deleteTable(MATCH_TO_ACTION_PROFILES))
-      .compose(e -> deleteTable(MATCH_TO_MATCH_PROFILES))
+    deleteTable(ASSOCIATIONS_TABLE)
+      .compose(e -> deleteTable(PROFILE_WRAPPERS_TABLE))
       .compose(e -> deleteTable(ACTION_PROFILES_TABLE))
       .compose(e -> deleteTable(JOB_PROFILES_TABLE))
       .compose(e -> deleteTable(MAPPING_PROFILES_TABLE))
