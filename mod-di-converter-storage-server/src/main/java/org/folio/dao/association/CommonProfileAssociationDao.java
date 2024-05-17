@@ -19,7 +19,6 @@ import org.folio.rest.jaxrs.model.ProfileType;
 import org.folio.rest.jaxrs.model.ReactToType;
 import org.folio.rest.persist.Criteria.Criteria;
 import org.folio.rest.persist.Criteria.Criterion;
-import org.folio.rest.persist.cql.CQLWrapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Repository;
 
@@ -28,7 +27,7 @@ import java.util.Optional;
 
 import static java.lang.String.format;
 import static org.folio.dao.util.DaoUtil.constructCriteria;
-import static org.folio.dao.util.DaoUtil.getCQLWrapper;
+import static org.folio.rest.jaxrs.model.ProfileSnapshotWrapper.ContentType;
 import static org.folio.rest.persist.PostgresClient.convertToPsqlStandard;
 
 /**
@@ -40,9 +39,6 @@ public class CommonProfileAssociationDao implements ProfileAssociationDao {
   private static final String MASTER_WRAPPER_ID_FIELD = "master_wrapper_id";
   private static final String DETAIL_WRAPPER_ID_FIELD = "detail_wrapper_id";
   private static final String JOB_PROFILE_ID_FIELD = "job_profile_id";
-  private static final String CRITERIA_BY_REACT_TO_CLAUSE =
-    "WHERE %s.react_to  = %s";
-
   private static final Logger LOGGER = LogManager.getLogger();
   private static final String ASSOCIATION_TABLE = "associations";
   private static final String INSERT_QUERY = "INSERT INTO %s.%s " +
@@ -50,10 +46,16 @@ public class CommonProfileAssociationDao implements ProfileAssociationDao {
     "master_profile_type, detail_profile_type, detail_order, react_to) " +
     "VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)";
   private static final String SELECT_BY_ID_QUERY = "SELECT * FROM %s.%s WHERE id = $1";
-  private static final String SELECT_ALL_QUERY = "SELECT * FROM %s.%s";
+  private static final String SELECT_BY_MASTER_AND_DETAIL_TYPE_QUERY = "SELECT * FROM %s.%s " +
+    "WHERE master_profile_type = $1 AND detail_profile_type = $2";
   private static final String DELETE_BY_MASTER_WRAPPER_ID_QUERY = "DELETE FROM %s.%s WHERE master_wrapper_id  = $1";
   private static final String DELETE_BY_MASTER_AND_DETAIL_PROFILES_IDS_QUERY = "DELETE FROM %s.%s " +
     "WHERE master_profile_id = $1 AND detail_profile_id = $2";
+  private static final String DELETE_BY_IDS_QUERY = "DELETE FROM %s.%s WHERE master_wrapper_id = $1 " +
+    "AND detail_wrapper_id = $2 " +
+    "AND detail_order = COALESCE($3, 0) " +
+    "AND (job_profile_id = $4 OR job_profile_id IS NULL)";
+  private static final String CRITERIA_BY_REACT_TO_CLAUSE = " AND react_to = $5";
 
   @Autowired
   protected PostgresClientFactory pgClientFactory;
@@ -83,17 +85,19 @@ public class CommonProfileAssociationDao implements ProfileAssociationDao {
   }
 
   @Override
-  public Future<ProfileAssociationCollection> getAll(String tenantId) {
+  public Future<ProfileAssociationCollection> getAll(ContentType masterType, ContentType detailType, String tenantId) {
     Promise<RowSet<Row>> promise = Promise.promise();
-      String query = format(SELECT_ALL_QUERY, convertToPsqlStandard(tenantId), ASSOCIATION_TABLE);
-      pgClientFactory.createInstance(tenantId).execute(query, result -> {
-        if (result.failed()) {
-          LOGGER.warn("getAll:: Error while searching for ProfileAssociations", result.cause());
-          promise.fail(result.cause());
-        } else {
-          promise.complete(result.result());
-        }
-      });
+    // return by master profile type
+    String query = format(SELECT_BY_MASTER_AND_DETAIL_TYPE_QUERY, convertToPsqlStandard(tenantId), ASSOCIATION_TABLE);
+    Tuple queryParams = Tuple.of(masterType, detailType);
+    pgClientFactory.createInstance(tenantId).execute(query, queryParams, result -> {
+      if (result.failed()) {
+        LOGGER.warn("getAll:: Error while searching for ProfileAssociations", result.cause());
+        promise.fail(result.cause());
+      } else {
+        promise.complete(result.result());
+      }
+    });
     return promise.future().map(this::mapResultSetToProfileAssociationCollection);
   }
 
@@ -102,13 +106,13 @@ public class CommonProfileAssociationDao implements ProfileAssociationDao {
     Promise<RowSet<Row>> promise = Promise.promise();
 
     String query = format(SELECT_BY_ID_QUERY, convertToPsqlStandard(tenantId), ASSOCIATION_TABLE);
-    Tuple queryParams = Tuple.of(id);
+    Tuple queryParams = Tuple.of(getValidUUIDOrNull(id));
     pgClientFactory.createInstance(tenantId).execute(query, queryParams, promise);
     return promise.future().map(this::mapResultSetToOptionalProfileAssociation);
   }
 
   @Override
-  public Future<ProfileAssociation> update(ProfileAssociation entity, String tenantId) {
+  public Future<ProfileAssociation> update(ProfileAssociation entity, ContentType masterType, ContentType detailType, String tenantId) {
     Promise<ProfileAssociation> promise = Promise.promise();
     try {
       Criteria idCrit = constructCriteria(ID_FIELD, entity.getId());
@@ -139,20 +143,27 @@ public class CommonProfileAssociationDao implements ProfileAssociationDao {
   }
 
   @Override
-  public Future<Boolean> delete(String masterWrapperId, String detailWrapperId, String jobProfileId,
-                                ReactToType reactTo, Integer order, String tenantId) {
+  public Future<Boolean> delete(String masterWrapperId, String detailWrapperId, ContentType masterType,
+                                ContentType detailType, String jobProfileId, ReactToType reactTo, Integer order, String tenantId) {
+    LOGGER.debug("delete : masterWrapperId={}, detailWrapperId={}, masterType={}, detailType={}",
+      masterWrapperId, detailWrapperId, masterType.value(), detailType.value());
     Promise<RowSet<Row>> promise = Promise.promise();
     try {
-      CQLWrapper filter = getCQLWrapper(ASSOCIATION_TABLE,
-        MASTER_WRAPPER_ID_FIELD + "==" + masterWrapperId + " AND " + DETAIL_WRAPPER_ID_FIELD + "==" + detailWrapperId
-          + " AND (detail_order == " + (order == null ? 0 : order) + ")"
-          + " AND (" + JOB_PROFILE_ID_FIELD + "==" + jobProfileId + " OR (cql.allRecords=1 NOT " + JOB_PROFILE_ID_FIELD + "=\"\"))");
+      StringBuilder queryBuilder = new StringBuilder();
+      queryBuilder.append(String.format(DELETE_BY_IDS_QUERY, convertToPsqlStandard(tenantId), ASSOCIATION_TABLE));
+
+      Tuple queryParams = Tuple.of(getValidUUIDOrNull(masterWrapperId),
+        getValidUUIDOrNull(detailWrapperId),
+        order,
+        getValidUUIDOrNull(jobProfileId));
+
       if (reactTo != null) {
-        String whereClause = filter.getWhereClause()
-          + " AND " + String.format(CRITERIA_BY_REACT_TO_CLAUSE, ASSOCIATION_TABLE, reactTo.value());
-        filter.setWhereClause(whereClause);
+        queryBuilder.append(CRITERIA_BY_REACT_TO_CLAUSE);
+        queryParams.addValue(reactTo);
       }
-      pgClientFactory.createInstance(tenantId).delete(ASSOCIATION_TABLE, filter, promise);
+
+      String query = queryBuilder.toString();
+      pgClientFactory.createInstance(tenantId).execute(query, queryParams, promise);
     } catch (Exception e) {
       LOGGER.warn("delete:: Error deleting by master wrapper id {}, detail wrapper id {} and order {}",
         masterWrapperId, detailWrapperId, order, e);
@@ -162,11 +173,12 @@ public class CommonProfileAssociationDao implements ProfileAssociationDao {
   }
 
   @Override
-  public Future<Boolean> deleteByMasterWrapperId(String wrapperId, String tenantId) {
+  public Future<Boolean> deleteByMasterWrapperId(String wrapperId, ContentType masterType, ContentType detailType, String tenantId) {
+    LOGGER.debug("deleteByMasterWrapperId : wrapperId={}, masterType={}, detailType={}", wrapperId, masterType.value(), detailType.value());
     Promise<RowSet<Row>> promise = Promise.promise();
     try {
       String query = format(DELETE_BY_MASTER_WRAPPER_ID_QUERY, convertToPsqlStandard(tenantId), ASSOCIATION_TABLE);
-      Tuple queryParams = Tuple.of(wrapperId);
+      Tuple queryParams = Tuple.of(getValidUUIDOrNull(wrapperId));
       pgClientFactory.createInstance(tenantId).execute(query, queryParams, promise);
     } catch (Exception e) {
       LOGGER.warn("deleteByMasterWrapperId:: Error deleting by master wrapper id {}", wrapperId, e);
@@ -176,17 +188,30 @@ public class CommonProfileAssociationDao implements ProfileAssociationDao {
   }
 
   @Override
-  public Future<Boolean> deleteByMasterIdAndDetailId(String masterId, String detailId, String tenantId) {
+  public Future<Boolean> deleteByMasterIdAndDetailId(String masterId, String detailId, ContentType masterType,
+                                                     ContentType detailType, String tenantId) {
+    LOGGER.debug("deleteByMasterIdAndDetailId : masterId={}, detailId={}, masterType={}, detailType={}",
+      masterId, detailId, masterType.value(), detailType.value());
     Promise<RowSet<Row>> promise = Promise.promise();
     try {
       String query = format(DELETE_BY_MASTER_AND_DETAIL_PROFILES_IDS_QUERY, convertToPsqlStandard(tenantId), ASSOCIATION_TABLE);
-      Tuple queryParams = Tuple.of(masterId, detailId);
+      Tuple queryParams = Tuple.of(getValidUUIDOrNull(masterId), getValidUUIDOrNull(detailId));
       pgClientFactory.createInstance(tenantId).execute(query, queryParams, promise);
     } catch (Exception e) {
       LOGGER.warn("deleteByMasterIdAndDetailId:: Error deleting by master id {} and detail id {}", masterId, detailId, e);
       return Future.failedFuture(e);
     }
     return promise.future().map(updateResult -> updateResult.rowCount() == 1);
+  }
+
+  private UUID getValidUUIDOrNull(String input) {
+    if (input == null) return null;
+    try {
+      return UUID.fromString(input);
+    } catch (IllegalArgumentException ex) {
+      LOGGER.debug("getValidUUIDOrNull:: Invalid UUID format for input: {}, returning null...", input);
+      return null;
+    }
   }
 
   private Optional<ProfileAssociation> mapResultSetToOptionalProfileAssociation(RowSet<Row> resultSet) {

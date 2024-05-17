@@ -61,8 +61,8 @@ public class CommonProfileAssociationService implements ProfileAssociationServic
   private MasterDetailAssociationDao masterDetailAssociationDao;
 
   @Override
-  public Future<ProfileAssociationCollection> getAll(String tenantId) {
-    return profileAssociationDao.getAll(tenantId);
+  public Future<ProfileAssociationCollection> getAll(ContentType masterType, ContentType detailType, String tenantId) {
+    return profileAssociationDao.getAll(masterType, detailType, tenantId);
   }
 
   @Override
@@ -173,7 +173,7 @@ public class CommonProfileAssociationService implements ProfileAssociationServic
   }
 
   @Override
-  public Future<ProfileAssociation> update(ProfileAssociation entity, OkapiConnectionParams params) {
+  public Future<ProfileAssociation> update(ProfileAssociation entity, ContentType masterType, ContentType detailType,OkapiConnectionParams params) {
     return profileWrapperDao.deleteById(entity.getMasterProfileId(), params.getTenantId())
       .compose(e -> profileWrapperDao.deleteById(entity.getDetailProfileId(), params.getTenantId()))
       .compose(r -> {
@@ -190,7 +190,7 @@ public class CommonProfileAssociationService implements ProfileAssociationServic
         detailWrapper.setProfileId(entity.getDetailProfileId());
         return profileWrapperDao.save(detailWrapper, params.getTenantId());
       })
-      .compose(f -> profileAssociationDao.update(entity, params.getTenantId()));
+      .compose(f -> profileAssociationDao.update(entity, masterType, detailType, params.getTenantId()));
   }
 
   @Override
@@ -236,24 +236,18 @@ public class CommonProfileAssociationService implements ProfileAssociationServic
   @Override
   public Future<Boolean> delete(String masterWrapperId, String detailWrapperId, ContentType masterType, ContentType detailType,
                                 String jobProfileId, ReactToType reactTo, Integer order, String tenantId) {
-    LOGGER.debug("delete : masterWrapperId={}, detailWrapperId={}, masterType={}, detailType={}",
-      masterWrapperId, detailWrapperId, masterType.value(), detailType.value());
-    return profileAssociationDao.delete(masterWrapperId, detailWrapperId, jobProfileId, reactTo, order, tenantId);
+    return profileAssociationDao.delete(masterWrapperId, detailWrapperId, masterType, detailType, jobProfileId, reactTo, order, tenantId);
   }
 
   @Override
   public Future<Boolean> deleteByMasterWrapperId(String wrapperId, ContentType masterType, ContentType detailType, String tenantId) {
-    LOGGER.debug("deleteByMasterIdAndDetailId : wrapperId={}, masterType={}, detailType={}",
-      wrapperId, masterType.value(), detailType.value());
-    return profileAssociationDao.deleteByMasterWrapperId(wrapperId, tenantId);
+    return profileAssociationDao.deleteByMasterWrapperId(wrapperId, masterType, detailType, tenantId);
   }
 
   @Override
   public Future<Boolean> deleteByMasterIdAndDetailId(String masterId, String detailId, ContentType masterType,
                                                      ContentType detailType, String tenantId) {
-    LOGGER.debug("deleteByMasterIdAndDetailId : masterId={}, detailId={}, masterType={}, detailType={}",
-      masterId, detailId, masterType.value(), detailType.value());
-    return profileAssociationDao.deleteByMasterIdAndDetailId(masterId, detailId, tenantId);
+    return profileAssociationDao.deleteByMasterIdAndDetailId(masterId, detailId, masterType, detailType, tenantId);
   }
 
   /**

@@ -22,7 +22,7 @@ public interface ProfileAssociationService { //NOSONAR
    * @param tenantId   tenant id
    * @return future with {@link ProfileAssociationCollection}
    */
-  Future<ProfileAssociationCollection> getAll(String tenantId);
+  Future<ProfileAssociationCollection> getAll(ContentType masterType, ContentType detailType, String tenantId);
 
   /**
    * Searches for ProfileAssociation by id
@@ -58,7 +58,7 @@ public interface ProfileAssociationService { //NOSONAR
    * @param params     {@link OkapiConnectionParams}
    * @return future with updated entity
    */
-  Future<ProfileAssociation> update(ProfileAssociation entity, OkapiConnectionParams params);
+  Future<ProfileAssociation> update(ProfileAssociation entity, ContentType masterType, ContentType detailType, OkapiConnectionParams params);
 
   /**
    * Deletes ProfileAssociation entity by id
@@ -105,6 +105,7 @@ public interface ProfileAssociationService { //NOSONAR
    * @param masterType   - master Profile Type
    * @param detailType   - detail Profile Type
    * @param jobProfileId - job profile id (optional)
+   * @param reactTo      - reactTo of ReactToType
    * @param order        - order
    * @param tenantId     - tenant id
    * @return - boolean result of operation

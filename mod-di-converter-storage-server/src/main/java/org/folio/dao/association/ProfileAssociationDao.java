@@ -5,6 +5,7 @@ import org.folio.rest.jaxrs.model.ProfileAssociation;
 import org.folio.rest.jaxrs.model.ProfileAssociationCollection;
 
 import java.util.Optional;
+import org.folio.rest.jaxrs.model.ProfileSnapshotWrapper.ContentType;
 import org.folio.rest.jaxrs.model.ReactToType;
 
 /**
@@ -27,7 +28,7 @@ public interface ProfileAssociationDao {
    * @param tenantId   tenant id
    * @return future with {@link ProfileAssociationCollection}
    */
-  Future<ProfileAssociationCollection> getAll(String tenantId);
+  Future<ProfileAssociationCollection> getAll(ContentType masterType, ContentType detailType, String tenantId);
 
   /**
    * Searches for ProfileAssociation entity by id
@@ -45,7 +46,7 @@ public interface ProfileAssociationDao {
    * @param tenantId   tenant id
    * @return future with updated entity
    */
-  Future<ProfileAssociation> update(ProfileAssociation entity, String tenantId);
+  Future<ProfileAssociation> update(ProfileAssociation entity, ContentType masterType, ContentType detailType, String tenantId);
 
   /**
    * Deletes entity from database
@@ -66,8 +67,8 @@ public interface ProfileAssociationDao {
    * @param tenantId     - tenant id
    * @return - boolean result of operation
    */
-  Future<Boolean> delete(String masterWrapperId, String detailWrapperId, String jobProfileId, ReactToType reactTo,
-                         Integer order, String tenantId);
+  Future<Boolean> delete(String masterWrapperId, String detailWrapperId, ContentType masterType,
+                         ContentType detailType, String jobProfileId, ReactToType reactTo, Integer order, String tenantId);
 
   /**
    * Delete profile associations for particular master profile by wrapperId
@@ -76,7 +77,7 @@ public interface ProfileAssociationDao {
    * @param tenantId   - tenant id
    * @return future with boolean
    */
-  Future<Boolean> deleteByMasterWrapperId(String wrapperId, String tenantId);
+  Future<Boolean> deleteByMasterWrapperId(String wrapperId, ContentType masterType, ContentType detailType, String tenantId);
 
   /**
    * Delete ProfileAssociation  by masterWrapperId and detailWrapperId
@@ -86,5 +87,6 @@ public interface ProfileAssociationDao {
    * @param tenantId     - tenant id
    * @return - boolean result of operation
    */
-  Future<Boolean> deleteByMasterIdAndDetailId(String masterId, String detailId, String tenantId);
+  Future<Boolean> deleteByMasterIdAndDetailId(String masterId, String detailId, ContentType masterType,
+                                              ContentType detailType, String tenantId);
 }

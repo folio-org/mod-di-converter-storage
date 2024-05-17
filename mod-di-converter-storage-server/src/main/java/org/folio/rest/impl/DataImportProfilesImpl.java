@@ -645,7 +645,7 @@ public class DataImportProfilesImpl implements DataImportProfiles {
     vertxContext.runOnContext(v -> {
         try {
           OkapiConnectionParams params = new OkapiConnectionParams(okapiHeaders);
-          profileAssociationService.getAll(params.getTenantId())
+          profileAssociationService.getAll(mapContentType(master), mapContentType(detail), params.getTenantId())
             .map(GetDataImportProfilesProfileAssociationsResponse::respond200WithApplicationJson)
             .map(Response.class::cast)
             .otherwise(ExceptionHelper::mapExceptionToResponse)
@@ -664,7 +664,7 @@ public class DataImportProfilesImpl implements DataImportProfiles {
     vertxContext.runOnContext(v -> {
       try {
         entity.setId(id);
-        profileAssociationService.update(entity, new OkapiConnectionParams(okapiHeaders))
+        profileAssociationService.update(entity, mapContentType(master), mapContentType(detail), new OkapiConnectionParams(okapiHeaders))
           .map(updatedEntity -> (Response) PutDataImportProfilesProfileAssociationsByIdResponse.respond200WithApplicationJson(updatedEntity))
           .otherwise(ExceptionHelper::mapExceptionToResponse)
           .onComplete(asyncResultHandler);
