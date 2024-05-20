@@ -24,16 +24,16 @@ CREATE OR REPLACE VIEW associations_view
     SELECT association_id, master_id, masterwrapperid, master, master_type, detail_id, detailwrapperid, detail_type, detail_order, detail, react_to, job_profile_id
     FROM get_profile_association_snapshot('action_profiles', 'ACTION_PROFILE', 'mapping_profiles', 'MAPPING_PROFILE')
       UNION ALL
-    SELECT associations.id AS association_id, associations.job_profile_id AS master_id, associations.master_wrapper_id AS masterwrapperid, json_agg(JOB.jsonb) AS master, 'JOB_PROFILE' AS master_type, DETAIL.ID AS detail_id, associations.detail_wrapper_id AS detailwrapperid, 'ACTION_PROFILE' AS detail_type, 0 AS detail_order, json_agg(DETAIL.JSONB) AS detail, null AS react_to, associations.job_profile_id AS job_profile_id
+    SELECT associations.id AS association_id, associations.job_profile_id AS master_id, associations.master_wrapper_id AS masterwrapperid, json_agg(job.jsonb) AS master, 'JOB_PROFILE' AS master_type, detail.id AS detail_id, associations.detail_wrapper_id AS detailwrapperid, 'ACTION_PROFILE' AS detail_type, 0 AS detail_order, json_agg(detail.jsonb) AS detail, null AS react_to, associations.job_profile_id AS job_profile_id
     FROM associations
-    INNER JOIN PROFILE_WRAPPERS MASTERWRAPPER ON associations.master_wrapper_id = MASTERWRAPPER.ID
-    INNER JOIN PROFILE_WRAPPERS DETAILWRAPPER ON associations.detail_Wrapper_id = DETAILWRAPPER.ID
-    INNER JOIN MATCH_PROFILES MASTER ON MASTER.ID = MASTERWRAPPER.MATCH_PROFILE_ID
-    INNER JOIN ACTION_PROFILES DETAIL ON DETAIL.ID = DETAILWRAPPER.ACTION_PROFILE_ID
-    INNER JOIN JOB_PROFILES JOB ON JOB.ID = associations.job_profile_id
+    INNER JOIN profile_wrappers masterwrapper ON associations.master_wrapper_id = masterwrapper.id
+    INNER JOIN profile_wrappers detailwrapper ON associations.detail_wrapper_id = detailwrapper.id
+    INNER JOIN match_profiles master ON master.id = masterwrapper.match_profile_id
+    INNER JOIN action_profiles detail ON detail.id = detailwrapper.action_profile_id
+    INNER JOIN job_profiles job ON job.id = associations.job_profile_id
     WHERE associations.detail_profile_type = 'ACTION_PROFILE'
     	AND associations.master_profile_type = 'MATCH_PROFILE'
-    GROUP BY associations.id, MASTER.ID, DETAIL.ID, DETAIL.JSONB;
+    GROUP BY associations.id, master.id, detail.id, detail.jsonb;
 
 -- Script to create rule which will triggered upon delete query to associations_view view.
 CREATE OR REPLACE RULE delete_associations_with_details AS
