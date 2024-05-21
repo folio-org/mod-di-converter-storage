@@ -8,6 +8,7 @@ import org.folio.rest.jaxrs.model.JobProfileCollection;
 import org.folio.rest.jaxrs.model.JobProfileUpdateDto;
 import org.folio.rest.jaxrs.model.ProfileAssociation;
 import org.folio.rest.jaxrs.model.ProfileSnapshotWrapper;
+import org.folio.rest.jaxrs.model.ProfileType;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
@@ -63,8 +64,8 @@ public class JobProfileServiceImpl extends AbstractProfileService<JobProfile, Jo
   }
 
   @Override
-  protected ProfileSnapshotWrapper.ContentType getProfileContentType() {
-    return ProfileSnapshotWrapper.ContentType.JOB_PROFILE;
+  protected ProfileType getProfileContentType() {
+    return ProfileType.JOB_PROFILE;
   }
 
   @Override

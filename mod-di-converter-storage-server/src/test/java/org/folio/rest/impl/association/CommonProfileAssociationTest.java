@@ -27,7 +27,7 @@ import org.folio.rest.jaxrs.model.MappingProfileUpdateDto;
 import org.folio.rest.jaxrs.model.MatchProfile;
 import org.folio.rest.jaxrs.model.MatchProfileUpdateDto;
 import org.folio.rest.jaxrs.model.ProfileAssociation;
-import org.folio.rest.jaxrs.model.ProfileSnapshotWrapper.ContentType;
+import org.folio.rest.jaxrs.model.ProfileType;
 import org.folio.rest.persist.Criteria.Criterion;
 import org.folio.rest.persist.PostgresClient;
 import org.junit.Assert;
@@ -40,10 +40,10 @@ import java.util.UUID;
 import static org.folio.rest.jaxrs.model.ActionProfile.Action.UPDATE;
 import static org.folio.rest.jaxrs.model.ActionProfile.FolioRecord.MARC_BIBLIOGRAPHIC;
 import static org.folio.rest.jaxrs.model.JobProfile.DataType.MARC;
-import static org.folio.rest.jaxrs.model.ProfileSnapshotWrapper.ContentType.ACTION_PROFILE;
-import static org.folio.rest.jaxrs.model.ProfileSnapshotWrapper.ContentType.JOB_PROFILE;
-import static org.folio.rest.jaxrs.model.ProfileSnapshotWrapper.ContentType.MAPPING_PROFILE;
-import static org.folio.rest.jaxrs.model.ProfileSnapshotWrapper.ContentType.MATCH_PROFILE;
+import static org.folio.rest.jaxrs.model.ProfileType.ACTION_PROFILE;
+import static org.folio.rest.jaxrs.model.ProfileType.JOB_PROFILE;
+import static org.folio.rest.jaxrs.model.ProfileType.MAPPING_PROFILE;
+import static org.folio.rest.jaxrs.model.ProfileType.MATCH_PROFILE;
 import static org.hamcrest.Matchers.is;
 
 @RunWith(VertxUnitRunner.class)
@@ -130,7 +130,7 @@ public class CommonProfileAssociationTest extends AbstractRestVerticleTest {
     shouldReturnEmptyOkResultOnGetAll(testContext, MATCH_PROFILE, MATCH_PROFILE);
   }
 
-  public void shouldReturnEmptyOkResultOnGetAll(TestContext testContext, ContentType masterProfileType, ContentType detailProfileType) {
+  public void shouldReturnEmptyOkResultOnGetAll(TestContext testContext, ProfileType masterProfileType, ProfileType detailProfileType) {
     Async async = testContext.async();
     RestAssured.given()
       .spec(spec)
@@ -170,7 +170,7 @@ public class CommonProfileAssociationTest extends AbstractRestVerticleTest {
   }
 
   public <M, D> void shouldReturnProfileAssociationListOnGet(TestContext testContext, ProfileWrapper<M> masterWrapper1, ProfileWrapper<D> detailWrapper1,
-                                                             String masterProfileUrl, String detailProfileUrl, ContentType masterProfileType, ContentType detailProfileType) {
+                                                             String masterProfileUrl, String detailProfileUrl, ProfileType masterProfileType, ProfileType detailProfileType) {
     ProfileWrapper<M> masterProfileWrapper1 = postProfile(testContext, masterWrapper1, masterProfileUrl);
     ProfileWrapper<D> detailProfileWrapper1 = postProfile(testContext, detailWrapper1, detailProfileUrl);
 
@@ -210,6 +210,28 @@ public class CommonProfileAssociationTest extends AbstractRestVerticleTest {
   }
 
   @Test
+  public void runTestShouldReturnBadRequestOnGetWhenSpecifiedIncompatibleMasterAndDetailTypes() {
+    shouldReturnBadRequestOnGetWhenSpecifiedIncompatibleMasterAndDetailTypes(MAPPING_PROFILE, ACTION_PROFILE);
+    shouldReturnBadRequestOnGetWhenSpecifiedIncompatibleMasterAndDetailTypes(MAPPING_PROFILE, MATCH_PROFILE);
+    shouldReturnBadRequestOnGetWhenSpecifiedIncompatibleMasterAndDetailTypes(MAPPING_PROFILE, MAPPING_PROFILE);
+    shouldReturnBadRequestOnGetWhenSpecifiedIncompatibleMasterAndDetailTypes(ACTION_PROFILE, JOB_PROFILE);
+    shouldReturnBadRequestOnGetWhenSpecifiedIncompatibleMasterAndDetailTypes(MAPPING_PROFILE, JOB_PROFILE);
+    shouldReturnBadRequestOnGetWhenSpecifiedIncompatibleMasterAndDetailTypes(MATCH_PROFILE, JOB_PROFILE);
+  }
+
+  public void shouldReturnBadRequestOnGetWhenSpecifiedIncompatibleMasterAndDetailTypes(ProfileType masterProfileType, ProfileType detailProfileType) {
+    RestAssured.given()
+      .spec(spec)
+      .queryParam("master", masterProfileType.value())
+      .queryParam("detail", detailProfileType.value())
+      .when()
+      .get(ASSOCIATED_PROFILES_URL)
+      .then()
+      .statusCode(HttpStatus.SC_BAD_REQUEST);
+  }
+
+
+  @Test
   public void runTestShouldReturnNotFoundOnGetById(TestContext testContext) {
     shouldReturnNotFoundOnGetById(testContext, ACTION_PROFILE, ACTION_PROFILE);
     shouldReturnNotFoundOnGetById(testContext, ACTION_PROFILE, MAPPING_PROFILE);
@@ -220,7 +242,7 @@ public class CommonProfileAssociationTest extends AbstractRestVerticleTest {
     shouldReturnNotFoundOnGetById(testContext, MATCH_PROFILE, MATCH_PROFILE);
   }
 
-  public void shouldReturnNotFoundOnGetById(TestContext testContext, ContentType masterProfileType, ContentType detailProfileType) {
+  public void shouldReturnNotFoundOnGetById(TestContext testContext, ProfileType masterProfileType, ProfileType detailProfileType) {
     Async async = testContext.async();
     RestAssured.given()
       .spec(spec)
@@ -259,7 +281,7 @@ public class CommonProfileAssociationTest extends AbstractRestVerticleTest {
   }
 
   public <M, D> void shouldPostAndGetById(TestContext testContext, ProfileWrapper<M> masterProfileWrapper, ProfileWrapper<D> detailProfileWrapper,
-                                          String masterProfileUrl, String detailProfileUrl, ContentType masterContentType, ContentType detailContentType) {
+                                          String masterProfileUrl, String detailProfileUrl, ProfileType masterContentType, ProfileType detailContentType) {
     ProfileWrapper<M> masterWrapper = postProfile(testContext, masterProfileWrapper, masterProfileUrl);
     ProfileWrapper<D> detailWrapper = postProfile(testContext, detailProfileWrapper, detailProfileUrl);
 
@@ -325,7 +347,7 @@ public class CommonProfileAssociationTest extends AbstractRestVerticleTest {
     shouldReturnNotFoundOnDelete(testContext, MATCH_PROFILE, MATCH_PROFILE);
   }
 
-  public void shouldReturnNotFoundOnDelete(TestContext testContext, ContentType masterProfileType, ContentType detailProfileType) {
+  public void shouldReturnNotFoundOnDelete(TestContext testContext, ProfileType masterProfileType, ProfileType detailProfileType) {
     Async async = testContext.async();
     RestAssured.given()
       .spec(spec)
@@ -364,7 +386,7 @@ public class CommonProfileAssociationTest extends AbstractRestVerticleTest {
   }
 
   public <M, D> void shouldDeleteProfileOnDelete(TestContext testContext, ProfileWrapper<M> masterWrapper, ProfileWrapper<D> detailWrapper,
-                                                 String masterProfileUrl, String detailProfileUrl, ContentType masterProfileType, ContentType detailProfileType) {
+                                                 String masterProfileUrl, String detailProfileUrl, ProfileType masterProfileType, ProfileType detailProfileType) {
     ProfileWrapper<M> masterProfileWrapper = postProfile(testContext, masterWrapper, masterProfileUrl);
     ProfileWrapper<D> detailProfileWrapper = postProfile(testContext, detailWrapper, detailProfileUrl);
 
@@ -415,7 +437,7 @@ public class CommonProfileAssociationTest extends AbstractRestVerticleTest {
     shouldReturnBadRequestOnPut(testContext, MATCH_PROFILE, MATCH_PROFILE);
   }
 
-  public void shouldReturnBadRequestOnPut(TestContext testContext, ContentType masterContentType, ContentType detailContentType) {
+  public void shouldReturnBadRequestOnPut(TestContext testContext, ProfileType masterContentType, ProfileType detailContentType) {
     Async async = testContext.async();
     RestAssured.given()
       .spec(spec)
@@ -538,7 +560,7 @@ public class CommonProfileAssociationTest extends AbstractRestVerticleTest {
     shouldReturnNotFoundOnPut(testContext, MATCH_PROFILE, MATCH_PROFILE, firstMatchProfileId, secondMatchProfileId, ProfileType.MATCH_PROFILE, ProfileType.MATCH_PROFILE);
   }
 
-  public void shouldReturnNotFoundOnPut(TestContext testContext, ContentType masterContentType, ContentType detailContentType, String masterId, String detailId,
+  public void shouldReturnNotFoundOnPut(TestContext testContext, ProfileType masterContentType, ProfileType detailContentType, String masterId, String detailId,
                                         ProfileType masterType, ProfileType detailType) {
     Async async = testContext.async();
 
@@ -583,7 +605,7 @@ public class CommonProfileAssociationTest extends AbstractRestVerticleTest {
   }
 
   public <M, D> void shouldUpdateProfileAssociationOnPut(TestContext testContext, ProfileWrapper<M> masterWrapper, ProfileWrapper<D> detailWrapper, ProfileWrapper<D> detailWrapper2,
-                                                         String masterProfileUrl, String detailProfileUrl, ContentType masterContentType, ContentType detailContentType) {
+                                                         String masterProfileUrl, String detailProfileUrl, ProfileType masterContentType, ProfileType detailContentType) {
     ProfileWrapper<M> masterProfileWrapper = postProfile(testContext, masterWrapper, masterProfileUrl);
     ProfileWrapper<D> detailProfileWrapper = postProfile(testContext, detailWrapper, detailProfileUrl);
 
@@ -659,7 +681,7 @@ public class CommonProfileAssociationTest extends AbstractRestVerticleTest {
 
   public <M, D> void getDetailProfilesByMasterProfile_OK(TestContext testContext, ProfileWrapper<M> masterWrapper, ProfileWrapper<M> masterWrapper2,
                                                          ProfileWrapper<D> detailWrapper, ProfileWrapper<D> detailWrapper2,
-                                                         String masterProfileUrl, String detailProfileUrl, ContentType masterProfileType, ContentType detailProfileType) {
+                                                         String masterProfileUrl, String detailProfileUrl, ProfileType masterProfileType, ProfileType detailProfileType) {
     ProfileWrapper<M> masterProfileWrapper1 = postProfile(testContext, masterWrapper, masterProfileUrl);
     ProfileWrapper<M> masterProfileWrapper2 = postProfile(testContext, masterWrapper2, masterProfileUrl);
     ProfileWrapper<D> detailProfileWrapper1 = postProfile(testContext, detailWrapper, detailProfileUrl);
@@ -744,7 +766,7 @@ public class CommonProfileAssociationTest extends AbstractRestVerticleTest {
     getDetailProfilesByMasterProfile_NotFound(testContext, MATCH_PROFILE);
   }
 
-  public void getDetailProfilesByMasterProfile_NotFound(TestContext testContext, ContentType masterContentType) {
+  public void getDetailProfilesByMasterProfile_NotFound(TestContext testContext, ProfileType masterContentType) {
     Async async = testContext.async();
     RestAssured.given()
       .spec(spec)
@@ -766,7 +788,7 @@ public class CommonProfileAssociationTest extends AbstractRestVerticleTest {
       .get(DETAILS_BY_MASTER_URL, UUID.randomUUID().toString())
       .then()
       .statusCode(HttpStatus.SC_BAD_REQUEST)
-      .body(is("The specified type: foo is wrong. It should be " + Arrays.toString(ContentType.values())));
+      .body(is("The specified type: foo is wrong. It should be " + Arrays.toString(ProfileType.values())));
     async.complete();
   }
 
@@ -781,7 +803,7 @@ public class CommonProfileAssociationTest extends AbstractRestVerticleTest {
   }
 
   public <M> void getDetailsByMasterProfile_emptyDetailsListWithMasterProfile(TestContext testContext, ProfileWrapper<M> masterWrapper,
-                                                                              String masterProfileUrl, ContentType masterProfileType) {
+                                                                              String masterProfileUrl, ProfileType masterProfileType) {
     ProfileWrapper<M> masterProfileWrapper = postProfile(testContext, masterWrapper, masterProfileUrl);
     Async async = testContext.async();
     RestAssured.given()
@@ -830,7 +852,7 @@ public class CommonProfileAssociationTest extends AbstractRestVerticleTest {
 
   public <M, D> void getDetailProfilesByMasterProfile_sortByName_OK(TestContext testContext, ProfileWrapper<M> masterWrapper,
                                                                     ProfileWrapper<D> detailWrapper, ProfileWrapper<D> detailWrapper2, ProfileWrapper<D> detailWrapper3,
-                                                                    String masterProfileUrl, String detailProfileUrl, ContentType masterProfileType, ContentType detailProfileType) {
+                                                                    String masterProfileUrl, String detailProfileUrl, ProfileType masterProfileType, ProfileType detailProfileType) {
     ProfileWrapper<M> masterProfileWrapper1 = postProfile(testContext, masterWrapper, masterProfileUrl);
 
     //creates association 2
@@ -960,7 +982,7 @@ public class CommonProfileAssociationTest extends AbstractRestVerticleTest {
 
   public <M, D> void getMastersByDetailProfile_OK(TestContext testContext, ProfileWrapper<M> masterWrapper, ProfileWrapper<M> masterWrapper2,
                                                   ProfileWrapper<D> detailWrapper, ProfileWrapper<D> detailWrapper2,
-                                                  String masterProfileUrl, String detailProfileUrl, ContentType masterProfileType, ContentType detailProfileType) {
+                                                  String masterProfileUrl, String detailProfileUrl, ProfileType masterProfileType, ProfileType detailProfileType) {
     ProfileWrapper<M> masterProfileWrapper1 = postProfile(testContext, masterWrapper, masterProfileUrl);
     ProfileWrapper<M> masterProfileWrapper2 = postProfile(testContext, masterWrapper2, masterProfileUrl);
 
@@ -1046,7 +1068,7 @@ public class CommonProfileAssociationTest extends AbstractRestVerticleTest {
     getMastersByDetailProfile_NotFound(testContext, MATCH_PROFILE);
   }
 
-  public void getMastersByDetailProfile_NotFound(TestContext testContext, ContentType detailContentType) {
+  public void getMastersByDetailProfile_NotFound(TestContext testContext, ProfileType detailContentType) {
     Async async = testContext.async();
     RestAssured.given()
       .spec(spec)
@@ -1068,7 +1090,7 @@ public class CommonProfileAssociationTest extends AbstractRestVerticleTest {
       .get(MASTERS_BY_DETAIL_URL, UUID.randomUUID().toString())
       .then()
       .statusCode(HttpStatus.SC_BAD_REQUEST)
-      .body(is("The specified type: foo is wrong. It should be " + Arrays.toString(ContentType.values())));
+      .body(is("The specified type: foo is wrong. It should be " + Arrays.toString(ProfileType.values())));
     async.complete();
   }
 
@@ -1084,7 +1106,7 @@ public class CommonProfileAssociationTest extends AbstractRestVerticleTest {
   }
 
   public <D> void getMastersByDetailProfile_emptyMastersListWithDetailProfile(TestContext testContext, ProfileWrapper<D> detailWrapper,
-                                                                              String detailProfileUrl, ContentType detailProfileType) {
+                                                                              String detailProfileUrl, ProfileType detailProfileType) {
     ProfileWrapper<D> detailProfileWrapper = postProfile(testContext, detailWrapper, detailProfileUrl);
 
     Async async = testContext.async();
@@ -1134,7 +1156,7 @@ public class CommonProfileAssociationTest extends AbstractRestVerticleTest {
 
   public <M, D> void getMastersByDetailProfile_sortBy_OK(TestContext testContext, ProfileWrapper<M> masterProfileWrapper1, ProfileWrapper<M> masterProfileWrapper2,
                                                          ProfileWrapper<M> masterProfileWrapper3, ProfileWrapper<D> detailProfileWrapper,
-                                                         String masterProfileUrl, String detailProfileUrl, ContentType masterProfileType, ContentType detailProfileType) {
+                                                         String masterProfileUrl, String detailProfileUrl, ProfileType masterProfileType, ProfileType detailProfileType) {
     ProfileWrapper<D> detailWrapper = postProfile(testContext, detailProfileWrapper, detailProfileUrl);
     ProfileWrapper<M> masterWrapper3 = postProfile(testContext, masterProfileWrapper3, masterProfileUrl);
     ProfileWrapper<M> masterWrapper2 = postProfile(testContext, masterProfileWrapper2, masterProfileUrl);

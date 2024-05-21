@@ -9,8 +9,10 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.folio.dao.PostgresClientFactory;
+import org.folio.rest.jaxrs.model.ProfileAssociation;
 import org.folio.rest.jaxrs.model.ProfileSnapshotWrapper;
-import org.folio.rest.jaxrs.model.ProfileSnapshotWrapper.ContentType;
+import org.folio.rest.jaxrs.model.ProfileType;
+import org.folio.rest.jaxrs.model.ReactToType;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Repository;
 
@@ -52,7 +54,7 @@ public class ProfileSnapshotDaoImpl implements ProfileSnapshotDao {
     return promise.future();
   }
 
-  public Future<List<ProfileSnapshotItem>> getSnapshotItems(String profileId, ContentType profileType, String jobProfileId, String tenantId) {
+  public Future<List<ProfileAssociation>> getSnapshotAssociations(String profileId, ProfileType profileType, String jobProfileId, String tenantId) {
     Promise<RowSet<Row>> promise = Promise.promise();
     try {
       SnapshotProfileType snapshotProfileType = SnapshotProfileType.valueOf(profileType.value());
@@ -64,24 +66,28 @@ public class ProfileSnapshotDaoImpl implements ProfileSnapshotDao {
     }
     return promise.future()
       .map(rows -> {
-        List<ProfileSnapshotItem> snapshotItems = new ArrayList<>();
+        List<ProfileAssociation> snapshotAssociations = new ArrayList<>();
         rows.forEach(row -> {
           JsonObject jsonItem = row.get(JsonObject.class, 0);
-          ProfileSnapshotItem snapshotItem = new ProfileSnapshotItem();
-          snapshotItem.setAssociationId(jsonItem.getString("association_id"));
-          snapshotItem.setMasterId(jsonItem.getString("master_id"));
-          snapshotItem.setDetailId(jsonItem.getString("detail_id"));
-          snapshotItem.setDetailType(ContentType.fromValue(jsonItem.getString("detail_type")));
-          snapshotItem.setDetail(jsonItem.getJsonArray("detail").getList().get(0));
-          snapshotItem.setOrder(jsonItem.getInteger("detail_order"));
-          snapshotItem.setMasterWrapperId(jsonItem.getString("masterwrapperid"));
-          snapshotItem.setDetailWrapperId(jsonItem.getString("detailwrapperid"));
+          ProfileAssociation snapshotAssociation = new ProfileAssociation();
+          snapshotAssociation.setId(jsonItem.getString("association_id"));
+          snapshotAssociation.setMasterProfileId(jsonItem.getString("master_id"));
+          snapshotAssociation.setDetailProfileId(jsonItem.getString("detail_id"));
+          snapshotAssociation.setMasterWrapperId(jsonItem.getString("masterwrapperid"));
+          snapshotAssociation.setDetailWrapperId(jsonItem.getString("detailwrapperid"));
+          snapshotAssociation.setDetailProfileType(ProfileType.fromValue(jsonItem.getString("detail_type")));
+          snapshotAssociation.setOrder(jsonItem.getInteger("detail_order"));
+          snapshotAssociation.setDetail(jsonItem.getJsonArray("detail").getList().get(0));
+          snapshotAssociation.setJobProfileId(jsonItem.getString("job_profile_id"));
           if (StringUtils.isNotEmpty(jsonItem.getString("react_to"))) {
-            snapshotItem.setReactTo(ProfileSnapshotWrapper.ReactTo.fromValue(jsonItem.getString("react_to")));
+            snapshotAssociation.setReactTo(ReactToType.fromValue(jsonItem.getString("react_to")));
           }
-          snapshotItems.add(snapshotItem);
+          if (StringUtils.isNotEmpty(jsonItem.getString("master_type"))) {
+            snapshotAssociation.setMasterProfileType(ProfileType.fromValue(jsonItem.getString("master_type")));
+          }
+          snapshotAssociations.add(snapshotAssociation);
         });
-        return snapshotItems;
+        return snapshotAssociations;
       });
   }
 }

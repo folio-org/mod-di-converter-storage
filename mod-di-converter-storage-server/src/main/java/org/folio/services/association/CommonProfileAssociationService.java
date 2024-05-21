@@ -24,7 +24,6 @@ import org.folio.rest.jaxrs.model.MatchProfileCollection;
 import org.folio.rest.jaxrs.model.ProfileAssociation;
 import org.folio.rest.jaxrs.model.ProfileAssociationCollection;
 import org.folio.rest.jaxrs.model.ProfileSnapshotWrapper;
-import org.folio.rest.jaxrs.model.ProfileSnapshotWrapper.ContentType;
 import org.folio.rest.jaxrs.model.ProfileType;
 import org.folio.rest.jaxrs.model.ProfileWrapper;
 import org.folio.rest.jaxrs.model.ReactToType;
@@ -61,17 +60,21 @@ public class CommonProfileAssociationService implements ProfileAssociationServic
   private MasterDetailAssociationDao masterDetailAssociationDao;
 
   @Override
-  public Future<ProfileAssociationCollection> getAll(ContentType masterType, ContentType detailType, String tenantId) {
+  public Future<ProfileAssociationCollection> getAll(ProfileType masterType, ProfileType detailType, String tenantId) {
     return profileAssociationDao.getAll(masterType, detailType, tenantId);
   }
 
   @Override
+  public Future<Optional<ProfileAssociation>> getById(String id, ProfileType masterType, ProfileType detailType, String tenantId) {
+    return profileAssociationDao.getById(id, masterType, detailType, tenantId);
   public Future<Optional<ProfileAssociation>> getById(String id, String tenantId) {
     return profileAssociationDao.getById(id, tenantId);
   }
 
   @Override
   public Future<ProfileAssociation> save(ProfileAssociation entity, String tenantId) {
+  public Future<ProfileAssociation> save(ProfileAssociation entity, ProfileType masterType, ProfileType detailType, String tenantId) {
+    entity.setId(UUID.randomUUID().toString());
     return wrapAssociationProfiles(new ArrayList<>(List.of(entity)), tenantId)
       .compose(result -> profileAssociationDao.save(entity, tenantId).map(entity));
   }
@@ -83,6 +86,8 @@ public class CommonProfileAssociationService implements ProfileAssociationServic
       .onSuccess(wrappedAssociations -> {
         List<Future<ProfileAssociation>> futureList = new ArrayList<>();
         profileAssociations.forEach(association -> futureList.add(profileAssociationDao.save(association, tenantId).map(association)));
+        profileAssociations.forEach(association -> futureList.add(profileAssociationDao.save(association,
+          association.getMasterProfileType(), association.getDetailProfileType(), tenantId).map(association)));
         GenericCompositeFuture.all(futureList).onComplete(ar -> {
           if (ar.succeeded()) {
             result.complete(profileAssociations);
@@ -174,6 +179,7 @@ public class CommonProfileAssociationService implements ProfileAssociationServic
 
   @Override
   public Future<ProfileAssociation> update(ProfileAssociation entity, ContentType masterType, ContentType detailType,OkapiConnectionParams params) {
+  public Future<ProfileAssociation> update(ProfileAssociation entity, ProfileType masterType, ProfileType detailType, OkapiConnectionParams params) {
     return profileWrapperDao.deleteById(entity.getMasterProfileId(), params.getTenantId())
       .compose(e -> profileWrapperDao.deleteById(entity.getDetailProfileId(), params.getTenantId()))
       .compose(r -> {
@@ -196,10 +202,12 @@ public class CommonProfileAssociationService implements ProfileAssociationServic
   @Override
   public Future<Boolean> delete(String id, String tenantId) {
     return profileAssociationDao.delete(id, tenantId);
+  public Future<Boolean> delete(String id, ProfileType masterType, ProfileType detailType, String tenantId) {
+    return profileAssociationDao.delete(id, masterType, detailType, tenantId);
   }
 
   @Override
-  public Future<Optional<ProfileSnapshotWrapper>> findDetails(String masterId, ContentType masterType, ContentType detailType, String query, int offset, int limit, String tenantId) {
+  public Future<Optional<ProfileSnapshotWrapper>> findDetails(String masterId, ProfileType masterType, ProfileType detailType, String query, int offset, int limit, String tenantId) {
     Promise<Optional<ProfileSnapshotWrapper>> result = Promise.promise();
 
     masterDetailAssociationDao.getDetailProfilesByMasterId(masterId, detailType, query, offset, limit, tenantId)
@@ -217,7 +225,7 @@ public class CommonProfileAssociationService implements ProfileAssociationServic
   }
 
   @Override
-  public Future<Optional<ProfileSnapshotWrapper>> findMasters(String detailId, ContentType detailType, ContentType masterType, String query, int offset, int limit, String tenantId) {
+  public Future<Optional<ProfileSnapshotWrapper>> findMasters(String detailId, ProfileType detailType, ProfileType masterType, String query, int offset, int limit, String tenantId) {
     Promise<Optional<ProfileSnapshotWrapper>> result = Promise.promise();
 
     masterDetailAssociationDao.getMasterProfilesByDetailId(detailId, masterType, query, offset, limit, tenantId)
@@ -234,19 +242,23 @@ public class CommonProfileAssociationService implements ProfileAssociationServic
   }
 
   @Override
-  public Future<Boolean> delete(String masterWrapperId, String detailWrapperId, ContentType masterType, ContentType detailType,
+  public Future<Boolean> delete(String masterWrapperId, String detailWrapperId, ProfileType masterType, ProfileType detailType,
                                 String jobProfileId, ReactToType reactTo, Integer order, String tenantId) {
     return profileAssociationDao.delete(masterWrapperId, detailWrapperId, masterType, detailType, jobProfileId, reactTo, order, tenantId);
   }
 
   @Override
-  public Future<Boolean> deleteByMasterWrapperId(String wrapperId, ContentType masterType, ContentType detailType, String tenantId) {
+  public Future<Boolean> deleteByMasterWrapperId(String wrapperId, ProfileType masterType, ProfileType detailType, String tenantId) {
     return profileAssociationDao.deleteByMasterWrapperId(wrapperId, masterType, detailType, tenantId);
   }
 
   @Override
   public Future<Boolean> deleteByMasterIdAndDetailId(String masterId, String detailId, ContentType masterType,
                                                      ContentType detailType, String tenantId) {
+  public Future<Boolean> deleteByMasterIdAndDetailId(String masterId, String detailId, ProfileType masterType,
+                                                     ProfileType detailType, String tenantId) {
+    LOGGER.debug("deleteByMasterIdAndDetailId : masterId={}, detailId={}, masterType={}, detailType={}",
+      masterId, detailId, masterType.value(), detailType.value());
     return profileAssociationDao.deleteByMasterIdAndDetailId(masterId, detailId, masterType, detailType, tenantId);
   }
 
@@ -259,15 +271,15 @@ public class CommonProfileAssociationService implements ProfileAssociationServic
    */
   private void fillProfile(String tenantId, Promise<Optional<ProfileSnapshotWrapper>> result, ProfileSnapshotWrapper wrapper) {
     String profileId = wrapper.getId();
-    ContentType profileType = wrapper.getContentType();
+    ProfileType profileType = wrapper.getContentType();
 
-    if (profileType == ContentType.JOB_PROFILE) {
+    if (profileType == ProfileType.JOB_PROFILE) {
       jobProfileDao.getProfileById(profileId, tenantId).onComplete(fillSnapshotWrapperContent(result, wrapper));
-    } else if (profileType == ContentType.ACTION_PROFILE) {
+    } else if (profileType == ProfileType.ACTION_PROFILE) {
       actionProfileDao.getProfileById(profileId, tenantId).onComplete(fillSnapshotWrapperContent(result, wrapper));
-    } else if (profileType == ContentType.MAPPING_PROFILE) {
+    } else if (profileType == ProfileType.MAPPING_PROFILE) {
       mappingProfileDao.getProfileById(profileId, tenantId).onComplete(fillSnapshotWrapperContent(result, wrapper));
-    } else if (profileType == ContentType.MATCH_PROFILE) {
+    } else if (profileType == ProfileType.MATCH_PROFILE) {
       matchProfileDao.getProfileById(profileId, tenantId).onComplete(fillSnapshotWrapperContent(result, wrapper));
     } else {
       result.complete(Optional.empty());
@@ -282,11 +294,11 @@ public class CommonProfileAssociationService implements ProfileAssociationServic
    * @param children    a list of children
    * @return profile wrapper
    */
-  private ProfileSnapshotWrapper getProfileSnapshotWrapper(String profileId, ContentType profileType, List<ProfileSnapshotWrapper> children) {
+  private ProfileSnapshotWrapper getProfileSnapshotWrapper(String profileId, ProfileType profileType, List<ProfileSnapshotWrapper> children) {
     ProfileSnapshotWrapper wrapper = new ProfileSnapshotWrapper();
     wrapper.setChildSnapshotWrappers(children);
     wrapper.setId(profileId);
-    wrapper.setContentType(ContentType.fromValue(profileType.value()));
+    wrapper.setContentType(profileType);
     return wrapper;
   }
 

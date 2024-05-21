@@ -26,6 +26,12 @@ import java.util.Optional;
 import static java.lang.String.format;
 import static org.folio.rest.jaxrs.model.ProfileSnapshotWrapper.ContentType;
 import static org.folio.rest.persist.PostgresClient.convertToPsqlStandard;
+import static org.folio.dao.util.DaoUtil.constructCriteria;
+import static org.folio.dao.util.DaoUtil.getCQLWrapper;
+import static org.folio.rest.jaxrs.model.ProfileType.ACTION_PROFILE;
+import static org.folio.rest.jaxrs.model.ProfileType.JOB_PROFILE;
+import static org.folio.rest.jaxrs.model.ProfileType.MAPPING_PROFILE;
+import static org.folio.rest.jaxrs.model.ProfileType.MATCH_PROFILE;
 
 /**
  * Generic implementation of the of the {@link ProfileAssociationDao}
@@ -90,6 +96,10 @@ public class CommonProfileAssociationDao implements ProfileAssociationDao {
       entity.getReactTo());
     pgClientFactory.createInstance(tenantId).execute(query, queryParams, promise);
     return promise.future().map(entity.getId()).onFailure(e -> LOGGER.warn("save:: Error saving profile association", e));
+  public Future<String> save(ProfileAssociation entity, ProfileType masterType, ProfileType detailType, String tenantId) {
+    Promise<String> promise = Promise.promise();
+    pgClientFactory.createInstance(tenantId).save(getAssociationTableName(masterType, detailType), entity.getId(), entity, promise);
+    return promise.future();
   }
 
   @Override
@@ -107,6 +117,18 @@ public class CommonProfileAssociationDao implements ProfileAssociationDao {
       }
     });
     return promise.future().map(this::mapResultSetToProfileAssociationCollection);
+  public Future<ProfileAssociationCollection> getAll(ProfileType masterType, ProfileType detailType, String tenantId) {
+    Promise<Results<ProfileAssociation>> promise = Promise.promise();
+    try {
+      String[] fieldList = {"*"};
+      pgClientFactory.createInstance(tenantId).get(getAssociationTableName(masterType, detailType), ProfileAssociation.class, fieldList, null, true, promise);
+    } catch (Exception e) {
+      LOGGER.warn("getAll:: Error while searching for ProfileAssociations", e);
+      promise.fail(e);
+    }
+    return promise.future().map(profileAssociationResults -> new ProfileAssociationCollection()
+      .withProfileAssociations(profileAssociationResults.getResults())
+      .withTotalRecords(profileAssociationResults.getResultInfo().getTotalRecords()));
   }
 
   @Override
@@ -117,10 +139,23 @@ public class CommonProfileAssociationDao implements ProfileAssociationDao {
     Tuple queryParams = Tuple.of(getValidUUIDOrNull(id));
     pgClientFactory.createInstance(tenantId).execute(query, queryParams, promise);
     return promise.future().map(this::mapResultSetToOptionalProfileAssociation);
+  public Future<Optional<ProfileAssociation>> getById(String id, ProfileType masterType, ProfileType detailType, String tenantId) {
+    Promise<Results<ProfileAssociation>> promise = Promise.promise();
+    try {
+      Criteria idCrit = constructCriteria(ID_FIELD, id);
+      pgClientFactory.createInstance(tenantId).get(getAssociationTableName(masterType, detailType), ProfileAssociation.class, new Criterion(idCrit), true, false, promise);
+    } catch (Exception e) {
+      LOGGER.warn("getById:: Error querying {} by id", ProfileAssociation.class.getSimpleName(), e);
+      promise.fail(e);
+    }
+    return promise.future()
+      .map(Results::getResults)
+      .map(profiles -> profiles.isEmpty() ? Optional.empty() : Optional.of(profiles.get(0)));
   }
 
   @Override
   public Future<ProfileAssociation> update(ProfileAssociation entity, ContentType masterType, ContentType detailType, String tenantId) {
+  public Future<ProfileAssociation> update(ProfileAssociation entity, ProfileType masterType, ProfileType detailType, String tenantId) {
     Promise<ProfileAssociation> promise = Promise.promise();
     try {
       String query = format(UPDATE_QUERY, convertToPsqlStandard(tenantId), ASSOCIATION_TABLE);
@@ -156,6 +191,7 @@ public class CommonProfileAssociationDao implements ProfileAssociationDao {
 
   @Override
   public Future<Boolean> delete(String id, String tenantId) {
+  public Future<Boolean> delete(String id, ProfileType masterType, ProfileType detailType, String tenantId) {
     Promise<RowSet<Row>> promise = Promise.promise();
     pgClientFactory.createInstance(tenantId).delete(ASSOCIATION_TABLE, id, promise);
     return promise.future().map(updateResult -> updateResult.rowCount() == 1);
@@ -166,6 +202,8 @@ public class CommonProfileAssociationDao implements ProfileAssociationDao {
                                 ContentType detailType, String jobProfileId, ReactToType reactTo, Integer order, String tenantId) {
     LOGGER.debug("delete : masterWrapperId={}, detailWrapperId={}, masterType={}, detailType={}",
       masterWrapperId, detailWrapperId, masterType.value(), detailType.value());
+  public Future<Boolean> delete(String masterWrapperId, String detailWrapperId, ProfileType masterType,
+                                ProfileType detailType, String jobProfileId, ReactToType reactTo, Integer order, String tenantId) {
     Promise<RowSet<Row>> promise = Promise.promise();
     try {
       StringBuilder queryBuilder = new StringBuilder();
@@ -194,6 +232,7 @@ public class CommonProfileAssociationDao implements ProfileAssociationDao {
   @Override
   public Future<Boolean> deleteByMasterWrapperId(String wrapperId, ContentType masterType, ContentType detailType, String tenantId) {
     LOGGER.debug("deleteByMasterWrapperId : wrapperId={}, masterType={}, detailType={}", wrapperId, masterType.value(), detailType.value());
+  public Future<Boolean> deleteByMasterWrapperId(String wrapperId, ProfileType masterType, ProfileType detailType, String tenantId) {
     Promise<RowSet<Row>> promise = Promise.promise();
     try {
       String query = format(DELETE_BY_MASTER_WRAPPER_ID_QUERY, convertToPsqlStandard(tenantId), ASSOCIATION_TABLE);
@@ -211,6 +250,8 @@ public class CommonProfileAssociationDao implements ProfileAssociationDao {
                                                      ContentType detailType, String tenantId) {
     LOGGER.debug("deleteByMasterIdAndDetailId : masterId={}, detailId={}, masterType={}, detailType={}",
       masterId, detailId, masterType.value(), detailType.value());
+  public Future<Boolean> deleteByMasterIdAndDetailId(String masterId, String detailId, ProfileType masterType,
+                                                     ProfileType detailType, String tenantId) {
     Promise<RowSet<Row>> promise = Promise.promise();
     try {
       String query = format(DELETE_BY_MASTER_AND_DETAIL_PROFILES_IDS_QUERY, convertToPsqlStandard(tenantId), ASSOCIATION_TABLE);

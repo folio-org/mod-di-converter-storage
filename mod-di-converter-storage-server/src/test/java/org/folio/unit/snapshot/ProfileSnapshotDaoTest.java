@@ -5,7 +5,6 @@ import io.vertx.ext.unit.TestContext;
 
 import org.folio.dao.ProfileDao;
 import org.folio.dao.snapshot.ProfileSnapshotDao;
-import org.folio.dao.snapshot.ProfileSnapshotItem;
 import org.folio.rest.jaxrs.model.ActionProfile;
 import org.folio.rest.jaxrs.model.ActionProfileCollection;
 import org.folio.rest.jaxrs.model.JobProfile;
@@ -25,9 +24,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import java.util.List;
 import java.util.UUID;
 
-import static org.folio.rest.jaxrs.model.ProfileSnapshotWrapper.ContentType.ACTION_PROFILE;
-import static org.folio.rest.jaxrs.model.ProfileSnapshotWrapper.ContentType.JOB_PROFILE;
-import static org.folio.rest.jaxrs.model.ProfileSnapshotWrapper.ContentType.MATCH_PROFILE;
+import static org.folio.rest.jaxrs.model.ProfileType.ACTION_PROFILE;
+import static org.folio.rest.jaxrs.model.ProfileType.JOB_PROFILE;
+import static org.folio.rest.jaxrs.model.ProfileType.MATCH_PROFILE;
 
 public class ProfileSnapshotDaoTest extends AbstractUnitTest {
 
@@ -50,17 +49,17 @@ public class ProfileSnapshotDaoTest extends AbstractUnitTest {
   private ProfileSnapshotDao dao;
 
   @Test
-  public void shouldReturnEmptySnapshotItemsIfNoItemsExist(TestContext context) {
+  public void shouldReturnEmptySnapshotAssociationsIfNoAssociationsExist(TestContext context) {
     String jobProfileId = UUID.randomUUID().toString();
-    dao.getSnapshotItems(jobProfileId, JOB_PROFILE, jobProfileId, TENANT_ID).onComplete(ar -> {
+    dao.getSnapshotAssociations(jobProfileId, JOB_PROFILE, jobProfileId, TENANT_ID).onComplete(ar -> {
       context.assertTrue(ar.succeeded());
-      List<ProfileSnapshotItem> items = ar.result();
-      context.assertTrue(items.isEmpty());
+      List<ProfileAssociation> associations = ar.result();
+      context.assertTrue(associations.isEmpty());
     });
   }
 
   @Test
-  public void shouldReturn2SnapshotItems(TestContext context) {
+  public void shouldReturn2SnapshotAssociations(TestContext context) {
     Async async = context.async();
     // given
     JobProfile jobProfile = new JobProfile().withId(UUID.randomUUID().toString());
@@ -80,11 +79,11 @@ public class ProfileSnapshotDaoTest extends AbstractUnitTest {
         context.assertTrue(savedActionProfileAr.succeeded());
         commonProfileAssociationService.save(jobToAction1Association, JOB_PROFILE, ACTION_PROFILE, TENANT_ID).onComplete(savedAssociationAr -> {
           context.assertTrue(savedAssociationAr.succeeded());
-          dao.getSnapshotItems(jobProfile.getId(), JOB_PROFILE, jobProfile.getId(), TENANT_ID).onComplete(itemsAr -> {
+          dao.getSnapshotAssociations(jobProfile.getId(), JOB_PROFILE, jobProfile.getId(), TENANT_ID).onComplete(associationsAr -> {
             // then
-            context.assertTrue(itemsAr.succeeded());
-            List<ProfileSnapshotItem> profileSnapshotItems = itemsAr.result();
-            context.assertEquals(2, profileSnapshotItems.size());
+            context.assertTrue(associationsAr.succeeded());
+            List<ProfileAssociation> profileSnapshotAssociations = associationsAr.result();
+            context.assertEquals(2, profileSnapshotAssociations.size());
             async.complete();
           });
         });
@@ -93,7 +92,7 @@ public class ProfileSnapshotDaoTest extends AbstractUnitTest {
   }
 
   @Test
-  public void shouldReturnOnlyRootItemForMatchProfile(TestContext context) {
+  public void shouldReturnOnlyRootAssociationForMatchProfile(TestContext context) {
     Async async = context.async();
     // given
     MatchProfile matchProfile = new MatchProfile().withId(UUID.randomUUID().toString());
@@ -112,12 +111,12 @@ public class ProfileSnapshotDaoTest extends AbstractUnitTest {
         context.assertTrue(savedActionProfileAr.succeeded());
         commonProfileAssociationService.save(matchToAction1Association, TENANT_ID).onComplete(savedAssociationAr -> {
           context.assertTrue(savedAssociationAr.succeeded());
-          dao.getSnapshotItems(matchProfile.getId(), MATCH_PROFILE, matchProfile.getId(), TENANT_ID).onComplete(itemsAr -> {
+          dao.getSnapshotAssociations(matchProfile.getId(), MATCH_PROFILE, matchProfile.getId(), TENANT_ID).onComplete(associationsAr -> {
             // then
-            context.assertTrue(itemsAr.succeeded());
-            List<ProfileSnapshotItem> profileSnapshotItems = itemsAr.result();
-            context.assertEquals(1, profileSnapshotItems.size());
-            context.assertEquals(MATCH_PROFILE, profileSnapshotItems.get(0).getDetailType());
+            context.assertTrue(associationsAr.succeeded());
+            List<ProfileAssociation> profileSnapshotAssociations = associationsAr.result();
+            context.assertEquals(1, profileSnapshotAssociations.size());
+            context.assertEquals(MATCH_PROFILE, profileSnapshotAssociations.get(0).getDetailProfileType());
             async.complete();
           });
         });
@@ -126,20 +125,20 @@ public class ProfileSnapshotDaoTest extends AbstractUnitTest {
   }
 
   @Test
-  public void shouldReturnItemWithNoAssociation(TestContext context) {
+  public void shouldReturnAssociationWithNoAssociation(TestContext context) {
     Async async = context.async();
     // given
     ActionProfile actionProfile = new ActionProfile().withId(UUID.randomUUID().toString());
     // when
     actionProfileDao.saveProfile(actionProfile, TENANT_ID).onComplete(savedActionProfileAr -> {
       context.assertTrue(savedActionProfileAr.succeeded());
-      dao.getSnapshotItems(actionProfile.getId(), ACTION_PROFILE, actionProfile.getId(), TENANT_ID).onComplete(itemsAr -> {
+      dao.getSnapshotAssociations(actionProfile.getId(), ACTION_PROFILE, actionProfile.getId(), TENANT_ID).onComplete(associationsAr -> {
         // then
-        context.assertTrue(itemsAr.succeeded());
-        List<ProfileSnapshotItem> profileSnapshotItems = itemsAr.result();
-        context.assertEquals(1, profileSnapshotItems.size());
-        context.assertEquals(ACTION_PROFILE, profileSnapshotItems.get(0).getDetailType());
-        context.assertEquals(actionProfile.getId(), profileSnapshotItems.get(0).getDetailId());
+        context.assertTrue(associationsAr.succeeded());
+        List<ProfileAssociation> profileSnapshotAssociations = associationsAr.result();
+        context.assertEquals(1, profileSnapshotAssociations.size());
+        context.assertEquals(ACTION_PROFILE, profileSnapshotAssociations.get(0).getDetailProfileType());
+        context.assertEquals(actionProfile.getId(), profileSnapshotAssociations.get(0).getDetailProfileId());
         async.complete();
       });
     });

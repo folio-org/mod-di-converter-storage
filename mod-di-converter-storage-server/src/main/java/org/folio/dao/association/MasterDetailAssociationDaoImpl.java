@@ -15,7 +15,7 @@ import org.folio.rest.jaxrs.model.JobProfile;
 import org.folio.rest.jaxrs.model.MappingProfile;
 import org.folio.rest.jaxrs.model.MatchProfile;
 import org.folio.rest.jaxrs.model.ProfileSnapshotWrapper;
-import org.folio.rest.jaxrs.model.ProfileSnapshotWrapper.ContentType;
+import org.folio.rest.jaxrs.model.ProfileType;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Repository;
 
@@ -52,7 +52,7 @@ public class MasterDetailAssociationDaoImpl implements MasterDetailAssociationDa
   protected PostgresClientFactory pgClientFactory;
 
   @Override
-  public Future<List<ProfileSnapshotWrapper>> getDetailProfilesByMasterId(String masterId, ContentType detailType, String query, int offset, int limit, String tenantId) {
+  public Future<List<ProfileSnapshotWrapper>> getDetailProfilesByMasterId(String masterId, ProfileType detailType, String query, int offset, int limit, String tenantId) {
     SelectBuilder selectBuilder = new SelectBuilder(RETRIEVES_DETAILS_SQL)
       .where()
       .equals(MASTER_ID_FIELD, putInQuotes(masterId));
@@ -79,7 +79,7 @@ public class MasterDetailAssociationDaoImpl implements MasterDetailAssociationDa
   private List<ProfileSnapshotWrapper> mapToDetails(RowSet<Row> rowSet) {
     List<ProfileSnapshotWrapper> wrappers = new ArrayList<>();
     rowSet.forEach(row -> {
-      ContentType detailType = ContentType.fromValue(row.getString(DETAIL_TYPE_FIELD));
+      ProfileType detailType = ProfileType.fromValue(row.getString(DETAIL_TYPE_FIELD));
       JsonObject detail = row.get(JsonArray.class, row.getColumnIndex(DETAIL_FIELD)).getJsonObject(0);
       ProfileSnapshotWrapper wrapper = new ProfileSnapshotWrapper();
       wrapper.setId(row.getUUID(DETAIL_ID_FIELD).toString());
@@ -98,7 +98,7 @@ public class MasterDetailAssociationDaoImpl implements MasterDetailAssociationDa
    * @param contentType type of a profile.
    * @return a profile instance.
    */
-  private Object mapProfile(JsonObject object, ContentType contentType) {
+  private Object mapProfile(JsonObject object, ProfileType contentType) {
     switch (contentType) {
       case JOB_PROFILE:
         return object.mapTo(JobProfile.class);
@@ -115,7 +115,7 @@ public class MasterDetailAssociationDaoImpl implements MasterDetailAssociationDa
 
 
   @Override
-  public Future<List<ProfileSnapshotWrapper>> getMasterProfilesByDetailId(String detailId, ContentType masterType, String query, int offset, int limit, String tenantId) {
+  public Future<List<ProfileSnapshotWrapper>> getMasterProfilesByDetailId(String detailId, ProfileType masterType, String query, int offset, int limit, String tenantId) {
     SelectBuilder selectBuilder = new SelectBuilder(RETRIEVES_MASTERS_SQL)
       .where()
       .equals(DETAIL_ID_FIELD, putInQuotes(detailId));
@@ -142,7 +142,7 @@ public class MasterDetailAssociationDaoImpl implements MasterDetailAssociationDa
   private List<ProfileSnapshotWrapper> mapToMasters(RowSet<Row> rowSet) {
     List<ProfileSnapshotWrapper> wrappers = new ArrayList<>();
     rowSet.forEach(row -> {
-      ContentType masterType = ContentType.fromValue(row.getString(MASTER_TYPE_FIELD));
+      ProfileType masterType = ProfileType.fromValue(row.getString(MASTER_TYPE_FIELD));
       JsonObject master = row.get(JsonArray.class, row.getColumnIndex(MASTER_FIELD)).getJsonObject(0);
       ProfileSnapshotWrapper wrapper = new ProfileSnapshotWrapper();
       wrapper.setId(row.getUUID(MASTER_ID_FIELD).toString());
