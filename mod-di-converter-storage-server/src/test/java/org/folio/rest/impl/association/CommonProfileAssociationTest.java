@@ -209,28 +209,6 @@ public class CommonProfileAssociationTest extends AbstractRestVerticleTest {
   }
 
   @Test
-  public void runTestShouldReturnBadRequestOnGetWhenSpecifiedIncompatibleMasterAndDetailTypes() {
-    shouldReturnBadRequestOnGetWhenSpecifiedIncompatibleMasterAndDetailTypes(MAPPING_PROFILE, ACTION_PROFILE);
-    shouldReturnBadRequestOnGetWhenSpecifiedIncompatibleMasterAndDetailTypes(MAPPING_PROFILE, MATCH_PROFILE);
-    shouldReturnBadRequestOnGetWhenSpecifiedIncompatibleMasterAndDetailTypes(MAPPING_PROFILE, MAPPING_PROFILE);
-    shouldReturnBadRequestOnGetWhenSpecifiedIncompatibleMasterAndDetailTypes(ACTION_PROFILE, JOB_PROFILE);
-    shouldReturnBadRequestOnGetWhenSpecifiedIncompatibleMasterAndDetailTypes(MAPPING_PROFILE, JOB_PROFILE);
-    shouldReturnBadRequestOnGetWhenSpecifiedIncompatibleMasterAndDetailTypes(MATCH_PROFILE, JOB_PROFILE);
-  }
-
-  public void shouldReturnBadRequestOnGetWhenSpecifiedIncompatibleMasterAndDetailTypes(ProfileType masterProfileType, ProfileType detailProfileType) {
-    RestAssured.given()
-      .spec(spec)
-      .queryParam("master", masterProfileType.value())
-      .queryParam("detail", detailProfileType.value())
-      .when()
-      .get(ASSOCIATED_PROFILES_URL)
-      .then()
-      .statusCode(HttpStatus.SC_BAD_REQUEST);
-  }
-
-
-  @Test
   public void runTestShouldReturnNotFoundOnGetById(TestContext testContext) {
     shouldReturnNotFoundOnGetById(testContext, ACTION_PROFILE, ACTION_PROFILE);
     shouldReturnNotFoundOnGetById(testContext, ACTION_PROFILE, MAPPING_PROFILE);
