@@ -182,7 +182,7 @@ public class JobProfileSnapshotTest extends AbstractRestVerticleTest {
     RestAssured.given()
       .spec(spec)
       .when()
-      .get(PROFILE_SNAPSHOT_PATH + "/" + UUID.randomUUID().toString())
+      .get(PROFILE_SNAPSHOT_PATH + "/" + UUID.randomUUID())
       .then()
       .statusCode(HttpStatus.SC_BAD_REQUEST);
     async.complete();
@@ -195,7 +195,7 @@ public class JobProfileSnapshotTest extends AbstractRestVerticleTest {
       .spec(spec)
       .when()
       .queryParam(PROFILE_TYPE_PARAM, "invalid param")
-      .get(PROFILE_SNAPSHOT_PATH + "/" + UUID.randomUUID().toString())
+      .get(PROFILE_SNAPSHOT_PATH + "/" + UUID.randomUUID())
       .then()
       .statusCode(HttpStatus.SC_BAD_REQUEST);
     async.complete();

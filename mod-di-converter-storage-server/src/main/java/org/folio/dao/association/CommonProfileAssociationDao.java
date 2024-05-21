@@ -32,7 +32,6 @@ import static org.folio.rest.persist.PostgresClient.convertToPsqlStandard;
  */
 @Repository
 public class CommonProfileAssociationDao implements ProfileAssociationDao {
-  private static final String ID_FIELD = "'id'";
   private static final String MASTER_WRAPPER_ID_FIELD = "master_wrapper_id";
   private static final String DETAIL_WRAPPER_ID_FIELD = "detail_wrapper_id";
   private static final String JOB_PROFILE_ID_FIELD = "job_profile_id";

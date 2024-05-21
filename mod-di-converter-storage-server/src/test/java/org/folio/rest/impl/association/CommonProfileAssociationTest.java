@@ -227,7 +227,7 @@ public class CommonProfileAssociationTest extends AbstractRestVerticleTest {
       .queryParam("master", masterProfileType.value())
       .queryParam("detail", detailProfileType.value())
       .when()
-      .get(ASSOCIATED_PROFILES_URL + "/" + UUID.randomUUID().toString())
+      .get(ASSOCIATED_PROFILES_URL + "/" + UUID.randomUUID())
       .then()
       .statusCode(HttpStatus.SC_NOT_FOUND);
     async.complete();
@@ -279,7 +279,7 @@ public class CommonProfileAssociationTest extends AbstractRestVerticleTest {
       .body(profileAssociation)
       .when()
       .post(ASSOCIATED_PROFILES_URL);
-    Assert.assertThat(createResponse.statusCode(), is(HttpStatus.SC_CREATED));
+    Assert.assertEquals(HttpStatus.SC_CREATED, createResponse.statusCode());
     ProfileAssociation savedProfileAssociation = createResponse.body().as(ProfileAssociation.class);
     async.complete();
 
@@ -332,7 +332,7 @@ public class CommonProfileAssociationTest extends AbstractRestVerticleTest {
       .queryParam("master", masterProfileType.value())
       .queryParam("detail", detailProfileType.value())
       .when()
-      .delete(ASSOCIATED_PROFILES_URL + "/" + UUID.randomUUID().toString())
+      .delete(ASSOCIATED_PROFILES_URL + "/" + UUID.randomUUID())
       .then()
       .statusCode(HttpStatus.SC_NOT_FOUND);
     async.complete();
@@ -423,7 +423,7 @@ public class CommonProfileAssociationTest extends AbstractRestVerticleTest {
       .queryParam("detail", detailContentType.value())
       .body(new JobProfile())
       .when()
-      .put(ASSOCIATED_PROFILES_URL + "/" + UUID.randomUUID().toString())
+      .put(ASSOCIATED_PROFILES_URL + "/" + UUID.randomUUID())
       .then()
       .statusCode(HttpStatus.SC_UNPROCESSABLE_ENTITY);
     async.complete();
@@ -682,7 +682,7 @@ public class CommonProfileAssociationTest extends AbstractRestVerticleTest {
       .withTriggered(true);
 
     Async async = testContext.async();
-    ProfileAssociation savedProfileAssociation = RestAssured.given()
+    RestAssured.given()
       .spec(spec)
       .queryParam("master", masterProfileType.value())
       .queryParam("detail", detailProfileType.value())
@@ -696,7 +696,7 @@ public class CommonProfileAssociationTest extends AbstractRestVerticleTest {
     async.complete();
 
     async = testContext.async();
-    ProfileAssociation savedProfileAssociation2 = RestAssured.given()
+    RestAssured.given()
       .spec(spec)
       .queryParam("master", masterProfileType.value())
       .queryParam("detail", detailProfileType.value())
@@ -984,7 +984,7 @@ public class CommonProfileAssociationTest extends AbstractRestVerticleTest {
       .withTriggered(true);
 
     Async async = testContext.async();
-    ProfileAssociation savedProfileAssociation = RestAssured.given()
+    RestAssured.given()
       .spec(spec)
       .queryParam("master", masterProfileType.value())
       .queryParam("detail", detailProfileType.value())
@@ -998,7 +998,7 @@ public class CommonProfileAssociationTest extends AbstractRestVerticleTest {
     async.complete();
 
     async = testContext.async();
-    ProfileAssociation savedProfileAssociation2 = RestAssured.given()
+    RestAssured.given()
       .spec(spec)
       .queryParam("master", masterProfileType.value())
       .queryParam("detail", detailProfileType.value())

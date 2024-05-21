@@ -179,7 +179,7 @@ public class FieldProtectionSettingsApiTest extends AbstractRestVerticleTest {
       .spec(spec)
       .body(new JsonObject().toString())
       .when()
-      .put(FIELD_PROTECTION_SETTINGS_PATH + "/" + UUID.randomUUID().toString())
+      .put(FIELD_PROTECTION_SETTINGS_PATH + "/" + UUID.randomUUID())
       .then()
       .statusCode(HttpStatus.SC_UNPROCESSABLE_ENTITY);
   }
@@ -193,7 +193,7 @@ public class FieldProtectionSettingsApiTest extends AbstractRestVerticleTest {
       .spec(spec)
       .body(invalidFileExtension.encode())
       .when()
-      .put(FIELD_PROTECTION_SETTINGS_PATH + "/" + UUID.randomUUID().toString())
+      .put(FIELD_PROTECTION_SETTINGS_PATH + "/" + UUID.randomUUID())
       .then()
       .statusCode(HttpStatus.SC_UNPROCESSABLE_ENTITY);
   }
@@ -204,7 +204,7 @@ public class FieldProtectionSettingsApiTest extends AbstractRestVerticleTest {
       .spec(spec)
       .body(setting_3)
       .when()
-      .put(FIELD_PROTECTION_SETTINGS_PATH + "/" + UUID.randomUUID().toString())
+      .put(FIELD_PROTECTION_SETTINGS_PATH + "/" + UUID.randomUUID())
       .then()
       .statusCode(HttpStatus.SC_NOT_FOUND);
   }
@@ -216,7 +216,7 @@ public class FieldProtectionSettingsApiTest extends AbstractRestVerticleTest {
       .body(setting_1)
       .when()
       .post(FIELD_PROTECTION_SETTINGS_PATH);
-    Assert.assertThat(createResponse.statusCode(), is(HttpStatus.SC_CREATED));
+    Assert.assertEquals(HttpStatus.SC_CREATED, createResponse.statusCode());
     MarcFieldProtectionSetting setting = createResponse.body().as(MarcFieldProtectionSetting.class);
     setting.setIndicator1("3");
 
@@ -237,7 +237,7 @@ public class FieldProtectionSettingsApiTest extends AbstractRestVerticleTest {
       .body(setting_3)
       .when()
       .post(FIELD_PROTECTION_SETTINGS_PATH);
-    Assert.assertThat(createResponse.statusCode(), is(HttpStatus.SC_CREATED));
+    Assert.assertEquals(HttpStatus.SC_CREATED, createResponse.statusCode());
     MarcFieldProtectionSetting setting = createResponse.body().as(MarcFieldProtectionSetting.class);
     setting.setIndicator1("1");
     async.complete();
@@ -264,7 +264,7 @@ public class FieldProtectionSettingsApiTest extends AbstractRestVerticleTest {
     RestAssured.given()
       .spec(spec)
       .when()
-      .get(FIELD_PROTECTION_SETTINGS_PATH + "/" + UUID.randomUUID().toString())
+      .get(FIELD_PROTECTION_SETTINGS_PATH + "/" + UUID.randomUUID())
       .then()
       .statusCode(HttpStatus.SC_NOT_FOUND);
   }
@@ -276,7 +276,7 @@ public class FieldProtectionSettingsApiTest extends AbstractRestVerticleTest {
       .body(setting_3)
       .when()
       .post(FIELD_PROTECTION_SETTINGS_PATH);
-    Assert.assertThat(createResponse.statusCode(), is(HttpStatus.SC_CREATED));
+    Assert.assertEquals(HttpStatus.SC_CREATED, createResponse.statusCode());
     MarcFieldProtectionSetting setting = createResponse.body().as(MarcFieldProtectionSetting.class);
 
     RestAssured.given()
@@ -298,7 +298,7 @@ public class FieldProtectionSettingsApiTest extends AbstractRestVerticleTest {
     RestAssured.given()
       .spec(spec)
       .when()
-      .delete(FIELD_PROTECTION_SETTINGS_PATH + "/" + UUID.randomUUID().toString())
+      .delete(FIELD_PROTECTION_SETTINGS_PATH + "/" + UUID.randomUUID())
       .then()
       .statusCode(HttpStatus.SC_NOT_FOUND);
   }
@@ -311,7 +311,7 @@ public class FieldProtectionSettingsApiTest extends AbstractRestVerticleTest {
       .body(setting_3)
       .when()
       .post(FIELD_PROTECTION_SETTINGS_PATH);
-    Assert.assertThat(createResponse.statusCode(), is(HttpStatus.SC_CREATED));
+    Assert.assertEquals(HttpStatus.SC_CREATED, createResponse.statusCode());
     MarcFieldProtectionSetting setting = createResponse.body().as(MarcFieldProtectionSetting.class);
     async.complete();
 
@@ -333,7 +333,7 @@ public class FieldProtectionSettingsApiTest extends AbstractRestVerticleTest {
       .body(setting_1)
       .when()
       .post(FIELD_PROTECTION_SETTINGS_PATH);
-    Assert.assertThat(createResponse.statusCode(), is(HttpStatus.SC_CREATED));
+    Assert.assertEquals(HttpStatus.SC_CREATED, createResponse.statusCode());
     MarcFieldProtectionSetting setting = createResponse.body().as(MarcFieldProtectionSetting.class);
     async.complete();
 

@@ -526,7 +526,7 @@ public class JobProfileTest extends AbstractRestVerticleTest {
       .spec(spec)
       .body(new JsonObject().toString())
       .when()
-      .put(JOB_PROFILES_PATH + "/" + UUID.randomUUID().toString())
+      .put(JOB_PROFILES_PATH + "/" + UUID.randomUUID())
       .then()
       .statusCode(HttpStatus.SC_UNPROCESSABLE_ENTITY);
   }
@@ -537,7 +537,7 @@ public class JobProfileTest extends AbstractRestVerticleTest {
       .spec(spec)
       .body(jobProfile_2)
       .when()
-      .put(JOB_PROFILES_PATH + "/" + UUID.randomUUID().toString())
+      .put(JOB_PROFILES_PATH + "/" + UUID.randomUUID())
       .then()
       .statusCode(HttpStatus.SC_NOT_FOUND);
   }
@@ -549,7 +549,7 @@ public class JobProfileTest extends AbstractRestVerticleTest {
       .body(jobProfile_2)
       .when()
       .post(JOB_PROFILES_PATH);
-    Assert.assertThat(createResponse.statusCode(), is(HttpStatus.SC_CREATED));
+    Assert.assertEquals(HttpStatus.SC_CREATED, createResponse.statusCode());
     JobProfileUpdateDto jobProfile = createResponse.body().as(JobProfileUpdateDto.class);
 
     jobProfile.getProfile().setDescription("test");
@@ -578,7 +578,7 @@ public class JobProfileTest extends AbstractRestVerticleTest {
       .body(jobProfile_5)
       .when()
       .post(JOB_PROFILES_PATH);
-    Assert.assertThat(createResponse.statusCode(), is(HttpStatus.SC_CREATED));
+    Assert.assertEquals(HttpStatus.SC_CREATED, createResponse.statusCode());
     JobProfileUpdateDto jobProfile = createResponse.body().as(JobProfileUpdateDto.class);
 
     jobProfile.getProfile().setName("updated name");
@@ -679,7 +679,7 @@ public class JobProfileTest extends AbstractRestVerticleTest {
       .body(jobProfile_2)
       .when()
       .post(JOB_PROFILES_PATH);
-    Assert.assertThat(createResponse.statusCode(), is(HttpStatus.SC_CREATED));
+    Assert.assertEquals(HttpStatus.SC_CREATED, createResponse.statusCode());
     JobProfileUpdateDto jobProfile = createResponse.body().as(JobProfileUpdateDto.class);
 
     JsonObject jobProfileJson = JsonObject.mapFrom(jobProfile)
@@ -699,7 +699,7 @@ public class JobProfileTest extends AbstractRestVerticleTest {
     RestAssured.given()
       .spec(spec)
       .when()
-      .get(JOB_PROFILES_PATH + "/" + UUID.randomUUID().toString())
+      .get(JOB_PROFILES_PATH + "/" + UUID.randomUUID())
       .then()
       .statusCode(HttpStatus.SC_NOT_FOUND);
   }
@@ -711,7 +711,7 @@ public class JobProfileTest extends AbstractRestVerticleTest {
       .body(jobProfile_3)
       .when()
       .post(JOB_PROFILES_PATH);
-    Assert.assertThat(createResponse.statusCode(), is(HttpStatus.SC_CREATED));
+    Assert.assertEquals(HttpStatus.SC_CREATED, createResponse.statusCode());
     JobProfileUpdateDto jobProfile = createResponse.body().as(JobProfileUpdateDto.class);
 
     RestAssured.given()
@@ -750,7 +750,7 @@ public class JobProfileTest extends AbstractRestVerticleTest {
 
     //create mapping profile
     String mappingProfileId = UUID.randomUUID().toString();
-    MappingProfileUpdateDto mappingProfile = RestAssured.given()
+    RestAssured.given()
       .spec(spec)
       .body(new MappingProfileUpdateDto()
         .withProfile(new MappingProfile().withName("testMapping")
@@ -911,7 +911,7 @@ public class JobProfileTest extends AbstractRestVerticleTest {
        .extract().as(ActionProfileUpdateDto.class);
 
      String mappingProfileId = UUID.randomUUID().toString();
-     MappingProfileUpdateDto mappingProfile = RestAssured.given()
+     RestAssured.given()
        .spec(spec)
        .body(new MappingProfileUpdateDto()
          .withProfile(new MappingProfile().withName("testMapping")
@@ -1247,7 +1247,7 @@ public class JobProfileTest extends AbstractRestVerticleTest {
       .body(jobProfile)
       .when()
       .post(JOB_PROFILES_PATH);
-    Assert.assertThat(createResponse.statusCode(), is(HttpStatus.SC_CREATED));
+    Assert.assertEquals(HttpStatus.SC_CREATED, createResponse.statusCode());
     JobProfileUpdateDto profileToDelete = createResponse.body().as(JobProfileUpdateDto.class);
 
     // creation detail-profiles
@@ -1262,7 +1262,7 @@ public class JobProfileTest extends AbstractRestVerticleTest {
           .withFolioRecord(MARC_BIBLIOGRAPHIC)))
       .when()
       .post(ACTION_PROFILES_PATH);
-    Assert.assertThat(createResponse.statusCode(), is(HttpStatus.SC_CREATED));
+    Assert.assertEquals(HttpStatus.SC_CREATED, createResponse.statusCode());
     ActionProfileUpdateDto associatedActionProfile = createResponse.body().as(ActionProfileUpdateDto.class);
 
     String matchProfileId = UUID.randomUUID().toString();
@@ -1276,7 +1276,7 @@ public class JobProfileTest extends AbstractRestVerticleTest {
           .withExistingRecordType(EntityType.INSTANCE)))
       .when()
       .post(MATCH_PROFILES_PATH);
-    Assert.assertThat(createResponse.statusCode(), is(HttpStatus.SC_CREATED));
+    Assert.assertEquals(HttpStatus.SC_CREATED, createResponse.statusCode());
     MatchProfileUpdateDto associatedMatchProfile = createResponse.body().as(MatchProfileUpdateDto.class);
 
     // creation associations
@@ -1347,7 +1347,7 @@ public class JobProfileTest extends AbstractRestVerticleTest {
       .body(new JobProfileUpdateDto().withProfile(newJobProfile))
       .when()
       .post(JOB_PROFILES_PATH);
-    Assert.assertThat(createResponse.statusCode(), is(HttpStatus.SC_CREATED));
+    Assert.assertEquals(HttpStatus.SC_CREATED, createResponse.statusCode());
     JobProfileUpdateDto createdJobProfile = createResponse.body().as(JobProfileUpdateDto.class);
 
     createdJobProfile.getProfile().setName(jobProfile_1.getProfile().getName());
@@ -1477,7 +1477,7 @@ public class JobProfileTest extends AbstractRestVerticleTest {
       .body(jobProfile_2)
       .when()
       .post(JOB_PROFILES_PATH);
-    Assert.assertThat(createResponse.statusCode(), is(HttpStatus.SC_CREATED));
+    Assert.assertEquals(HttpStatus.SC_CREATED, createResponse.statusCode());
     JobProfileUpdateDto jobProfile = createResponse.body().as(JobProfileUpdateDto.class);
 
     RestAssured.given()
@@ -1513,7 +1513,7 @@ public class JobProfileTest extends AbstractRestVerticleTest {
       .body(profileAssociation)
       .when()
       .post(ASSOCIATED_PROFILES_PATH);
-    Assert.assertThat(createResponse.statusCode(), is(HttpStatus.SC_CREATED));
+    Assert.assertEquals(HttpStatus.SC_CREATED, createResponse.statusCode());
     return createResponse.body().as(ProfileAssociation.class);
   }
 

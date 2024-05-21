@@ -379,7 +379,7 @@ public class MappingProfileTest extends AbstractRestVerticleTest {
       .spec(spec)
       .body(new JsonObject().toString())
       .when()
-      .put(MAPPING_PROFILES_PATH + "/" + UUID.randomUUID().toString())
+      .put(MAPPING_PROFILES_PATH + "/" + UUID.randomUUID())
       .then()
       .statusCode(HttpStatus.SC_UNPROCESSABLE_ENTITY);
   }
@@ -390,7 +390,7 @@ public class MappingProfileTest extends AbstractRestVerticleTest {
       .spec(spec)
       .body(mappingProfile_2)
       .when()
-      .put(MAPPING_PROFILES_PATH + "/" + UUID.randomUUID().toString())
+      .put(MAPPING_PROFILES_PATH + "/" + UUID.randomUUID())
       .then()
       .statusCode(HttpStatus.SC_NOT_FOUND);
   }
@@ -407,7 +407,7 @@ public class MappingProfileTest extends AbstractRestVerticleTest {
         .withExistingRecordType(EntityType.INSTANCE)))
       .when()
       .post(MAPPING_PROFILES_PATH);
-    Assert.assertThat(createResponse.statusCode(), is(HttpStatus.SC_CREATED));
+    Assert.assertEquals(HttpStatus.SC_CREATED, createResponse.statusCode());
     MappingProfileUpdateDto createdProfile = createResponse.body().as(MappingProfileUpdateDto.class);
 
     createdProfile.getProfile().setName(mappingProfile_1.getProfile().getName());
@@ -427,7 +427,7 @@ public class MappingProfileTest extends AbstractRestVerticleTest {
       .body(mappingProfile_2)
       .when()
       .post(MAPPING_PROFILES_PATH);
-    Assert.assertThat(createResponse.statusCode(), is(HttpStatus.SC_CREATED));
+    Assert.assertEquals(HttpStatus.SC_CREATED, createResponse.statusCode());
     MappingProfileUpdateDto mappingProfile = createResponse.body().as(MappingProfileUpdateDto.class);
 
     mappingProfile.getProfile().setDescription("test");
@@ -452,7 +452,7 @@ public class MappingProfileTest extends AbstractRestVerticleTest {
     RestAssured.given()
       .spec(spec)
       .when()
-      .get(MAPPING_PROFILES_PATH + "/" + UUID.randomUUID().toString())
+      .get(MAPPING_PROFILES_PATH + "/" + UUID.randomUUID())
       .then()
       .statusCode(HttpStatus.SC_NOT_FOUND);
   }
@@ -464,7 +464,7 @@ public class MappingProfileTest extends AbstractRestVerticleTest {
       .body(mappingProfile_3)
       .when()
       .post(MAPPING_PROFILES_PATH);
-    Assert.assertThat(createResponse.statusCode(), is(HttpStatus.SC_CREATED));
+    Assert.assertEquals(HttpStatus.SC_CREATED, createResponse.statusCode());
     MappingProfileUpdateDto mappingProfile = createResponse.body().as(MappingProfileUpdateDto.class);
 
     RestAssured.given()
@@ -486,7 +486,7 @@ public class MappingProfileTest extends AbstractRestVerticleTest {
     RestAssured.given()
       .spec(spec)
       .when()
-      .delete(MAPPING_PROFILES_PATH + "/" + UUID.randomUUID().toString())
+      .delete(MAPPING_PROFILES_PATH + "/" + UUID.randomUUID())
       .then()
       .statusCode(HttpStatus.SC_NOT_FOUND);
   }
@@ -498,7 +498,7 @@ public class MappingProfileTest extends AbstractRestVerticleTest {
       .body(mappingProfile_1)
       .when()
       .post(MAPPING_PROFILES_PATH);
-    Assert.assertThat(createResponse.statusCode(), is(HttpStatus.SC_CREATED));
+    Assert.assertEquals(HttpStatus.SC_CREATED, createResponse.statusCode());
     MappingProfileUpdateDto profileToDelete = createResponse.body().as(MappingProfileUpdateDto.class);
 
     createResponse = RestAssured.given()
@@ -509,7 +509,7 @@ public class MappingProfileTest extends AbstractRestVerticleTest {
         .withFolioRecord(MARC_BIBLIOGRAPHIC)))
       .when()
       .post(ACTION_PROFILES_PATH);
-    Assert.assertThat(createResponse.statusCode(), is(HttpStatus.SC_CREATED));
+    Assert.assertEquals(HttpStatus.SC_CREATED, createResponse.statusCode());
     ActionProfileUpdateDto actionProfile = createResponse.body().as(ActionProfileUpdateDto.class);
 
     RestAssured.given()
@@ -543,7 +543,7 @@ public class MappingProfileTest extends AbstractRestVerticleTest {
       .body(mappingProfile_2)
       .when()
       .post(MAPPING_PROFILES_PATH);
-    Assert.assertThat(createResponse.statusCode(), is(HttpStatus.SC_CREATED));
+    Assert.assertEquals(HttpStatus.SC_CREATED, createResponse.statusCode());
     MappingProfileUpdateDto profile = createResponse.body().as(MappingProfileUpdateDto.class);
 
     RestAssured.given()
@@ -871,7 +871,6 @@ public class MappingProfileTest extends AbstractRestVerticleTest {
         .withDetailProfileType(ProfileType.MAPPING_PROFILE)
         .withReactTo(ReactToType.MATCH))));
 
-    String actionProfileWrapperId = mappingProfileDto.getAddedRelations().get(0).getMasterWrapperId();
     String actionProfileId = actionProfileDto.getId();
     String mappingProfileId = mappingProfileDto.getId();
 
@@ -1117,7 +1116,7 @@ public class MappingProfileTest extends AbstractRestVerticleTest {
         .withExistingRecordType(EntityType.INSTANCE)))
       .when()
       .post(MAPPING_PROFILES_PATH);
-    Assert.assertThat(createResponse.statusCode(), is(HttpStatus.SC_CREATED));
+    Assert.assertEquals(HttpStatus.SC_CREATED, createResponse.statusCode());
     MappingProfileUpdateDto createdProfile = createResponse.body().as(MappingProfileUpdateDto.class);
 
     createProfiles();
