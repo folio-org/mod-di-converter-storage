@@ -5,13 +5,11 @@ import org.folio.rest.impl.util.OkapiConnectionParams;
 import org.folio.rest.jaxrs.model.ProfileAssociation;
 import org.folio.rest.jaxrs.model.ProfileAssociationCollection;
 import org.folio.rest.jaxrs.model.ProfileSnapshotWrapper;
-import org.folio.rest.jaxrs.model.ProfileSnapshotWrapper.ContentType;
 import org.folio.rest.jaxrs.model.ProfileType;
 import org.folio.rest.jaxrs.model.ReactToType;
 
 import java.util.List;
 import java.util.Optional;
-import org.folio.rest.jaxrs.model.ReactToType;
 
 /**
  * Generic Profile Association Service
@@ -36,7 +34,6 @@ public interface ProfileAssociationService { //NOSONAR
    * @return future with optional {@link ProfileAssociation}
    */
   Future<Optional<ProfileAssociation>> getById(String id, String tenantId);
-  Future<Optional<ProfileAssociation>> getById(String id, ProfileType masterType, ProfileType detailType, String tenantId);
 
     /**
      * Saves ProfileAssociation entity
@@ -45,7 +42,6 @@ public interface ProfileAssociationService { //NOSONAR
      * @param tenantId   tenantId
      * @return future with saved entity
      */
-  Future<ProfileAssociation> save(ProfileAssociation entity, ProfileType masterType, ProfileType detailType, String tenantId);
   Future<ProfileAssociation> save(ProfileAssociation entity, String tenantId);
 
   /**
@@ -76,7 +72,6 @@ public interface ProfileAssociationService { //NOSONAR
    * @return future with true if succeeded
    */
   Future<Boolean> delete(String id, String tenantId);
-  Future<Boolean> delete(String id, ProfileType masterType, ProfileType detailType, String tenantId);
 
   /**
    * Finds details by master id.

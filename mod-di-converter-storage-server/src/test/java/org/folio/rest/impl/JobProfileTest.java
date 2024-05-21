@@ -25,23 +25,6 @@ import org.folio.rest.jaxrs.model.MatchProfileUpdateDto;
 import org.folio.rest.jaxrs.model.ProfileAssociation;
 import org.folio.rest.jaxrs.model.ProfileAssociationCollection;
 import org.folio.rest.jaxrs.model.ProfileSnapshotWrapper;
-import org.folio.rest.jaxrs.model.ProfileSnapshotWrapper.ContentType;
-import org.folio.rest.jaxrs.model.ProfileType;
-import org.folio.rest.jaxrs.model.ReactToType;
-import org.folio.rest.jaxrs.model.Tags;
-import org.folio.rest.jaxrs.model.ActionProfile;
-import org.folio.rest.jaxrs.model.ActionProfileUpdateDto;
-import org.folio.rest.jaxrs.model.EntityType;
-import org.folio.rest.jaxrs.model.JobProfile;
-import org.folio.rest.jaxrs.model.JobProfileCollection;
-import org.folio.rest.jaxrs.model.JobProfileUpdateDto;
-import org.folio.rest.jaxrs.model.MappingProfile;
-import org.folio.rest.jaxrs.model.MappingProfileUpdateDto;
-import org.folio.rest.jaxrs.model.MatchProfile;
-import org.folio.rest.jaxrs.model.MatchProfileUpdateDto;
-import org.folio.rest.jaxrs.model.ProfileAssociation;
-import org.folio.rest.jaxrs.model.ProfileAssociationCollection;
-import org.folio.rest.jaxrs.model.ProfileSnapshotWrapper;
 import org.folio.rest.jaxrs.model.ProfileType;
 import org.folio.rest.jaxrs.model.ReactToType;
 import org.folio.rest.jaxrs.model.Tags;
@@ -449,7 +432,7 @@ public class JobProfileTest extends AbstractRestVerticleTest {
       .extract().as(ActionProfileUpdateDto.class);
 
     String mappingProfileIdModify = UUID.randomUUID().toString();
-    MappingProfileUpdateDto mappingProfileModify = RestAssured.given()
+    RestAssured.given()
       .spec(spec)
       .body(new MappingProfileUpdateDto()
         .withProfile(new MappingProfile().withName("testModify")
@@ -525,7 +508,7 @@ public class JobProfileTest extends AbstractRestVerticleTest {
       .extract().as(ActionProfileUpdateDto.class);
 
     String mappingProfileIdModify = UUID.randomUUID().toString();
-    MappingProfileUpdateDto mappingProfileModify = RestAssured.given()
+    RestAssured.given()
       .spec(spec)
       .body(new MappingProfileUpdateDto()
         .withProfile(new MappingProfile().withName("testModify")
@@ -560,7 +543,7 @@ public class JobProfileTest extends AbstractRestVerticleTest {
       .extract().as(ActionProfileUpdateDto.class);
 
     String mappingProfileIdCreate = UUID.randomUUID().toString();
-    MappingProfileUpdateDto mappingProfileCreate = RestAssured.given()
+    RestAssured.given()
       .spec(spec)
       .body(new MappingProfileUpdateDto()
         .withProfile(new MappingProfile().withName("testCreateInstance")
@@ -667,7 +650,7 @@ public class JobProfileTest extends AbstractRestVerticleTest {
       .extract().as(ActionProfileUpdateDto.class);
 
     String mappingProfileIdModify = UUID.randomUUID().toString();
-    MappingProfileUpdateDto mappingProfileModify = RestAssured.given()
+    RestAssured.given()
       .spec(spec)
       .body(new MappingProfileUpdateDto()
         .withProfile(new MappingProfile().withName("testModify")
@@ -702,7 +685,7 @@ public class JobProfileTest extends AbstractRestVerticleTest {
       .extract().as(ActionProfileUpdateDto.class);
 
     String mappingProfileIdCreate = UUID.randomUUID().toString();
-    MappingProfileUpdateDto mappingProfileCreate = RestAssured.given()
+    RestAssured.given()
       .spec(spec)
       .body(new MappingProfileUpdateDto()
         .withProfile(new MappingProfile().withName("testCreateInstance")

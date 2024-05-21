@@ -65,15 +65,12 @@ public class CommonProfileAssociationService implements ProfileAssociationServic
   }
 
   @Override
-  public Future<Optional<ProfileAssociation>> getById(String id, ProfileType masterType, ProfileType detailType, String tenantId) {
-    return profileAssociationDao.getById(id, masterType, detailType, tenantId);
   public Future<Optional<ProfileAssociation>> getById(String id, String tenantId) {
     return profileAssociationDao.getById(id, tenantId);
   }
 
   @Override
   public Future<ProfileAssociation> save(ProfileAssociation entity, String tenantId) {
-  public Future<ProfileAssociation> save(ProfileAssociation entity, ProfileType masterType, ProfileType detailType, String tenantId) {
     entity.setId(UUID.randomUUID().toString());
     return wrapAssociationProfiles(new ArrayList<>(List.of(entity)), tenantId)
       .compose(result -> profileAssociationDao.save(entity, tenantId).map(entity));
@@ -86,8 +83,6 @@ public class CommonProfileAssociationService implements ProfileAssociationServic
       .onSuccess(wrappedAssociations -> {
         List<Future<ProfileAssociation>> futureList = new ArrayList<>();
         profileAssociations.forEach(association -> futureList.add(profileAssociationDao.save(association, tenantId).map(association)));
-        profileAssociations.forEach(association -> futureList.add(profileAssociationDao.save(association,
-          association.getMasterProfileType(), association.getDetailProfileType(), tenantId).map(association)));
         GenericCompositeFuture.all(futureList).onComplete(ar -> {
           if (ar.succeeded()) {
             result.complete(profileAssociations);
@@ -178,7 +173,6 @@ public class CommonProfileAssociationService implements ProfileAssociationServic
   }
 
   @Override
-  public Future<ProfileAssociation> update(ProfileAssociation entity, ContentType masterType, ContentType detailType,OkapiConnectionParams params) {
   public Future<ProfileAssociation> update(ProfileAssociation entity, ProfileType masterType, ProfileType detailType, OkapiConnectionParams params) {
     return profileWrapperDao.deleteById(entity.getMasterProfileId(), params.getTenantId())
       .compose(e -> profileWrapperDao.deleteById(entity.getDetailProfileId(), params.getTenantId()))
@@ -202,8 +196,6 @@ public class CommonProfileAssociationService implements ProfileAssociationServic
   @Override
   public Future<Boolean> delete(String id, String tenantId) {
     return profileAssociationDao.delete(id, tenantId);
-  public Future<Boolean> delete(String id, ProfileType masterType, ProfileType detailType, String tenantId) {
-    return profileAssociationDao.delete(id, masterType, detailType, tenantId);
   }
 
   @Override
@@ -253,8 +245,6 @@ public class CommonProfileAssociationService implements ProfileAssociationServic
   }
 
   @Override
-  public Future<Boolean> deleteByMasterIdAndDetailId(String masterId, String detailId, ContentType masterType,
-                                                     ContentType detailType, String tenantId) {
   public Future<Boolean> deleteByMasterIdAndDetailId(String masterId, String detailId, ProfileType masterType,
                                                      ProfileType detailType, String tenantId) {
     LOGGER.debug("deleteByMasterIdAndDetailId : masterId={}, detailId={}, masterType={}, detailType={}",
