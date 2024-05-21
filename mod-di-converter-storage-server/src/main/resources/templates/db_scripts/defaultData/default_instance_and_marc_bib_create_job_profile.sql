@@ -303,3 +303,43 @@ INSERT INTO ${myuniversity}_${mymodule}.action_to_mapping_profiles (id, jsonb) v
 	"detailProfileType": "MAPPING_PROFILE",
 	"masterProfileType": "ACTION_PROFILE"
 }') ON CONFLICT DO NOTHING;
+
+
+INSERT INTO ${myuniversity}_${mymodule}.profile_wrappers (id, profile_type, job_profile_id) values
+  ('e1f5063c-9f0c-481d-afb7-48beca30cf9a', 'JOB_PROFILE', 'e34d7b92-9b83-11eb-a8b3-0242ac130003') ON CONFLICT DO NOTHING;
+
+INSERT INTO ${myuniversity}_${mymodule}.profile_wrappers (id, profile_type, action_profile_id) values
+  ('de887df7-dc88-4c4b-9f38-3ca736395c59', 'ACTION_PROFILE', 'fa45f3ec-9b83-11eb-a8b3-0242ac130003') ON CONFLICT DO NOTHING;
+
+INSERT INTO ${myuniversity}_${mymodule}.profile_wrappers (id, profile_type, mapping_profile_id) values
+  ('4d0014e0-5b55-4d55-bdf3-1d60786df115', 'MAPPING_PROFILE', 'bf7b3b86-9b84-11eb-a8b3-0242ac130003') ON CONFLICT DO NOTHING;
+
+INSERT INTO ${myuniversity}_${mymodule}.associations (id, job_profile_id, master_wrapper_id,
+    detail_wrapper_id, master_profile_id, detail_profile_id,
+    master_profile_type, detail_profile_type, detail_order, react_to) values
+  ('d63003ac-9b84-11eb-a8b3-0242ac130003',
+   null,
+   'e1f5063c-9f0c-481d-afb7-48beca30cf9a',
+   'de887df7-dc88-4c4b-9f38-3ca736395c59',
+   'e34d7b92-9b83-11eb-a8b3-0242ac130003', -- master profile
+   'fa45f3ec-9b83-11eb-a8b3-0242ac130003',
+   'JOB_PROFILE',
+   'ACTION_PROFILE',
+    0,
+    null
+   ) ON CONFLICT DO NOTHING;
+
+INSERT INTO ${myuniversity}_${mymodule}.associations (id, job_profile_id, master_wrapper_id,
+    detail_wrapper_id, master_profile_id, detail_profile_id,
+    master_profile_type, detail_profile_type, detail_order, react_to) values
+  ('e1151d70-9b84-11eb-a8b3-0242ac130003',
+   null,
+   'de887df7-dc88-4c4b-9f38-3ca736395c59',
+   '4d0014e0-5b55-4d55-bdf3-1d60786df115',
+   'fa45f3ec-9b83-11eb-a8b3-0242ac130003',
+   'bf7b3b86-9b84-11eb-a8b3-0242ac130003',
+   'ACTION_PROFILE',
+   'MAPPING_PROFILE',
+   0,
+   null
+  ) ON CONFLICT DO NOTHING;
