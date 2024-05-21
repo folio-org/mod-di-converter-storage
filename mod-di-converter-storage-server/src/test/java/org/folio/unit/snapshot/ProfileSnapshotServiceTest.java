@@ -5,12 +5,14 @@ import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 import org.folio.dao.snapshot.ProfileSnapshotDao;
 import org.folio.dao.snapshot.ProfileSnapshotDaoImpl;
-import org.folio.dao.snapshot.ProfileSnapshotItem;
 import org.folio.rest.jaxrs.model.ActionProfile;
 import org.folio.rest.jaxrs.model.JobProfile;
 import org.folio.rest.jaxrs.model.MappingProfile;
 import org.folio.rest.jaxrs.model.MatchProfile;
+import org.folio.rest.jaxrs.model.ProfileAssociation;
 import org.folio.rest.jaxrs.model.ProfileSnapshotWrapper;
+import org.folio.rest.jaxrs.model.ProfileType;
+import org.folio.rest.jaxrs.model.ReactToType;
 import org.folio.rest.persist.Criteria.Criterion;
 import org.folio.rest.persist.PostgresClient;
 import org.folio.services.snapshot.ProfileSnapshotService;
@@ -29,10 +31,10 @@ import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
 
-import static org.folio.rest.jaxrs.model.ProfileSnapshotWrapper.ContentType.ACTION_PROFILE;
-import static org.folio.rest.jaxrs.model.ProfileSnapshotWrapper.ContentType.JOB_PROFILE;
-import static org.folio.rest.jaxrs.model.ProfileSnapshotWrapper.ContentType.MAPPING_PROFILE;
-import static org.folio.rest.jaxrs.model.ProfileSnapshotWrapper.ContentType.MATCH_PROFILE;
+import static org.folio.rest.jaxrs.model.ProfileType.ACTION_PROFILE;
+import static org.folio.rest.jaxrs.model.ProfileType.JOB_PROFILE;
+import static org.folio.rest.jaxrs.model.ProfileType.MAPPING_PROFILE;
+import static org.folio.rest.jaxrs.model.ProfileType.MATCH_PROFILE;
 
 public class ProfileSnapshotServiceTest extends AbstractUnitTest {
   private static final String TABLE_NAME = "profile_snapshots";
@@ -43,18 +45,18 @@ public class ProfileSnapshotServiceTest extends AbstractUnitTest {
   private ProfileSnapshotService service;
 
   private JobProfile jobProfile = new JobProfile().withId(UUID.randomUUID().toString());
-  private ProfileSnapshotItem jobProfileSnapshotItem = new ProfileSnapshotItem();
+  private ProfileAssociation jobProfileSnapshotAssociation = new ProfileAssociation();
 
   private MatchProfile matchProfile = new MatchProfile().withId(UUID.randomUUID().toString());
-  private ProfileSnapshotItem matchProfileSnapshotItem = new ProfileSnapshotItem();
+  private ProfileAssociation matchProfileSnapshotAssociation = new ProfileAssociation();
 
   private ActionProfile actionProfile = new ActionProfile().withId(UUID.randomUUID().toString());
-  private ProfileSnapshotItem actionProfileSnapshotItem = new ProfileSnapshotItem();
+  private ProfileAssociation actionProfileSnapshotAssociation = new ProfileAssociation();
 
   private MappingProfile mappingProfile = new MappingProfile().withId(UUID.randomUUID().toString());
-  private ProfileSnapshotItem mappingProfileSnapshotItem = new ProfileSnapshotItem();
+  private ProfileAssociation mappingProfileSnapshotAssociation = new ProfileAssociation();
 
-  private List<ProfileSnapshotItem> items;
+  private List<ProfileAssociation> associations;
 
   @Before
   public void setUp() {
@@ -63,42 +65,42 @@ public class ProfileSnapshotServiceTest extends AbstractUnitTest {
     String actionProfileWrapperId = UUID.randomUUID().toString();
     String mappingProfileWrapperId = UUID.randomUUID().toString();
 
-    jobProfileSnapshotItem.setAssociationId(UUID.randomUUID().toString());
-    jobProfileSnapshotItem.setMasterId(null);
-    jobProfileSnapshotItem.setDetailId(jobProfile.getId());
-    jobProfileSnapshotItem.setDetailWrapperId(jobProfileWrapperId);
-    jobProfileSnapshotItem.setDetailType(JOB_PROFILE);
-    jobProfileSnapshotItem.setDetail(jobProfile);
+    jobProfileSnapshotAssociation.setId(UUID.randomUUID().toString());
+    jobProfileSnapshotAssociation.setMasterProfileId(null);
+    jobProfileSnapshotAssociation.setDetailProfileId(jobProfile.getId());
+    jobProfileSnapshotAssociation.setDetailWrapperId(jobProfileWrapperId);
+    jobProfileSnapshotAssociation.setDetailProfileType(JOB_PROFILE);
+    jobProfileSnapshotAssociation.setDetail(jobProfile);
 
-    matchProfileSnapshotItem.setAssociationId(UUID.randomUUID().toString());
-    matchProfileSnapshotItem.setMasterId(jobProfile.getId());
-    matchProfileSnapshotItem.setDetailId(matchProfile.getId());
-    matchProfileSnapshotItem.setMasterWrapperId(jobProfileWrapperId);
-    matchProfileSnapshotItem.setDetailWrapperId(matchProfileWrapperId);
-    matchProfileSnapshotItem.setDetailType(MATCH_PROFILE);
-    matchProfileSnapshotItem.setDetail(matchProfile);
+    matchProfileSnapshotAssociation.setId(UUID.randomUUID().toString());
+    matchProfileSnapshotAssociation.setMasterProfileId(jobProfile.getId());
+    matchProfileSnapshotAssociation.setDetailProfileId(matchProfile.getId());
+    matchProfileSnapshotAssociation.setMasterWrapperId(jobProfileWrapperId);
+    matchProfileSnapshotAssociation.setDetailWrapperId(matchProfileWrapperId);
+    matchProfileSnapshotAssociation.setDetailProfileType(MATCH_PROFILE);
+    matchProfileSnapshotAssociation.setDetail(matchProfile);
 
-    actionProfileSnapshotItem.setAssociationId(UUID.randomUUID().toString());
-    actionProfileSnapshotItem.setMasterId(matchProfile.getId());
-    actionProfileSnapshotItem.setDetailId(actionProfile.getId());
-    actionProfileSnapshotItem.setMasterWrapperId(matchProfileWrapperId);
-    actionProfileSnapshotItem.setDetailWrapperId(actionProfileWrapperId);
-    actionProfileSnapshotItem.setDetailType(ACTION_PROFILE);
-    actionProfileSnapshotItem.setDetail(actionProfile);
+    actionProfileSnapshotAssociation.setId(UUID.randomUUID().toString());
+    actionProfileSnapshotAssociation.setMasterProfileId(matchProfile.getId());
+    actionProfileSnapshotAssociation.setDetailProfileId(actionProfile.getId());
+    actionProfileSnapshotAssociation.setMasterWrapperId(matchProfileWrapperId);
+    actionProfileSnapshotAssociation.setDetailWrapperId(actionProfileWrapperId);
+    actionProfileSnapshotAssociation.setDetailProfileType(ACTION_PROFILE);
+    actionProfileSnapshotAssociation.setDetail(actionProfile);
 
-    mappingProfileSnapshotItem.setAssociationId(UUID.randomUUID().toString());
-    mappingProfileSnapshotItem.setMasterId(actionProfile.getId());
-    mappingProfileSnapshotItem.setDetailId(mappingProfile.getId());
-    mappingProfileSnapshotItem.setMasterWrapperId(actionProfileWrapperId);
-    mappingProfileSnapshotItem.setDetailWrapperId(mappingProfileWrapperId);
-    mappingProfileSnapshotItem.setDetailType(MAPPING_PROFILE);
-    mappingProfileSnapshotItem.setDetail(mappingProfile);
+    mappingProfileSnapshotAssociation.setId(UUID.randomUUID().toString());
+    mappingProfileSnapshotAssociation.setMasterProfileId(actionProfile.getId());
+    mappingProfileSnapshotAssociation.setDetailProfileId(mappingProfile.getId());
+    mappingProfileSnapshotAssociation.setMasterWrapperId(actionProfileWrapperId);
+    mappingProfileSnapshotAssociation.setDetailWrapperId(mappingProfileWrapperId);
+    mappingProfileSnapshotAssociation.setDetailProfileType(MAPPING_PROFILE);
+    mappingProfileSnapshotAssociation.setDetail(mappingProfile);
 
-    items = new ArrayList<>(Arrays.asList(
-      jobProfileSnapshotItem,
-      actionProfileSnapshotItem,
-      matchProfileSnapshotItem,
-      mappingProfileSnapshotItem)
+    associations = new ArrayList<>(Arrays.asList(
+      jobProfileSnapshotAssociation,
+      actionProfileSnapshotAssociation,
+      matchProfileSnapshotAssociation,
+      mappingProfileSnapshotAssociation)
     );
   }
 
@@ -113,23 +115,23 @@ public class ProfileSnapshotServiceTest extends AbstractUnitTest {
       .withChildSnapshotWrappers(Collections.singletonList(
         new ProfileSnapshotWrapper()
           .withId(UUID.randomUUID().toString())
-          .withContentType(ProfileSnapshotWrapper.ContentType.MATCH_PROFILE)
+          .withContentType(ProfileType.MATCH_PROFILE)
           .withContent(new MatchProfile())
-          .withReactTo(ProfileSnapshotWrapper.ReactTo.MATCH)
+          .withReactTo(ReactToType.MATCH)
           .withOrder(1)
           .withChildSnapshotWrappers(Collections.singletonList(
             new ProfileSnapshotWrapper()
               .withId(UUID.randomUUID().toString())
-              .withContentType(ProfileSnapshotWrapper.ContentType.ACTION_PROFILE)
+              .withContentType(ProfileType.ACTION_PROFILE)
               .withContent(new ActionProfile())
-              .withReactTo(ProfileSnapshotWrapper.ReactTo.MATCH)
+              .withReactTo(ReactToType.MATCH)
               .withOrder(1)
               .withChildSnapshotWrappers(Collections.singletonList(
                 new ProfileSnapshotWrapper()
                   .withId(UUID.randomUUID().toString())
-                  .withReactTo(ProfileSnapshotWrapper.ReactTo.MATCH)
+                  .withReactTo(ReactToType.MATCH)
                   .withOrder(1)
-                  .withContentType(ProfileSnapshotWrapper.ContentType.MAPPING_PROFILE)
+                  .withContentType(ProfileType.MAPPING_PROFILE)
                   .withContent(new MappingProfile())
               ))
           ))
@@ -164,14 +166,14 @@ public class ProfileSnapshotServiceTest extends AbstractUnitTest {
   }
 
   @Test
-  public void shouldReturnFailedFutureIfNoSnapshotItemsExist(TestContext context) {
+  public void shouldReturnFailedFutureIfNoSnapshotAssociationsExist(TestContext context) {
     Async async = context.async();
     // given
     ProfileSnapshotDao mockDao = Mockito.mock(ProfileSnapshotDaoImpl.class);
     ProfileSnapshotService service = new ProfileSnapshotServiceImpl(dao);
 
     String jobProfileId = UUID.randomUUID().toString();
-    Mockito.when(mockDao.getSnapshotItems(jobProfileId, JOB_PROFILE, jobProfileId, TENANT_ID)).thenReturn(Future.succeededFuture(new ArrayList<>()));
+    Mockito.when(mockDao.getSnapshotAssociations(jobProfileId, JOB_PROFILE, jobProfileId, TENANT_ID)).thenReturn(Future.succeededFuture(new ArrayList<>()));
 
     // when
     service.createSnapshot(jobProfileId, TENANT_ID).onComplete(ar -> {
@@ -188,7 +190,7 @@ public class ProfileSnapshotServiceTest extends AbstractUnitTest {
     ProfileSnapshotDao mockDao = Mockito.mock(ProfileSnapshotDaoImpl.class);
     ProfileSnapshotService service = new ProfileSnapshotServiceImpl(mockDao);
 
-    Mockito.when(mockDao.getSnapshotItems(jobProfile.getId(), JOB_PROFILE, jobProfile.getId(), TENANT_ID)).thenReturn(Future.succeededFuture(items));
+    Mockito.when(mockDao.getSnapshotAssociations(jobProfile.getId(), JOB_PROFILE, jobProfile.getId(), TENANT_ID)).thenReturn(Future.succeededFuture(associations));
     Mockito.when(mockDao.save(ArgumentMatchers.any(), ArgumentMatchers.anyString())).thenReturn(Future.succeededFuture(jobProfile.getId()));
 
     // when
@@ -225,7 +227,7 @@ public class ProfileSnapshotServiceTest extends AbstractUnitTest {
     ProfileSnapshotDao mockDao = Mockito.mock(ProfileSnapshotDaoImpl.class);
     ProfileSnapshotService service = new ProfileSnapshotServiceImpl(mockDao);
 
-    Mockito.when(mockDao.getSnapshotItems(jobProfile.getId(), JOB_PROFILE, jobProfile.getId(), TENANT_ID)).thenReturn(Future.succeededFuture(getItemsWithDuplicates()));
+    Mockito.when(mockDao.getSnapshotAssociations(jobProfile.getId(), JOB_PROFILE, jobProfile.getId(), TENANT_ID)).thenReturn(Future.succeededFuture(getAssociationsWithDuplicates()));
 
     Mockito.when(mockDao.save(ArgumentMatchers.any(), ArgumentMatchers.anyString())).thenReturn(Future.succeededFuture(jobProfile.getId()));
 
@@ -292,7 +294,7 @@ public class ProfileSnapshotServiceTest extends AbstractUnitTest {
     ProfileSnapshotDao mockDao = Mockito.mock(ProfileSnapshotDaoImpl.class);
     ProfileSnapshotService service = new ProfileSnapshotServiceImpl(mockDao);
 
-    Mockito.when(mockDao.getSnapshotItems(jobProfile.getId(), JOB_PROFILE, jobProfile.getId(), TENANT_ID)).thenReturn(Future.succeededFuture(items));
+    Mockito.when(mockDao.getSnapshotAssociations(jobProfile.getId(), JOB_PROFILE, jobProfile.getId(), TENANT_ID)).thenReturn(Future.succeededFuture(associations));
 
     // when
     service.constructSnapshot(jobProfile.getId(), JOB_PROFILE, jobProfile.getId(), TENANT_ID).onComplete(ar -> {
@@ -321,109 +323,128 @@ public class ProfileSnapshotServiceTest extends AbstractUnitTest {
     });
   }
 
+  @Test
+  public void shouldReturnSnapshotAssociations(TestContext testContext) {
+    Async async = testContext.async();
+    // given
+    ProfileSnapshotDao mockDao = Mockito.mock(ProfileSnapshotDaoImpl.class);
+    ProfileSnapshotService service = new ProfileSnapshotServiceImpl(mockDao);
+
+    Mockito.when(mockDao.getSnapshotAssociations(jobProfile.getId(), JOB_PROFILE, jobProfile.getId(), TENANT_ID)).thenReturn(Future.succeededFuture(associations));
+
+    // when
+    service.getSnapshotAssociations(jobProfile.getId(), JOB_PROFILE, jobProfile.getId(), TENANT_ID).onComplete(ar -> {
+      // then
+      testContext.assertTrue(ar.succeeded());
+      List<ProfileAssociation> profileAssociations = ar.result();
+      testContext.assertEquals(profileAssociations, associations);
+      async.complete();
+    });
+  }
+
   private void assertExpectedChildOnActualChild(ProfileSnapshotWrapper expected, ProfileSnapshotWrapper actual, TestContext context) {
     context.assertEquals(expected.getId(), actual.getId());
     context.assertEquals(expected.getContentType(), actual.getContentType());
     context.assertEquals(expected.getContent().getClass(), actual.getContent().getClass());
   }
 
-  private List<ProfileSnapshotItem> getItemsWithDuplicates() {
+  private List<ProfileAssociation> getAssociationsWithDuplicates() {
     MatchProfile matchProfile2 = new MatchProfile().withId(UUID.randomUUID().toString());
 
-    ProfileSnapshotItem parentMatchProfileSnapshotItem1 = new ProfileSnapshotItem();
-    ProfileSnapshotItem childMatchProfileSnapshotItem1 = new ProfileSnapshotItem();
-    ProfileSnapshotItem actionProfileSnapshotItem1 = new ProfileSnapshotItem();
-    ProfileSnapshotItem mappingProfileSnapshotItem1 = new ProfileSnapshotItem();
+    ProfileAssociation parentMatchProfileSnapshotAssociation1 = new ProfileAssociation();
+    ProfileAssociation childMatchProfileSnapshotAssociation1 = new ProfileAssociation();
+    ProfileAssociation actionProfileSnapshotAssociation1 = new ProfileAssociation();
+    ProfileAssociation mappingProfileSnapshotAssociation1 = new ProfileAssociation();
 
     String parentMatchProfileWrapperId1 = UUID.randomUUID().toString();
     String childMatchProfileWrapperId1 = UUID.randomUUID().toString();
     String actionProfileWrapperId1 = UUID.randomUUID().toString();
     String mappingProfileWrapperId1 = UUID.randomUUID().toString();
 
-    parentMatchProfileSnapshotItem1.setAssociationId(UUID.randomUUID().toString());
-    parentMatchProfileSnapshotItem1.setMasterId(jobProfile.getId());
-    parentMatchProfileSnapshotItem1.setDetailId(matchProfile.getId());
-    parentMatchProfileSnapshotItem1.setMasterWrapperId(jobProfileSnapshotItem.getDetailWrapperId());
-    parentMatchProfileSnapshotItem1.setDetailWrapperId(parentMatchProfileWrapperId1);
-    parentMatchProfileSnapshotItem1.setDetailType(MATCH_PROFILE);
-    parentMatchProfileSnapshotItem1.setDetail(matchProfile);
+    parentMatchProfileSnapshotAssociation1.setId(UUID.randomUUID().toString());
+    parentMatchProfileSnapshotAssociation1.setMasterProfileId(jobProfile.getId());
+    parentMatchProfileSnapshotAssociation1.setDetailProfileId(matchProfile.getId());
+    parentMatchProfileSnapshotAssociation1.setMasterWrapperId(jobProfileSnapshotAssociation.getDetailWrapperId());
+    parentMatchProfileSnapshotAssociation1.setDetailWrapperId(parentMatchProfileWrapperId1);
+    parentMatchProfileSnapshotAssociation1.setDetailProfileType(MATCH_PROFILE);
+    parentMatchProfileSnapshotAssociation1.setDetail(matchProfile);
 
-    childMatchProfileSnapshotItem1.setAssociationId(UUID.randomUUID().toString());
-    childMatchProfileSnapshotItem1.setMasterId(matchProfile.getId());
-    childMatchProfileSnapshotItem1.setDetailId(matchProfile2.getId());
-    childMatchProfileSnapshotItem1.setMasterWrapperId(parentMatchProfileWrapperId1);
-    childMatchProfileSnapshotItem1.setDetailWrapperId(childMatchProfileWrapperId1);
-    childMatchProfileSnapshotItem1.setDetailType(MATCH_PROFILE);
-    childMatchProfileSnapshotItem1.setDetail(matchProfile2);
+    childMatchProfileSnapshotAssociation1.setId(UUID.randomUUID().toString());
+    childMatchProfileSnapshotAssociation1.setMasterProfileId(matchProfile.getId());
+    childMatchProfileSnapshotAssociation1.setDetailProfileId(matchProfile2.getId());
+    childMatchProfileSnapshotAssociation1.setMasterWrapperId(parentMatchProfileWrapperId1);
+    childMatchProfileSnapshotAssociation1.setDetailWrapperId(childMatchProfileWrapperId1);
+    childMatchProfileSnapshotAssociation1.setDetailProfileType(MATCH_PROFILE);
+    childMatchProfileSnapshotAssociation1.setDetail(matchProfile2);
 
-    actionProfileSnapshotItem1.setAssociationId(UUID.randomUUID().toString());
-    actionProfileSnapshotItem1.setMasterId(matchProfile2.getId());
-    actionProfileSnapshotItem1.setDetailId(actionProfile.getId());
-    actionProfileSnapshotItem1.setMasterWrapperId(childMatchProfileWrapperId1);
-    actionProfileSnapshotItem1.setDetailWrapperId(actionProfileWrapperId1);
-    actionProfileSnapshotItem1.setDetailType(ACTION_PROFILE);
-    actionProfileSnapshotItem1.setDetail(actionProfile);
+    actionProfileSnapshotAssociation1.setId(UUID.randomUUID().toString());
+    actionProfileSnapshotAssociation1.setMasterProfileId(matchProfile2.getId());
+    actionProfileSnapshotAssociation1.setDetailProfileId(actionProfile.getId());
+    actionProfileSnapshotAssociation1.setMasterWrapperId(childMatchProfileWrapperId1);
+    actionProfileSnapshotAssociation1.setDetailWrapperId(actionProfileWrapperId1);
+    actionProfileSnapshotAssociation1.setDetailProfileType(ACTION_PROFILE);
+    actionProfileSnapshotAssociation1.setDetail(actionProfile);
 
-    mappingProfileSnapshotItem1.setAssociationId(UUID.randomUUID().toString());
-    mappingProfileSnapshotItem1.setMasterId(actionProfile.getId());
-    mappingProfileSnapshotItem1.setDetailId(mappingProfile.getId());
-    mappingProfileSnapshotItem1.setMasterWrapperId(actionProfileWrapperId1);
-    mappingProfileSnapshotItem1.setDetailWrapperId(mappingProfileWrapperId1);
-    mappingProfileSnapshotItem1.setDetailType(MAPPING_PROFILE);
-    mappingProfileSnapshotItem1.setDetail(mappingProfile);
+    mappingProfileSnapshotAssociation1.setId(UUID.randomUUID().toString());
+    mappingProfileSnapshotAssociation1.setMasterProfileId(actionProfile.getId());
+    mappingProfileSnapshotAssociation1.setDetailProfileId(mappingProfile.getId());
+    mappingProfileSnapshotAssociation1.setMasterWrapperId(actionProfileWrapperId1);
+    mappingProfileSnapshotAssociation1.setDetailWrapperId(mappingProfileWrapperId1);
+    mappingProfileSnapshotAssociation1.setDetailProfileType(MAPPING_PROFILE);
+    mappingProfileSnapshotAssociation1.setDetail(mappingProfile);
 
-    ProfileSnapshotItem parentMatchProfileSnapshotItem2 = new ProfileSnapshotItem();
-    ProfileSnapshotItem childMatchProfileSnapshotItem2 = new ProfileSnapshotItem();
-    ProfileSnapshotItem actionProfileSnapshotItem2 = new ProfileSnapshotItem();
-    ProfileSnapshotItem mappingProfileSnapshotItem2 = new ProfileSnapshotItem();
+    ProfileAssociation parentMatchProfileSnapshotAssociation2 = new ProfileAssociation();
+    ProfileAssociation childMatchProfileSnapshotAssociation2 = new ProfileAssociation();
+    ProfileAssociation actionProfileSnapshotAssociation2 = new ProfileAssociation();
+    ProfileAssociation mappingProfileSnapshotAssociation2 = new ProfileAssociation();
 
     String parentMatchProfileWrapperId2 = UUID.randomUUID().toString();
     String childMatchProfileWrapperId2 = UUID.randomUUID().toString();
     String actionProfileWrapperId2 = UUID.randomUUID().toString();
     String mappingProfileWrapperId2 = UUID.randomUUID().toString();
 
-    parentMatchProfileSnapshotItem2.setAssociationId(UUID.randomUUID().toString());
-    parentMatchProfileSnapshotItem2.setMasterId(jobProfile.getId());
-    parentMatchProfileSnapshotItem2.setDetailId(matchProfile.getId());
-    parentMatchProfileSnapshotItem2.setMasterWrapperId(jobProfileSnapshotItem.getDetailWrapperId());
-    parentMatchProfileSnapshotItem2.setDetailWrapperId(parentMatchProfileWrapperId2);
-    parentMatchProfileSnapshotItem2.setDetailType(MATCH_PROFILE);
-    parentMatchProfileSnapshotItem2.setDetail(matchProfile);
+    parentMatchProfileSnapshotAssociation2.setId(UUID.randomUUID().toString());
+    parentMatchProfileSnapshotAssociation2.setMasterProfileId(jobProfile.getId());
+    parentMatchProfileSnapshotAssociation2.setDetailProfileId(matchProfile.getId());
+    parentMatchProfileSnapshotAssociation2.setMasterWrapperId(jobProfileSnapshotAssociation.getDetailWrapperId());
+    parentMatchProfileSnapshotAssociation2.setDetailWrapperId(parentMatchProfileWrapperId2);
+    parentMatchProfileSnapshotAssociation2.setDetailProfileType(MATCH_PROFILE);
+    parentMatchProfileSnapshotAssociation2.setDetail(matchProfile);
 
-    childMatchProfileSnapshotItem2.setAssociationId(UUID.randomUUID().toString());
-    childMatchProfileSnapshotItem2.setMasterId(matchProfile.getId());
-    childMatchProfileSnapshotItem2.setDetailId(matchProfile2.getId());
-    childMatchProfileSnapshotItem2.setMasterWrapperId(parentMatchProfileWrapperId2);
-    childMatchProfileSnapshotItem2.setDetailWrapperId(childMatchProfileWrapperId2);
-    childMatchProfileSnapshotItem2.setDetailType(MATCH_PROFILE);
-    childMatchProfileSnapshotItem2.setDetail(matchProfile2);
+    childMatchProfileSnapshotAssociation2.setId(UUID.randomUUID().toString());
+    childMatchProfileSnapshotAssociation2.setMasterProfileId(matchProfile.getId());
+    childMatchProfileSnapshotAssociation2.setDetailProfileId(matchProfile2.getId());
+    childMatchProfileSnapshotAssociation2.setMasterWrapperId(parentMatchProfileWrapperId2);
+    childMatchProfileSnapshotAssociation2.setDetailWrapperId(childMatchProfileWrapperId2);
+    childMatchProfileSnapshotAssociation2.setDetailProfileType(MATCH_PROFILE);
+    childMatchProfileSnapshotAssociation2.setDetail(matchProfile2);
 
-    actionProfileSnapshotItem2.setAssociationId(UUID.randomUUID().toString());
-    actionProfileSnapshotItem2.setMasterId(matchProfile2.getId());
-    actionProfileSnapshotItem2.setDetailId(actionProfile.getId());
-    actionProfileSnapshotItem2.setMasterWrapperId(childMatchProfileWrapperId2);
-    actionProfileSnapshotItem2.setDetailWrapperId(actionProfileWrapperId2);
-    actionProfileSnapshotItem2.setDetailType(ACTION_PROFILE);
-    actionProfileSnapshotItem2.setDetail(actionProfile);
+    actionProfileSnapshotAssociation2.setId(UUID.randomUUID().toString());
+    actionProfileSnapshotAssociation2.setMasterProfileId(matchProfile2.getId());
+    actionProfileSnapshotAssociation2.setDetailProfileId(actionProfile.getId());
+    actionProfileSnapshotAssociation2.setMasterWrapperId(childMatchProfileWrapperId2);
+    actionProfileSnapshotAssociation2.setDetailWrapperId(actionProfileWrapperId2);
+    actionProfileSnapshotAssociation2.setDetailProfileType(ACTION_PROFILE);
+    actionProfileSnapshotAssociation2.setDetail(actionProfile);
 
-    mappingProfileSnapshotItem2.setAssociationId(UUID.randomUUID().toString());
-    mappingProfileSnapshotItem2.setMasterId(actionProfile.getId());
-    mappingProfileSnapshotItem2.setDetailId(mappingProfile.getId());
-    mappingProfileSnapshotItem2.setMasterWrapperId(actionProfileWrapperId2);
-    mappingProfileSnapshotItem2.setDetailWrapperId(mappingProfileWrapperId2);
-    mappingProfileSnapshotItem2.setDetailType(MAPPING_PROFILE);
-    mappingProfileSnapshotItem2.setDetail(mappingProfile);
+    mappingProfileSnapshotAssociation2.setId(UUID.randomUUID().toString());
+    mappingProfileSnapshotAssociation2.setMasterProfileId(actionProfile.getId());
+    mappingProfileSnapshotAssociation2.setDetailProfileId(mappingProfile.getId());
+    mappingProfileSnapshotAssociation2.setMasterWrapperId(actionProfileWrapperId2);
+    mappingProfileSnapshotAssociation2.setDetailWrapperId(mappingProfileWrapperId2);
+    mappingProfileSnapshotAssociation2.setDetailProfileType(MAPPING_PROFILE);
+    mappingProfileSnapshotAssociation2.setDetail(mappingProfile);
 
     return new ArrayList<>(Arrays.asList(
-      jobProfileSnapshotItem,
-      parentMatchProfileSnapshotItem1,
-      childMatchProfileSnapshotItem1,
-      actionProfileSnapshotItem1,
-      mappingProfileSnapshotItem1,
-      parentMatchProfileSnapshotItem2,
-      childMatchProfileSnapshotItem2,
-      actionProfileSnapshotItem2,
-      mappingProfileSnapshotItem2)
+      jobProfileSnapshotAssociation,
+      parentMatchProfileSnapshotAssociation1,
+      childMatchProfileSnapshotAssociation1,
+      actionProfileSnapshotAssociation1,
+      mappingProfileSnapshotAssociation1,
+      parentMatchProfileSnapshotAssociation2,
+      childMatchProfileSnapshotAssociation2,
+      actionProfileSnapshotAssociation2,
+      mappingProfileSnapshotAssociation2)
     );
   }
 

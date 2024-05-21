@@ -15,7 +15,7 @@ import org.folio.rest.impl.util.RestUtil;
 import org.folio.rest.jaxrs.model.EntityTypeCollection;
 import org.folio.rest.jaxrs.model.ProfileAssociation;
 import org.folio.rest.jaxrs.model.ProfileSnapshotWrapper;
-import org.folio.rest.jaxrs.model.ProfileSnapshotWrapper.ContentType;
+import org.folio.rest.jaxrs.model.ProfileType;
 import org.folio.rest.jaxrs.model.UserInfo;
 import org.folio.services.association.CommonProfileAssociationService;
 import org.folio.services.association.ProfileAssociationService;
@@ -126,10 +126,8 @@ public abstract class AbstractProfileService<T, S, D> implements ProfileService<
 
   private Future<Boolean> deleteAssociation(ProfileAssociation association, String tenantId) {
 
-    ProfileSnapshotWrapper.ContentType masterContentType =
-      ProfileSnapshotWrapper.ContentType.fromValue(association.getMasterProfileType().name());
-    ProfileSnapshotWrapper.ContentType detailContentType =
-      ProfileSnapshotWrapper.ContentType.fromValue(association.getDetailProfileType().name());
+    ProfileType masterContentType = association.getMasterProfileType();
+    ProfileType detailContentType = association.getDetailProfileType();
 
     if (association.getMasterProfileType() == ACTION_PROFILE && association.getDetailProfileType() == MAPPING_PROFILE) {
       return deleteMappingToActionProfileAssociation(association, masterContentType, detailContentType, tenantId);
@@ -143,8 +141,8 @@ public abstract class AbstractProfileService<T, S, D> implements ProfileService<
   }
 
   private Future<Boolean> deleteMappingToActionProfileAssociation(ProfileAssociation association,
-                                                                  ContentType masterContentType,
-                                                                  ContentType detailContentType,
+                                                                  ProfileType masterContentType,
+                                                                  ProfileType detailContentType,
                                                                   String tenantId) {
     return profileAssociationService.deleteByMasterIdAndDetailId(association.getMasterProfileId(),
       association.getDetailProfileId(), masterContentType, detailContentType, tenantId);
@@ -316,9 +314,9 @@ public abstract class AbstractProfileService<T, S, D> implements ProfileService<
   /**
    * Returns type of profile
    *
-   * @return - ContentType of profiles type
+   * @return - ProfileType of profiles type
    */
-  protected abstract ProfileSnapshotWrapper.ContentType getProfileContentType();
+  protected abstract ProfileType getProfileContentType();
 
   protected abstract List<ProfileSnapshotWrapper> getChildProfiles(T profile);
 

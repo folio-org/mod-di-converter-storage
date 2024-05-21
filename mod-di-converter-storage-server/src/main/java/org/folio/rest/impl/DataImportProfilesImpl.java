@@ -37,7 +37,6 @@ import org.folio.rest.jaxrs.model.Metadata;
 import org.folio.rest.jaxrs.model.ProfileType;
 import org.folio.rest.jaxrs.model.OperationType;
 import org.folio.rest.jaxrs.model.ProfileAssociation;
-import org.folio.rest.jaxrs.model.ProfileSnapshotWrapper.ContentType;
 import org.folio.rest.jaxrs.resource.DataImportProfiles;
 import org.folio.rest.tools.utils.TenantTool;
 import org.folio.services.ProfileService;
@@ -50,6 +49,8 @@ import javax.ws.rs.BadRequestException;
 import javax.ws.rs.NotFoundException;
 import javax.ws.rs.core.Response;
 import java.nio.charset.StandardCharsets;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.Optional;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -785,8 +786,8 @@ public class DataImportProfilesImpl implements DataImportProfiles {
     );
   }
 
-  private ContentType mapContentTypeOrNull(String detailType) {
-    return Arrays.stream(ContentType.values())
+  private ProfileType mapContentTypeOrNull(String detailType) {
+    return Arrays.stream(ProfileType.values())
       .filter(it -> it.value().equals(detailType))
       .findFirst()
       .orElse(null);
@@ -939,10 +940,37 @@ public class DataImportProfilesImpl implements DataImportProfiles {
   }
 
   private Future<Errors> validateJobProfileLinkedActionProfiles(JobProfileUpdateDto jobProfileUpdateDto) {
-    logger.debug("validateJobProfileLinkedActionProfiles:: Validating ActionProfiles added to JobProfile {}", jobProfileUpdateDto.getProfile().getId());
+    String jobProfileId = jobProfileUpdateDto.getProfile().getId();
+    logger.debug("validateJobProfileLinkedActionProfiles:: Validating ActionProfiles added to JobProfile {}", jobProfileId);
     List<Error> errors = new LinkedList<>();
+    Future<List<ProfileAssociation>> existingJobProfileAssociationsFuture;
+    if (jobProfileId != null) {
+      existingJobProfileAssociationsFuture = profileSnapshotService.getSnapshotAssociations(jobProfileId, ProfileType.JOB_PROFILE, jobProfileId, tenantId);
+    } else {
+      existingJobProfileAssociationsFuture = Future.succeededFuture(new ArrayList<>());
+    }
 
-    var actionProfileAssociations = addedActionProfileAssociations(jobProfileUpdateDto);
+    return existingJobProfileAssociationsFuture
+      .map(profileAssociations -> profileAssociations.stream()
+        .filter(profileAssociation -> profileAssociation.getDetailProfileType() != ProfileType.MAPPING_PROFILE &&
+                profileAssociation.getDetailProfileType() != ProfileType.JOB_PROFILE).collect(Collectors.toList()))
+      .map(profileAssociations -> {
+        if (!profileAssociations.isEmpty() && !jobProfileUpdateDto.getDeletedRelations().isEmpty()) {
+          profileAssociations.removeIf(profileAssociation ->
+            jobProfileUpdateDto.getDeletedRelations().stream().anyMatch(deleteAssociation ->
+              Objects.equals(profileAssociation.getMasterWrapperId(), deleteAssociation.getMasterWrapperId()) &&
+              Objects.equals(profileAssociation.getDetailWrapperId(), deleteAssociation.getDetailWrapperId())
+            ));
+        }
+        profileAssociations.addAll(jobProfileUpdateDto.getAddedRelations());
+
+        return profileAssociations;
+      })
+      .compose(profileAssociations -> validateActionProfilesAssociations(profileAssociations, errors));
+  }
+
+  private Future<Errors> validateActionProfilesAssociations(List<ProfileAssociation> profileAssociations, List<Error> errors) {
+    var actionProfileAssociations = actionProfileAssociations(profileAssociations);
     var actionProfileIds = actionProfileAssociations.stream().map(ProfileAssociation::getDetailProfileId).toList();
     var getProfileFutures = actionProfileIds.stream()
       .map(id -> actionProfileService.getProfileById(id, false, tenantId))
@@ -960,7 +988,7 @@ public class DataImportProfilesImpl implements DataImportProfiles {
 
         if (!notFoundedIds.isEmpty()) {
           var idStr = String.join(", ", notFoundedIds);
-          logger.warn("validateJobProfileLinkedActionProfiles:: Linked ActionProfiles with ids {} not founded", idStr);
+          logger.warn("validateActionProfilesAssociations:: Linked ActionProfiles with ids {} not founded", idStr);
           return Future.failedFuture(new NotFoundException((String.format(LINKED_ACTION_PROFILES_WERE_NOT_FOUND, idStr))));
         }
         return Future.succeededFuture(existingActionProfiles);
@@ -975,24 +1003,45 @@ public class DataImportProfilesImpl implements DataImportProfiles {
             validateAddedUpdateActionProfileAssociation(association, actionProfile, errors);
           }
           if (actionProfile.getAction() == ActionProfile.Action.MODIFY) {
-            validateAddedModifyActionProfileAssociation(jobProfileUpdateDto, association, actionProfile, errors);
+            validateAddedModifyActionProfileAssociation(profileAssociations, association, actionProfile, actionProfiles, errors);
           }
         });
         return Future.succeededFuture(new Errors().withErrors(errors).withTotalRecords(errors.size()));
       });
   }
 
-  private static void validateAddedModifyActionProfileAssociation(JobProfileUpdateDto jobProfileUpdateDto, ProfileAssociation association, ActionProfile actionProfile, List<Error> errors) {
-    if (association.getMasterProfileType() == ProfileType.JOB_PROFILE && association.getOrder() == 0
-      && jobProfileUpdateDto.getAddedRelations().size() == 1) {
+  private static void validateAddedModifyActionProfileAssociation(List<ProfileAssociation> profileAssociations, ProfileAssociation association, ActionProfile actionProfile,
+                                                                  List<ActionProfile> actionProfiles, List<Error> errors) {
+    List<ProfileAssociation> notModifyProfileAssociations = getNotModifyProfileAssociations(profileAssociations, actionProfiles);
+
+    if (association.getMasterProfileType() == ProfileType.JOB_PROFILE && notModifyProfileAssociations.isEmpty()) {
       logger.warn("validateAddedModifyActionProfileAssociation:: Modify profile with id {}, used as standalone action", actionProfile.getId());
       errors.add(new Error().withMessage(MODIFY_ACTION_CANNOT_BE_USED_AS_A_STANDALONE_ACTION));
-
     }
-    if (association.getMasterProfileType() == ProfileType.MATCH_PROFILE && association.getOrder() == 0) {
+
+    if (association.getMasterProfileType() == ProfileType.MATCH_PROFILE && isFirstAtMatchBlock(profileAssociations, association)) {
       logger.warn("validateAddedModifyActionProfileAssociation:: Modify profile with id {}, used right after Match profile", actionProfile.getId());
       errors.add(new Error().withMessage(MODIFY_ACTION_CANNOT_BE_USED_RIGHT_AFTER_THE_MATCH));
     }
+  }
+
+  private static List<ProfileAssociation> getNotModifyProfileAssociations(List<ProfileAssociation> profileAssociations, List<ActionProfile> actionProfiles) {
+    List<String> modifyActionProfileIds = actionProfiles.stream().filter(a -> a.getAction() == ActionProfile.Action.MODIFY).map(ActionProfile::getId).toList();
+    return profileAssociations.stream().filter(p -> !modifyActionProfileIds.contains(p.getDetailProfileId())).toList();
+  }
+
+  private static boolean isFirstAtMatchBlock(List<ProfileAssociation> profileAssociations, ProfileAssociation association) {
+    if (association.getOrder() == 0) return true;
+    if (association.getMasterWrapperId() != null) {
+      List<ProfileAssociation> associationsAtMatchBlock = profileAssociations.stream()
+        .filter(a -> Objects.equals(a.getMasterWrapperId(), association.getMasterWrapperId())).toList();
+
+      ProfileAssociation associationWithLowestOrder = Collections.min(associationsAtMatchBlock,
+        Comparator.comparingInt(ProfileAssociation::getOrder));
+
+      return associationWithLowestOrder == association;
+    }
+    return false;
   }
 
   private static void validateAddedUpdateActionProfileAssociation(ProfileAssociation association, ActionProfile actionProfile, List<Error> errors) {
@@ -1013,9 +1062,8 @@ public class DataImportProfilesImpl implements DataImportProfiles {
       .collect(Collectors.toList());
   }
 
-  private List<ProfileAssociation> addedActionProfileAssociations(JobProfileUpdateDto jobProfileUpdateDto) {
-    return jobProfileUpdateDto.getAddedRelations()
-      .stream()
+  private List<ProfileAssociation> actionProfileAssociations(List<ProfileAssociation> profileAssociations) {
+    return profileAssociations.stream()
       .filter(association -> association.getDetailProfileType() == ProfileType.ACTION_PROFILE).toList();
   }
 
@@ -1081,10 +1129,10 @@ public class DataImportProfilesImpl implements DataImportProfiles {
         optionalActionProfile.ifPresentOrElse(actionProfile -> {
             var existMappingProfiles = CollectionUtils.isEmpty(deletedRelations) ? actionProfile.getChildProfiles() :
               actionProfile.getChildProfiles().stream()
-                .filter(profileSnapshotWrapper -> profileSnapshotWrapper.getContentType() == ContentType.MAPPING_PROFILE)
+                .filter(profileSnapshotWrapper -> profileSnapshotWrapper.getContentType() == ProfileType.MAPPING_PROFILE)
                 .filter(profileSnapshotWrapper -> deletedRelations.stream()
                   .noneMatch(rel -> Objects.equals(rel.getDetailProfileId(), profileSnapshotWrapper.getProfileId()))
-                ).collect(Collectors.toList());
+                ).toList();
 
             existMappingProfiles.forEach(mappingWrapper -> {
               var mappingProfile = DatabindCodec.mapper().convertValue(mappingWrapper.getContent(), MappingProfile.class);
@@ -1133,10 +1181,10 @@ public class DataImportProfilesImpl implements DataImportProfiles {
         optionalMappingProfile.ifPresentOrElse(mappingProfile -> {
             var existActionProfiles = CollectionUtils.isEmpty(deletedRelations) ? mappingProfile.getParentProfiles() :
               mappingProfile.getParentProfiles().stream()
-                .filter(profileSnapshotWrapper -> profileSnapshotWrapper.getContentType() == ContentType.ACTION_PROFILE)
+                .filter(profileSnapshotWrapper -> profileSnapshotWrapper.getContentType() == ProfileType.ACTION_PROFILE)
                 .filter(profileSnapshotWrapper -> deletedRelations.stream()
                   .noneMatch(deletedRelation -> Objects.equals(deletedRelation.getMasterProfileId(), profileSnapshotWrapper.getProfileId())))
-                .collect(Collectors.toList());
+                .toList();
 
             existActionProfiles.forEach(actionWrapper -> {
               var actionProfile = DatabindCodec.mapper().convertValue(actionWrapper.getContent(), ActionProfile.class);
@@ -1191,11 +1239,11 @@ public class DataImportProfilesImpl implements DataImportProfiles {
     return errorList;
   }
 
-  private ContentType mapContentType(String contentType) {
+  private ProfileType mapContentType(String contentType) {
     try {
-      return ContentType.fromValue(contentType);
+      return ProfileType.fromValue(contentType);
     } catch (IllegalArgumentException e) {
-      String message = "The specified type: %s is wrong. It should be " + Arrays.toString(ContentType.values());
+      String message = "The specified type: %s is wrong. It should be " + Arrays.toString(ProfileType.values());
       throw new BadRequestException(format(message, contentType), e);
     }
   }

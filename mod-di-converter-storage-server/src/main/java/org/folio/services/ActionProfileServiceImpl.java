@@ -8,6 +8,7 @@ import org.folio.rest.jaxrs.model.ActionProfileCollection;
 import org.folio.rest.jaxrs.model.ActionProfileUpdateDto;
 import org.folio.rest.jaxrs.model.ProfileAssociation;
 import org.folio.rest.jaxrs.model.ProfileSnapshotWrapper;
+import org.folio.rest.jaxrs.model.ProfileType;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
@@ -64,8 +65,8 @@ public class ActionProfileServiceImpl extends AbstractProfileService<ActionProfi
   }
 
   @Override
-  protected ProfileSnapshotWrapper.ContentType getProfileContentType() {
-    return ProfileSnapshotWrapper.ContentType.ACTION_PROFILE;
+  protected ProfileType getProfileContentType() {
+    return ProfileType.ACTION_PROFILE;
   }
 
   @Override

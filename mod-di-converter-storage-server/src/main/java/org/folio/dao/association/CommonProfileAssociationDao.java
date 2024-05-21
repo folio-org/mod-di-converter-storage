@@ -9,8 +9,7 @@ import org.apache.logging.log4j.Logger;
 import org.folio.dao.PostgresClientFactory;
 import org.folio.rest.jaxrs.model.ProfileAssociation;
 import org.folio.rest.jaxrs.model.ProfileAssociationCollection;
-import org.folio.rest.jaxrs.model.ProfileSnapshotWrapper;
-import org.folio.rest.jaxrs.model.ProfileSnapshotWrapper.ContentType;
+import org.folio.rest.jaxrs.model.ProfileType;
 import org.folio.rest.jaxrs.model.ReactToType;
 import org.folio.rest.persist.Criteria.Criteria;
 import org.folio.rest.persist.Criteria.Criterion;
@@ -28,10 +27,10 @@ import java.util.Optional;
 import static java.lang.String.format;
 import static org.folio.dao.util.DaoUtil.constructCriteria;
 import static org.folio.dao.util.DaoUtil.getCQLWrapper;
-import static org.folio.rest.jaxrs.model.ProfileSnapshotWrapper.ContentType.ACTION_PROFILE;
-import static org.folio.rest.jaxrs.model.ProfileSnapshotWrapper.ContentType.JOB_PROFILE;
-import static org.folio.rest.jaxrs.model.ProfileSnapshotWrapper.ContentType.MAPPING_PROFILE;
-import static org.folio.rest.jaxrs.model.ProfileSnapshotWrapper.ContentType.MATCH_PROFILE;
+import static org.folio.rest.jaxrs.model.ProfileType.ACTION_PROFILE;
+import static org.folio.rest.jaxrs.model.ProfileType.JOB_PROFILE;
+import static org.folio.rest.jaxrs.model.ProfileType.MAPPING_PROFILE;
+import static org.folio.rest.jaxrs.model.ProfileType.MATCH_PROFILE;
 
 /**
  * Generic implementation of the of the {@link ProfileAssociationDao}
@@ -72,14 +71,14 @@ public class CommonProfileAssociationDao implements ProfileAssociationDao {
   }
 
   @Override
-  public Future<String> save(ProfileAssociation entity, ContentType masterType, ContentType detailType, String tenantId) {
+  public Future<String> save(ProfileAssociation entity, ProfileType masterType, ProfileType detailType, String tenantId) {
     Promise<String> promise = Promise.promise();
     pgClientFactory.createInstance(tenantId).save(getAssociationTableName(masterType, detailType), entity.getId(), entity, promise);
     return promise.future();
   }
 
   @Override
-  public Future<ProfileAssociationCollection> getAll(ContentType masterType, ContentType detailType, String tenantId) {
+  public Future<ProfileAssociationCollection> getAll(ProfileType masterType, ProfileType detailType, String tenantId) {
     Promise<Results<ProfileAssociation>> promise = Promise.promise();
     try {
       String[] fieldList = {"*"};
@@ -94,7 +93,7 @@ public class CommonProfileAssociationDao implements ProfileAssociationDao {
   }
 
   @Override
-  public Future<Optional<ProfileAssociation>> getById(String id, ContentType masterType, ContentType detailType, String tenantId) {
+  public Future<Optional<ProfileAssociation>> getById(String id, ProfileType masterType, ProfileType detailType, String tenantId) {
     Promise<Results<ProfileAssociation>> promise = Promise.promise();
     try {
       Criteria idCrit = constructCriteria(ID_FIELD, id);
@@ -109,7 +108,7 @@ public class CommonProfileAssociationDao implements ProfileAssociationDao {
   }
 
   @Override
-  public Future<ProfileAssociation> update(ProfileAssociation entity, ProfileSnapshotWrapper.ContentType masterType, ProfileSnapshotWrapper.ContentType detailType, String tenantId) {
+  public Future<ProfileAssociation> update(ProfileAssociation entity, ProfileType masterType, ProfileType detailType, String tenantId) {
     Promise<ProfileAssociation> promise = Promise.promise();
     try {
       Criteria idCrit = constructCriteria(ID_FIELD, entity.getId());
@@ -133,15 +132,15 @@ public class CommonProfileAssociationDao implements ProfileAssociationDao {
   }
 
   @Override
-  public Future<Boolean> delete(String id, ProfileSnapshotWrapper.ContentType masterType, ProfileSnapshotWrapper.ContentType detailType, String tenantId) {
+  public Future<Boolean> delete(String id, ProfileType masterType, ProfileType detailType, String tenantId) {
     Promise<RowSet<Row>> promise = Promise.promise();
     pgClientFactory.createInstance(tenantId).delete(getAssociationTableName(masterType, detailType), id, promise);
     return promise.future().map(updateResult -> updateResult.rowCount() == 1);
   }
 
   @Override
-  public Future<Boolean> delete(String masterWrapperId, String detailWrapperId, ProfileSnapshotWrapper.ContentType masterType,
-                                ProfileSnapshotWrapper.ContentType detailType, String jobProfileId, ReactToType reactTo, Integer order, String tenantId) {
+  public Future<Boolean> delete(String masterWrapperId, String detailWrapperId, ProfileType masterType,
+                                ProfileType detailType, String jobProfileId, ReactToType reactTo, Integer order, String tenantId) {
     Promise<RowSet<Row>> promise = Promise.promise();
     try {
       CQLWrapper filter = getCQLWrapper(getAssociationTableName(masterType, detailType),
@@ -163,7 +162,7 @@ public class CommonProfileAssociationDao implements ProfileAssociationDao {
   }
 
   @Override
-  public Future<Boolean> deleteByMasterWrapperId(String wrapperId, ProfileSnapshotWrapper.ContentType masterType, ProfileSnapshotWrapper.ContentType detailType, String tenantId) {
+  public Future<Boolean> deleteByMasterWrapperId(String wrapperId, ProfileType masterType, ProfileType detailType, String tenantId) {
     Promise<RowSet<Row>> promise = Promise.promise();
     try {
       CQLWrapper filter = getCQLWrapper(getAssociationTableName(masterType, detailType), "(" + MASTER_WRAPPER_ID_FIELD + "==" + wrapperId + ")");
@@ -176,8 +175,8 @@ public class CommonProfileAssociationDao implements ProfileAssociationDao {
   }
 
   @Override
-  public Future<Boolean> deleteByMasterIdAndDetailId(String masterId, String detailId, ContentType masterType,
-                                                     ContentType detailType, String tenantId) {
+  public Future<Boolean> deleteByMasterIdAndDetailId(String masterId, String detailId, ProfileType masterType,
+                                                     ProfileType detailType, String tenantId) {
     Promise<RowSet<Row>> promise = Promise.promise();
     try {
       /* Setting WHERE clause explicitly here because incorrect query is created by CQLWrapper by default due to
@@ -199,7 +198,7 @@ public class CommonProfileAssociationDao implements ProfileAssociationDao {
    * @param detailType a detail type in association
    * @return table name
    */
-  private String getAssociationTableName(ContentType masterType, ContentType detailType) {
+  private String getAssociationTableName(ProfileType masterType, ProfileType detailType) {
     String associationTableName = associationTableNamesMap.get(masterType.value() + detailType.value());
     if (associationTableName == null) {
       String message = format("Invalid ProfileAssociation type with master type '%s' and detail type '%s'. ", masterType, detailType);
