@@ -25,6 +25,8 @@ public interface ProfileAssociationDao {
   /**
    * Searches for ProfileAssociation by masterType and detailType
    *
+   * @param masterType a master type in association
+   * @param detailType a detail type in association
    * @param tenantId   tenant id
    * @return future with {@link ProfileAssociationCollection}
    */
@@ -43,6 +45,8 @@ public interface ProfileAssociationDao {
    * Updates ProfileAssociation entity in database
    *
    * @param entity     ProfileAssociation entity to update
+   * @param masterType a master type in association
+   * @param detailType a detail type in association
    * @param tenantId   tenant id
    * @return future with updated entity
    */
@@ -62,6 +66,8 @@ public interface ProfileAssociationDao {
    *
    * @param masterWrapperId     - UUID of masterProfile wrapper
    * @param detailWrapperId     - UUID of detailProfile wrapper
+   * @param masterType a master type in association
+   * @param detailType a detail type in association
    * @param jobProfileId - job profile id (optional)
    * @param order        - order
    * @param tenantId     - tenant id
@@ -74,6 +80,8 @@ public interface ProfileAssociationDao {
    * Delete profile associations for particular master profile by wrapperId
    *
    * @param wrapperId   - master profile wrapper id
+   * @param masterType a master type in association
+   * @param detailType a detail type in association
    * @param tenantId   - tenant id
    * @return future with boolean
    */
@@ -84,6 +92,8 @@ public interface ProfileAssociationDao {
    *
    * @param masterId     - UUID of masterProfile
    * @param detailId     - UUID of detailProfile
+   * @param masterType a master type in association
+   * @param detailType a detail type in association
    * @param tenantId     - tenant id
    * @return - boolean result of operation
    */

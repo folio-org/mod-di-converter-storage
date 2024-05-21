@@ -20,6 +20,8 @@ public interface ProfileAssociationService { //NOSONAR
    * Searches for ProfileAssociation by masterType and detailType
    *
    * @param tenantId   tenant id
+   * @param masterType a master type in association
+   * @param detailType a detail type in association
    * @return future with {@link ProfileAssociationCollection}
    */
   Future<ProfileAssociationCollection> getAll(ContentType masterType, ContentType detailType, String tenantId);
@@ -55,6 +57,8 @@ public interface ProfileAssociationService { //NOSONAR
    * Updates ProfileAssociation with given id
    *
    * @param entity     ProfileAssociation to update
+   * @param masterType a master type in association
+   * @param detailType a detail type in association
    * @param params     {@link OkapiConnectionParams}
    * @return future with updated entity
    */
