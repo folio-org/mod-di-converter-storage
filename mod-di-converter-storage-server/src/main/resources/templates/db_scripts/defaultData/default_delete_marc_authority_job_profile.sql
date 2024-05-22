@@ -166,7 +166,7 @@ INSERT INTO ${myuniversity}_${mymodule}.associations (id, job_profile_id, master
    null,
    '7248a1a1-8811-4771-b418-c1d16423e2bc',
    'ed54fc13-aac0-40d4-b21e-dda1e6f9a03a',
-   '1a338fcd-3efc-4a03-b007-394eeb0d5fb9', -- master profile
+   '1a338fcd-3efc-4a03-b007-394eeb0d5fb9',
    '4be5d1d2-1f5a-42ff-a9bd-fc90609d94b6',
    'JOB_PROFILE',
    'MATCH_PROFILE',

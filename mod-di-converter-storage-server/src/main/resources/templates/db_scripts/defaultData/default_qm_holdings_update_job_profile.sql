@@ -194,10 +194,10 @@ INSERT INTO ${myuniversity}_${mymodule}.action_to_mapping_profiles (id, jsonb) v
 INSERT INTO ${myuniversity}_${mymodule}.profile_wrappers (id, profile_type, job_profile_id) values
   ('e3c6c549-049f-4448-be35-49e7bbfb40a6', 'JOB_PROFILE', '6cb347c6-c0b0-4363-89fc-32cedede87ba') ON CONFLICT DO NOTHING;
 
-INSERT INTO ${myuniversity}_${mymodule}.profile_wrappers (id, profile_type, action_profile_id) values
+INSERT INTO ${myuniversity}_${mymodule}.profile_wrappers (id, profile_type, match_profile_id) values
   ('f31b5e40-0187-4fd9-8558-d728363be43b', 'MATCH_PROFILE', '2a599369-817f-4fe8-bae2-f3e3987990fe') ON CONFLICT DO NOTHING;
 
-INSERT INTO ${myuniversity}_${mymodule}.profile_wrappers (id, profile_type, mapping_profile_id) values
+INSERT INTO ${myuniversity}_${mymodule}.profile_wrappers (id, profile_type, action_profile_id) values
   ('0dd70479-bc19-4dc1-9e64-114e6b1ade45', 'ACTION_PROFILE', '7e24a466-349b-451d-a18e-38fb21d71b38') ON CONFLICT DO NOTHING;
 
 INSERT INTO ${myuniversity}_${mymodule}.profile_wrappers (id, profile_type, mapping_profile_id) values
@@ -210,7 +210,7 @@ INSERT INTO ${myuniversity}_${mymodule}.associations (id, job_profile_id, master
    null,
    'e3c6c549-049f-4448-be35-49e7bbfb40a6',
    'f31b5e40-0187-4fd9-8558-d728363be43b',
-   '6cb347c6-c0b0-4363-89fc-32cedede87ba', -- master profile
+   '6cb347c6-c0b0-4363-89fc-32cedede87ba',
    '2a599369-817f-4fe8-bae2-f3e3987990fe',
    'JOB_PROFILE',
    'MATCH_PROFILE',

@@ -328,7 +328,7 @@ INSERT INTO ${myuniversity}_${mymodule}.associations (id, job_profile_id, master
    null,
    '1e9cac23-8160-4e4e-9bca-f18d306bf9ce',
    '16e5da96-06ee-4f3b-9ec4-a50622c3f946',
-   'd0ebb7b0-2f0f-11eb-adc1-0242ac120002', -- master profile
+   'd0ebb7b0-2f0f-11eb-adc1-0242ac120002',
    'd0ebba8a-2f0f-11eb-adc1-0242ac120002',
    'JOB_PROFILE',
    'ACTION_PROFILE',

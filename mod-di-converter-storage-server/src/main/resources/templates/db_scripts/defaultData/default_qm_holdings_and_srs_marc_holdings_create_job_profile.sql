@@ -299,10 +299,10 @@ INSERT INTO ${myuniversity}_${mymodule}.action_to_mapping_profiles (id, jsonb) v
 }')
 ON CONFLICT DO NOTHING;
 
-INSERT INTO ${myuniversity}_${mymodule}.profile_wrappers (id, profile_type, action_profile_id) values
+INSERT INTO ${myuniversity}_${mymodule}.profile_wrappers (id, profile_type, job_profile_id) values
   ('5d4e95e0-f296-431f-b11f-0b9869e077fa', 'JOB_PROFILE', 'fa0262c7-5816-48d0-b9b3-7b7a862a5bc7') ON CONFLICT DO NOTHING;
 
-INSERT INTO ${myuniversity}_${mymodule}.profile_wrappers (id, profile_type, mapping_profile_id) values
+INSERT INTO ${myuniversity}_${mymodule}.profile_wrappers (id, profile_type, action_profile_id) values
   ('4bf02d3a-2dcb-4a75-adb6-8f6538f3fd4d', 'ACTION_PROFILE', 'f5feddba-f892-4fad-b702-e4e77f04f9a3') ON CONFLICT DO NOTHING;
 
 INSERT INTO ${myuniversity}_${mymodule}.profile_wrappers (id, profile_type, mapping_profile_id) values
@@ -315,7 +315,7 @@ INSERT INTO ${myuniversity}_${mymodule}.associations (id, job_profile_id, master
    null,
    '5d4e95e0-f296-431f-b11f-0b9869e077fa',
    '4bf02d3a-2dcb-4a75-adb6-8f6538f3fd4d',
-   'fa0262c7-5816-48d0-b9b3-7b7a862a5bc7', -- master profile
+   'fa0262c7-5816-48d0-b9b3-7b7a862a5bc7',
    'f5feddba-f892-4fad-b702-e4e77f04f9a3',
    'JOB_PROFILE',
    'ACTION_PROFILE',
