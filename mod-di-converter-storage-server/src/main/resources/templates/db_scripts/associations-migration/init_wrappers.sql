@@ -50,6 +50,22 @@ $$
           continue;
         end if;
 
+        -- insert into new association table
+        INSERT INTO ${myuniversity}_${mymodule}.associations (id, job_profile_id, master_wrapper_id,
+            detail_wrapper_id, master_profile_id, detail_profile_id,
+            master_profile_type, detail_profile_type, detail_order, react_to) values
+            (r.id,
+            null,
+            action_wrapper_id,
+            mapping_wrapper_id,
+            (r.jsonb ->> 'masterProfileId')::uuid,
+            (r.jsonb ->> 'detailProfileId')::uuid,
+           'ACTION_PROFILE',
+           'MAPPING_PROFILE',
+            (r.jsonb ->> 'order')::int,
+            null
+           ) ON CONFLICT DO NOTHING;
+
         -- update wrapper references
         UPDATE action_to_mapping_profiles
         SET jsonb = jsonb_set(jsonb_set(jsonb, '{masterWrapperId}', to_jsonb(action_wrapper_id), true),
@@ -91,6 +107,22 @@ $$
           continue;
         end if;
 
+        -- insert into new association table
+        INSERT INTO ${myuniversity}_${mymodule}.associations (id, job_profile_id, master_wrapper_id,
+            detail_wrapper_id, master_profile_id, detail_profile_id,
+            master_profile_type, detail_profile_type, detail_order, react_to) values
+            (r.id,
+            null,
+            job_wrapper_id,
+            match_wrapper_id,
+            (r.jsonb ->> 'masterProfileId')::uuid,
+            (r.jsonb ->> 'detailProfileId')::uuid,
+           'JOB_PROFILE',
+           'MATCH_PROFILE',
+            (r.jsonb ->> 'order')::int,
+            null
+           ) ON CONFLICT DO NOTHING;
+
         -- update wrapper references
         UPDATE job_to_match_profiles
         SET jsonb = jsonb_set(jsonb_set(jsonb, '{masterWrapperId}', to_jsonb(job_wrapper_id), true),
@@ -131,6 +163,22 @@ $$
             r.id, action_wrapper_id, job_wrapper_id;
           continue;
         end if;
+
+        -- insert into new association table
+        INSERT INTO ${myuniversity}_${mymodule}.associations (id, job_profile_id, master_wrapper_id,
+            detail_wrapper_id, master_profile_id, detail_profile_id,
+            master_profile_type, detail_profile_type, detail_order, react_to) values
+            (r.id,
+            null,
+            job_wrapper_id,
+            action_wrapper_id,
+            (r.jsonb ->> 'masterProfileId')::uuid,
+            (r.jsonb ->> 'detailProfileId')::uuid,
+           'JOB_PROFILE',
+           'ACTION_PROFILE',
+            (r.jsonb ->> 'order')::int,
+            null
+           ) ON CONFLICT DO NOTHING;
 
         -- update wrapper references
         UPDATE job_to_action_profiles
@@ -188,6 +236,22 @@ $$
             where match_profile_id = (recursive_record.jsonb ->> 'masterProfileId')::uuid
               and associated_job_profile_id = (recursive_record.jsonb ->> 'jobProfileId')::uuid;
 
+            -- insert into new association table
+            INSERT INTO ${myuniversity}_${mymodule}.associations (id, job_profile_id, master_wrapper_id,
+                detail_wrapper_id, master_profile_id, detail_profile_id,
+                master_profile_type, detail_profile_type, detail_order, react_to) values
+                (recursive_record.id,
+                (recursive_record.jsonb ->> 'jobProfileId')::uuid,
+                master_match_wrapper_id,
+                detail_match_wrapper_id,
+                (recursive_record.jsonb ->> 'masterProfileId')::uuid,
+                (recursive_record.jsonb ->> 'detailProfileId')::uuid,
+               'MATCH_PROFILE',
+               'MATCH_PROFILE',
+                (recursive_record.jsonb ->> 'order')::int,
+                (recursive_record.jsonb ->> 'reactTo')::text
+               ) ON CONFLICT DO NOTHING;
+
             -- update wrapper references
             UPDATE match_to_match_profiles
             SET jsonb = jsonb_set(
@@ -232,6 +296,22 @@ $$
           continue;
         end if;
 
+        -- insert into new association table
+        INSERT INTO ${myuniversity}_${mymodule}.associations (id, job_profile_id, master_wrapper_id,
+            detail_wrapper_id, master_profile_id, detail_profile_id,
+            master_profile_type, detail_profile_type, detail_order, react_to) values
+            (r.id,
+            (r.jsonb ->> 'jobProfileId')::uuid,
+            match_wrapper_id,
+            action_wrapper_id,
+            (r.jsonb ->> 'masterProfileId')::uuid,
+            (r.jsonb ->> 'detailProfileId')::uuid,
+           'MATCH_PROFILE',
+           'ACTION_PROFILE',
+            (r.jsonb ->> 'order')::int,
+            (r.jsonb ->> 'reactTo')::text
+           ) ON CONFLICT DO NOTHING;
+
         -- update wrapper references
         UPDATE match_to_action_profiles
         SET jsonb = jsonb_set(jsonb_set(jsonb, '{masterWrapperId}', to_jsonb(match_wrapper_id), true),
@@ -270,6 +350,22 @@ $$
           raise warning 'BAD DATA, action_to_action_profiles id: %', r.id;
           continue;
         end if;
+
+        -- insert into new association table
+        INSERT INTO ${myuniversity}_${mymodule}.associations (id, job_profile_id, master_wrapper_id,
+            detail_wrapper_id, master_profile_id, detail_profile_id,
+            master_profile_type, detail_profile_type, detail_order, react_to) values
+            (r.id,
+            null,
+            master_action_wrapper_id,
+            detail_action_wrapper_id,
+            (r.jsonb ->> 'masterProfileId')::uuid,
+            (r.jsonb ->> 'detailProfileId')::uuid,
+           'ACTION_PROFILE',
+           'ACTION_PROFILE',
+            (r.jsonb ->> 'order')::int,
+            null
+           ) ON CONFLICT DO NOTHING;
 
         -- update wrapper references
         UPDATE action_to_action_profiles
