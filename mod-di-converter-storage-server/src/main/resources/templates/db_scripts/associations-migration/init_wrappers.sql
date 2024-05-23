@@ -51,7 +51,7 @@ $$
         end if;
 
         -- insert into new association table
-        INSERT INTO ${myuniversity}_${mymodule}.associations (id, job_profile_id, master_wrapper_id,
+        INSERT INTO associations (id, job_profile_id, master_wrapper_id,
             detail_wrapper_id, master_profile_id, detail_profile_id,
             master_profile_type, detail_profile_type, detail_order, react_to) values
             (r.id,
@@ -108,7 +108,7 @@ $$
         end if;
 
         -- insert into new association table
-        INSERT INTO ${myuniversity}_${mymodule}.associations (id, job_profile_id, master_wrapper_id,
+        INSERT INTO associations (id, job_profile_id, master_wrapper_id,
             detail_wrapper_id, master_profile_id, detail_profile_id,
             master_profile_type, detail_profile_type, detail_order, react_to) values
             (r.id,
@@ -165,7 +165,7 @@ $$
         end if;
 
         -- insert into new association table
-        INSERT INTO ${myuniversity}_${mymodule}.associations (id, job_profile_id, master_wrapper_id,
+        INSERT INTO associations (id, job_profile_id, master_wrapper_id,
             detail_wrapper_id, master_profile_id, detail_profile_id,
             master_profile_type, detail_profile_type, detail_order, react_to) values
             (r.id,
@@ -237,7 +237,7 @@ $$
               and associated_job_profile_id = (recursive_record.jsonb ->> 'jobProfileId')::uuid;
 
             -- insert into new association table
-            INSERT INTO ${myuniversity}_${mymodule}.associations (id, job_profile_id, master_wrapper_id,
+            INSERT INTO associations (id, job_profile_id, master_wrapper_id,
                 detail_wrapper_id, master_profile_id, detail_profile_id,
                 master_profile_type, detail_profile_type, detail_order, react_to) values
                 (recursive_record.id,
@@ -297,7 +297,7 @@ $$
         end if;
 
         -- insert into new association table
-        INSERT INTO ${myuniversity}_${mymodule}.associations (id, job_profile_id, master_wrapper_id,
+        INSERT INTO associations (id, job_profile_id, master_wrapper_id,
             detail_wrapper_id, master_profile_id, detail_profile_id,
             master_profile_type, detail_profile_type, detail_order, react_to) values
             (r.id,
@@ -352,7 +352,7 @@ $$
         end if;
 
         -- insert into new association table
-        INSERT INTO ${myuniversity}_${mymodule}.associations (id, job_profile_id, master_wrapper_id,
+        INSERT INTO associations (id, job_profile_id, master_wrapper_id,
             detail_wrapper_id, master_profile_id, detail_profile_id,
             master_profile_type, detail_profile_type, detail_order, react_to) values
             (r.id,
