@@ -233,7 +233,7 @@ public class CommonProfileAssociationDao implements ProfileAssociationDao {
 
   private Boolean mapResultSetIfExists(RowSet<Row> resultSet) {
     RowIterator<Row> iterator = resultSet.iterator();
-    return iterator.hasNext() ? iterator.next().getBoolean("exists") : false;
+    return iterator.hasNext() && iterator.next().getBoolean("exists");
   }
 
   private UUID getValidUUIDOrNull(String input) {
