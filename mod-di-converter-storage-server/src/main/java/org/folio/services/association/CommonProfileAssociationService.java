@@ -252,6 +252,11 @@ public class CommonProfileAssociationService implements ProfileAssociationServic
     return profileAssociationDao.deleteByMasterIdAndDetailId(masterId, detailId, masterType, detailType, tenantId);
   }
 
+  @Override
+  public Future<Boolean> checkIfDataInTableExists(String tenantId) {
+    return profileAssociationDao.checkIfDataInTableExists(tenantId);
+  }
+
   /**
    * Retrieves profile by profile id and profile type and then fill profile wrapper with the instance.
    *

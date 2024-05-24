@@ -381,5 +381,5 @@ $$;
  System table for saving migration history.
  */
 insert into metadata_internal(id, jsonb, creation_date)
-  values (public.uuid_generate_v4(), '{"name": "Migration of profiles to the use of wrappers"}', now()::timestamptz);
+  values (public.uuid_generate_v4(), '{"name": "Migration of profiles to the use of wrappers and general associations"}', now()::timestamptz);
 

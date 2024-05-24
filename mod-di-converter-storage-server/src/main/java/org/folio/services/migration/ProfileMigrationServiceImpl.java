@@ -26,7 +26,7 @@ public class ProfileMigrationServiceImpl implements ProfileMigrationService {
   private static final Logger LOGGER = LogManager.getLogger();
   private static final String UPDATE_SCHEMA_FOR_MIGRATION = "templates/db_scripts/associations-migration/actualize_schema_for_migrations.sql";
   private static final String INIT_WRAPPERS = "templates/db_scripts/associations-migration/init_wrappers.sql";
-  private static final String REMOVE_WRAPPERS = "templates/db_scripts/associations-migration/clean_profile_wrappers.sql";
+  public static final String REMOVE_WRAPPERS = "templates/db_scripts/associations-migration/clean_profile_wrappers.sql";
   private static final String UPDATE_GET_PROFILE_SNAPSHOT_FUNCTION = "templates/db_scripts/get_profile_snapshot.sql";
   private static final String TENANT_PLACEHOLDER = "${myuniversity}";
   private static final String MODULE_PLACEHOLDER = "${mymodule}";
@@ -52,21 +52,19 @@ public class ProfileMigrationServiceImpl implements ProfileMigrationService {
           return Future.succeededFuture(true);
         }
       })
-      .onFailure(th -> {
-        LOGGER.error("migrateDataImportProfiles:: Something happened during the profile migration", th);
-      });
+      .onFailure(th -> LOGGER.error("migrateDataImportProfiles:: Something happened during the profile migration", th));
   }
 
   private Future<Boolean> processMigration(Boolean isDataPresent, String tenantId) {
-    if (!isDataPresent) {
-      return runScriptChain(tenantId, INIT_WRAPPERS, UPDATE_SCHEMA_FOR_MIGRATION, UPDATE_GET_PROFILE_SNAPSHOT_FUNCTION);
+    if (Boolean.TRUE.equals(isDataPresent)) {
+      return runScriptChain(tenantId, true, REMOVE_WRAPPERS, INIT_WRAPPERS, UPDATE_SCHEMA_FOR_MIGRATION, UPDATE_GET_PROFILE_SNAPSHOT_FUNCTION);
     } else {
-      return runScriptChain(tenantId, REMOVE_WRAPPERS, INIT_WRAPPERS, UPDATE_SCHEMA_FOR_MIGRATION, UPDATE_GET_PROFILE_SNAPSHOT_FUNCTION);
+      return runScriptChain(tenantId, false, INIT_WRAPPERS, UPDATE_SCHEMA_FOR_MIGRATION, UPDATE_GET_PROFILE_SNAPSHOT_FUNCTION);
     }
   }
 
-  private Future<Boolean> runScriptChain(String tenantId, String... scripts) {
-    Future<Boolean> future = Future.succeededFuture(true);
+  private Future<Boolean> runScriptChain(String tenantId, Boolean isDataPresent, String... scripts) {
+    Future<Boolean> future = Future.succeededFuture(isDataPresent);
     for (String script : scripts) {
       future = future.compose(ar -> runScript(tenantId, script));
     }

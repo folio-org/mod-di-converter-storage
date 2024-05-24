@@ -310,7 +310,7 @@
     },
     {
       "tableName": "associations",
-      "fromModuleVersion": "mod-di-converter-storage-2.3.0-SNAPSHOT",
+      "fromModuleVersion": "mod-di-converter-storage-2.3.0",
       "withMetadata": false,
       "customSnippetPath": "associations-migration/associations_table.sql"
     }
@@ -434,6 +434,11 @@
     {
       "run": "after",
       "snippetPath": "get_profile_snapshot.sql",
+      "fromModuleVersion": "mod-di-converter-storage-2.3.0"
+    },
+    {
+      "run": "after",
+      "snippetPath": "associations-migration/actualize_schema_for_migrations.sql",
       "fromModuleVersion": "mod-di-converter-storage-2.3.0"
     }
   ]

@@ -48,6 +48,9 @@ BEGIN
     EXECUTE 'UPDATE ' || r.table_name || ' SET masterwrapperid=null, detailwrapperid=null;';
   END LOOP;
 
+  RAISE NOTICE 'Removing new associations.';
+  TRUNCATE associations CASCADE;
+
   RAISE NOTICE 'Removing old wrappers.';
   TRUNCATE profile_wrappers;
 
