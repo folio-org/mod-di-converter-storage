@@ -298,3 +298,37 @@ INSERT INTO ${myuniversity}_${mymodule}.action_to_mapping_profiles (id, jsonb) v
   "masterProfileType": "ACTION_PROFILE"
 }')
 ON CONFLICT DO NOTHING;
+
+DO
+$$
+DECLARE
+    job_wrapper_id UUID := 'd7ea2be8-7576-401e-9644-2cb941b090f2';
+    action_wrapper_id UUID := '68c54cdb-575b-4e06-b196-85f0b9c1d483';
+    mapping_wrapper_id UUID := 'e2bda8d0-1c47-4a6f-a440-ae97b2aaf468';
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM ${myuniversity}_${mymodule}.profile_wrappers WHERE job_profile_id = '80898dee-449f-44dd-9c8e-37d5eb469b1d') THEN
+        INSERT INTO ${myuniversity}_${mymodule}.profile_wrappers (id, profile_type, job_profile_id)
+        VALUES (job_wrapper_id, 'JOB_PROFILE', '80898dee-449f-44dd-9c8e-37d5eb469b1d') ON CONFLICT DO NOTHING;
+    END IF;
+
+    IF NOT EXISTS (SELECT 1 FROM ${myuniversity}_${mymodule}.profile_wrappers WHERE action_profile_id = '8aa0b850-9182-4005-8435-340b704b2a19') THEN
+        INSERT INTO ${myuniversity}_${mymodule}.profile_wrappers (id, profile_type, action_profile_id)
+        VALUES (action_wrapper_id, 'ACTION_PROFILE', '8aa0b850-9182-4005-8435-340b704b2a19') ON CONFLICT DO NOTHING;
+    END IF;
+
+    IF NOT EXISTS (SELECT 1 FROM ${myuniversity}_${mymodule}.profile_wrappers WHERE mapping_profile_id = '13cf7adf-c7a7-4c2e-838f-14d0ac36ec0a') THEN
+        INSERT INTO ${myuniversity}_${mymodule}.profile_wrappers (id, profile_type, mapping_profile_id)
+        VALUES (mapping_wrapper_id, 'MAPPING_PROFILE', '13cf7adf-c7a7-4c2e-838f-14d0ac36ec0a') ON CONFLICT DO NOTHING;
+    END IF;
+
+    INSERT INTO ${myuniversity}_${mymodule}.associations (id, job_profile_id, master_wrapper_id,
+        detail_wrapper_id, master_profile_id, detail_profile_id,
+        master_profile_type, detail_profile_type, detail_order, react_to)
+    VALUES
+        ('866a90ce-53b2-4b7b-afb5-d3a564e5087e', NULL, job_wrapper_id, action_wrapper_id,
+         '80898dee-449f-44dd-9c8e-37d5eb469b1d', '8aa0b850-9182-4005-8435-340b704b2a19', 'JOB_PROFILE', 'ACTION_PROFILE', 0, NULL) ON CONFLICT DO NOTHING,
+
+        ('42f66e86-cacb-479d-aa80-50a200d0b6b6', NULL, action_wrapper_id, mapping_wrapper_id,
+         '8aa0b850-9182-4005-8435-340b704b2a19', '13cf7adf-c7a7-4c2e-838f-14d0ac36ec0a', 'ACTION_PROFILE', 'MAPPING_PROFILE', 0, NULL) ON CONFLICT DO NOTHING;
+END
+$$;

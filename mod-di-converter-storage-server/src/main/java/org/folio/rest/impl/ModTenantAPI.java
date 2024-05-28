@@ -1,7 +1,5 @@
 package org.folio.rest.impl;
 
-import static org.folio.services.migration.ProfileMigrationServiceImpl.REMOVE_WRAPPERS;
-
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Context;
 import io.vertx.core.Future;
@@ -15,7 +13,6 @@ import org.apache.logging.log4j.Logger;
 import org.folio.rest.jaxrs.model.TenantAttributes;
 import org.folio.rest.persist.PostgresClient;
 import org.folio.rest.tools.utils.TenantTool;
-import org.folio.services.association.ProfileAssociationService;
 import org.folio.services.migration.ProfileMigrationService;
 import org.folio.spring.SpringContextUtil;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -54,7 +51,6 @@ public class ModTenantAPI extends TenantAPI {
   private static final String DEFAULT_QM_HOLDINGS_UPDATE_JOB_PROFILE = "templates/db_scripts/defaultData/default_qm_holdings_update_job_profile.sql";
   private static final String DEFAULT_QM_AUTHORITY_CREATE_JOB_PROFILE = "templates/db_scripts/defaultData/default_qm_authority_create_job_profile.sql";
   private static final String DEFAULT_ECS_INSTANCE_AND_MARC_BIB_CREATE_JOB_PROFILE = "templates/db_scripts/defaultData/default_ecs_instance_and_marc_bib_create_job_profile.sql";
-  private static final String CREATE_WRAPPERS_AND_ASSOCIATIONS = "templates/db_scripts/defaultData/init_wrappers_and_associations.sql";
   private static final String RENAME_MODULE = "templates/db_scripts/rename_module.sql";
 
   private static final String TENANT_PLACEHOLDER = "${myuniversity}";
@@ -62,8 +58,6 @@ public class ModTenantAPI extends TenantAPI {
 
   @Autowired
   ProfileMigrationService profileMigrationService;
-  @Autowired
-  ProfileAssociationService profileAssociationService;
 
   public ModTenantAPI() { //NOSONAR
     SpringContextUtil.autowireDependencies(this, Vertx.currentContext());
@@ -80,7 +74,8 @@ public class ModTenantAPI extends TenantAPI {
   @Override
   Future<Integer> loadData(TenantAttributes attributes, String tenantId, Map<String, String> headers, Context context) {
     return super.loadData(attributes, tenantId, headers, context)
-      .compose(num -> runSqlScript(DEFAULT_JOB_PROFILE_SQL, headers, context)
+      .compose(k -> profileMigrationService.migrateDataImportProfiles(headers, context)
+        .compose(num -> runSqlScript(DEFAULT_JOB_PROFILE_SQL, headers, context))
         .compose(r -> runSqlScript(DEFAULT_MARC_FIELD_PROTECTION_SETTINGS_SQL, headers, context))
         .compose(d -> runSqlScript(DEFAULT_OCLC_JOB_PROFILE_SQL, headers, context))
         .compose(u -> runSqlScript(DEFAULT_OCLC_UPDATE_JOB_PROFILE_SQL, headers, context))
@@ -102,20 +97,9 @@ public class ModTenantAPI extends TenantAPI {
         .compose(m -> runSqlScript(DEFAULT_QM_AUTHORITY_UPDATE_JOB_PROFILE, headers, context))
         .compose(m -> runSqlScript(DEFAULT_QM_MARC_BIB_UPDATE_JOB_PROFILE, headers, context))
         .compose(m -> runSqlScript(DEFAULT_QM_HOLDINGS_UPDATE_JOB_PROFILE, headers, context))
-        .compose(m -> profileMigrationService.migrateDataImportProfiles(headers, context))
-        .compose(m -> {
-          profileAssociationService.checkIfDataInTableExists(tenantId).onSuccess(isDataPresent -> {
-            if (!isDataPresent) {
-              LOGGER.info("loadData:: no associations found, creating associations for default profiles...");
-              runSqlScript(REMOVE_WRAPPERS, headers, context);
-              runSqlScript(CREATE_WRAPPERS_AND_ASSOCIATIONS, headers, context);
-            }
-          });
-          return Future.succeededFuture();
-        })
         .compose(m -> runSqlScript(DEFAULT_ECS_INSTANCE_AND_MARC_BIB_CREATE_JOB_PROFILE, headers, context))
         .compose(m -> runSqlScript(DEFAULT_QM_AUTHORITY_CREATE_JOB_PROFILE, headers, context))
-        .map(num));
+        .map(k));
   }
 
   private Future<List<String>> runSqlScript(String script, Map<String, String> headers, Context context) {

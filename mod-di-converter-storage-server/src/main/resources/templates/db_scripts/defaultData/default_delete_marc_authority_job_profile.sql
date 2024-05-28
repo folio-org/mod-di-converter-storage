@@ -149,3 +149,43 @@ INSERT INTO ${myuniversity}_${mymodule}.match_to_action_profiles (id, jsonb) val
     "jobProfileId": "1a338fcd-3efc-4a03-b007-394eeb0d5fb9"
 }
 ') ON CONFLICT DO NOTHING;
+
+DO
+$$
+DECLARE
+    job_wrapper_id UUID := '7248a1a1-8811-4771-b418-c1d16423e2bc';
+    action_wrapper_id UUID := 'ed54fc13-aac0-40d4-b21e-dda1e6f9a03a';
+    match_wrapper_id UUID := '69de98ea-68dd-46be-a187-a115f9afcc05';
+BEGIN
+    -- JOB_PROFILE
+    IF NOT EXISTS (SELECT 1 FROM ${myuniversity}_${mymodule}.profile_wrappers WHERE job_profile_id = '1a338fcd-3efc-4a03-b007-394eeb0d5fb9') THEN
+        INSERT INTO ${myuniversity}_${mymodule}.profile_wrappers (id, profile_type, job_profile_id)
+        VALUES (job_wrapper_id, 'JOB_PROFILE', '1a338fcd-3efc-4a03-b007-394eeb0d5fb9') ON CONFLICT DO NOTHING;
+    END IF;
+
+    -- ACTION_PROFILE
+    IF NOT EXISTS (SELECT 1 FROM ${myuniversity}_${mymodule}.profile_wrappers WHERE action_profile_id = 'fabd9a3e-33c3-49b7-864d-c5af830d9990') THEN
+        INSERT INTO ${myuniversity}_${mymodule}.profile_wrappers (id, profile_type, action_profile_id)
+        VALUES (action_wrapper_id, 'ACTION_PROFILE', 'fabd9a3e-33c3-49b7-864d-c5af830d9990') ON CONFLICT DO NOTHING;
+    END IF;
+
+    -- MATCH_PROFILE
+    IF NOT EXISTS (SELECT 1 FROM ${myuniversity}_${mymodule}.profile_wrappers WHERE match_profile_id = '4be5d1d2-1f5a-42ff-a9bd-fc90609d94b6') THEN
+        INSERT INTO ${myuniversity}_${mymodule}.profile_wrappers (id, profile_type, match_profile_id)
+        VALUES (match_wrapper_id, 'MATCH_PROFILE', '4be5d1d2-1f5a-42ff-a9bd-fc90609d94b6') ON CONFLICT DO NOTHING;
+    END IF;
+
+    -- Create associations
+    INSERT INTO ${myuniversity}_${mymodule}.associations (id, job_profile_id, master_wrapper_id,
+        detail_wrapper_id, master_profile_id, detail_profile_id,
+        master_profile_type, detail_profile_type, detail_order, react_to)
+    VALUES
+        ('644e53c2-7be2-4ae5-bc17-131334222d39', NULL, job_wrapper_id, action_wrapper_id,
+         '1a338fcd-3efc-4a03-b007-394eeb0d5fb9', '4be5d1d2-1f5a-42ff-a9bd-fc90609d94b6',
+         'JOB_PROFILE', 'MATCH_PROFILE', 0, NULL) ON CONFLICT DO NOTHING,
+
+        ('e0fd6684-fa34-4493-9048-a9e01c58f782', '1a338fcd-3efc-4a03-b007-394eeb0d5fb9',
+         match_wrapper_id, action_wrapper_id, '4be5d1d2-1f5a-42ff-a9bd-fc90609d94b6',
+         'fabd9a3e-33c3-49b7-864d-c5af830d9990', 'MATCH_PROFILE', 'ACTION_PROFILE', 0, 'MATCH') ON CONFLICT DO NOTHING;
+END
+$$;

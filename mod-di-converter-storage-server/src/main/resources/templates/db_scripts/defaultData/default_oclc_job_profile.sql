@@ -310,3 +310,37 @@ INSERT INTO ${myuniversity}_${mymodule}.action_to_mapping_profiles (id, jsonb) v
 	"detailProfileType": "MAPPING_PROFILE",
 	"masterProfileType": "ACTION_PROFILE"
 }') ON CONFLICT DO NOTHING;
+
+DO
+$$
+DECLARE
+    job_wrapper_id UUID := '1e9cac23-8160-4e4e-9bca-f18d306bf9ce';
+    action_wrapper_id UUID := '16e5da96-06ee-4f3b-9ec4-a50622c3f946';
+    mapping_wrapper_id UUID := '75fe6550-a091-436d-b100-6305bfc63c49';
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM ${myuniversity}_${mymodule}.profile_wrappers WHERE job_profile_id = 'd0ebb7b0-2f0f-11eb-adc1-0242ac120002') THEN
+        INSERT INTO ${myuniversity}_${mymodule}.profile_wrappers (id, profile_type, job_profile_id)
+        VALUES (job_wrapper_id, 'JOB_PROFILE', 'd0ebb7b0-2f0f-11eb-adc1-0242ac120002') ON CONFLICT DO NOTHING;
+    END IF;
+
+    IF NOT EXISTS (SELECT 1 FROM ${myuniversity}_${mymodule}.profile_wrappers WHERE action_profile_id = 'd0ebba8a-2f0f-11eb-adc1-0242ac120002') THEN
+        INSERT INTO ${myuniversity}_${mymodule}.profile_wrappers (id, profile_type, action_profile_id)
+        VALUES (action_wrapper_id, 'ACTION_PROFILE', 'd0ebba8a-2f0f-11eb-adc1-0242ac120002') ON CONFLICT DO NOTHING;
+    END IF;
+
+    IF NOT EXISTS (SELECT 1 FROM ${myuniversity}_${mymodule}.profile_wrappers WHERE mapping_profile_id = 'd0ebbc2e-2f0f-11eb-adc1-0242ac120002') THEN
+        INSERT INTO ${myuniversity}_${mymodule}.profile_wrappers (id, profile_type, mapping_profile_id)
+        VALUES (mapping_wrapper_id, 'MAPPING_PROFILE', 'd0ebbc2e-2f0f-11eb-adc1-0242ac120002') ON CONFLICT DO NOTHING;
+    END IF;
+
+    INSERT INTO ${myuniversity}_${mymodule}.associations (id, job_profile_id, master_wrapper_id,
+        detail_wrapper_id, master_profile_id, detail_profile_id,
+        master_profile_type, detail_profile_type, detail_order, react_to)
+    VALUES
+        ('d0ebbdbe-2f0f-11eb-adc1-0242ac120002', NULL, job_wrapper_id, action_wrapper_id,
+         'd0ebb7b0-2f0f-11eb-adc1-0242ac120002', 'd0ebba8a-2f0f-11eb-adc1-0242ac120002', 'JOB_PROFILE', 'ACTION_PROFILE', 0, NULL) ON CONFLICT DO NOTHING,
+
+        ('d0ebbec2-2f0f-11eb-adc1-0242ac120002', NULL, action_wrapper_id, mapping_wrapper_id,
+         'd0ebba8a-2f0f-11eb-adc1-0242ac120002', 'd0ebbc2e-2f0f-11eb-adc1-0242ac120002', 'ACTION_PROFILE', 'MAPPING_PROFILE', 0, NULL) ON CONFLICT DO NOTHING;
+END
+$$;

@@ -543,3 +543,85 @@ INSERT INTO ${myuniversity}_${mymodule}.action_to_mapping_profiles (id, jsonb) v
 }
 
 ') ON CONFLICT DO NOTHING;
+
+DO
+$$
+DECLARE
+    job_wrapper_id UUID;
+    action_wrapper_id UUID;
+    mapping_wrapper_id UUID;
+    match_wrapper_id UUID;
+    match_wrapper_id2 UUID;
+    action_wrapper_id2 UUID;
+    mapping_wrapper_id2 UUID;
+BEGIN
+    -- JOB_PROFILE
+    SELECT id INTO job_wrapper_id FROM ${myuniversity}_${mymodule}.profile_wrappers WHERE job_profile_id = '91f9b8d6-d80e-4727-9783-73fb53e3c786';
+    IF job_wrapper_id IS NULL THEN
+        job_wrapper_id = '94cba6e2-6441-4ae1-8ced-40674883b97f';
+        INSERT INTO ${myuniversity}_${mymodule}.profile_wrappers (id, profile_type, job_profile_id)
+        VALUES (job_wrapper_id, 'JOB_PROFILE', '91f9b8d6-d80e-4727-9783-73fb53e3c786') ON CONFLICT DO NOTHING;
+    END IF;
+
+    -- MATCH_PROFILE 1
+    SELECT id INTO match_wrapper_id FROM ${myuniversity}_${mymodule}.profile_wrappers WHERE match_profile_id = 'd27d71ce-8a1e-44c6-acea-96961b5592c6';
+    IF match_wrapper_id IS NULL THEN
+        match_wrapper_id = '5c690f8c-824f-4a1a-869c-3eb4e7ce9a87';
+        INSERT INTO ${myuniversity}_${mymodule}.profile_wrappers (id, profile_type, match_profile_id)
+        VALUES (match_wrapper_id, 'MATCH_PROFILE', 'd27d71ce-8a1e-44c6-acea-96961b5592c6') ON CONFLICT DO NOTHING;
+    END IF;
+
+    -- MATCH_PROFILE 2
+    SELECT id INTO match_wrapper_id2 FROM ${myuniversity}_${mymodule}.profile_wrappers WHERE match_profile_id = '31dbb554-0826-48ec-a0a4-3c55293d4dee';
+    IF match_wrapper_id2 IS NULL THEN
+        match_wrapper_id2 = '79bd243d-05ad-490a-bb9e-aba7f5a51b2e';
+        INSERT INTO ${myuniversity}_${mymodule}.profile_wrappers (id, profile_type, match_profile_id)
+        VALUES (match_wrapper_id2, 'MATCH_PROFILE', '31dbb554-0826-48ec-a0a4-3c55293d4dee') ON CONFLICT DO NOTHING;
+    END IF;
+
+    -- ACTION_PROFILE 1
+    SELECT id INTO action_wrapper_id FROM ${myuniversity}_${mymodule}.profile_wrappers WHERE action_profile_id = '6aa8e98b-0d9f-41dd-b26f-15658d07eb52';
+    IF action_wrapper_id IS NULL THEN
+        action_wrapper_id = '8fc60cdb-d3a1-426e-b7c6-aab593418797';
+        INSERT INTO ${myuniversity}_${mymodule}.profile_wrappers (id, profile_type, action_profile_id)
+        VALUES (action_wrapper_id, 'ACTION_PROFILE', '6aa8e98b-0d9f-41dd-b26f-15658d07eb52') ON CONFLICT DO NOTHING;
+    END IF;
+
+    -- ACTION_PROFILE 2
+    SELECT id INTO action_wrapper_id2 FROM ${myuniversity}_${mymodule}.profile_wrappers WHERE action_profile_id = 'cddff0e1-233c-47ba-8be5-553c632709d9';
+    IF action_wrapper_id2 IS NULL THEN
+        action_wrapper_id2 = '33b6e902-a79a-4afb-b531-faa3ffb0cd07';
+        INSERT INTO ${myuniversity}_${mymodule}.profile_wrappers (id, profile_type, action_profile_id)
+        VALUES (action_wrapper_id2, 'ACTION_PROFILE', 'cddff0e1-233c-47ba-8be5-553c632709d9') ON CONFLICT DO NOTHING;
+    END IF;
+
+    -- MAPPING_PROFILE 1
+    SELECT id INTO mapping_wrapper_id FROM ${myuniversity}_${mymodule}.profile_wrappers WHERE mapping_profile_id = 'f90864ef-8030-480f-a43f-8cdd21233252';
+    IF mapping_wrapper_id IS NULL THEN
+        mapping_wrapper_id = '841d32f5-b66f-4cf7-b2da-ef7abe5fd00c';
+        INSERT INTO ${myuniversity}_${mymodule}.profile_wrappers (id, profile_type, mapping_profile_id)
+        VALUES (mapping_wrapper_id, 'MAPPING_PROFILE', 'f90864ef-8030-480f-a43f-8cdd21233252') ON CONFLICT DO NOTHING;
+    END IF;
+
+    -- MAPPING_PROFILE 2
+    SELECT id INTO mapping_wrapper_id2 FROM ${myuniversity}_${mymodule}.profile_wrappers WHERE mapping_profile_id = '862000b9-84ea-4cae-a223-5fc0552f2b42';
+    IF mapping_wrapper_id2 IS NULL THEN
+        mapping_wrapper_id2 = 'd5bf86d7-433e-4e13-9ec9-173777120045';
+        INSERT INTO ${myuniversity}_${mymodule}.profile_wrappers (id, profile_type, mapping_profile_id)
+        VALUES (mapping_wrapper_id2, 'MAPPING_PROFILE', '862000b9-84ea-4cae-a223-5fc0552f2b42') ON CONFLICT DO NOTHING;
+    END IF;
+
+    -- Create associations
+    INSERT INTO ${myuniversity}_${mymodule}.associations (id, job_profile_id, master_wrapper_id, detail_wrapper_id, master_profile_id, detail_profile_id, master_profile_type, detail_profile_type, detail_order, react_to)
+    VALUES
+    ('624c99a2-49ba-45b7-b5bf-1f385182a62c', NULL, job_wrapper_id, match_wrapper_id, '91f9b8d6-d80e-4727-9783-73fb53e3c786', 'd27d71ce-8a1e-44c6-acea-96961b5592c6', 'JOB_PROFILE', 'MATCH_PROFILE', 0, NULL) ON CONFLICT DO NOTHING,
+    ('516301b2-d511-4134-9943-377744af007f', '91f9b8d6-d80e-4727-9783-73fb53e3c786', match_wrapper_id, action_wrapper_id, 'd27d71ce-8a1e-44c6-acea-96961b5592c6', '6aa8e98b-0d9f-41dd-b26f-15658d07eb52', 'MATCH_PROFILE', 'ACTION_PROFILE', 0, 'MATCH') ON CONFLICT DO NOTHING,
+    ('34a26c5d-d9a6-4a9f-a1f6-b1b5249fb1f7', NULL, action_wrapper_id, mapping_wrapper_id, '6aa8e98b-0d9f-41dd-b26f-15658d07eb52', 'f90864ef-8030-480f-a43f-8cdd21233252', 'ACTION_PROFILE', 'MAPPING_PROFILE', 0, NULL) ON CONFLICT DO NOTHING,
+    ('8d1c9e5e-032b-49ff-986e-e84adffc9955', '91f9b8d6-d80e-4727-9783-73fb53e3c786', match_wrapper_id, match_wrapper_id2, 'd27d71ce-8a1e-44c6-acea-96961b5592c6', '31dbb554-0826-48ec-a0a4-3c55293d4dee', 'MATCH_PROFILE', 'MATCH_PROFILE', 0, 'NON_MATCH') ON CONFLICT DO NOTHING,
+    ('3e569bda-c996-45df-a3c0-ad124058b982', '91f9b8d6-d80e-4727-9783-73fb53e3c786', match_wrapper_id2, action_wrapper_id2, '31dbb554-0826-48ec-a0a4-3c55293d4dee', 'cddff0e1-233c-47ba-8be5-553c632709d9', 'MATCH_PROFILE', 'ACTION_PROFILE', 0, 'MATCH') ON CONFLICT DO NOTHING,
+    ('79f527b7-cd5e-4fc2-a8a2-abe344e8c5d0', NULL, action_wrapper_id2, match_wrapper_id2, 'cddff0e1-233c-47ba-8be5-553c632709d9', '862000b9-84ea-4cae-a223-5fc0552f2b42', 'ACTION_PROFILE', 'MAPPING_PROFILE', 0, NULL) ON CONFLICT DO NOTHING;
+END
+$$;
+
+
+-- create trigger for new table
