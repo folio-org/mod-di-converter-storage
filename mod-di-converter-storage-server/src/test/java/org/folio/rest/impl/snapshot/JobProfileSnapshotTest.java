@@ -63,7 +63,7 @@ public class JobProfileSnapshotTest extends AbstractRestVerticleTest {
   private static final String MAPPING_PROFILES_TABLE_NAME = "mapping_profiles";
   private static final String MATCH_PROFILES_TABLE_NAME = "match_profiles";
   private static final String SNAPSHOTS_TABLE_NAME = "profile_snapshots";
-  private static final String ASSOCIATIONS_TABLE = "associations";
+  private static final String ASSOCIATIONS_TABLE = "profile_associations";
 
   private static final String PROFILE_WRAPPERS_TABLE = "profile_wrappers";
 

@@ -339,13 +339,13 @@ BEGIN
         VALUES (mapping_wrapper_id, 'MAPPING_PROFILE', 'd0ebbc2e-2f0f-11eb-adc1-0242ac120002') ON CONFLICT DO NOTHING;
     END IF;
 
-    INSERT INTO ${myuniversity}_${mymodule}.associations (id, job_profile_id, master_wrapper_id,
+    INSERT INTO ${myuniversity}_${mymodule}.profile_associations (id, job_profile_id, master_wrapper_id,
         detail_wrapper_id, master_profile_id, detail_profile_id,
         master_profile_type, detail_profile_type, detail_order, react_to)
     VALUES
         ('d0ebbdbe-2f0f-11eb-adc1-0242ac120002', NULL, job_wrapper_id, action_wrapper_id,
          'd0ebb7b0-2f0f-11eb-adc1-0242ac120002', 'd0ebba8a-2f0f-11eb-adc1-0242ac120002', 'JOB_PROFILE', 'ACTION_PROFILE', 0, NULL) ON CONFLICT DO NOTHING;
-    INSERT INTO ${myuniversity}_${mymodule}.associations (id, job_profile_id, master_wrapper_id,
+    INSERT INTO ${myuniversity}_${mymodule}.profile_associations (id, job_profile_id, master_wrapper_id,
             detail_wrapper_id, master_profile_id, detail_profile_id,
             master_profile_type, detail_profile_type, detail_order, react_to)
     VALUES

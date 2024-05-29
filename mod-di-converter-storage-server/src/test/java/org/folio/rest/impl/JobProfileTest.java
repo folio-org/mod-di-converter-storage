@@ -58,7 +58,7 @@ public class JobProfileTest extends AbstractRestVerticleTest {
   private static final String ASSOCIATED_PROFILES_PATH = "/data-import-profiles/profileAssociations";
   private static final String PROFILE_WRAPPERS_TABLE_NAME = "profile_wrappers";
   static final String MAPPING_PROFILES_TABLE_NAME = "mapping_profiles";
-  private static final String ASSOCIATIONS_TABLE = "associations";
+  private static final String ASSOCIATIONS_TABLE = "profile_associations";
   static final String MATCH_PROFILES_TABLE_NAME = "match_profiles";
   private static final String SNAPSHOTS_TABLE_NAME = "profile_snapshots";
   private static final String PROFILE_WRAPPERS_TABLE = "profile_wrappers";

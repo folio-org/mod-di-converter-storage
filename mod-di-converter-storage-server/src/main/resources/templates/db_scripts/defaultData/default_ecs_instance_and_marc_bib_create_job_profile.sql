@@ -316,7 +316,7 @@ INSERT INTO ${myuniversity}_${mymodule}.action_to_mapping_profiles (id, jsonb) v
      "masterProfileType": "ACTION_PROFILE"
    }') ON CONFLICT DO NOTHING;
 
-INSERT INTO ${myuniversity}_${mymodule}.associations (id, job_profile_id, master_wrapper_id,
+INSERT INTO ${myuniversity}_${mymodule}.profile_associations (id, job_profile_id, master_wrapper_id,
     detail_wrapper_id, master_profile_id, detail_profile_id,
     master_profile_type, detail_profile_type, detail_order, react_to) values
   ('7e1b00ad-eb12-4c27-aae7-3c4b39e97e3d',
@@ -331,7 +331,7 @@ INSERT INTO ${myuniversity}_${mymodule}.associations (id, job_profile_id, master
     null
    ) ON CONFLICT DO NOTHING;
 
-INSERT INTO ${myuniversity}_${mymodule}.associations (id, job_profile_id, master_wrapper_id,
+INSERT INTO ${myuniversity}_${mymodule}.profile_associations (id, job_profile_id, master_wrapper_id,
     detail_wrapper_id, master_profile_id, detail_profile_id,
     master_profile_type, detail_profile_type, detail_order, react_to) values
   ('654f9356-8a7f-49fc-b6d2-91b08df15433',

@@ -49,7 +49,7 @@ import static org.hamcrest.Matchers.is;
 public class CommonProfileAssociationTest extends AbstractRestVerticleTest {
 
   public static final String PROFILE_WRAPPERS = "profile_wrappers";
-  public static final String ASSOCIATIONS_TABLE = "associations";
+  public static final String ASSOCIATIONS_TABLE = "profile_associations";
 
   public static final String JOB_PROFILES_TABLE = "job_profiles";
   public static final String ACTION_PROFILES_TABLE = "action_profiles";

@@ -24,7 +24,7 @@ public class ProfileWrapperDaoTest extends AbstractUnitTest {
   private static final String SNAPSHOTS_TABLE_NAME = "profile_snapshots";
   private static final String JOB_PROFILES_TABLE_NAME = "job_profiles";
   private static final String ACTION_PROFILES_TABLE_NAME = "action_profiles";
-  private static final String ASSOCIATIONS_TABLE_NAME = "associations";
+  private static final String ASSOCIATIONS_TABLE_NAME = "profile_associations";
   private static final String MAPPING_PROFILES_TABLE_NAME = "mapping_profiles";
   private static final String MATCH_PROFILES_TABLE_NAME = "match_profiles";
   private static final String PROFILE_WRAPPERS_TABLE_NAME = "profile_wrappers";

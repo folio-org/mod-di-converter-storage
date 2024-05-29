@@ -611,27 +611,24 @@ BEGIN
         VALUES (mapping_wrapper_id2, 'MAPPING_PROFILE', '862000b9-84ea-4cae-a223-5fc0552f2b42') ON CONFLICT DO NOTHING;
     END IF;
 
-    -- Create associations
-    INSERT INTO ${myuniversity}_${mymodule}.associations (id, job_profile_id, master_wrapper_id, detail_wrapper_id, master_profile_id, detail_profile_id, master_profile_type, detail_profile_type, detail_order, react_to)
+    -- Create profile_associations
+    INSERT INTO ${myuniversity}_${mymodule}.profile_associations (id, job_profile_id, master_wrapper_id, detail_wrapper_id, master_profile_id, detail_profile_id, master_profile_type, detail_profile_type, detail_order, react_to)
     VALUES
     ('624c99a2-49ba-45b7-b5bf-1f385182a62c', NULL, job_wrapper_id, match_wrapper_id, '91f9b8d6-d80e-4727-9783-73fb53e3c786', 'd27d71ce-8a1e-44c6-acea-96961b5592c6', 'JOB_PROFILE', 'MATCH_PROFILE', 0, NULL) ON CONFLICT DO NOTHING;
-    INSERT INTO ${myuniversity}_${mymodule}.associations (id, job_profile_id, master_wrapper_id, detail_wrapper_id, master_profile_id, detail_profile_id, master_profile_type, detail_profile_type, detail_order, react_to)
+    INSERT INTO ${myuniversity}_${mymodule}.profile_associations (id, job_profile_id, master_wrapper_id, detail_wrapper_id, master_profile_id, detail_profile_id, master_profile_type, detail_profile_type, detail_order, react_to)
     VALUES
     ('516301b2-d511-4134-9943-377744af007f', '91f9b8d6-d80e-4727-9783-73fb53e3c786', match_wrapper_id, action_wrapper_id, 'd27d71ce-8a1e-44c6-acea-96961b5592c6', '6aa8e98b-0d9f-41dd-b26f-15658d07eb52', 'MATCH_PROFILE', 'ACTION_PROFILE', 0, 'MATCH') ON CONFLICT DO NOTHING;
-    INSERT INTO ${myuniversity}_${mymodule}.associations (id, job_profile_id, master_wrapper_id, detail_wrapper_id, master_profile_id, detail_profile_id, master_profile_type, detail_profile_type, detail_order, react_to)
+    INSERT INTO ${myuniversity}_${mymodule}.profile_associations (id, job_profile_id, master_wrapper_id, detail_wrapper_id, master_profile_id, detail_profile_id, master_profile_type, detail_profile_type, detail_order, react_to)
     VALUES
     ('34a26c5d-d9a6-4a9f-a1f6-b1b5249fb1f7', NULL, action_wrapper_id, mapping_wrapper_id, '6aa8e98b-0d9f-41dd-b26f-15658d07eb52', 'f90864ef-8030-480f-a43f-8cdd21233252', 'ACTION_PROFILE', 'MAPPING_PROFILE', 0, NULL) ON CONFLICT DO NOTHING;
-    INSERT INTO ${myuniversity}_${mymodule}.associations (id, job_profile_id, master_wrapper_id, detail_wrapper_id, master_profile_id, detail_profile_id, master_profile_type, detail_profile_type, detail_order, react_to)
+    INSERT INTO ${myuniversity}_${mymodule}.profile_associations (id, job_profile_id, master_wrapper_id, detail_wrapper_id, master_profile_id, detail_profile_id, master_profile_type, detail_profile_type, detail_order, react_to)
     VALUES
     ('8d1c9e5e-032b-49ff-986e-e84adffc9955', '91f9b8d6-d80e-4727-9783-73fb53e3c786', match_wrapper_id, match_wrapper_id2, 'd27d71ce-8a1e-44c6-acea-96961b5592c6', '31dbb554-0826-48ec-a0a4-3c55293d4dee', 'MATCH_PROFILE', 'MATCH_PROFILE', 0, 'NON_MATCH') ON CONFLICT DO NOTHING;
-    INSERT INTO ${myuniversity}_${mymodule}.associations (id, job_profile_id, master_wrapper_id, detail_wrapper_id, master_profile_id, detail_profile_id, master_profile_type, detail_profile_type, detail_order, react_to)
+    INSERT INTO ${myuniversity}_${mymodule}.profile_associations (id, job_profile_id, master_wrapper_id, detail_wrapper_id, master_profile_id, detail_profile_id, master_profile_type, detail_profile_type, detail_order, react_to)
     VALUES
     ('3e569bda-c996-45df-a3c0-ad124058b982', '91f9b8d6-d80e-4727-9783-73fb53e3c786', match_wrapper_id2, action_wrapper_id2, '31dbb554-0826-48ec-a0a4-3c55293d4dee', 'cddff0e1-233c-47ba-8be5-553c632709d9', 'MATCH_PROFILE', 'ACTION_PROFILE', 0, 'MATCH') ON CONFLICT DO NOTHING;
-    INSERT INTO ${myuniversity}_${mymodule}.associations (id, job_profile_id, master_wrapper_id, detail_wrapper_id, master_profile_id, detail_profile_id, master_profile_type, detail_profile_type, detail_order, react_to)
+    INSERT INTO ${myuniversity}_${mymodule}.profile_associations (id, job_profile_id, master_wrapper_id, detail_wrapper_id, master_profile_id, detail_profile_id, master_profile_type, detail_profile_type, detail_order, react_to)
     VALUES
     ('79f527b7-cd5e-4fc2-a8a2-abe344e8c5d0', NULL, action_wrapper_id2, match_wrapper_id2, 'cddff0e1-233c-47ba-8be5-553c632709d9', '862000b9-84ea-4cae-a223-5fc0552f2b42', 'ACTION_PROFILE', 'MAPPING_PROFILE', 0, NULL) ON CONFLICT DO NOTHING;
 END
 $$;
-
-
--- create trigger for new table

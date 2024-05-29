@@ -58,7 +58,7 @@ public class ActionProfileTest extends AbstractRestVerticleTest {
   static final String MATCH_PROFILES_TABLE_NAME = "match_profiles";
   private static final String SNAPSHOTS_TABLE_NAME = "profile_snapshots";
   private static final String PROFILE_WRAPPERS_TABLE_NAME = "profile_wrappers";
-  private static final String ASSOCIATIONS_TABLE_NAME = "associations";
+  private static final String ASSOCIATIONS_TABLE_NAME = "profile_associations";
   private static final String ACTION_PROFILE_UUID = "16449d21-ad7c-4f69-b31e-a521fe4ae893";
   private static final String ASSOCIATED_PROFILES_PATH = "/data-import-profiles/profileAssociations";
   private final List<String> defaultActionProfileIds = Arrays.asList(

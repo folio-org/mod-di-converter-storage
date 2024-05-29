@@ -20,7 +20,7 @@ CREATE OR REPLACE FUNCTION
               json_agg(detail.jsonb) AS detail,
               a.react_to as react_to,
               a.job_profile_id as job_profile_id
-            FROM associations a
+            FROM profile_associations a
               INNER JOIN profile_wrappers as masterwrapper ON a.master_wrapper_id = masterwrapper.id
 			  INNER JOIN profile_wrappers as detailwrapper ON a.detail_wrapper_id = detailwrapper.id
               INNER JOIN %s master ON master.id = masterwrapper.%s_id

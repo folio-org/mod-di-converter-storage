@@ -307,12 +307,6 @@
       "tableName": "metadata_internal",
       "fromModuleVersion": "mod-di-converter-storage-2.1.8",
       "withMetadata": true
-    },
-    {
-      "tableName": "associations",
-      "fromModuleVersion": "mod-di-converter-storage-2.3.0",
-      "withMetadata": false,
-      "customSnippetPath": "associations-migration/associations_table.sql"
     }
   ],
   "scripts": [
@@ -437,8 +431,18 @@
       "fromModuleVersion": "mod-di-converter-storage-2.3.0"
     },
     {
+      "run": "before",
+      "customSnippetPath": "create_profile_associations.sql",
+      "fromModuleVersion": "mod-di-converter-storage-2.3.0"
+    },
+    {
       "run": "after",
       "snippetPath": "associations-migration/actualize_schema_for_migrations.sql",
+      "fromModuleVersion": "mod-di-converter-storage-2.3.0"
+    },
+    {
+      "run": "after",
+      "snippetPath": "associations-migration/associations_migration.sql",
       "fromModuleVersion": "mod-di-converter-storage-2.3.0"
     }
   ]

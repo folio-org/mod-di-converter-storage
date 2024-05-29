@@ -35,7 +35,7 @@ public class CommonProfileAssociationDao implements ProfileAssociationDao {
   private static final String DETAIL_WRAPPER_ID_FIELD = "detail_wrapper_id";
   private static final String JOB_PROFILE_ID_FIELD = "job_profile_id";
   private static final Logger LOGGER = LogManager.getLogger();
-  private static final String ASSOCIATION_TABLE = "associations";
+  private static final String ASSOCIATION_TABLE = "profile_associations";
   private static final String INSERT_QUERY = "INSERT INTO %s.%s " +
     "(id, job_profile_id, master_wrapper_id, detail_wrapper_id, master_profile_id, detail_profile_id, " +
     "master_profile_type, detail_profile_type, detail_order, react_to) " +
