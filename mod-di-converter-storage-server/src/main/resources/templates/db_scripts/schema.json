@@ -431,7 +431,7 @@
       "fromModuleVersion": "mod-di-converter-storage-2.3.0"
     },
     {
-      "run": "before",
+      "run": "after",
       "snippetPath": "create_profile_associations.sql",
       "fromModuleVersion": "mod-di-converter-storage-2.3.0"
     },

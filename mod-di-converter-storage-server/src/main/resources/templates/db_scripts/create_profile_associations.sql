@@ -7,10 +7,10 @@ CREATE TABLE IF NOT EXISTS ${myuniversity}_${mymodule}.profile_associations
     detail_wrapper_id uuid,
     master_profile_id uuid,
     detail_profile_id uuid,
-    master_profile_type text COLLATE pg_catalog."default",
-    detail_profile_type text COLLATE pg_catalog."default",
+    master_profile_type text,
+    detail_profile_type text,
     detail_order integer,
-    react_to text COLLATE pg_catalog."default",
+    react_to text,
     CONSTRAINT profile_associations_pkey PRIMARY KEY (id),
     CONSTRAINT detail_wrapper_id_profile_wrappers_fkey FOREIGN KEY (detail_wrapper_id)
         REFERENCES ${myuniversity}_${mymodule}.profile_wrappers (id) MATCH SIMPLE
