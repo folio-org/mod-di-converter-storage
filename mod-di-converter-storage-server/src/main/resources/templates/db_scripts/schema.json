@@ -432,7 +432,7 @@
     },
     {
       "run": "before",
-      "customSnippetPath": "create_profile_associations.sql",
+      "snippetPath": "create_profile_associations.sql",
       "fromModuleVersion": "mod-di-converter-storage-2.3.0"
     },
     {
