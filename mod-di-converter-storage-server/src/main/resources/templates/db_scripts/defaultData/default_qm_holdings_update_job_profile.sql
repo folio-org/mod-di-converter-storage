@@ -193,32 +193,40 @@ INSERT INTO ${myuniversity}_${mymodule}.action_to_mapping_profiles (id, jsonb) v
 DO
 $$
 DECLARE
-    job_wrapper_id UUID := 'e3c6c549-049f-4448-be35-49e7bbfb40a6';
-    match_wrapper_id UUID := 'f31b5e40-0187-4fd9-8558-d728363be43b';
-    action_wrapper_id UUID := '0dd70479-bc19-4dc1-9e64-114e6b1ade45';
-    mapping_wrapper_id UUID := '63a2fb7e-d9fb-46c4-b204-25c327c4a2ed';
+    job_wrapper_id UUID;
+    match_wrapper_id UUID;
+    action_wrapper_id UUID;
+    mapping_wrapper_id UUID;
 BEGIN
     -- JOB_PROFILE
-    IF NOT EXISTS (SELECT 1 FROM ${myuniversity}_${mymodule}.profile_wrappers WHERE job_profile_id = '6cb347c6-c0b0-4363-89fc-32cedede87ba') THEN
+    SELECT id INTO job_wrapper_id FROM ${myuniversity}_${mymodule}.profile_wrappers WHERE job_profile_id = '6cb347c6-c0b0-4363-89fc-32cedede87ba';
+    IF job_wrapper_id IS NULL THEN
+        job_wrapper_id = 'e3c6c549-049f-4448-be35-49e7bbfb40a6';
         INSERT INTO ${myuniversity}_${mymodule}.profile_wrappers (id, profile_type, job_profile_id)
         VALUES (job_wrapper_id, 'JOB_PROFILE', '6cb347c6-c0b0-4363-89fc-32cedede87ba') ON CONFLICT DO NOTHING;
     END IF;
 
     -- MATCH_PROFILE
-    IF NOT EXISTS (SELECT 1 FROM ${myuniversity}_${mymodule}.profile_wrappers WHERE match_profile_id = '2a599369-817f-4fe8-bae2-f3e3987990fe') THEN
+    SELECT id INTO match_wrapper_id FROM ${myuniversity}_${mymodule}.profile_wrappers WHERE match_profile_id = '2a599369-817f-4fe8-bae2-f3e3987990fe';
+    IF match_wrapper_id IS NULL THEN
+        match_wrapper_id = 'f31b5e40-0187-4fd9-8558-d728363be43b';
         INSERT INTO ${myuniversity}_${mymodule}.profile_wrappers (id, profile_type, match_profile_id)
         VALUES (match_wrapper_id, 'MATCH_PROFILE', '2a599369-817f-4fe8-bae2-f3e3987990fe') ON CONFLICT DO NOTHING;
     END IF;
 
     -- ACTION_PROFILE
-    IF NOT EXISTS (SELECT 1 FROM ${myuniversity}_${mymodule}.profile_wrappers WHERE action_profile_id = '7e24a466-349b-451d-a18e-38fb21d71b38') THEN
+    SELECT id INTO action_wrapper_id FROM ${myuniversity}_${mymodule}.profile_wrappers WHERE action_profile_id = '7e24a466-349b-451d-a18e-38fb21d71b38';
+    IF action_wrapper_id IS NULL THEN
+        action_wrapper_id = '0dd70479-bc19-4dc1-9e64-114e6b1ade45';
         INSERT INTO ${myuniversity}_${mymodule}.profile_wrappers (id, profile_type, action_profile_id)
         VALUES (action_wrapper_id, 'ACTION_PROFILE', '7e24a466-349b-451d-a18e-38fb21d71b38') ON CONFLICT DO NOTHING;
     END IF;
 
     -- MAPPING_PROFILE
-    IF NOT EXISTS (SELECT 1 FROM ${myuniversity}_${mymodule}.profile_wrappers WHERE mapping_profile_id = 'b8a9ca7d-4a33-44d3-86e1-f7c6cb7b265f') THEN
-        INSERT INTO ${myuniversity}_${mymodule}.profile_wrappers (id, profile_type, match_profile_id)
+    SELECT id INTO mapping_wrapper_id FROM ${myuniversity}_${mymodule}.profile_wrappers WHERE mapping_profile_id = 'b8a9ca7d-4a33-44d3-86e1-f7c6cb7b265f';
+    IF mapping_wrapper_id IS NULL THEN
+        mapping_wrapper_id = '63a2fb7e-d9fb-46c4-b204-25c327c4a2ed';
+        INSERT INTO ${myuniversity}_${mymodule}.profile_wrappers (id, profile_type, mapping_profile_id)
         VALUES (mapping_wrapper_id, 'MAPPING_PROFILE', 'b8a9ca7d-4a33-44d3-86e1-f7c6cb7b265f') ON CONFLICT DO NOTHING;
     END IF;
 
@@ -229,12 +237,18 @@ BEGIN
     VALUES
         ('364ab86a-e11c-4dd2-9ad5-efadbe79347b', NULL, job_wrapper_id, match_wrapper_id,
          '6cb347c6-c0b0-4363-89fc-32cedede87ba', '2a599369-817f-4fe8-bae2-f3e3987990fe',
-         'JOB_PROFILE', 'MATCH_PROFILE', 0, NULL) ON CONFLICT DO NOTHING,
-
+         'JOB_PROFILE', 'MATCH_PROFILE', 0, NULL) ON CONFLICT DO NOTHING;
+    INSERT INTO ${myuniversity}_${mymodule}.associations (id, job_profile_id, master_wrapper_id,
+            detail_wrapper_id, master_profile_id, detail_profile_id,
+            master_profile_type, detail_profile_type, detail_order, react_to)
+    VALUES
         ('31a69e89-4872-435c-b593-15664146cc2b', '6cb347c6-c0b0-4363-89fc-32cedede87ba',
          match_wrapper_id, action_wrapper_id, '2a599369-817f-4fe8-bae2-f3e3987990fe',
-         '7e24a466-349b-451d-a18e-38fb21d71b38', 'MATCH_PROFILE', 'ACTION_PROFILE', 0, 'MATCH') ON CONFLICT DO NOTHING,
-
+         '7e24a466-349b-451d-a18e-38fb21d71b38', 'MATCH_PROFILE', 'ACTION_PROFILE', 0, 'MATCH') ON CONFLICT DO NOTHING;
+    INSERT INTO ${myuniversity}_${mymodule}.associations (id, job_profile_id, master_wrapper_id,
+            detail_wrapper_id, master_profile_id, detail_profile_id,
+            master_profile_type, detail_profile_type, detail_order, react_to)
+    VALUES
         ('96876af2-2a2b-40c0-9ffd-9538a5b39dd6', null,
          action_wrapper_id, mapping_wrapper_id, '7e24a466-349b-451d-a18e-38fb21d71b38',
          'b8a9ca7d-4a33-44d3-86e1-f7c6cb7b265f', 'ACTION_PROFILE', 'MAPPING_PROFILE', 0, null) ON CONFLICT DO NOTHING;
