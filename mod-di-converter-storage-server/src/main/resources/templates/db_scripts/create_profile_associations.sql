@@ -20,18 +20,16 @@ CREATE TABLE IF NOT EXISTS ${myuniversity}_${mymodule}.profile_associations
         REFERENCES ${myuniversity}_${mymodule}.profile_wrappers (id) MATCH SIMPLE
         ON UPDATE NO ACTION
         ON DELETE CASCADE
-)
+);
 
 -- create indexes
 CREATE INDEX IF NOT EXISTS profile_associations_detailwrapperid_idx
     ON ${myuniversity}_${mymodule}.profile_associations USING btree
-    (detail_wrapper_id ASC NULLS LAST)
-    TABLESPACE pg_default;
+    (detail_wrapper_id ASC NULLS LAST);
 
 CREATE INDEX IF NOT EXISTS profile_associations_masterwrapperid_idx
     ON ${myuniversity}_${mymodule}.profile_associations USING btree
-    (master_wrapper_id ASC NULLS LAST)
-    TABLESPACE pg_default;
+    (master_wrapper_id ASC NULLS LAST);
 
 -- create trigger for removing record from profile_wrappers
 CREATE OR REPLACE FUNCTION remove_related_wrappers_profile_associations()
