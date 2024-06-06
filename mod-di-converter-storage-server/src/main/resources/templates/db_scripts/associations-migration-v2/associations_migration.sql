@@ -315,9 +315,3 @@ $$
     RAISE NOTICE 'PROFILES_MIGRATION:: migrated from action_to_action_profiles';
   END
 $$;
-
-/*
- System table for saving migration history.
- */
-insert into metadata_internal(id, jsonb, creation_date)
-  values (public.uuid_generate_v4(), '{"name": "Migration of old profile_associations to new general association"}', now()::timestamptz);
