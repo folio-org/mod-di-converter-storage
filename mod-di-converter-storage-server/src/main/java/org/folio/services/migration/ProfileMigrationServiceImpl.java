@@ -8,6 +8,7 @@ import org.apache.commons.io.IOUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.folio.dao.PostgresClientFactory;
+import org.folio.dao.association.CommonProfileAssociationDao;
 import org.folio.dao.association.ProfileWrapperDao;
 import org.folio.rest.impl.util.OkapiConnectionParams;
 import org.folio.rest.persist.PostgresClient;
@@ -24,18 +25,21 @@ import static java.lang.String.format;
 @Service
 public class ProfileMigrationServiceImpl implements ProfileMigrationService {
   private static final Logger LOGGER = LogManager.getLogger();
-  private static final String UPDATE_SCHEMA_FOR_MIGRATION = "templates/db_scripts/associations-migration/actualize_schema_for_migrations.sql";
+  private static final String UPDATE_SCHEMA_FOR_MIGRATION = "templates/db_scripts/associations-migration-v2/actualize_schema_for_migrations.sql";
   private static final String INIT_WRAPPERS = "templates/db_scripts/associations-migration/init_wrappers.sql";
   public static final String REMOVE_WRAPPERS = "templates/db_scripts/associations-migration/clean_profile_wrappers.sql";
   private static final String UPDATE_GET_PROFILE_SNAPSHOT_FUNCTION = "templates/db_scripts/get_profile_snapshot.sql";
   private static final String TENANT_PLACEHOLDER = "${myuniversity}";
   private static final String MODULE_PLACEHOLDER = "${mymodule}";
   private static final String SYSTEM_TABLE_NAME = "metadata_internal";
+  private static final String ASSOCIATIONS_MIGRATION = "templates/db_scripts/associations-migration-v2/associations_migration.sql";
 
   @Autowired
   protected PostgresClientFactory pgClientFactory;
   @Autowired
   private ProfileWrapperDao profileWrapperDao;
+  @Autowired
+  private CommonProfileAssociationDao commonProfileAssociationDao;
 
   @Override
   public Future<Boolean> migrateDataImportProfiles(Map<String, String> headers, Context context) {
@@ -47,6 +51,14 @@ public class ProfileMigrationServiceImpl implements ProfileMigrationService {
         if (isRowCount == 0) {
           return profileWrapperDao.checkIfDataInTableExists(tenantId)
             .compose(isDataPresent -> processMigration(isDataPresent, tenantId));
+        } else if (isRowCount == 1) {
+          return commonProfileAssociationDao.checkIfDataInTableExists(tenantId).compose(isDataPresent -> {
+            if (!isDataPresent) {
+              LOGGER.info("migrateDataImportProfiles:: no associations found, creating associations for default profiles...");
+              return runScript(tenantId, ASSOCIATIONS_MIGRATION);
+            }
+            return Future.succeededFuture();
+          });
         } else {
           LOGGER.info("migrateDataImportProfiles:: Migration already executed.");
           return Future.succeededFuture(true);

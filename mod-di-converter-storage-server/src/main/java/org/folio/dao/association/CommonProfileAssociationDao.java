@@ -63,6 +63,7 @@ public class CommonProfileAssociationDao implements ProfileAssociationDao {
     "    detail_order = $9, " +
     "    react_to = $10 " +
     "WHERE id = $1;";
+  private static final String SELECT_ON_EMPTY_TABLE_QUERY = "SELECT EXISTS (SELECT * FROM %s.%s LIMIT 1)";
 
   @Autowired
   protected PostgresClientFactory pgClientFactory;
@@ -220,6 +221,19 @@ public class CommonProfileAssociationDao implements ProfileAssociationDao {
       return Future.failedFuture(e);
     }
     return promise.future().map(updateResult -> updateResult.rowCount() == 1);
+  }
+
+  public Future<Boolean> checkIfDataInTableExists(String tenantId) {
+    Promise<RowSet<Row>> promise = Promise.promise();
+    String query = format(SELECT_ON_EMPTY_TABLE_QUERY, convertToPsqlStandard(tenantId), ASSOCIATION_TABLE);
+
+    pgClientFactory.createInstance(tenantId).execute(query, promise);
+    return promise.future().map(this::mapResultSetIfExists);
+  }
+
+  private Boolean mapResultSetIfExists(RowSet<Row> resultSet) {
+    RowIterator<Row> iterator = resultSet.iterator();
+    return iterator.hasNext() && iterator.next().getBoolean("exists");
   }
 
   private UUID getValidUUIDOrNull(String input) {

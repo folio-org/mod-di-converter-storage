@@ -99,4 +99,11 @@ public interface ProfileAssociationDao {
    */
   Future<Boolean> deleteByMasterIdAndDetailId(String masterId, String detailId, ProfileType masterType,
                                               ProfileType detailType, String tenantId);
+
+  /**
+   * Check if profile_association table is empty
+   * @param tenantId - tenant id
+   * @return future with if delete = true, if not - false
+   */
+  Future<Boolean> checkIfDataInTableExists(String tenantId);
 }
