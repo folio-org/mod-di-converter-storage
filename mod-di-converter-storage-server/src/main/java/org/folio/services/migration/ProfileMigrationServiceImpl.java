@@ -25,7 +25,6 @@ import static java.lang.String.format;
 @Service
 public class ProfileMigrationServiceImpl implements ProfileMigrationService {
   private static final Logger LOGGER = LogManager.getLogger();
-  private static final String UPDATE_SCHEMA_FOR_MIGRATION = "templates/db_scripts/associations-migration-v2/actualize_schema_for_migrations.sql";
   private static final String INIT_WRAPPERS = "templates/db_scripts/associations-migration/init_wrappers.sql";
   public static final String REMOVE_WRAPPERS = "templates/db_scripts/associations-migration/clean_profile_wrappers.sql";
   private static final String TENANT_PLACEHOLDER = "${myuniversity}";
@@ -68,9 +67,9 @@ public class ProfileMigrationServiceImpl implements ProfileMigrationService {
 
   private Future<Boolean> processMigration(Boolean isDataPresent, String tenantId) {
     if (Boolean.TRUE.equals(isDataPresent)) {
-      return runScriptChain(tenantId, true, REMOVE_WRAPPERS, INIT_WRAPPERS, UPDATE_SCHEMA_FOR_MIGRATION);
+      return runScriptChain(tenantId, true, REMOVE_WRAPPERS, INIT_WRAPPERS);
     } else {
-      return runScriptChain(tenantId, false, INIT_WRAPPERS, UPDATE_SCHEMA_FOR_MIGRATION);
+      return runScriptChain(tenantId, false, INIT_WRAPPERS);
     }
   }
 
