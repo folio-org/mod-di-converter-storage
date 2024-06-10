@@ -174,6 +174,7 @@ public class DataImportProfilesImpl implements DataImportProfiles {
       try {
         entity.getProfile().setMetadata(getMetadata(okapiHeaders));
         composeFutureErrors(
+          validateJobProfileAssociations(entity),
           validateProfile(OperationType.CREATE, entity.getProfile(), jobProfileService, tenantId),
           validateJobProfileLinkedActionProfiles(entity),
           validateJobProfileLinkedMatchProfile(entity)
@@ -908,6 +909,22 @@ public class DataImportProfilesImpl implements DataImportProfiles {
       validateConditions.put(DUPLICATE_PROFILE_ID_ERROR_CODE, profileService.isProfileExistByProfileId(profile, tenantId));
     }
     return validateConditions;
+  }
+
+  private Future<Errors> validateJobProfileAssociations(JobProfileUpdateDto jobProfileUpdateDto) {
+    logger.debug("validateJobProfileAssociations:: Validating JobProfile if it contains associations {}",
+      jobProfileUpdateDto.getProfile().getId());
+    Promise<Errors> promise = Promise.promise();
+
+    if (jobProfileUpdateDto.getAddedRelations() == null || jobProfileUpdateDto.getAddedRelations().isEmpty()) {
+      logger.warn("validateJobProfileAssociations:: Job profile with id {} does not contain any associations", jobProfileUpdateDto.getId());
+
+      promise.fail(new BadRequestException(String.format("Job profile with id %s does not contain any associations",
+        jobProfileUpdateDto.getId())));
+    } else {
+      promise.complete(new Errors().withTotalRecords(0));
+    }
+    return promise.future();
   }
 
   private Future<Errors> validateJobProfileLinkedMatchProfile(JobProfileUpdateDto jobProfileUpdateDto) {

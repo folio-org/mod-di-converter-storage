@@ -96,7 +96,8 @@ public class CommonProfileAssociationDao implements ProfileAssociationDao {
   public Future<Optional<ProfileAssociation>> getById(String id, ProfileType masterType, ProfileType detailType, String tenantId) {
     Promise<Results<ProfileAssociation>> promise = Promise.promise();
     try {
-      Criteria idCrit = constructCriteria(ID_FIELD, id);
+      Criteria idCrit = (id.equals("null")) ? constructCriteria("id", id) : constructCriteria(ID_FIELD, id);
+
       pgClientFactory.createInstance(tenantId).get(getAssociationTableName(masterType, detailType), ProfileAssociation.class, new Criterion(idCrit), true, false, promise);
     } catch (Exception e) {
       LOGGER.warn("getById:: Error querying {} by id", ProfileAssociation.class.getSimpleName(), e);

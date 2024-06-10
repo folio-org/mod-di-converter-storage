@@ -1087,6 +1087,17 @@ public class JobProfileTest extends AbstractRestVerticleTest {
   }
 
   @Test
+  public void shouldReturnBadRequestOnPostJobProfileWithEmptyAssociations() {
+    RestAssured.given()
+      .spec(spec)
+      .body(jobProfile_3)
+      .when()
+      .post(JOB_PROFILES_PATH)
+      .then()
+      .statusCode(HttpStatus.SC_BAD_REQUEST);
+  }
+
+    @Test
   public void shouldUnlinkOneActionProfileFromTwoIdenticalOnes() {
 
     //create action profile
@@ -1593,23 +1604,9 @@ public class JobProfileTest extends AbstractRestVerticleTest {
 
   @Test
   public void shouldDeleteAssociationsWithDetailProfilesOnDelete() {
-    String jobProfileId = UUID.randomUUID().toString();
-    JobProfileUpdateDto jobProfile = new JobProfileUpdateDto()
-      .withProfile(new JobProfile().withId(jobProfileId).withName("Bla")
-        .withTags(new Tags().withTagList(Arrays.asList("lorem", "ipsum", "dolor")))
-        .withDataType(MARC));
-
-    Response createResponse = RestAssured.given()
-      .spec(spec)
-      .body(jobProfile)
-      .when()
-      .post(JOB_PROFILES_PATH);
-    Assert.assertThat(createResponse.statusCode(), is(HttpStatus.SC_CREATED));
-    JobProfileUpdateDto profileToDelete = createResponse.body().as(JobProfileUpdateDto.class);
-
     // creation detail-profiles
     String actionProfileId = UUID.randomUUID().toString();
-    createResponse = RestAssured.given()
+    Response createResponse = RestAssured.given()
       .spec(spec)
       .body(new ActionProfileUpdateDto()
         .withProfile(new ActionProfile()
@@ -1636,26 +1633,37 @@ public class JobProfileTest extends AbstractRestVerticleTest {
     Assert.assertThat(createResponse.statusCode(), is(HttpStatus.SC_CREATED));
     MatchProfileUpdateDto associatedMatchProfile = createResponse.body().as(MatchProfileUpdateDto.class);
 
+    String jobProfileId = UUID.randomUUID().toString();
     // creation associations
     ProfileAssociation profileAssociation = new ProfileAssociation()
-      .withMasterProfileId(profileToDelete.getProfile().getId())
+      .withMasterProfileId(jobProfileId)
       .withOrder(1);
 
-    ProfileAssociation jobToActionAssociation =
-      postProfileAssociation(
-        profileAssociation.withDetailProfileId(associatedActionProfile.getProfile().getId())
-          .withMasterProfileId(profileToDelete.getProfile().getId())
-          .withMasterProfileType(JOB_PROFILE)
-          .withDetailProfileType(ACTION_PROFILE),
-      JOB_PROFILE, ACTION_PROFILE);
+    ProfileAssociation jobToActionAssociation = profileAssociation
+      .withDetailProfileId(associatedActionProfile.getProfile().getId())
+      .withMasterProfileId(jobProfileId)
+      .withMasterProfileType(JOB_PROFILE)
+      .withDetailProfileType(ACTION_PROFILE);
 
-    ProfileAssociation jobToMatchAssociation =
-      postProfileAssociation(
-        profileAssociation.withDetailProfileId(associatedMatchProfile.getProfile().getId())
-          .withMasterProfileId(profileToDelete.getProfile().getId())
-          .withMasterProfileType(JOB_PROFILE)
-          .withDetailProfileType(MATCH_PROFILE),
-      JOB_PROFILE, MATCH_PROFILE);
+    ProfileAssociation jobToMatchAssociation = profileAssociation
+      .withDetailProfileId(associatedMatchProfile.getProfile().getId())
+      .withMasterProfileId(jobProfileId)
+      .withMasterProfileType(JOB_PROFILE)
+      .withDetailProfileType(MATCH_PROFILE);
+
+    JobProfileUpdateDto jobProfile = new JobProfileUpdateDto()
+      .withProfile(new JobProfile().withId(jobProfileId).withName("Bla")
+        .withTags(new Tags().withTagList(Arrays.asList("lorem", "ipsum", "dolor")))
+        .withDataType(MARC))
+      .withAddedRelations(List.of(jobToActionAssociation, jobToMatchAssociation));
+
+    createResponse = RestAssured.given()
+      .spec(spec)
+      .body(jobProfile)
+      .when()
+      .post(JOB_PROFILES_PATH);
+    Assert.assertThat(createResponse.statusCode(), is(HttpStatus.SC_CREATED));
+    JobProfileUpdateDto profileToDelete = createResponse.body().as(JobProfileUpdateDto.class);
 
     // deleting job profile
     RestAssured.given()
