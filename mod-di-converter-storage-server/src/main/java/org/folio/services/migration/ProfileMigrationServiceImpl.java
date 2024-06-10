@@ -26,7 +26,7 @@ import static java.lang.String.format;
 public class ProfileMigrationServiceImpl implements ProfileMigrationService {
   private static final Logger LOGGER = LogManager.getLogger();
   private static final String INIT_WRAPPERS = "templates/db_scripts/associations-migration/init_wrappers.sql";
-  public static final String REMOVE_WRAPPERS = "templates/db_scripts/associations-migration/clean_profile_wrappers.sql";
+  private static final String REMOVE_WRAPPERS = "templates/db_scripts/associations-migration/clean_profile_wrappers.sql";
   private static final String TENANT_PLACEHOLDER = "${myuniversity}";
   private static final String MODULE_PLACEHOLDER = "${mymodule}";
   private static final String SYSTEM_TABLE_NAME = "metadata_internal";
