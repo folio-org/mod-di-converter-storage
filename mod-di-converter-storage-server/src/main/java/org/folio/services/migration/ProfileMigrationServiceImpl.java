@@ -28,7 +28,6 @@ public class ProfileMigrationServiceImpl implements ProfileMigrationService {
   private static final String UPDATE_SCHEMA_FOR_MIGRATION = "templates/db_scripts/associations-migration-v2/actualize_schema_for_migrations.sql";
   private static final String INIT_WRAPPERS = "templates/db_scripts/associations-migration/init_wrappers.sql";
   public static final String REMOVE_WRAPPERS = "templates/db_scripts/associations-migration/clean_profile_wrappers.sql";
-  private static final String UPDATE_GET_PROFILE_SNAPSHOT_FUNCTION = "templates/db_scripts/get_profile_snapshot.sql";
   private static final String TENANT_PLACEHOLDER = "${myuniversity}";
   private static final String MODULE_PLACEHOLDER = "${mymodule}";
   private static final String SYSTEM_TABLE_NAME = "metadata_internal";
@@ -69,9 +68,9 @@ public class ProfileMigrationServiceImpl implements ProfileMigrationService {
 
   private Future<Boolean> processMigration(Boolean isDataPresent, String tenantId) {
     if (Boolean.TRUE.equals(isDataPresent)) {
-      return runScriptChain(tenantId, true, REMOVE_WRAPPERS, INIT_WRAPPERS, UPDATE_SCHEMA_FOR_MIGRATION, UPDATE_GET_PROFILE_SNAPSHOT_FUNCTION);
+      return runScriptChain(tenantId, true, REMOVE_WRAPPERS, INIT_WRAPPERS, UPDATE_SCHEMA_FOR_MIGRATION);
     } else {
-      return runScriptChain(tenantId, false, INIT_WRAPPERS, UPDATE_SCHEMA_FOR_MIGRATION, UPDATE_GET_PROFILE_SNAPSHOT_FUNCTION);
+      return runScriptChain(tenantId, false, INIT_WRAPPERS, UPDATE_SCHEMA_FOR_MIGRATION);
     }
   }
 
