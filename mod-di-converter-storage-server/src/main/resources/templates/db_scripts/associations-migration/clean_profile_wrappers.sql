@@ -42,7 +42,7 @@ BEGIN
   END LOOP;
 
   RAISE NOTICE 'Removing new associations.';
-  TRUNCATE associations CASCADE;
+  TRUNCATE profile_associations CASCADE;
 
   RAISE NOTICE 'Removing old wrappers.';
   TRUNCATE profile_wrappers;
