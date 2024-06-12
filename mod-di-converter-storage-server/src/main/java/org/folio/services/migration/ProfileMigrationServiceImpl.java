@@ -8,7 +8,6 @@ import org.apache.commons.io.IOUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.folio.dao.PostgresClientFactory;
-import org.folio.dao.association.CommonProfileAssociationDao;
 import org.folio.dao.association.ProfileWrapperDao;
 import org.folio.rest.impl.util.OkapiConnectionParams;
 import org.folio.rest.persist.PostgresClient;
@@ -36,8 +35,6 @@ public class ProfileMigrationServiceImpl implements ProfileMigrationService {
   protected PostgresClientFactory pgClientFactory;
   @Autowired
   private ProfileWrapperDao profileWrapperDao;
-  @Autowired
-  private CommonProfileAssociationDao commonProfileAssociationDao;
 
   @Override
   public Future<Boolean> migrateDataImportProfiles(Map<String, String> headers, Context context) {
@@ -50,13 +47,8 @@ public class ProfileMigrationServiceImpl implements ProfileMigrationService {
           return profileWrapperDao.checkIfDataInTableExists(tenantId)
             .compose(isDataPresent -> processMigration(isDataPresent, tenantId));
         } else if (isRowCount == 1) {
-          return commonProfileAssociationDao.checkIfDataInTableExists(tenantId).compose(isDataPresent -> {
-            if (!isDataPresent) {
-              LOGGER.info("migrateDataImportProfiles:: no associations found, creating associations for default profiles...");
-              return runScript(tenantId, ASSOCIATIONS_MIGRATION);
-            }
-            return Future.succeededFuture();
-          });
+          LOGGER.info("migrateDataImportProfiles:: no associations found, creating associations for default profiles...");
+          return runScript(tenantId, ASSOCIATIONS_MIGRATION);
         } else {
           LOGGER.info("migrateDataImportProfiles:: Migration already executed.");
           return Future.succeededFuture(true);
