@@ -23,13 +23,11 @@ CREATE TABLE IF NOT EXISTS ${myuniversity}_${mymodule}.profile_associations
 );
 
 -- create indexes
-CREATE INDEX IF NOT EXISTS profile_associations_detailwrapperid_idx
-    ON ${myuniversity}_${mymodule}.profile_associations USING btree
-    (detail_wrapper_id ASC NULLS LAST);
+CREATE INDEX IF NOT EXISTS profile_associations_detail_wrapper_id ON ${myuniversity}_${mymodule}.profile_associations USING hash (detail_wrapper_id);
 
-CREATE INDEX IF NOT EXISTS profile_associations_masterwrapperid_idx
-    ON ${myuniversity}_${mymodule}.profile_associations USING btree
-    (master_wrapper_id ASC NULLS LAST);
+CREATE INDEX IF NOT EXISTS profile_associations_master_wrapper_id ON ${myuniversity}_${mymodule}.profile_associations USING hash (master_wrapper_id);
+
+CREATE INDEX IF NOT EXISTS profile_associations_job_profile_id ON ${myuniversity}_${mymodule}.profile_associations USING hash (job_profile_id)
 
 -- create trigger for removing record from profile_wrappers
 CREATE OR REPLACE FUNCTION remove_related_wrappers_profile_associations()
