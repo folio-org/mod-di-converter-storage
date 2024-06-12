@@ -27,7 +27,7 @@ CREATE INDEX IF NOT EXISTS profile_associations_detail_wrapper_id ON ${myunivers
 
 CREATE INDEX IF NOT EXISTS profile_associations_master_wrapper_id ON ${myuniversity}_${mymodule}.profile_associations USING hash (master_wrapper_id);
 
-CREATE INDEX IF NOT EXISTS profile_associations_job_profile_id ON ${myuniversity}_${mymodule}.profile_associations USING hash (job_profile_id)
+CREATE INDEX IF NOT EXISTS profile_associations_job_profile_id ON ${myuniversity}_${mymodule}.profile_associations USING hash (job_profile_id);
 
 -- create trigger for removing record from profile_wrappers
 CREATE OR REPLACE FUNCTION remove_related_wrappers_profile_associations()
