@@ -432,17 +432,17 @@
     },
     {
       "run": "after",
-      "snippetPath": "associations-migration-v2/create_profile_associations.sql",
+      "snippetPath": "associations-migration-gen-table/create_profile_associations.sql",
       "fromModuleVersion": "mod-di-converter-storage-2.3.0"
     },
     {
       "run": "after",
-      "snippetPath": "associations-migration-v2/create_indexes_on_profile_wrappers_columns.sql",
+      "snippetPath": "associations-migration-gen-table/create_indexes_on_profile_wrappers_columns.sql",
       "fromModuleVersion": "mod-di-converter-storage-2.3.0"
     },
     {
       "run": "after",
-      "snippetPath": "associations-migration-v2/actualize_schema_for_migrations.sql",
+      "snippetPath": "associations-migration-gen-table/actualize_schema_for_migrations.sql",
       "fromModuleVersion": "mod-di-converter-storage-2.3.0"
     }
   ]

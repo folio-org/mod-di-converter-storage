@@ -29,7 +29,7 @@ public class ProfileMigrationServiceImpl implements ProfileMigrationService {
   private static final String TENANT_PLACEHOLDER = "${myuniversity}";
   private static final String MODULE_PLACEHOLDER = "${mymodule}";
   private static final String SYSTEM_TABLE_NAME = "metadata_internal";
-  private static final String ASSOCIATIONS_MIGRATION = "templates/db_scripts/associations-migration-v2/associations_migration.sql";
+  private static final String ASSOCIATIONS_MIGRATION = "templates/db_scripts/associations-migration-gen-table/associations_migration.sql";
 
   @Autowired
   protected PostgresClientFactory pgClientFactory;
@@ -95,7 +95,7 @@ public class ProfileMigrationServiceImpl implements ProfileMigrationService {
     }
     String moduleName = PostgresClient.getModuleName();
     sqlScript = sqlScript.replace(TENANT_PLACEHOLDER, tenantId).replace(MODULE_PLACEHOLDER, moduleName);
-    pgClientFactory.createInstance(tenantId).runSqlFile(sqlScript)
+    pgClientFactory.createInstance(tenantId).runSQLFile(sqlScript, false)
       .onSuccess(e -> {
         LOGGER.info("{} successfully executed", sqlPath);
         promise.complete();
