@@ -1,10 +1,10 @@
 package org.folio.services.migration;
 
-import io.micrometer.core.instrument.util.StringUtils;
 import io.vertx.core.Context;
 import io.vertx.core.Future;
 import io.vertx.core.Promise;
 import org.apache.commons.io.IOUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.folio.dao.PostgresClientFactory;
@@ -47,7 +47,7 @@ public class ProfileMigrationServiceImpl implements ProfileMigrationService {
           return profileWrapperDao.checkIfDataInTableExists(tenantId)
             .compose(isDataPresent -> processMigration(isDataPresent, tenantId));
         } else if (isRowCount == 1) {
-          LOGGER.info("migrateDataImportProfiles:: no associations found, creating associations for default profiles...");
+          LOGGER.info("migrateDataImportProfiles:: migrating associations...");
           return runScript(tenantId, ASSOCIATIONS_MIGRATION);
         } else {
           LOGGER.info("migrateDataImportProfiles:: Migration already executed.");
@@ -95,7 +95,7 @@ public class ProfileMigrationServiceImpl implements ProfileMigrationService {
     }
     String moduleName = PostgresClient.getModuleName();
     sqlScript = sqlScript.replace(TENANT_PLACEHOLDER, tenantId).replace(MODULE_PLACEHOLDER, moduleName);
-    pgClientFactory.createInstance(tenantId).runSQLFile(sqlScript, false)
+    pgClientFactory.createInstance(tenantId).runSqlFile(sqlScript)
       .onSuccess(e -> {
         LOGGER.info("{} successfully executed", sqlPath);
         promise.complete();
