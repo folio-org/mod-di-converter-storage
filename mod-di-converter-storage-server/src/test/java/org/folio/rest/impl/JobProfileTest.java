@@ -6,6 +6,7 @@ import io.vertx.core.json.JsonObject;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
+import io.vertx.sqlclient.Tuple;
 import org.apache.http.HttpStatus;
 import org.folio.rest.jaxrs.model.ActionProfile;
 import org.folio.rest.jaxrs.model.ActionProfileUpdateDto;
@@ -240,12 +241,65 @@ public class JobProfileTest extends AbstractRestVerticleTest {
     }
   }
 
+  private JobProfileUpdateDto createJobProfile(JobProfileUpdateDto jobProfileUpdateDto,
+                                               String actionName,
+                                               String mappingName) {
+    var actionProfileIdCreate = UUID.randomUUID().toString();
+    ActionProfileUpdateDto actionProfileCreate = RestAssured.given()
+      .spec(spec)
+      .body(new ActionProfileUpdateDto()
+        .withProfile(new ActionProfile().withName(actionName)
+          .withId(actionProfileIdCreate)
+          .withAction(CREATE)
+          .withFolioRecord(INSTANCE)))
+      .when()
+      .post(ACTION_PROFILES_PATH)
+      .then()
+      .statusCode(HttpStatus.SC_CREATED)
+      .extract().as(ActionProfileUpdateDto.class);
+
+    String mappingProfileIdCreate = UUID.randomUUID().toString();
+    RestAssured.given()
+      .spec(spec)
+      .body(new MappingProfileUpdateDto()
+        .withProfile(new MappingProfile().withName(mappingName)
+          .withId(mappingProfileIdCreate)
+          .withIncomingRecordType(EntityType.MARC_BIBLIOGRAPHIC)
+          .withExistingRecordType(EntityType.INSTANCE))
+        .withAddedRelations(
+          List.of(
+            new ProfileAssociation()
+              .withMasterProfileId(actionProfileCreate.getId())
+              .withDetailProfileId(mappingProfileIdCreate)
+              .withMasterProfileType(ACTION_PROFILE)
+              .withDetailProfileType(ProfileType.MAPPING_PROFILE)
+              .withOrder(0))))
+      .when()
+      .post(MAPPING_PROFILES_PATH)
+      .then()
+      .statusCode(HttpStatus.SC_CREATED)
+      .extract().as(MappingProfileUpdateDto.class);
+
+    var validAssociation = new ProfileAssociation()
+      .withMasterProfileId(jobProfileUpdateDto.getId())
+      .withDetailProfileId(actionProfileCreate.getId())
+      .withMasterProfileType(JOB_PROFILE)
+      .withDetailProfileType(ACTION_PROFILE)
+      .withOrder(1);
+
+    return jobProfileUpdateDto.withAddedRelations(List.of(validAssociation));
+  }
+
   @Test
   public void shouldCreateProfileOnPost() {
+    String jobId = UUID.randomUUID().toString();
     JobProfileUpdateDto jobProfile = new JobProfileUpdateDto()
-      .withProfile(new JobProfile().withName("Bla")
-        .withTags(new Tags().withTagList(Arrays.asList("lorem", "ipsum", "dolor")))
-        .withDataType(MARC));
+        .withProfile(new JobProfile()
+          .withId(jobId)
+          .withName("Bla")
+          .withDataType(MARC)
+          .withTags(new Tags().withTagList(Arrays.asList("lorem", "ipsum", "dolor"))));
+    jobProfile = createJobProfile(jobProfile, "testActionCreate", "testMappingCreate");
 
     RestAssured.given()
       .spec(spec)
@@ -267,32 +321,35 @@ public class JobProfileTest extends AbstractRestVerticleTest {
       .post(JOB_PROFILES_PATH)
       .then().log().all()
       .statusCode(HttpStatus.SC_UNPROCESSABLE_ENTITY)
-      .body("errors[0].message", is("Job profile 'Bla' already exists"));
+      .body("errors[0].message", is("Job profile with id 'Bla' already exists"));
   }
 
   @Test
   public void shouldCreateProfileWithGivenIdOnPost() {
+    JobProfileUpdateDto jobProfile = createJobProfile(jobProfile_4, "actionCreate", "mappingCreate");
     RestAssured.given()
       .spec(spec)
-      .body(jobProfile_4)
+      .body(jobProfile)
       .when()
       .post(JOB_PROFILES_PATH)
       .then().log().all()
       .statusCode(HttpStatus.SC_CREATED)
-      .body("profile.name", is(jobProfile_4.getProfile().getName()))
-      .body("profile.tags.tagList", is(jobProfile_4.getProfile().getTags().getTagList()))
+      .body("profile.name", is(jobProfile.getProfile().getName()))
+      .body("profile.tags.tagList", is(jobProfile.getProfile().getTags().getTagList()))
       .body("profile.userInfo.lastName", is("Doe"))
       .body("profile.userInfo.firstName", is("Jane"))
       .body("profile.userInfo.userName", is("@janedoe"))
-      .body("profile.dataType", is(jobProfile_4.getProfile().getDataType().value()));
+      .body("profile.dataType", is(jobProfile.getProfile().getDataType().value()));
+
+    JobProfileUpdateDto jobProfile2 = createJobProfile(new JobProfileUpdateDto()
+      .withProfile(new JobProfile().withId(JOB_PROFILE_UUID)
+        .withName("GOA")
+        .withTags(new Tags().withTagList(Arrays.asList("lorem", "ipsum")))
+        .withDataType(MARC)), "createAction2", "mappingCreate2");
 
     RestAssured.given()
       .spec(spec)
-      .body(new JobProfileUpdateDto()
-        .withProfile(new JobProfile().withId(JOB_PROFILE_UUID)
-          .withName("GOA")
-          .withTags(new Tags().withTagList(Arrays.asList("lorem", "ipsum")))
-          .withDataType(MARC)))
+      .body(jobProfile2)
       .when()
       .post(JOB_PROFILES_PATH)
       .then().log().all()
@@ -578,6 +635,7 @@ public class JobProfileTest extends AbstractRestVerticleTest {
       .withMasterProfileType(JOB_PROFILE)
       .withOrder(1);
 
+
     JobProfileUpdateDto jobProfileUpdateDto = RestAssured.given()
       .spec(spec)
       .body(new JobProfileUpdateDto()
@@ -591,6 +649,8 @@ public class JobProfileTest extends AbstractRestVerticleTest {
       .then()
       .statusCode(HttpStatus.SC_CREATED)
       .extract().as(JobProfileUpdateDto.class);
+
+
 
     var deleteAssociation = new ProfileAssociation()
       .withDetailProfileType(ACTION_PROFILE)
@@ -901,9 +961,10 @@ public class JobProfileTest extends AbstractRestVerticleTest {
 
   @Test
   public void shouldUpdateProfileOnPut() {
+    JobProfileUpdateDto jobProfile2 = createJobProfile(jobProfile_2, "createAction", "mappingCreate");
     Response createResponse = RestAssured.given()
       .spec(spec)
-      .body(jobProfile_2)
+      .body(jobProfile2)
       .when()
       .post(JOB_PROFILES_PATH);
     Assert.assertThat(createResponse.statusCode(), is(HttpStatus.SC_CREATED));
@@ -930,9 +991,10 @@ public class JobProfileTest extends AbstractRestVerticleTest {
 
   @Test
   public void shouldUpdateDefaultAuthorityJobProfileOnPut() {
+    JobProfileUpdateDto jobProfile5 = createJobProfile(jobProfile_5, "createAction", "createMapping");
     Response createResponse = RestAssured.given()
       .spec(spec)
-      .body(jobProfile_5)
+      .body(jobProfile5)
       .when()
       .post(JOB_PROFILES_PATH);
     Assert.assertThat(createResponse.statusCode(), is(HttpStatus.SC_CREATED));
@@ -957,12 +1019,13 @@ public class JobProfileTest extends AbstractRestVerticleTest {
 
   @Test
   public void shouldUpdateProfileAssociationsOnPut() {
-    JobProfileUpdateDto jobProfile = new JobProfileUpdateDto()
-      .withProfile(new JobProfile()
+    JobProfileUpdateDto jobProfile = createJobProfile(
+      new JobProfileUpdateDto()
+        .withProfile(new JobProfile()
         .withId(UUID.randomUUID().toString())
         .withName("Bla")
         .withTags(new Tags().withTagList(Arrays.asList("lorem", "ipsum", "dolor")))
-        .withDataType(MARC));
+        .withDataType(MARC)), "createAction", "createMapping");
 
     JobProfileUpdateDto jobProfileToUpdate = RestAssured.given()
       .spec(spec)
@@ -1025,15 +1088,15 @@ public class JobProfileTest extends AbstractRestVerticleTest {
       .body("userInfo.firstName", is("Jane"))
       .body("userInfo.userName", is("@janedoe"))
       .body("dataType", is(jobProfile.getProfile().getDataType().value()))
-      .body("parentProfiles", is(empty()))
-      .body("childProfiles", is(empty()));
+      .body("parentProfiles", is(empty()));
   }
 
   @Test
   public void shouldReturnBadRequestOnPutJobProfileWithInvalidField() {
+    JobProfileUpdateDto jobProfile2 = createJobProfile(jobProfile_2, "createAction", "createMapping");
     Response createResponse = RestAssured.given()
       .spec(spec)
-      .body(jobProfile_2)
+      .body(jobProfile2)
       .when()
       .post(JOB_PROFILES_PATH);
     Assert.assertThat(createResponse.statusCode(), is(HttpStatus.SC_CREATED));
@@ -1063,9 +1126,10 @@ public class JobProfileTest extends AbstractRestVerticleTest {
 
   @Test
   public void shouldReturnProfileOnGetById() {
+    JobProfileUpdateDto jobProfile3 = createJobProfile(jobProfile_3, "createAction", "createMapping");
     Response createResponse = RestAssured.given()
       .spec(spec)
-      .body(jobProfile_3)
+      .body(jobProfile3)
       .when()
       .post(JOB_PROFILES_PATH);
     Assert.assertThat(createResponse.statusCode(), is(HttpStatus.SC_CREATED));
@@ -1216,15 +1280,15 @@ public class JobProfileTest extends AbstractRestVerticleTest {
   @Test
   public void shouldUnlinkActionsMirrorAssociationsWithEqualsMatchProfiles() {
 
+    JobProfileUpdateDto jobProfileBody = createJobProfile(new JobProfileUpdateDto()
+      .withProfile(new JobProfile()
+        .withId(UUID.randomUUID().toString())
+        .withName("testJob")
+        .withDataType(MARC)), "createAction", "createMapping");
     //create job profile
     JobProfileUpdateDto jobProfile = RestAssured.given()
       .spec(spec)
-      .body(new JobProfileUpdateDto()
-        .withProfile(new JobProfile()
-          .withId(UUID.randomUUID().toString())
-          .withName("testJob")
-          .withDataType(MARC))
-      )
+      .body(jobProfileBody)
       .when()
       .post(JOB_PROFILES_PATH)
       .then()
@@ -1437,11 +1501,15 @@ public class JobProfileTest extends AbstractRestVerticleTest {
   public void shouldReturnBadRequestOnPutWithUpdateActionProfileWithoutMatchProfile() {
     var actionProfileId = UUID.randomUUID().toString();
 
-    var jobProfile = new JobProfileUpdateDto()
-      .withProfile(new JobProfile()
-        .withName("Bla")
-        .withTags(new Tags().withTagList(Arrays.asList("lorem", "ipsum", "dolor")))
-        .withDataType(MARC));
+    JobProfileUpdateDto jobProfile = createJobProfile(jobProfile_1, "createAction", "createMapping");
+    var jobProfileToUpdate = RestAssured.given()
+      .spec(spec)
+      .body(jobProfile)
+      .when()
+      .post(JOB_PROFILES_PATH)
+      .then()
+      .statusCode(HttpStatus.SC_CREATED)
+      .extract().as(JobProfileUpdateDto.class);
 
     RestAssured.given()
       .spec(spec)
@@ -1462,15 +1530,6 @@ public class JobProfileTest extends AbstractRestVerticleTest {
       .withMasterProfileType(JOB_PROFILE)
       .withMasterProfileId(jobProfile.getId());
 
-    var jobProfileToUpdate = RestAssured.given()
-      .spec(spec)
-      .body(jobProfile)
-      .when()
-      .post(JOB_PROFILES_PATH)
-      .then()
-      .statusCode(HttpStatus.SC_CREATED)
-      .extract().as(JobProfileUpdateDto.class);
-
     RestAssured.given()
       .spec(spec)
       .body(jobProfileToUpdate.withAddedRelations(List.of(invalidAssociation)))
@@ -1488,11 +1547,7 @@ public class JobProfileTest extends AbstractRestVerticleTest {
   public void shouldReturnBadRequestOnPutWithStandaloneModifyAction() {
     var actionProfileId = UUID.randomUUID().toString();
 
-    var jobProfile = new JobProfileUpdateDto()
-      .withProfile(new JobProfile()
-        .withName("Bla")
-        .withTags(new Tags().withTagList(Arrays.asList("lorem", "ipsum", "dolor")))
-        .withDataType(MARC));
+    var jobProfile = createJobProfile(jobProfile_1, "createAction", "createMapping");
 
     RestAssured.given()
       .spec(spec)
@@ -1860,11 +1915,18 @@ public class JobProfileTest extends AbstractRestVerticleTest {
 
 
   private void createProfiles() {
-    List<JobProfileUpdateDto> jobProfilesToPost = Arrays.asList(jobProfile_1, jobProfile_2, jobProfile_3);
-    for (JobProfileUpdateDto profile : jobProfilesToPost) {
+    List<Tuple> jobProfilesToPost = Arrays.asList(
+      Tuple.of(jobProfile_1, "actionCreate1", "mappingCreate1"),
+      Tuple.of(jobProfile_2, "actionCreate2", "mappingCreate2"),
+      Tuple.of(jobProfile_3, "actionCreate3", "mappingCreate3"));
+    for (Tuple profile : jobProfilesToPost) {
+      JobProfileUpdateDto jobProfile = createJobProfile(
+        profile.get(JobProfileUpdateDto.class, 0),
+        profile.getString(1),
+        profile.getString(2));
       RestAssured.given()
         .spec(spec)
-        .body(profile)
+        .body(jobProfile)
         .when()
         .post(JOB_PROFILES_PATH)
         .then()
