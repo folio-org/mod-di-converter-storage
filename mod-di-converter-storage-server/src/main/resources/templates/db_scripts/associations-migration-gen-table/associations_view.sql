@@ -11,15 +11,9 @@ CREATE OR REPLACE VIEW associations_view
       UNION ALL
     SELECT association_id, master_id, masterwrapperid, master, master_type, detail_id, detailwrapperid, detail_type, detail_order, detail, react_to, job_profile_id
     FROM get_profile_association_snapshot('match_profiles', 'MATCH_PROFILE', 'match_profiles', 'MATCH_PROFILE')
-     UNION ALL
-    SELECT association_id, master_id, masterwrapperid, master, master_type, detail_id, detailwrapperid, detail_type, detail_order, detail, react_to, job_profile_id
-    FROM get_profile_association_snapshot('match_profiles','MATCH_PROFILE', 'action_profiles', 'ACTION_PROFILE')
-     UNION ALL
-    SELECT association_id, master_id, masterwrapperid, master, master_type, detail_id, detailwrapperid, detail_type, detail_order, detail, react_to, job_profile_id
-    FROM get_profile_association_snapshot('action_profiles', 'ACTION_PROFILE', 'match_profiles', 'MATCH_PROFILE')
       UNION ALL
     SELECT association_id, master_id, masterwrapperid, master, master_type, detail_id, detailwrapperid, detail_type, detail_order, detail, react_to, job_profile_id
-    FROM get_profile_association_snapshot('action_profiles', 'ACTION_PROFILE', 'action_profiles', 'ACTION_PROFILE')
+    FROM get_profile_association_snapshot('match_profiles','MATCH_PROFILE', 'action_profiles', 'ACTION_PROFILE')
       UNION ALL
     SELECT association_id, master_id, masterwrapperid, master, master_type, detail_id, detailwrapperid, detail_type, detail_order, detail, react_to, job_profile_id
     FROM get_profile_association_snapshot('action_profiles', 'ACTION_PROFILE', 'mapping_profiles', 'MAPPING_PROFILE')
