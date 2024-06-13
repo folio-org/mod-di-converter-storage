@@ -1635,18 +1635,8 @@ public class JobProfileTest extends AbstractRestVerticleTest {
 
     String jobProfileId = UUID.randomUUID().toString();
 
-    String jtaId = UUID.randomUUID().toString();
-    ProfileAssociation jobToActionAssociation = new ProfileAssociation()
-      .withId(jtaId)
-      .withDetailProfileId(associatedActionProfile.getProfile().getId())
-      .withMasterProfileId(jobProfileId)
-      .withMasterProfileType(JOB_PROFILE)
-      .withDetailProfileType(ACTION_PROFILE)
-      .withOrder(1);
-
-    String jtmId = UUID.randomUUID().toString();
     ProfileAssociation jobToMatchAssociation = new ProfileAssociation()
-      .withId(jtmId)
+      .withId(UUID.randomUUID().toString())
       .withDetailProfileId(associatedMatchProfile.getProfile().getId())
       .withMasterProfileId(jobProfileId)
       .withMasterProfileType(JOB_PROFILE)
@@ -1657,7 +1647,7 @@ public class JobProfileTest extends AbstractRestVerticleTest {
       .withProfile(new JobProfile().withId(jobProfileId).withName("Bla")
         .withTags(new Tags().withTagList(Arrays.asList("lorem", "ipsum", "dolor")))
         .withDataType(MARC))
-      .withAddedRelations(List.of(jobToActionAssociation, jobToMatchAssociation));
+      .withAddedRelations(List.of(jobToMatchAssociation));
 
     createResponse = RestAssured.given()
       .spec(spec)
@@ -1666,6 +1656,16 @@ public class JobProfileTest extends AbstractRestVerticleTest {
       .post(JOB_PROFILES_PATH);
     Assert.assertThat(createResponse.statusCode(), is(HttpStatus.SC_CREATED));
     JobProfileUpdateDto profileToDelete = createResponse.body().as(JobProfileUpdateDto.class);
+
+    ProfileAssociation jobToActionAssociation =
+      postProfileAssociation(new ProfileAssociation()
+        .withId(UUID.randomUUID().toString())
+        .withDetailProfileId(associatedActionProfile.getProfile().getId())
+        .withMasterProfileId(jobProfileId)
+        .withMasterProfileType(JOB_PROFILE)
+        .withDetailProfileType(ACTION_PROFILE)
+        .withOrder(1),
+        JOB_PROFILE, ACTION_PROFILE);
 
     // deleting job profile
     RestAssured.given()
