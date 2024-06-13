@@ -1634,22 +1634,24 @@ public class JobProfileTest extends AbstractRestVerticleTest {
     MatchProfileUpdateDto associatedMatchProfile = createResponse.body().as(MatchProfileUpdateDto.class);
 
     String jobProfileId = UUID.randomUUID().toString();
-    // creation associations
-    ProfileAssociation profileAssociation = new ProfileAssociation()
-      .withMasterProfileId(jobProfileId)
-      .withOrder(1);
 
-    ProfileAssociation jobToActionAssociation = profileAssociation
+    String jtaId = UUID.randomUUID().toString();
+    ProfileAssociation jobToActionAssociation = new ProfileAssociation()
+      .withId(jtaId)
       .withDetailProfileId(associatedActionProfile.getProfile().getId())
       .withMasterProfileId(jobProfileId)
       .withMasterProfileType(JOB_PROFILE)
-      .withDetailProfileType(ACTION_PROFILE);
+      .withDetailProfileType(ACTION_PROFILE)
+      .withOrder(1);
 
-    ProfileAssociation jobToMatchAssociation = profileAssociation
+    String jtmId = UUID.randomUUID().toString();
+    ProfileAssociation jobToMatchAssociation = new ProfileAssociation()
+      .withId(jtmId)
       .withDetailProfileId(associatedMatchProfile.getProfile().getId())
       .withMasterProfileId(jobProfileId)
       .withMasterProfileType(JOB_PROFILE)
-      .withDetailProfileType(MATCH_PROFILE);
+      .withDetailProfileType(MATCH_PROFILE)
+      .withOrder(1);
 
     JobProfileUpdateDto jobProfile = new JobProfileUpdateDto()
       .withProfile(new JobProfile().withId(jobProfileId).withName("Bla")
@@ -1678,7 +1680,7 @@ public class JobProfileTest extends AbstractRestVerticleTest {
       .spec(spec)
       .queryParam("master", JOB_PROFILE.value())
       .queryParam("detail", ACTION_PROFILE.value())
-      .when()
+      .when() // null
       .get(ASSOCIATED_PROFILES_PATH + "/" + jobToActionAssociation.getId())
       .then()
       .statusCode(HttpStatus.SC_NOT_FOUND);
