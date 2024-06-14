@@ -322,61 +322,6 @@ $$
   END
 $$;
 
-DO
--- action_to_action_profiles: use existing wrappers for action profiles in action_to_actions_profiles associations
-$$
-  DECLARE
-    r                        record;
-    master_action_wrapper_id UUID;
-    detail_action_wrapper_id UUID;
-  BEGIN
-    FOR r IN
-      select ata.id, ata.jsonb
-      from action_to_action_profiles ata
-      LOOP
-        -- get existing wrapper for detail action profile
-        select id
-        into detail_action_wrapper_id
-        from profile_wrappers
-        where action_profile_id = (r.jsonb ->> 'detailProfileId')::uuid;
-
-        -- get existing wrapper for master action profile
-        select id
-        into master_action_wrapper_id
-        from profile_wrappers
-        where action_profile_id = (r.jsonb ->> 'masterProfileId')::uuid;
-
-        if master_action_wrapper_id is null or detail_action_wrapper_id is null then
-          raise warning 'BAD DATA, action_to_action_profiles id: %', r.id;
-          continue;
-        end if;
-
-        -- insert into new association table
-        INSERT INTO associations (id, job_profile_id, master_wrapper_id,
-            detail_wrapper_id, master_profile_id, detail_profile_id,
-            master_profile_type, detail_profile_type, detail_order, react_to) values
-            (r.id,
-            null,
-            master_action_wrapper_id,
-            detail_action_wrapper_id,
-            (r.jsonb ->> 'masterProfileId')::uuid,
-            (r.jsonb ->> 'detailProfileId')::uuid,
-           'ACTION_PROFILE',
-           'ACTION_PROFILE',
-            (r.jsonb ->> 'order')::int,
-            null
-           ) ON CONFLICT DO NOTHING;
-
-        -- update wrapper references
-        UPDATE action_to_action_profiles
-        SET jsonb = jsonb_set(jsonb_set(jsonb, '{masterWrapperId}', to_jsonb(master_action_wrapper_id), true),
-                              '{detailWrapperId}', to_jsonb(detail_action_wrapper_id), true)
-        WHERE id = r.id;
-      END LOOP;
-    RAISE NOTICE 'PROFILES_MIGRATION:: updated action_to_action_profiles';
-  END
-$$;
-
 /*
  System table for saving migration history.
  */

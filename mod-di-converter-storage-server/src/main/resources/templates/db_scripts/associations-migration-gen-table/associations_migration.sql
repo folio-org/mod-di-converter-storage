@@ -29,12 +29,6 @@ $$
         from profile_wrappers
         where mapping_profile_id = (r.jsonb ->> 'detailProfileId')::uuid;
 
-        if mapping_wrapper_id is null or action_wrapper_id is null then
-          raise debug 'Incorrect data, action_to_mapping_profiles id: %, action_wrapper_id: %, mapping_wrapper_id: %',
-            r.id, action_wrapper_id, mapping_wrapper_id;
-          continue;
-        end if;
-
         -- insert into new association table
         INSERT INTO profile_associations (id, job_profile_id, master_wrapper_id,
             detail_wrapper_id, master_profile_id, detail_profile_id,
@@ -75,12 +69,6 @@ $$
         from profile_wrappers
         where job_profile_id = (r.jsonb ->> 'masterProfileId')::uuid;
 
-        if job_wrapper_id is null or match_wrapper_id is null then
-          raise debug 'Incorrect data: job_to_match_profiles id: %, match_wrapper_id: %, job_wrapper_id: %',
-            r.id, match_wrapper_id, job_wrapper_id;
-          continue;
-        end if;
-
         -- insert into new association table
         INSERT INTO profile_associations (id, job_profile_id, master_wrapper_id,
             detail_wrapper_id, master_profile_id, detail_profile_id,
@@ -101,7 +89,6 @@ $$
     RAISE NOTICE 'PROFILES_MIGRATION:: migrated from job_to_match_profiles';
   END
 $$;
-
 
 DO
 -- job_to_action_profiles: migration
@@ -126,12 +113,6 @@ $$
         into job_wrapper_id
         from profile_wrappers
         where job_profile_id = (r.jsonb ->> 'masterProfileId')::uuid;
-
-        if job_wrapper_id is null or action_wrapper_id is null then
-          raise debug 'Incorrect data: job_to_action_profiles id: %, action_wrapper_id: %, job_wrapper_id: %',
-            r.id, action_wrapper_id, job_wrapper_id;
-          continue;
-        end if;
 
         -- insert into new association table
         INSERT INTO profile_associations (id, job_profile_id, master_wrapper_id,
@@ -180,12 +161,6 @@ $$
         from profile_wrappers
         where match_profile_id = (r.jsonb ->> 'detailProfileId')::uuid;
 
-        if master_match_wrapper_id is null or detail_match_wrapper_id is null then
-          raise debug 'Incorrect data: match_to_match_profiles id: %, master_match_wrapper_id: %, detail_match_wrapper_id: %',
-            r.id, master_match_wrapper_id, detail_match_wrapper_id;
-          continue;
-        end if;
-
         -- insert into new association table
         INSERT INTO profile_associations (id, job_profile_id, master_wrapper_id,
             detail_wrapper_id, master_profile_id, detail_profile_id,
@@ -232,12 +207,6 @@ $$
         where match_profile_id = (r.jsonb ->> 'masterProfileId')::uuid
             and associated_job_profile_id = (r.jsonb ->> 'jobProfileId')::uuid;
 
-        if match_wrapper_id is null or action_wrapper_id is null then
-          raise debug 'Incorrect data: match_to_action_profiles id: %, jobProfileId: %, action_wrapper_id: %, match_wrapper_id: %',
-            r.id, (r.jsonb ->> 'jobProfileId')::uuid, action_wrapper_id, match_wrapper_id;
-          continue;
-        end if;
-
         -- insert into new association table
         INSERT INTO profile_associations (id, job_profile_id, master_wrapper_id,
             detail_wrapper_id, master_profile_id, detail_profile_id,
@@ -261,4 +230,4 @@ $$;
  System table for saving migration history.
  */
 insert into metadata_internal(id, jsonb, creation_date)
-  values (public.uuid_generate_v4(), '{"name": "Migration of profiles to the use new general associations"}', now()::timestamptz);
+  values (public.uuid_generate_v4(), '{"name": "Migration of profiles to the use of new general associations"}', now()::timestamptz);
