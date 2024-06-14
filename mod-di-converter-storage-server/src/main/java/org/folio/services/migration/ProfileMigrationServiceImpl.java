@@ -21,6 +21,11 @@ import java.util.Map;
 
 import static java.lang.String.format;
 
+/**
+ * todo:
+ * This class is going be removed after all migration processes will finish in all envs.
+ * think about what needs to be done with masterProfileId and detailProfileId.
+ * */
 @Service
 public class ProfileMigrationServiceImpl implements ProfileMigrationService {
   private static final Logger LOGGER = LogManager.getLogger();
