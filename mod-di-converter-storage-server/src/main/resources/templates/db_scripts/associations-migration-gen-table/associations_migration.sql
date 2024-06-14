@@ -158,62 +158,53 @@ DO
 -- match_to_match_profiles: migration
 $$
   DECLARE
-    not_recursive_record    record;
-    recursive_record        record;
-    detail_match_wrapper_id UUID;
+    r                 record;
     master_match_wrapper_id UUID;
+    detail_match_wrapper_id UUID;
   BEGIN
-    FOR not_recursive_record IN
-      -- get match profiles that are associated with job profile. Each item in the result will be used to build a match hierarchy
-      select jtm.id, jtm.jsonb
-      from job_to_match_profiles jtm
+    FOR r IN
+      select mtm.id, mtm.jsonb
+      from match_to_match_profiles mtm
       LOOP
-        FOR recursive_record IN
-          WITH RECURSIVE match_hierarchy AS (
-            -- Base Case
-            SELECT mtm.id, mtm.jsonb
-            FROM match_to_match_profiles mtm
-            where mtm.jsonb ->> 'masterProfileId' = not_recursive_record.jsonb ->> 'detailProfileId'
-              and mtm.jsonb ->> 'jobProfileId' = not_recursive_record.jsonb ->> 'masterProfileId'
-            UNION ALL
-            -- Recursive Step
-            SELECT m.id, m.jsonb
-            FROM match_to_match_profiles m
-                   INNER JOIN match_hierarchy mh
-                              ON mh.jsonb ->> 'detailProfileId' = m.jsonb ->> 'masterProfileId'
-                                and mh.jsonb ->> 'jobProfileId' = m.jsonb ->> 'jobProfileId')
 
-          select *
-          from match_hierarchy
-          LOOP
+        -- get existing wrapper for master match profile
+        select id
+        into master_match_wrapper_id
+        from profile_wrappers
+        where match_profile_id = (r.jsonb ->> 'masterProfileId')::uuid
+            and associated_job_profile_id = (r.jsonb ->> 'jobProfileId')::uuid;
 
-            -- get existing wrapper for master match profile
-            select id
-            into master_match_wrapper_id
-            from profile_wrappers
-            where match_profile_id = (recursive_record.jsonb ->> 'masterProfileId')::uuid
-              and associated_job_profile_id = (recursive_record.jsonb ->> 'jobProfileId')::uuid;
+        -- get existing wrapper for detail match profile
+        select id
+        into detail_match_wrapper_id
+        from profile_wrappers
+        where match_profile_id = (r.jsonb ->> 'detailProfileId')::uuid;
 
-            -- insert into new association table
-            INSERT INTO profile_associations (id, job_profile_id, master_wrapper_id,
-                detail_wrapper_id, master_profile_id, detail_profile_id,
-                master_profile_type, detail_profile_type, detail_order, react_to) values
-                (recursive_record.id,
-                (recursive_record.jsonb ->> 'jobProfileId')::uuid,
-                master_match_wrapper_id,
-                detail_match_wrapper_id,
-                (recursive_record.jsonb ->> 'masterProfileId')::uuid,
-                (recursive_record.jsonb ->> 'detailProfileId')::uuid,
-               'MATCH_PROFILE',
-               'MATCH_PROFILE',
-                (recursive_record.jsonb ->> 'order')::int,
-                (recursive_record.jsonb ->> 'reactTo')::text
-               ) ON CONFLICT DO NOTHING;
+        if master_match_wrapper_id is null or detail_match_wrapper_id is null then
+          raise debug 'Incorrect data: match_to_match_profiles id: %, master_match_wrapper_id: %, detail_match_wrapper_id: %',
+            r.id, master_match_wrapper_id, detail_match_wrapper_id;
+          continue;
+        end if;
 
-          end loop;
-      end loop;
-    raise notice 'PROFILES_MIGRATION:: migrated from match_to_match_profiles';
-  end
+        -- insert into new association table
+        INSERT INTO profile_associations (id, job_profile_id, master_wrapper_id,
+            detail_wrapper_id, master_profile_id, detail_profile_id,
+            master_profile_type, detail_profile_type, detail_order, react_to) values
+            (r.id,
+            (r.jsonb ->> 'jobProfileId')::uuid,
+            master_match_wrapper_id,
+            detail_match_wrapper_id,
+            (r.jsonb ->> 'masterProfileId')::uuid,
+            (r.jsonb ->> 'detailProfileId')::uuid,
+           'MATCH_PROFILE',
+           'MATCH_PROFILE',
+            (r.jsonb ->> 'order')::int,
+            (r.jsonb ->> 'reactTo')::text
+           ) ON CONFLICT DO NOTHING;
+
+      END LOOP;
+    RAISE NOTICE 'PROFILES_MIGRATION:: migrated from match_to_match_profiles';
+  END
 $$;
 
 DO
@@ -264,55 +255,6 @@ $$
            ) ON CONFLICT DO NOTHING;
       END LOOP;
     RAISE NOTICE 'PROFILES_MIGRATION:: migrated from match_to_action_profiles';
-  END
-$$;
-
-DO
--- action_to_action_profiles: migration
-$$
-  DECLARE
-    r                        record;
-    master_action_wrapper_id UUID;
-    detail_action_wrapper_id UUID;
-  BEGIN
-    FOR r IN
-      select ata.id, ata.jsonb
-      from action_to_action_profiles ata
-      LOOP
-        -- get existing wrapper for detail action profile
-        select id
-        into detail_action_wrapper_id
-        from profile_wrappers
-        where action_profile_id = (r.jsonb ->> 'detailProfileId')::uuid;
-
-        -- get existing wrapper for master action profile
-        select id
-        into master_action_wrapper_id
-        from profile_wrappers
-        where action_profile_id = (r.jsonb ->> 'masterProfileId')::uuid;
-
-        if master_action_wrapper_id is null or detail_action_wrapper_id is null then
-          raise warning 'BAD DATA, action_to_action_profiles id: %', r.id;
-          continue;
-        end if;
-
-        -- insert into new association table
-        INSERT INTO profile_associations (id, job_profile_id, master_wrapper_id,
-            detail_wrapper_id, master_profile_id, detail_profile_id,
-            master_profile_type, detail_profile_type, detail_order, react_to) values
-            (r.id,
-            null,
-            master_action_wrapper_id,
-            detail_action_wrapper_id,
-            (r.jsonb ->> 'masterProfileId')::uuid,
-            (r.jsonb ->> 'detailProfileId')::uuid,
-           'ACTION_PROFILE',
-           'ACTION_PROFILE',
-            (r.jsonb ->> 'order')::int,
-            null
-           ) ON CONFLICT DO NOTHING;
-      END LOOP;
-    RAISE NOTICE 'PROFILES_MIGRATION:: migrated from action_to_action_profiles';
   END
 $$;
 /*
