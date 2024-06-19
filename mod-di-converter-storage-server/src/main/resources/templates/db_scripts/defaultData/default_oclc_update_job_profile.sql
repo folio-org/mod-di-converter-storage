@@ -634,6 +634,6 @@ BEGIN
 
     INSERT INTO ${myuniversity}_${mymodule}.profile_associations (id, job_profile_id, master_wrapper_id, detail_wrapper_id, master_profile_id, detail_profile_id, master_profile_type, detail_profile_type, detail_order, react_to)
     VALUES
-    ('185b86b2-eca1-4a64-885d-f2dab21c0fc0', NULL, action_wrapper_id2, match_wrapper_id2, 'cddff0e1-233c-47ba-8be5-553c632709d9', '862000b9-84ea-4cae-a223-5fc0552f2b42', 'ACTION_PROFILE', 'MAPPING_PROFILE', 0, NULL) ON CONFLICT DO NOTHING;
+    ('185b86b2-eca1-4a64-885d-f2dab21c0fc0', NULL, action_wrapper_id2, mapping_wrapper_id2, 'cddff0e1-233c-47ba-8be5-553c632709d9', '862000b9-84ea-4cae-a223-5fc0552f2b42', 'ACTION_PROFILE', 'MAPPING_PROFILE', 0, NULL) ON CONFLICT DO NOTHING;
 END
 $$;
