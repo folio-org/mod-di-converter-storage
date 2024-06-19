@@ -69,6 +69,12 @@ $$
         from profile_wrappers
         where job_profile_id = (r.jsonb ->> 'masterProfileId')::uuid;
 
+        -- get existing wrapper for match profile
+        select id
+        into match_wrapper_id
+        from profile_wrappers
+        where match_profile_id = (r.jsonb ->> 'detailProfileId')::uuid;
+
         -- insert into new association table
         INSERT INTO profile_associations (id, job_profile_id, master_wrapper_id,
             detail_wrapper_id, master_profile_id, detail_profile_id,
