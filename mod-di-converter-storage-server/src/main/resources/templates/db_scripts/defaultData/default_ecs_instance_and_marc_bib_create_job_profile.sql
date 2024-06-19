@@ -327,7 +327,7 @@ BEGIN
        'ACTION_PROFILE', 'MAPPING_PROFILE', 0, null
       ) ON CONFLICT DO NOTHING;
 END
-SS;
+$$;
 
 INSERT INTO ${myuniversity}_${mymodule}.job_to_action_profiles (id, jsonb) values
   ('7e1b00ad-eb12-4c27-aae7-3c4b39e97e3d',
