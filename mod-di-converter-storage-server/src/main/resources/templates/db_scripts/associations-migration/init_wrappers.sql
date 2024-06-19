@@ -51,7 +51,7 @@ $$
         end if;
 
         -- insert into new association table
-        INSERT INTO associations (id, job_profile_id, master_wrapper_id,
+        INSERT INTO profile_associations (id, job_profile_id, master_wrapper_id,
             detail_wrapper_id, master_profile_id, detail_profile_id,
             master_profile_type, detail_profile_type, detail_order, react_to) values
             (r.id,
@@ -77,7 +77,7 @@ $$
 $$;
 
 DO
--- job_to_match_profiles: create wrappers for match profiles in job_to_match_profiles associations
+-- job_to_match_profiles: create wrappers for match profiles in job_to_match_profiles profile_associations
 $$
   DECLARE
     r                record;
@@ -101,6 +101,12 @@ $$
         from profile_wrappers
         where job_profile_id = (r.jsonb ->> 'masterProfileId')::uuid;
 
+        -- get existing wrapper for match profile
+        select id
+        into match_wrapper_id
+        from profile_wrappers
+        where match_profile_id = (r.jsonb ->> 'detailProfileId')::uuid;
+
         if job_wrapper_id is null or match_wrapper_id is null then
           raise debug 'Incorrect data: job_to_match_profiles id: %, match_wrapper_id: %, job_wrapper_id: %',
             r.id, match_wrapper_id, job_wrapper_id;
@@ -108,7 +114,7 @@ $$
         end if;
 
         -- insert into new association table
-        INSERT INTO associations (id, job_profile_id, master_wrapper_id,
+        INSERT INTO profile_associations (id, job_profile_id, master_wrapper_id,
             detail_wrapper_id, master_profile_id, detail_profile_id,
             master_profile_type, detail_profile_type, detail_order, react_to) values
             (r.id,
@@ -135,7 +141,7 @@ $$;
 
 
 DO
--- job_to_action_profiles: use existing wrappers for job and action profiles in job_to_actions_profiles associations
+-- job_to_action_profiles: use existing wrappers for job and action profiles in job_to_actions_profiles profile_associations
 $$
   DECLARE
     r                 record;
@@ -165,7 +171,7 @@ $$
         end if;
 
         -- insert into new association table
-        INSERT INTO associations (id, job_profile_id, master_wrapper_id,
+        INSERT INTO profile_associations (id, job_profile_id, master_wrapper_id,
             detail_wrapper_id, master_profile_id, detail_profile_id,
             master_profile_type, detail_profile_type, detail_order, react_to) values
             (r.id,
@@ -191,7 +197,7 @@ $$
 $$;
 
 DO
--- match_to_match_profiles: create wrappers for match profiles in match_to_match_profiles associations
+-- match_to_match_profiles: create wrappers for match profiles in match_to_match_profiles profile_associations
 $$
   DECLARE
     not_recursive_record    record;
@@ -236,8 +242,14 @@ $$
             where match_profile_id = (recursive_record.jsonb ->> 'masterProfileId')::uuid
               and associated_job_profile_id = (recursive_record.jsonb ->> 'jobProfileId')::uuid;
 
+            -- get existing wrapper for detail match profile
+            select id
+            into detail_match_wrapper_id
+            from profile_wrappers
+            where match_profile_id = (r.jsonb ->> 'detailProfileId')::uuid;
+
             -- insert into new association table
-            INSERT INTO associations (id, job_profile_id, master_wrapper_id,
+            INSERT INTO profile_associations (id, job_profile_id, master_wrapper_id,
                 detail_wrapper_id, master_profile_id, detail_profile_id,
                 master_profile_type, detail_profile_type, detail_order, react_to) values
                 (recursive_record.id,
@@ -266,7 +278,7 @@ $$
 $$;
 
 DO
--- match_to_action_profiles: create wrappers for match profiles in match_to_action_profiles associations
+-- match_to_action_profiles: create wrappers for match profiles in match_to_action_profiles profile_associations
 $$
   DECLARE
     r                 record;
@@ -297,7 +309,7 @@ $$
         end if;
 
         -- insert into new association table
-        INSERT INTO associations (id, job_profile_id, master_wrapper_id,
+        INSERT INTO profile_associations (id, job_profile_id, master_wrapper_id,
             detail_wrapper_id, master_profile_id, detail_profile_id,
             master_profile_type, detail_profile_type, detail_order, react_to) values
             (r.id,
@@ -326,4 +338,4 @@ $$;
  System table for saving migration history.
  */
 insert into metadata_internal(id, jsonb, creation_date)
-  values (public.uuid_generate_v4(), '{"name": "Migration of profiles to the use of wrappers and general associations"}', now()::timestamptz);
+  values (public.uuid_generate_v4(), '{"name": "Migration of profiles to the use of wrappers and general profile_associations"}', now()::timestamptz);
