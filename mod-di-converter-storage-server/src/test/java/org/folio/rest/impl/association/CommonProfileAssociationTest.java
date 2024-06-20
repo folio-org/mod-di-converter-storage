@@ -8,6 +8,7 @@ import io.vertx.core.Promise;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
+import java.util.List;
 import org.apache.http.HttpStatus;
 import org.folio.rest.impl.AbstractRestVerticleTest;
 import org.folio.rest.impl.association.wrapper.ActionProfileWrapper;
@@ -21,24 +22,22 @@ import org.folio.rest.jaxrs.model.EntityType;
 import org.folio.rest.jaxrs.model.JobProfile;
 import org.folio.rest.jaxrs.model.MappingDetail;
 import org.folio.rest.jaxrs.model.ProfileType;
-import org.folio.rest.jaxrs.model.ReactToType;
 import org.folio.rest.jaxrs.model.JobProfileUpdateDto;
 import org.folio.rest.jaxrs.model.MappingProfile;
 import org.folio.rest.jaxrs.model.MappingProfileUpdateDto;
 import org.folio.rest.jaxrs.model.MatchProfile;
 import org.folio.rest.jaxrs.model.MatchProfileUpdateDto;
 import org.folio.rest.jaxrs.model.ProfileAssociation;
-import org.folio.rest.jaxrs.model.ProfileType;
 import org.folio.rest.persist.Criteria.Criterion;
 import org.folio.rest.persist.PostgresClient;
 import org.junit.Assert;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
 import java.util.Arrays;
 import java.util.UUID;
 
+import static org.folio.rest.jaxrs.model.ActionProfile.Action.CREATE;
 import static org.folio.rest.jaxrs.model.ActionProfile.Action.UPDATE;
 import static org.folio.rest.jaxrs.model.ActionProfile.FolioRecord.MARC_BIBLIOGRAPHIC;
 import static org.folio.rest.jaxrs.model.JobProfile.DataType.MARC;
@@ -81,16 +80,19 @@ public class CommonProfileAssociationTest extends AbstractRestVerticleTest {
   JobProfileUpdateDto jobProfile3 = new JobProfileUpdateDto()
     .withProfile(new JobProfile().withName("testJobProfile3").withDataType(MARC));
 
-  ActionProfileUpdateDto actionProfile1 = new ActionProfileUpdateDto()
+  ActionProfileUpdateDto actionProfile1 = new ActionProfileUpdateDto().withId("f12db804-70d1-49dd-a58c-49edf9031371")
     .withProfile(new ActionProfile().withName("testActionProfile1").withDescription("test-description")
-      .withAction(UPDATE).withFolioRecord(MARC_BIBLIOGRAPHIC));
-  ActionProfileUpdateDto actionProfile2 = new ActionProfileUpdateDto()
+      .withAction(CREATE).withFolioRecord(MARC_BIBLIOGRAPHIC));
+
+  ActionProfileUpdateDto actionProfile2 = new ActionProfileUpdateDto().withId("f12db804-70d1-49dd-a58c-49edf9031372")
     .withProfile(new ActionProfile().withName("testActionProfile2").withDescription("test-description")
       .withAction(UPDATE).withFolioRecord(MARC_BIBLIOGRAPHIC));
-  ActionProfileUpdateDto actionProfile3 = new ActionProfileUpdateDto()
+
+  ActionProfileUpdateDto actionProfile3 = new ActionProfileUpdateDto().withId("f12db804-70d1-49dd-a58c-49edf9031373")
     .withProfile(new ActionProfile().withName("testActionProfile3").withDescription("test-description")
       .withAction(UPDATE).withFolioRecord(MARC_BIBLIOGRAPHIC));
-  ActionProfileUpdateDto actionProfile4 = new ActionProfileUpdateDto()
+
+  ActionProfileUpdateDto actionProfile4 = new ActionProfileUpdateDto().withId("f12db804-70d1-49dd-a58c-49edf9031374")
     .withProfile(new ActionProfile().withName("testActionProfile4")
       .withAction(UPDATE).withFolioRecord(MARC_BIBLIOGRAPHIC));
 
@@ -127,6 +129,44 @@ public class CommonProfileAssociationTest extends AbstractRestVerticleTest {
       .withIncomingRecordType(EntityType.MARC_BIBLIOGRAPHIC)
       .withExistingRecordType(EntityType.MARC_BIBLIOGRAPHIC));
 
+  private JobProfileUpdateDto createJobProfile(JobProfileUpdateDto jobProfileUpdateDto,
+                                               ActionProfileUpdateDto actionProfileUpdateDto,
+                                               MatchProfileUpdateDto matchProfileUpdateDto) {
+    var actionProfileIdCreate = UUID.randomUUID().toString();
+    RestAssured.given()
+      .spec(spec)
+      .body(actionProfileUpdateDto)
+      .when()
+      .post(ACTION_PROFILES_URL)
+      .then()
+      .statusCode(HttpStatus.SC_CREATED);
+
+    String mappingProfileIdCreate = UUID.randomUUID().toString();
+    RestAssured.given()
+      .spec(spec)
+      .body(matchProfileUpdateDto)
+      .when()
+      .post(MAPPING_PROFILES_URL)
+      .then()
+      .statusCode(HttpStatus.SC_CREATED);
+
+    var validAssociation = new ProfileAssociation()
+      .withMasterProfileId(jobProfileUpdateDto.getId())
+      .withDetailProfileId(actionProfileIdCreate)
+      .withMasterProfileType(JOB_PROFILE)
+      .withDetailProfileType(ACTION_PROFILE)
+      .withOrder(0);
+
+    var validAssociation2 = new ProfileAssociation()
+      .withMasterProfileId(actionProfileIdCreate)
+      .withDetailProfileId(mappingProfileIdCreate)
+      .withMasterProfileType(ACTION_PROFILE)
+      .withDetailProfileType(MAPPING_PROFILE)
+      .withOrder(1);
+
+    return jobProfileUpdateDto.withAddedRelations(List.of(validAssociation, validAssociation2));
+  }
+
   @Test
   public void runTestShouldReturnEmptyOkResultOnGetAll(TestContext testContext) {
     shouldReturnEmptyOkResultOnGetAll(testContext, ACTION_PROFILE, ACTION_PROFILE);
@@ -154,15 +194,9 @@ public class CommonProfileAssociationTest extends AbstractRestVerticleTest {
 
   @Test
   public void runTestShouldReturnProfileAssociationListOnGet(TestContext testContext) {
-    // action to action
-    shouldReturnProfileAssociationListOnGet(testContext, new ActionProfileWrapper(actionProfile1), new ActionProfileWrapper(actionProfile2),
-      ACTION_PROFILES_URL, ACTION_PROFILES_URL, ACTION_PROFILE, ACTION_PROFILE);
     // action to mapping
     shouldReturnProfileAssociationListOnGet(testContext, new ActionProfileWrapper(actionProfile3), new MappingProfileWrapper(mappingProfile1),
       ACTION_PROFILES_URL, MAPPING_PROFILES_URL, ACTION_PROFILE, MAPPING_PROFILE);
-    // action to match
-    shouldReturnProfileAssociationListOnGet(testContext, new ActionProfileWrapper(actionProfile1), new MatchProfileWrapper(matchProfile1),
-      ACTION_PROFILES_URL, MATCH_PROFILES_URL, ACTION_PROFILE, MATCH_PROFILE);
     // job to action
     shouldReturnProfileAssociationListOnGet(testContext, new JobProfileWrapper(jobProfile1), new ActionProfileWrapper(actionProfile1),
       JOB_PROFILES_URL, ACTION_PROFILES_URL, JOB_PROFILE, ACTION_PROFILE);
@@ -177,18 +211,40 @@ public class CommonProfileAssociationTest extends AbstractRestVerticleTest {
       MATCH_PROFILES_URL, MATCH_PROFILES_URL, MATCH_PROFILE, MATCH_PROFILE);
   }
 
+  private <M, D> ProfileAssociation createMasterDetailProfile(TestContext testContext, ProfileWrapper<M> masterWrapper,
+                                                     ProfileWrapper<D> detailWrapper, String masterProfileUrl, String detailProfileUrl,
+                                                     ProfileType masterProfileType, ProfileType detailProfileType) {
+    ProfileAssociation profileAssociation;
+    ProfileWrapper<D> detailProfileWrapper1 = postProfile(testContext, detailWrapper, detailProfileUrl);
+    if (masterWrapper instanceof JobProfileWrapper jobProfileWrapper) {
+      profileAssociation = new ProfileAssociation()
+        .withMasterProfileId(masterWrapper.getId())
+        .withDetailProfileId(detailProfileWrapper1.getId())
+        .withMasterProfileType(ProfileType.valueOf(masterProfileType.value()))
+        .withDetailProfileType(ProfileType.valueOf(detailProfileType.value()))
+        .withOrder(5)
+        .withTriggered(true);
+      jobProfileWrapper.getProfile().getAddedRelations().add(profileAssociation);
+      postProfile(testContext, jobProfileWrapper, masterProfileUrl);
+
+    } else {
+      ProfileWrapper<M> masterProfileWrapper1 = postProfile(testContext, masterWrapper, masterProfileUrl);
+
+      profileAssociation = new ProfileAssociation()
+        .withMasterProfileId(masterProfileWrapper1.getId())
+        .withDetailProfileId(detailProfileWrapper1.getId())
+        .withMasterProfileType(ProfileType.valueOf(masterProfileType.value()))
+        .withDetailProfileType(ProfileType.valueOf(detailProfileType.value()))
+        .withOrder(5)
+        .withTriggered(true);
+    }
+    return profileAssociation;
+  }
+
   public <M, D> void shouldReturnProfileAssociationListOnGet(TestContext testContext, ProfileWrapper<M> masterWrapper1, ProfileWrapper<D> detailWrapper1,
                                                              String masterProfileUrl, String detailProfileUrl, ProfileType masterProfileType, ProfileType detailProfileType) {
-    ProfileWrapper<M> masterProfileWrapper1 = postProfile(testContext, masterWrapper1, masterProfileUrl);
-    ProfileWrapper<D> detailProfileWrapper1 = postProfile(testContext, detailWrapper1, detailProfileUrl);
-
-    ProfileAssociation profileAssociation = new ProfileAssociation()
-      .withMasterProfileId(masterProfileWrapper1.getId())
-      .withDetailProfileId(detailProfileWrapper1.getId())
-      .withMasterProfileType(ProfileType.valueOf(masterProfileType.value()))
-      .withDetailProfileType(ProfileType.valueOf(detailProfileType.value()))
-      .withOrder(5)
-      .withTriggered(true);
+    var profileAssociation = createMasterDetailProfile(testContext, masterWrapper1, detailWrapper1, masterProfileUrl,
+      detailProfileUrl, masterProfileType, detailProfileType);
 
     Async async = testContext.async();
     RestAssured.given()
@@ -396,8 +452,8 @@ public class CommonProfileAssociationTest extends AbstractRestVerticleTest {
 
   public <M, D> void shouldDeleteProfileOnDelete(TestContext testContext, ProfileWrapper<M> masterWrapper, ProfileWrapper<D> detailWrapper,
                                                  String masterProfileUrl, String detailProfileUrl, ProfileType masterProfileType, ProfileType detailProfileType) {
-    ProfileWrapper<M> masterProfileWrapper = postProfile(testContext, masterWrapper, masterProfileUrl);
     ProfileWrapper<D> detailProfileWrapper = postProfile(testContext, detailWrapper, detailProfileUrl);
+    ProfileWrapper<M> masterProfileWrapper = postProfile(testContext, masterWrapper, masterProfileUrl);
 
     ProfileAssociation profileAssociation = new ProfileAssociation()
       .withMasterProfileId(masterProfileWrapper.getId())

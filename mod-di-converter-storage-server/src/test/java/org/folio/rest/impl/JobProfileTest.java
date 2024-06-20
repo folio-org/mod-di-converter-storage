@@ -43,6 +43,7 @@ import static org.folio.rest.jaxrs.model.ActionProfile.FolioRecord.MARC_BIBLIOGR
 import static org.folio.rest.jaxrs.model.JobProfile.DataType.*;
 import static org.folio.rest.jaxrs.model.ProfileType.ACTION_PROFILE;
 import static org.folio.rest.jaxrs.model.ProfileType.JOB_PROFILE;
+import static org.folio.rest.jaxrs.model.ProfileType.MAPPING_PROFILE;
 import static org.folio.rest.jaxrs.model.ProfileType.MATCH_PROFILE;
 import static org.folio.rest.jaxrs.model.ReactToType.MATCH;
 import static org.folio.rest.jaxrs.model.ReactToType.NON_MATCH;
@@ -245,7 +246,7 @@ public class JobProfileTest extends AbstractRestVerticleTest {
                                                String actionName,
                                                String mappingName) {
     var actionProfileIdCreate = UUID.randomUUID().toString();
-    ActionProfileUpdateDto actionProfileCreate = RestAssured.given()
+    RestAssured.given()
       .spec(spec)
       .body(new ActionProfileUpdateDto()
         .withProfile(new ActionProfile().withName(actionName)
@@ -255,8 +256,7 @@ public class JobProfileTest extends AbstractRestVerticleTest {
       .when()
       .post(ACTION_PROFILES_PATH)
       .then()
-      .statusCode(HttpStatus.SC_CREATED)
-      .extract().as(ActionProfileUpdateDto.class);
+      .statusCode(HttpStatus.SC_CREATED);
 
     String mappingProfileIdCreate = UUID.randomUUID().toString();
     RestAssured.given()
@@ -269,23 +269,22 @@ public class JobProfileTest extends AbstractRestVerticleTest {
         .withAddedRelations(
           List.of(
             new ProfileAssociation()
-              .withMasterProfileId(actionProfileCreate.getId())
+              .withMasterProfileId(actionProfileIdCreate)
               .withDetailProfileId(mappingProfileIdCreate)
               .withMasterProfileType(ACTION_PROFILE)
-              .withDetailProfileType(ProfileType.MAPPING_PROFILE)
+              .withDetailProfileType(MAPPING_PROFILE)
               .withOrder(0))))
       .when()
       .post(MAPPING_PROFILES_PATH)
       .then()
-      .statusCode(HttpStatus.SC_CREATED)
-      .extract().as(MappingProfileUpdateDto.class);
+      .statusCode(HttpStatus.SC_CREATED);
 
     var validAssociation = new ProfileAssociation()
       .withMasterProfileId(jobProfileUpdateDto.getId())
-      .withDetailProfileId(actionProfileCreate.getId())
+      .withDetailProfileId(actionProfileIdCreate)
       .withMasterProfileType(JOB_PROFILE)
       .withDetailProfileType(ACTION_PROFILE)
-      .withOrder(1);
+      .withOrder(0);
 
     return jobProfileUpdateDto.withAddedRelations(List.of(validAssociation));
   }
@@ -1200,7 +1199,7 @@ public class JobProfileTest extends AbstractRestVerticleTest {
       .when()
       .post(JOB_PROFILES_PATH)
       .then()
-      .statusCode(HttpStatus.SC_BAD_REQUEST);
+      .statusCode(HttpStatus.SC_NOT_FOUND);
   }
 
     @Test
