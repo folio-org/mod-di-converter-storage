@@ -101,12 +101,6 @@ $$
         from profile_wrappers
         where job_profile_id = (r.jsonb ->> 'masterProfileId')::uuid;
 
-        -- get existing wrapper for match profile
-        select id
-        into match_wrapper_id
-        from profile_wrappers
-        where match_profile_id = (r.jsonb ->> 'detailProfileId')::uuid;
-
         if job_wrapper_id is null or match_wrapper_id is null then
           raise debug 'Incorrect data: job_to_match_profiles id: %, match_wrapper_id: %, job_wrapper_id: %',
             r.id, match_wrapper_id, job_wrapper_id;
@@ -241,12 +235,6 @@ $$
             from profile_wrappers
             where match_profile_id = (recursive_record.jsonb ->> 'masterProfileId')::uuid
               and associated_job_profile_id = (recursive_record.jsonb ->> 'jobProfileId')::uuid;
-
-            -- get existing wrapper for detail match profile
-            select id
-            into detail_match_wrapper_id
-            from profile_wrappers
-            where match_profile_id = (r.jsonb ->> 'detailProfileId')::uuid;
 
             -- insert into new association table
             INSERT INTO profile_associations (id, job_profile_id, master_wrapper_id,
