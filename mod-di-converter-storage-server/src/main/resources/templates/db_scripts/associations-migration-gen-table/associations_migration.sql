@@ -12,7 +12,7 @@ $$
     r                  record;
   BEGIN
     FOR r IN
-      select atm.id, atm.jsonb
+      select atm.id, atm.jsonb, atm.masterwrapperid, atm.detailwrapperid
       from action_to_mapping_profiles atm
       LOOP
 
@@ -50,7 +50,7 @@ $$
     r                record;
   BEGIN
     FOR r IN
-      select jtm.id, jtm.jsonb
+      select jtm.id, jtm.jsonb, jtm.masterwrapperid, jtm.detailwrapperid
       from job_to_match_profiles jtm
       LOOP
 
@@ -88,7 +88,7 @@ $$
     r                 record;
   BEGIN
     FOR r IN
-      select jta.id, jta.jsonb
+      select jta.id, jta.jsonb, jta.masterwrapperid, jta.detailwrapperid
       from job_to_action_profiles jta
       LOOP
 
@@ -126,7 +126,7 @@ $$
     r                 record;
   BEGIN
     FOR r IN
-      select mtm.id, mtm.jsonb
+      select mtm.id, mtm.jsonb, mtm.masterwrapperid, mtm.detailwrapperid
       from match_to_match_profiles mtm
       LOOP
 
@@ -164,7 +164,7 @@ $$
     r                 record;
   BEGIN
     FOR r IN
-      select mta.id, mta.jsonb
+      select mta.id, mta.jsonb, mta.masterwrapperid, mta.detailwrapperid
       from match_to_action_profiles mta
       LOOP
 
