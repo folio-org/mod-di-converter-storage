@@ -15,6 +15,13 @@ $$
       select atm.id, atm.jsonb
       from action_to_mapping_profiles atm
       LOOP
+
+        if r.masterwrapperid is null or r.detailwrapperid is null then
+            raise debug 'Incorrect data action_wrapper_id and mapping_wrapper_id are null: action_to_mapping_profiles id: %, jobProfileId: %, action_wrapper_id: %, mapping_wrapper_id: %',
+                r.id, (r.jsonb ->> 'jobProfileId')::uuid, r.masterwrapperid, r.detailwrapperid;
+            continue;
+        end if;
+
         -- insert into new association table
         INSERT INTO profile_associations (id, job_profile_id, master_wrapper_id,
             detail_wrapper_id, master_profile_id, detail_profile_id,
@@ -46,6 +53,13 @@ $$
       select jtm.id, jtm.jsonb
       from job_to_match_profiles jtm
       LOOP
+
+        if r.masterwrapperid is null or r.detailwrapperid is null then
+          raise debug 'Incorrect data job_wrapper_id and match_wrapper_id are null: job_to_match_profiles id: %, jobProfileId: %, job_wrapper_id: %, match_wrapper_id: %',
+              r.id, (r.jsonb ->> 'jobProfileId')::uuid, r.masterwrapperid, r.detailwrapperid;
+          continue;
+        end if;
+
         -- insert into new association table
         INSERT INTO profile_associations (id, job_profile_id, master_wrapper_id,
             detail_wrapper_id, master_profile_id, detail_profile_id,
@@ -77,6 +91,13 @@ $$
       select jta.id, jta.jsonb
       from job_to_action_profiles jta
       LOOP
+
+        if r.masterwrapperid is null or r.detailwrapperid is null then
+            raise debug 'Incorrect data job_wrapper_id and action_wrapper_id are null: job_to_action_profiles id: %, jobProfileId: %, job_wrapper_id: %, action_wrapper_id: %',
+                r.id, (r.jsonb ->> 'jobProfileId')::uuid, r.masterwrapperid, r.detailwrapperid;
+            continue;
+        end if;
+
         -- insert into new association table
         INSERT INTO profile_associations (id, job_profile_id, master_wrapper_id,
             detail_wrapper_id, master_profile_id, detail_profile_id,
@@ -108,6 +129,13 @@ $$
       select mtm.id, mtm.jsonb
       from match_to_match_profiles mtm
       LOOP
+
+        if r.masterwrapperid is null or r.detailwrapperid is null then
+            raise debug 'Incorrect data match_wrapper_id and match_wrapper_id are null: match_to_match_profiles id: %, jobProfileId: %, match_wrapper_id: %, match_wrapper_id: %',
+                r.id, (r.jsonb ->> 'jobProfileId')::uuid, r.masterwrapperid, r.detailwrapperid;
+            continue;
+        end if;
+
         -- insert into new association table
         INSERT INTO profile_associations (id, job_profile_id, master_wrapper_id,
             detail_wrapper_id, master_profile_id, detail_profile_id,
@@ -139,6 +167,13 @@ $$
       select mta.id, mta.jsonb
       from match_to_action_profiles mta
       LOOP
+
+        if r.masterwrapperid is null or r.detailwrapperid is null then
+            raise debug 'Incorrect data action_wrapper_id and match_wrapper_id are null: match_to_action_profiles id: %, jobProfileId: %, action_wrapper_id: %, match_wrapper_id: %',
+                r.id, (r.jsonb ->> 'jobProfileId')::uuid, r.masterwrapperid, r.detailwrapperid;
+            continue;
+        end if;
+
         -- insert into new association table
         INSERT INTO profile_associations (id, job_profile_id, master_wrapper_id,
             detail_wrapper_id, master_profile_id, detail_profile_id,
