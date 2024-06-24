@@ -946,6 +946,11 @@ public class DataImportProfilesImpl implements DataImportProfiles {
       .onSuccess(ids -> {
         if (StringUtils.isBlank(ids)) {
           promise.complete(new Errors().withTotalRecords(0));
+          // check if this match profile contains action profile
+          // iterate over match profiles
+            // if child is match, re call the function
+            // if child is not action
+          checkActionProfile(jobProfileUpdateDto);
         } else {
           logger.warn("validateJobProfileLinkedMatchProfile:: Linked MatchProfiles with ids {} not founded", ids);
           promise.fail(new NotFoundException((String.format("Linked MatchProfiles with ids %s were not found", ids))));
@@ -954,6 +959,17 @@ public class DataImportProfilesImpl implements DataImportProfiles {
       .onFailure(promise::fail);
 
     return promise.future();
+  }
+
+  private boolean checkActionProfile(JobProfileUpdateDto jobProfile) {
+    var associations = jobProfile.getAddedRelations().stream().filter(profileAssociation ->
+      (profileAssociation.getMasterProfileType().equals(ProfileType.MATCH_PROFILE) &&
+         profileAssociation.getDetailProfileType().equals(ProfileType.ACTION_PROFILE))
+    ).collect(Collectors.toList());
+   if (associations.isEmpty()) {
+    return false;
+   }
+   return  false;
   }
 
   private Future<Errors> validateJobProfileLinkedActionProfiles(JobProfileUpdateDto jobProfileUpdateDto) {

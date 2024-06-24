@@ -8,6 +8,8 @@ import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
 import io.vertx.sqlclient.Tuple;
 import org.apache.http.HttpStatus;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.folio.rest.jaxrs.model.ActionProfile;
 import org.folio.rest.jaxrs.model.ActionProfileUpdateDto;
 import org.folio.rest.jaxrs.model.EntityType;
@@ -1923,9 +1925,11 @@ public class JobProfileTest extends AbstractRestVerticleTest {
       .body("errors[0].message", is("Job profile read-only 'child' field should be empty"))
       .body("errors[1].message", is("Job profile read-only 'parent' field should be empty"));
   }
-
+  private static final Logger logger = LogManager.getLogger();
   @Test
   public void shouldReturnBadRequestWhenChildOrParentProfileIsNotEmptyOnPut() {
+    logger.info("Starting test: shouldReturnBadRequestWhenChildOrParentProfileIsNotEmptyOnPut");
+
     JobProfileUpdateDto jobProfileUpdateDto = createJobProfile(jobProfile_2, "createAction",
       "createMapping");
 
@@ -1946,6 +1950,8 @@ public class JobProfileTest extends AbstractRestVerticleTest {
       .statusCode(HttpStatus.SC_UNPROCESSABLE_ENTITY)
       .body("errors[0].message", is("Job profile read-only 'child' field should be empty"))
       .body("errors[1].message", is("Job profile read-only 'parent' field should be empty"));
+    logger.info("Finished test: shouldReturnBadRequestWhenChildOrParentProfileIsNotEmptyOnPut");
+
   }
 
 
@@ -1983,6 +1989,7 @@ public class JobProfileTest extends AbstractRestVerticleTest {
 
   @Override
   public void clearTables(TestContext context) {
+    logger.info("Tearing down test environment...");
     Async async = context.async();
     PostgresClient pgClient = PostgresClient.getInstance(vertx, TENANT_ID);
     pgClient.delete(PROFILE_WRAPPERS_TABLE_NAME, new Criterion(), event1 ->
