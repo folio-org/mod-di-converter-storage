@@ -6,6 +6,11 @@ import io.vertx.core.json.JsonObject;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
+import java.util.UUID;
 import org.apache.http.HttpStatus;
 import org.folio.rest.jaxrs.model.ActionProfile;
 import org.folio.rest.jaxrs.model.ActionProfileUpdateDto;
@@ -29,8 +34,6 @@ import org.junit.Assert;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
-import java.util.*;
-
 import static org.folio.rest.impl.ActionProfileTest.ACTION_PROFILES_PATH;
 import static org.folio.rest.impl.ActionProfileTest.ACTION_PROFILES_TABLE_NAME;
 import static org.folio.rest.impl.MatchProfileTest.MATCH_PROFILES_PATH;
@@ -51,18 +54,13 @@ import static org.hamcrest.Matchers.*;
 public class JobProfileTest extends AbstractRestVerticleTest {
 
   private static final String JOB_PROFILES_TABLE_NAME = "job_profiles";
-  public static final String JOB_TO_ACTION_PROFILES_TABLE = "job_to_action_profiles";
-  public static final String JOB_TO_MATCH_PROFILES_TABLE = "job_to_match_profiles";
   static final String JOB_PROFILES_PATH = "/data-import-profiles/jobProfiles";
   private static final String ASSOCIATED_PROFILES_PATH = "/data-import-profiles/profileAssociations";
   private static final String PROFILE_WRAPPERS_TABLE_NAME = "profile_wrappers";
   static final String MAPPING_PROFILES_TABLE_NAME = "mapping_profiles";
-  private static final String ACTION_TO_MAPPING_PROFILES_TABLE = "action_to_mapping_profiles";
+  private static final String ASSOCIATIONS_TABLE = "profile_associations";
   static final String MATCH_PROFILES_TABLE_NAME = "match_profiles";
   private static final String SNAPSHOTS_TABLE_NAME = "profile_snapshots";
-  private static final String MATCH_TO_ACTION_PROFILES_TABLE_NAME = "match_to_action_profiles";
-  private static final String ACTION_TO_ACTION_PROFILES_TABLE_NAME = "action_to_action_profiles";
-  private static final String MATCH_TO_MATCH_PROFILES_TABLE_NAME = "match_to_match_profiles";
   private static final String PROFILE_WRAPPERS_TABLE = "profile_wrappers";
   static final String MAPPING_PROFILES_PATH = "/data-import-profiles/mappingProfiles";
 
@@ -434,7 +432,7 @@ public class JobProfileTest extends AbstractRestVerticleTest {
       .extract().as(ActionProfileUpdateDto.class);
 
     String mappingProfileIdModify = UUID.randomUUID().toString();
-    MappingProfileUpdateDto mappingProfileModify = RestAssured.given()
+    RestAssured.given()
       .spec(spec)
       .body(new MappingProfileUpdateDto()
         .withProfile(new MappingProfile().withName("testModify")
@@ -510,7 +508,7 @@ public class JobProfileTest extends AbstractRestVerticleTest {
       .extract().as(ActionProfileUpdateDto.class);
 
     String mappingProfileIdModify = UUID.randomUUID().toString();
-    MappingProfileUpdateDto mappingProfileModify = RestAssured.given()
+    RestAssured.given()
       .spec(spec)
       .body(new MappingProfileUpdateDto()
         .withProfile(new MappingProfile().withName("testModify")
@@ -545,7 +543,7 @@ public class JobProfileTest extends AbstractRestVerticleTest {
       .extract().as(ActionProfileUpdateDto.class);
 
     String mappingProfileIdCreate = UUID.randomUUID().toString();
-    MappingProfileUpdateDto mappingProfileCreate = RestAssured.given()
+    RestAssured.given()
       .spec(spec)
       .body(new MappingProfileUpdateDto()
         .withProfile(new MappingProfile().withName("testCreateInstance")
@@ -652,7 +650,7 @@ public class JobProfileTest extends AbstractRestVerticleTest {
       .extract().as(ActionProfileUpdateDto.class);
 
     String mappingProfileIdModify = UUID.randomUUID().toString();
-    MappingProfileUpdateDto mappingProfileModify = RestAssured.given()
+    RestAssured.given()
       .spec(spec)
       .body(new MappingProfileUpdateDto()
         .withProfile(new MappingProfile().withName("testModify")
@@ -687,7 +685,7 @@ public class JobProfileTest extends AbstractRestVerticleTest {
       .extract().as(ActionProfileUpdateDto.class);
 
     String mappingProfileIdCreate = UUID.randomUUID().toString();
-    MappingProfileUpdateDto mappingProfileCreate = RestAssured.given()
+    RestAssured.given()
       .spec(spec)
       .body(new MappingProfileUpdateDto()
         .withProfile(new MappingProfile().withName("testCreateInstance")
@@ -883,7 +881,7 @@ public class JobProfileTest extends AbstractRestVerticleTest {
       .spec(spec)
       .body(new JsonObject().toString())
       .when()
-      .put(JOB_PROFILES_PATH + "/" + UUID.randomUUID().toString())
+      .put(JOB_PROFILES_PATH + "/" + UUID.randomUUID())
       .then()
       .statusCode(HttpStatus.SC_UNPROCESSABLE_ENTITY);
   }
@@ -894,7 +892,7 @@ public class JobProfileTest extends AbstractRestVerticleTest {
       .spec(spec)
       .body(jobProfile_2)
       .when()
-      .put(JOB_PROFILES_PATH + "/" + UUID.randomUUID().toString())
+      .put(JOB_PROFILES_PATH + "/" + UUID.randomUUID())
       .then()
       .statusCode(HttpStatus.SC_NOT_FOUND);
   }
@@ -906,7 +904,7 @@ public class JobProfileTest extends AbstractRestVerticleTest {
       .body(jobProfile_2)
       .when()
       .post(JOB_PROFILES_PATH);
-    Assert.assertThat(createResponse.statusCode(), is(HttpStatus.SC_CREATED));
+    Assert.assertEquals(HttpStatus.SC_CREATED, createResponse.statusCode());
     JobProfileUpdateDto jobProfile = createResponse.body().as(JobProfileUpdateDto.class);
 
     jobProfile.getProfile().setDescription("test");
@@ -935,7 +933,7 @@ public class JobProfileTest extends AbstractRestVerticleTest {
       .body(jobProfile_5)
       .when()
       .post(JOB_PROFILES_PATH);
-    Assert.assertThat(createResponse.statusCode(), is(HttpStatus.SC_CREATED));
+    Assert.assertEquals(HttpStatus.SC_CREATED, createResponse.statusCode());
     JobProfileUpdateDto jobProfile = createResponse.body().as(JobProfileUpdateDto.class);
 
     jobProfile.getProfile().setName("updated name");
@@ -1036,7 +1034,7 @@ public class JobProfileTest extends AbstractRestVerticleTest {
       .body(jobProfile_2)
       .when()
       .post(JOB_PROFILES_PATH);
-    Assert.assertThat(createResponse.statusCode(), is(HttpStatus.SC_CREATED));
+    Assert.assertEquals(HttpStatus.SC_CREATED, createResponse.statusCode());
     JobProfileUpdateDto jobProfile = createResponse.body().as(JobProfileUpdateDto.class);
 
     JsonObject jobProfileJson = JsonObject.mapFrom(jobProfile)
@@ -1056,7 +1054,7 @@ public class JobProfileTest extends AbstractRestVerticleTest {
     RestAssured.given()
       .spec(spec)
       .when()
-      .get(JOB_PROFILES_PATH + "/" + UUID.randomUUID().toString())
+      .get(JOB_PROFILES_PATH + "/" + UUID.randomUUID())
       .then()
       .statusCode(HttpStatus.SC_NOT_FOUND);
   }
@@ -1068,7 +1066,7 @@ public class JobProfileTest extends AbstractRestVerticleTest {
       .body(jobProfile_3)
       .when()
       .post(JOB_PROFILES_PATH);
-    Assert.assertThat(createResponse.statusCode(), is(HttpStatus.SC_CREATED));
+    Assert.assertEquals(HttpStatus.SC_CREATED, createResponse.statusCode());
     JobProfileUpdateDto jobProfile = createResponse.body().as(JobProfileUpdateDto.class);
 
     RestAssured.given()
@@ -1107,7 +1105,7 @@ public class JobProfileTest extends AbstractRestVerticleTest {
 
     //create mapping profile
     String mappingProfileId = UUID.randomUUID().toString();
-    MappingProfileUpdateDto mappingProfile = RestAssured.given()
+    RestAssured.given()
       .spec(spec)
       .body(new MappingProfileUpdateDto()
         .withProfile(new MappingProfile().withName("testMapping")
@@ -1268,7 +1266,7 @@ public class JobProfileTest extends AbstractRestVerticleTest {
        .extract().as(ActionProfileUpdateDto.class);
 
      String mappingProfileId = UUID.randomUUID().toString();
-     MappingProfileUpdateDto mappingProfile = RestAssured.given()
+     RestAssured.given()
        .spec(spec)
        .body(new MappingProfileUpdateDto()
          .withProfile(new MappingProfile().withName("testMapping")
@@ -1604,7 +1602,7 @@ public class JobProfileTest extends AbstractRestVerticleTest {
       .body(jobProfile)
       .when()
       .post(JOB_PROFILES_PATH);
-    Assert.assertThat(createResponse.statusCode(), is(HttpStatus.SC_CREATED));
+    Assert.assertEquals(HttpStatus.SC_CREATED, createResponse.statusCode());
     JobProfileUpdateDto profileToDelete = createResponse.body().as(JobProfileUpdateDto.class);
 
     // creation detail-profiles
@@ -1619,7 +1617,7 @@ public class JobProfileTest extends AbstractRestVerticleTest {
           .withFolioRecord(MARC_BIBLIOGRAPHIC)))
       .when()
       .post(ACTION_PROFILES_PATH);
-    Assert.assertThat(createResponse.statusCode(), is(HttpStatus.SC_CREATED));
+    Assert.assertEquals(HttpStatus.SC_CREATED, createResponse.statusCode());
     ActionProfileUpdateDto associatedActionProfile = createResponse.body().as(ActionProfileUpdateDto.class);
 
     String matchProfileId = UUID.randomUUID().toString();
@@ -1633,7 +1631,7 @@ public class JobProfileTest extends AbstractRestVerticleTest {
           .withExistingRecordType(EntityType.INSTANCE)))
       .when()
       .post(MATCH_PROFILES_PATH);
-    Assert.assertThat(createResponse.statusCode(), is(HttpStatus.SC_CREATED));
+    Assert.assertEquals(HttpStatus.SC_CREATED, createResponse.statusCode());
     MatchProfileUpdateDto associatedMatchProfile = createResponse.body().as(MatchProfileUpdateDto.class);
 
     // creation associations
@@ -1704,7 +1702,7 @@ public class JobProfileTest extends AbstractRestVerticleTest {
       .body(new JobProfileUpdateDto().withProfile(newJobProfile))
       .when()
       .post(JOB_PROFILES_PATH);
-    Assert.assertThat(createResponse.statusCode(), is(HttpStatus.SC_CREATED));
+    Assert.assertEquals(HttpStatus.SC_CREATED, createResponse.statusCode());
     JobProfileUpdateDto createdJobProfile = createResponse.body().as(JobProfileUpdateDto.class);
 
     createdJobProfile.getProfile().setName(jobProfile_1.getProfile().getName());
@@ -1834,7 +1832,7 @@ public class JobProfileTest extends AbstractRestVerticleTest {
       .body(jobProfile_2)
       .when()
       .post(JOB_PROFILES_PATH);
-    Assert.assertThat(createResponse.statusCode(), is(HttpStatus.SC_CREATED));
+    Assert.assertEquals(HttpStatus.SC_CREATED, createResponse.statusCode());
     JobProfileUpdateDto jobProfile = createResponse.body().as(JobProfileUpdateDto.class);
 
     RestAssured.given()
@@ -1870,7 +1868,7 @@ public class JobProfileTest extends AbstractRestVerticleTest {
       .body(profileAssociation)
       .when()
       .post(ASSOCIATED_PROFILES_PATH);
-    Assert.assertThat(createResponse.statusCode(), is(HttpStatus.SC_CREATED));
+    Assert.assertEquals(HttpStatus.SC_CREATED, createResponse.statusCode());
     return createResponse.body().as(ProfileAssociation.class);
   }
 
@@ -1878,23 +1876,18 @@ public class JobProfileTest extends AbstractRestVerticleTest {
   public void clearTables(TestContext context) {
     Async async = context.async();
     PostgresClient pgClient = PostgresClient.getInstance(vertx, TENANT_ID);
-    pgClient.delete(PROFILE_WRAPPERS_TABLE_NAME, new Criterion(), event1 ->
+    pgClient.delete(ASSOCIATIONS_TABLE, new Criterion(), event1 ->
       pgClient.delete(SNAPSHOTS_TABLE_NAME, new Criterion(), event2 ->
-      pgClient.delete(JOB_TO_ACTION_PROFILES_TABLE, new Criterion(), event3 ->
-        pgClient.delete(JOB_TO_MATCH_PROFILES_TABLE, new Criterion(), event4 ->
-          pgClient.delete(ACTION_TO_MAPPING_PROFILES_TABLE, new Criterion(), event5 ->
-            pgClient.delete(MATCH_TO_ACTION_PROFILES_TABLE_NAME, new Criterion(), event6 ->
-              pgClient.delete(JOB_PROFILES_TABLE_NAME, new Criterion(), event7 ->
-                pgClient.delete(MATCH_PROFILES_TABLE_NAME, new Criterion(), event8 ->
-                  pgClient.delete(ACTION_PROFILES_TABLE_NAME, new Criterion(), event9 ->
-                    pgClient.delete(ACTION_TO_ACTION_PROFILES_TABLE_NAME, new Criterion(), event10 ->
-                      pgClient.delete(MAPPING_PROFILES_TABLE_NAME, new Criterion(), event11 ->
-                        pgClient.delete(MATCH_TO_MATCH_PROFILES_TABLE_NAME, new Criterion(), event12 ->
-                          pgClient.delete(PROFILE_WRAPPERS_TABLE, new Criterion(), event13 -> {
-                            if (event12.failed()) {
-                            context.fail(event12.cause());
-                          }
-                          async.complete();
-                        })))))))))))));
+        pgClient.delete(PROFILE_WRAPPERS_TABLE_NAME, new Criterion(), event3 ->
+          pgClient.delete(JOB_PROFILES_TABLE_NAME, new Criterion(), event4 ->
+            pgClient.delete(MATCH_PROFILES_TABLE_NAME, new Criterion(), event5 ->
+              pgClient.delete(ACTION_PROFILES_TABLE_NAME, new Criterion(), event6 ->
+                  pgClient.delete(MAPPING_PROFILES_TABLE_NAME, new Criterion(), event7 ->
+                      pgClient.delete(PROFILE_WRAPPERS_TABLE, new Criterion(), event8 -> {
+                        if (event7.failed()) {
+                        context.fail(event7.cause());
+                      }
+                      async.complete();
+                    }))))))));
   }
 }

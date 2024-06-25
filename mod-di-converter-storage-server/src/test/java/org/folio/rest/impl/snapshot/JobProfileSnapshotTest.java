@@ -58,17 +58,12 @@ public class JobProfileSnapshotTest extends AbstractRestVerticleTest {
   public static final String PROFILE_TYPE_PARAM = "profileType";
   private static final String JOB_PROFILE_ID_PARAM = "jobProfileId";
 
-  private static final String JOB_TO_MATCH_PROFILES_TABLE_NAME = "job_to_match_profiles";
-  private static final String MATCH_TO_ACTION_PROFILES_TABLE_NAME = "match_to_action_profiles";
-  private static final String ACTION_TO_MAPPING_PROFILES_TABLE_NAME = "action_to_mapping_profiles";
-  private static final String JOB_TO_ACTION_PROFILES_TABLE_NAME = "job_to_action_profiles";
   private static final String JOB_PROFILES_TABLE_NAME = "job_profiles";
   private static final String ACTION_PROFILES_TABLE_NAME = "action_profiles";
   private static final String MAPPING_PROFILES_TABLE_NAME = "mapping_profiles";
   private static final String MATCH_PROFILES_TABLE_NAME = "match_profiles";
   private static final String SNAPSHOTS_TABLE_NAME = "profile_snapshots";
-  private static final String ACTION_TO_ACTION_PROFILES_TABLE_NAME = "action_to_action_profiles";
-  private static final String MATCH_TO_MATCH_PROFILES_TABLE_NAME = "match_to_match_profiles";
+  private static final String ASSOCIATIONS_TABLE = "profile_associations";
 
   private static final String PROFILE_WRAPPERS_TABLE = "profile_wrappers";
 
@@ -187,7 +182,7 @@ public class JobProfileSnapshotTest extends AbstractRestVerticleTest {
     RestAssured.given()
       .spec(spec)
       .when()
-      .get(PROFILE_SNAPSHOT_PATH + "/" + UUID.randomUUID().toString())
+      .get(PROFILE_SNAPSHOT_PATH + "/" + UUID.randomUUID())
       .then()
       .statusCode(HttpStatus.SC_BAD_REQUEST);
     async.complete();
@@ -200,7 +195,7 @@ public class JobProfileSnapshotTest extends AbstractRestVerticleTest {
       .spec(spec)
       .when()
       .queryParam(PROFILE_TYPE_PARAM, "invalid param")
-      .get(PROFILE_SNAPSHOT_PATH + "/" + UUID.randomUUID().toString())
+      .get(PROFILE_SNAPSHOT_PATH + "/" + UUID.randomUUID())
       .then()
       .statusCode(HttpStatus.SC_BAD_REQUEST);
     async.complete();
@@ -428,22 +423,17 @@ public class JobProfileSnapshotTest extends AbstractRestVerticleTest {
   public void clearTables(TestContext context) {
     Async async = context.async();
     PostgresClient pgClient = PostgresClient.getInstance(vertx, TENANT_ID);
-    pgClient.delete(SNAPSHOTS_TABLE_NAME, new Criterion(), event2 ->
-      pgClient.delete(PROFILE_WRAPPERS_TABLE, new Criterion(), event13 ->
-        pgClient.delete(JOB_TO_ACTION_PROFILES_TABLE_NAME, new Criterion(), event3 ->
-        pgClient.delete(JOB_TO_MATCH_PROFILES_TABLE_NAME, new Criterion(), event4 ->
-          pgClient.delete(ACTION_TO_MAPPING_PROFILES_TABLE_NAME, new Criterion(), event5 ->
-            pgClient.delete(MATCH_TO_ACTION_PROFILES_TABLE_NAME, new Criterion(), event6 ->
-              pgClient.delete(JOB_PROFILES_TABLE_NAME, new Criterion(), event7 ->
-                pgClient.delete(MATCH_PROFILES_TABLE_NAME, new Criterion(), event8 ->
-                  pgClient.delete(ACTION_PROFILES_TABLE_NAME, new Criterion(), event9 ->
-                    pgClient.delete(ACTION_TO_ACTION_PROFILES_TABLE_NAME, new Criterion(), event10 ->
-                      pgClient.delete(MAPPING_PROFILES_TABLE_NAME, new Criterion(), event11 ->
-                        pgClient.delete(MATCH_TO_MATCH_PROFILES_TABLE_NAME, new Criterion(), event12 -> {
-                          if (event12.failed()) {
-                            context.fail(event12.cause());
-                          }
-                          async.complete();
-                        }))))))))))));
+    pgClient.delete(SNAPSHOTS_TABLE_NAME, new Criterion(), event1 ->
+      pgClient.delete(ASSOCIATIONS_TABLE, new Criterion(), event2 ->
+        pgClient.delete(PROFILE_WRAPPERS_TABLE, new Criterion(), event3 ->
+          pgClient.delete(JOB_PROFILES_TABLE_NAME, new Criterion(), event4 ->
+            pgClient.delete(MATCH_PROFILES_TABLE_NAME, new Criterion(), event5 ->
+              pgClient.delete(ACTION_PROFILES_TABLE_NAME, new Criterion(), event6 ->
+                  pgClient.delete(MAPPING_PROFILES_TABLE_NAME, new Criterion(), event7 -> {
+                      if (event7.failed()) {
+                        context.fail(event7.cause());
+                      }
+                      async.complete();
+                    })))))));
   }
 }

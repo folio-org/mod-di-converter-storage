@@ -51,22 +51,16 @@ import static org.junit.Assert.assertEquals;
 public class ActionProfileTest extends AbstractRestVerticleTest {
 
   static final String ACTION_PROFILES_TABLE_NAME = "action_profiles";
-  private static final String ACTION_TO_ACTION_PROFILES_TABLE_NAME = "action_to_action_profiles";
-  private static final String ACTION_TO_MAPPING_PROFILES_TABLE_NAME = "action_to_mapping_profiles";
   static final String ACTION_PROFILES_PATH = "/data-import-profiles/actionProfiles";
   private static final String ENTITY_TYPES_PATH = " /data-import-profiles/entityTypes";
   private static final String JOB_PROFILES_TABLE_NAME = "job_profiles";
-  public static final String JOB_TO_ACTION_PROFILES_TABLE_NAME = "job_to_action_profiles";
-  public static final String JOB_TO_MATCH_PROFILES_TABLE_NAME = "job_to_match_profiles";
   static final String MAPPING_PROFILES_TABLE_NAME = "mapping_profiles";
   static final String MATCH_PROFILES_TABLE_NAME = "match_profiles";
   private static final String SNAPSHOTS_TABLE_NAME = "profile_snapshots";
   private static final String PROFILE_WRAPPERS_TABLE_NAME = "profile_wrappers";
-  private static final String MATCH_TO_ACTION_PROFILES_TABLE_NAME = "match_to_action_profiles";
-  private static final String MATCH_TO_MATCH_PROFILES_TABLE_NAME = "match_to_match_profiles";
+  private static final String ASSOCIATIONS_TABLE_NAME = "profile_associations";
   private static final String ACTION_PROFILE_UUID = "16449d21-ad7c-4f69-b31e-a521fe4ae893";
   private static final String ASSOCIATED_PROFILES_PATH = "/data-import-profiles/profileAssociations";
-  private static final String PROFILE_WRAPPERS_TABLE = "profile_wrappers";
   private final List<String> defaultActionProfileIds = Arrays.asList(
     "d0ebba8a-2f0f-11eb-adc1-0242ac120002", //OCLC_CREATE_INSTANCE_ACTION_PROFILE_ID
     "cddff0e1-233c-47ba-8be5-553c632709d9", //OCLC_UPDATE_INSTANCE_ACTION_PROFILE_ID
@@ -274,7 +268,7 @@ public class ActionProfileTest extends AbstractRestVerticleTest {
       .spec(spec)
       .body(new JsonObject().toString())
       .when()
-      .put(ACTION_PROFILES_PATH + "/" + UUID.randomUUID().toString())
+      .put(ACTION_PROFILES_PATH + "/" + UUID.randomUUID())
       .then()
       .statusCode(HttpStatus.SC_UNPROCESSABLE_ENTITY);
   }
@@ -332,7 +326,7 @@ public class ActionProfileTest extends AbstractRestVerticleTest {
       .spec(spec)
       .body(actionProfile_2)
       .when()
-      .put(ACTION_PROFILES_PATH + "/" + UUID.randomUUID().toString())
+      .put(ACTION_PROFILES_PATH + "/" + UUID.randomUUID())
       .then()
       .statusCode(HttpStatus.SC_NOT_FOUND);
   }
@@ -349,7 +343,7 @@ public class ActionProfileTest extends AbstractRestVerticleTest {
         .withFolioRecord(INSTANCE)))
       .when()
       .post(ACTION_PROFILES_PATH);
-    Assert.assertThat(createResponse.statusCode(), is(HttpStatus.SC_CREATED));
+    Assert.assertEquals(HttpStatus.SC_CREATED, createResponse.statusCode());
     ActionProfileUpdateDto createdProfile = createResponse.body().as(ActionProfileUpdateDto.class);
 
     createdProfile.getProfile().setName(actionProfile_1.getProfile().getName());
@@ -369,7 +363,7 @@ public class ActionProfileTest extends AbstractRestVerticleTest {
       .body(actionProfile_2)
       .when()
       .post(ACTION_PROFILES_PATH);
-    Assert.assertThat(createResponse.statusCode(), is(HttpStatus.SC_CREATED));
+    Assert.assertEquals(HttpStatus.SC_CREATED, createResponse.statusCode());
     ActionProfileUpdateDto actionProfile = createResponse.body().as(ActionProfileUpdateDto.class);
 
     actionProfile.getProfile().setDescription("test");
@@ -473,12 +467,11 @@ public class ActionProfileTest extends AbstractRestVerticleTest {
           .withExistingRecordType(EntityType.INSTANCE)))
       .when()
       .post(MAPPING_PROFILES_PATH);
-    Assert.assertThat(createResponse.statusCode(), is(HttpStatus.SC_CREATED));
+    Assert.assertEquals(HttpStatus.SC_CREATED, createResponse.statusCode());
     MappingProfileUpdateDto associatedMappingProfile = createResponse.body().as(MappingProfileUpdateDto.class);
 
     //creation association1 actionProfile1 - mappingProfile
-    ProfileAssociation actionToMappingAssociation1 =
-      postProfileAssociation(
+    postProfileAssociation(
         profileAssociation1
           .withMasterProfileId(actionProfileDto1.getProfile().getId())
           .withMasterProfileType(ProfileType.ACTION_PROFILE)
@@ -487,8 +480,7 @@ public class ActionProfileTest extends AbstractRestVerticleTest {
         ACTION_PROFILE, MAPPING_PROFILE);
 
     //creation association2 actionProfile2 - mappingProfile
-    ProfileAssociation actionToMappingAssociation2 =
-      postProfileAssociation(
+    postProfileAssociation(
         profileAssociation2
           .withMasterProfileId(actionProfileDto2.getProfile().getId())
           .withMasterProfileType(ProfileType.ACTION_PROFILE)
@@ -550,9 +542,6 @@ public class ActionProfileTest extends AbstractRestVerticleTest {
         .withMasterProfileId(actionProfileDto.getId())
         .withDetailProfileType(ProfileType.MAPPING_PROFILE))));
 
-    String actionProfileWrapperId =
-      mappingProfileDto.getAddedRelations().get(0).getMasterWrapperId();
-
     String actionProfileId = actionProfileDto.getId();
     String mappingProfileId = mappingProfileDto.getId();
 
@@ -595,7 +584,7 @@ public class ActionProfileTest extends AbstractRestVerticleTest {
     RestAssured.given()
       .spec(spec)
       .when()
-      .get(ACTION_PROFILES_PATH + "/" + UUID.randomUUID().toString())
+      .get(ACTION_PROFILES_PATH + "/" + UUID.randomUUID())
       .then()
       .statusCode(HttpStatus.SC_NOT_FOUND);
   }
@@ -607,7 +596,7 @@ public class ActionProfileTest extends AbstractRestVerticleTest {
       .body(actionProfile_3)
       .when()
       .post(ACTION_PROFILES_PATH);
-    Assert.assertThat(createResponse.statusCode(), is(HttpStatus.SC_CREATED));
+    Assert.assertEquals(HttpStatus.SC_CREATED, createResponse.statusCode());
     ActionProfileUpdateDto actionProfile = createResponse.body().as(ActionProfileUpdateDto.class);
 
     RestAssured.given()
@@ -629,7 +618,7 @@ public class ActionProfileTest extends AbstractRestVerticleTest {
     RestAssured.given()
       .spec(spec)
       .when()
-      .delete(ACTION_PROFILES_PATH + "/" + UUID.randomUUID().toString())
+      .delete(ACTION_PROFILES_PATH + "/" + UUID.randomUUID())
       .then()
       .statusCode(HttpStatus.SC_NOT_FOUND);
   }
@@ -641,7 +630,7 @@ public class ActionProfileTest extends AbstractRestVerticleTest {
       .body(actionProfile_1)
       .when()
       .post(ACTION_PROFILES_PATH);
-    Assert.assertThat(createResponse.statusCode(), is(HttpStatus.SC_CREATED));
+    Assert.assertEquals(HttpStatus.SC_CREATED, createResponse.statusCode());
     ActionProfileUpdateDto profileToDelete = createResponse.body().as(ActionProfileUpdateDto.class);
 
     createResponse = RestAssured.given()
@@ -649,7 +638,7 @@ public class ActionProfileTest extends AbstractRestVerticleTest {
       .body(actionProfile_2)
       .when()
       .post(ACTION_PROFILES_PATH);
-    Assert.assertThat(createResponse.statusCode(), is(HttpStatus.SC_CREATED));
+    Assert.assertEquals(HttpStatus.SC_CREATED, createResponse.statusCode());
     ActionProfileUpdateDto associatedActionProfile = createResponse.body().as(ActionProfileUpdateDto.class);
 
     RestAssured.given()
@@ -683,7 +672,7 @@ public class ActionProfileTest extends AbstractRestVerticleTest {
       .body(actionProfile_2)
       .when()
       .post(ACTION_PROFILES_PATH);
-    Assert.assertThat(createResponse.statusCode(), is(HttpStatus.SC_CREATED));
+    Assert.assertEquals(HttpStatus.SC_CREATED, createResponse.statusCode());
     ActionProfileUpdateDto profile = createResponse.body().as(ActionProfileUpdateDto.class);
 
     RestAssured.given()
@@ -717,7 +706,7 @@ public class ActionProfileTest extends AbstractRestVerticleTest {
       .body(actionProfile_1)
       .when()
       .post(ACTION_PROFILES_PATH);
-    Assert.assertThat(createResponse.statusCode(), is(HttpStatus.SC_CREATED));
+    Assert.assertEquals(HttpStatus.SC_CREATED, createResponse.statusCode());
     ActionProfileUpdateDto profileToDelete = createResponse.body().as(ActionProfileUpdateDto.class);
 
     // creation detail-profiles
@@ -726,7 +715,7 @@ public class ActionProfileTest extends AbstractRestVerticleTest {
       .body(actionProfile_2)
       .when()
       .post(ACTION_PROFILES_PATH);
-    Assert.assertThat(createResponse.statusCode(), is(HttpStatus.SC_CREATED));
+    Assert.assertEquals(HttpStatus.SC_CREATED, createResponse.statusCode());
     ActionProfileUpdateDto associatedActionProfile = createResponse.body().as(ActionProfileUpdateDto.class);
 
     createResponse = RestAssured.given()
@@ -736,7 +725,7 @@ public class ActionProfileTest extends AbstractRestVerticleTest {
         .withExistingRecordType(EntityType.INSTANCE)))
       .when()
       .post(MAPPING_PROFILES_PATH);
-    Assert.assertThat(createResponse.statusCode(), is(HttpStatus.SC_CREATED));
+    Assert.assertEquals(HttpStatus.SC_CREATED, createResponse.statusCode());
     MappingProfileUpdateDto associatedMappingProfile = createResponse.body().as(MappingProfileUpdateDto.class);
 
     // creation associations
@@ -1131,7 +1120,7 @@ public class ActionProfileTest extends AbstractRestVerticleTest {
       .body(profileAssociation)
       .when()
       .post(ASSOCIATED_PROFILES_PATH);
-    Assert.assertThat(createResponse.statusCode(), is(HttpStatus.SC_CREATED));
+    Assert.assertEquals(HttpStatus.SC_CREATED, createResponse.statusCode());
     return createResponse.body().as(ProfileAssociation.class);
   }
 
@@ -1139,23 +1128,17 @@ public class ActionProfileTest extends AbstractRestVerticleTest {
   public void clearTables(TestContext context) {
     Async async = context.async();
     PostgresClient pgClient = PostgresClient.getInstance(vertx, TENANT_ID);
-    pgClient.delete(PROFILE_WRAPPERS_TABLE_NAME, new Criterion(), event1 ->
+    pgClient.delete(ASSOCIATIONS_TABLE_NAME, new Criterion(), event1 ->
       pgClient.delete(SNAPSHOTS_TABLE_NAME, new Criterion(), event2 ->
-        pgClient.delete(JOB_TO_ACTION_PROFILES_TABLE_NAME, new Criterion(), event3 ->
-          pgClient.delete(JOB_TO_MATCH_PROFILES_TABLE_NAME, new Criterion(), event4 ->
-            pgClient.delete(ACTION_TO_MAPPING_PROFILES_TABLE_NAME, new Criterion(), event5 ->
-              pgClient.delete(MATCH_TO_ACTION_PROFILES_TABLE_NAME, new Criterion(), event6 ->
-                pgClient.delete(JOB_PROFILES_TABLE_NAME, new Criterion(), event7 ->
-                  pgClient.delete(MATCH_PROFILES_TABLE_NAME, new Criterion(), event8 ->
-                    pgClient.delete(ACTION_PROFILES_TABLE_NAME, new Criterion(), event9 ->
-                      pgClient.delete(ACTION_TO_ACTION_PROFILES_TABLE_NAME, new Criterion(), event10 ->
-                        pgClient.delete(MAPPING_PROFILES_TABLE_NAME, new Criterion(), event11 ->
-                          pgClient.delete(MATCH_TO_MATCH_PROFILES_TABLE_NAME, new Criterion(), event12 ->
-                            pgClient.delete(PROFILE_WRAPPERS_TABLE, new Criterion(), event13 -> {
-                              if (event12.failed()) {
-                                context.fail(event12.cause());
-                              }
-                              async.complete();
-                            })))))))))))));
+        pgClient.delete(PROFILE_WRAPPERS_TABLE_NAME, new Criterion(), event3 ->
+          pgClient.delete(JOB_PROFILES_TABLE_NAME, new Criterion(), event4 ->
+            pgClient.delete(MATCH_PROFILES_TABLE_NAME, new Criterion(), event5 ->
+                pgClient.delete(ACTION_PROFILES_TABLE_NAME, new Criterion(), event6 ->
+                  pgClient.delete(MAPPING_PROFILES_TABLE_NAME, new Criterion(), event7 -> {
+                    if (event7.failed()) {
+                      context.fail(event7.cause());
+                    }
+                    async.complete();
+                  })))))));
   }
 }

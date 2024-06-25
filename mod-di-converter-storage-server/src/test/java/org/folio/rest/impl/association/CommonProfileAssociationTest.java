@@ -21,18 +21,15 @@ import org.folio.rest.jaxrs.model.EntityType;
 import org.folio.rest.jaxrs.model.JobProfile;
 import org.folio.rest.jaxrs.model.MappingDetail;
 import org.folio.rest.jaxrs.model.ProfileType;
-import org.folio.rest.jaxrs.model.ReactToType;
 import org.folio.rest.jaxrs.model.JobProfileUpdateDto;
 import org.folio.rest.jaxrs.model.MappingProfile;
 import org.folio.rest.jaxrs.model.MappingProfileUpdateDto;
 import org.folio.rest.jaxrs.model.MatchProfile;
 import org.folio.rest.jaxrs.model.MatchProfileUpdateDto;
 import org.folio.rest.jaxrs.model.ProfileAssociation;
-import org.folio.rest.jaxrs.model.ProfileType;
 import org.folio.rest.persist.Criteria.Criterion;
 import org.folio.rest.persist.PostgresClient;
 import org.junit.Assert;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
@@ -51,14 +48,8 @@ import static org.hamcrest.Matchers.is;
 @RunWith(VertxUnitRunner.class)
 public class CommonProfileAssociationTest extends AbstractRestVerticleTest {
 
-  public static final String ACTION_TO_ACTION_PROFILES = "action_to_action_profiles";
-  public static final String ACTION_TO_MAPPING_PROFILES = "action_to_mapping_profiles";
   public static final String PROFILE_WRAPPERS = "profile_wrappers";
-  public static final String ACTION_TO_MATCH_PROFILES = "action_to_match_profiles";
-  public static final String JOB_TO_ACTION_PROFILES = "job_to_action_profiles";
-  public static final String JOB_TO_MATCH_PROFILES = "job_to_match_profiles";
-  public static final String MATCH_TO_ACTION_PROFILES = "match_to_action_profiles";
-  public static final String MATCH_TO_MATCH_PROFILES = "match_to_match_profiles";
+  public static final String ASSOCIATIONS_TABLE = "profile_associations";
 
   public static final String JOB_PROFILES_TABLE = "job_profiles";
   public static final String ACTION_PROFILES_TABLE = "action_profiles";
@@ -218,28 +209,6 @@ public class CommonProfileAssociationTest extends AbstractRestVerticleTest {
   }
 
   @Test
-  public void runTestShouldReturnBadRequestOnGetWhenSpecifiedIncompatibleMasterAndDetailTypes() {
-    shouldReturnBadRequestOnGetWhenSpecifiedIncompatibleMasterAndDetailTypes(MAPPING_PROFILE, ACTION_PROFILE);
-    shouldReturnBadRequestOnGetWhenSpecifiedIncompatibleMasterAndDetailTypes(MAPPING_PROFILE, MATCH_PROFILE);
-    shouldReturnBadRequestOnGetWhenSpecifiedIncompatibleMasterAndDetailTypes(MAPPING_PROFILE, MAPPING_PROFILE);
-    shouldReturnBadRequestOnGetWhenSpecifiedIncompatibleMasterAndDetailTypes(ACTION_PROFILE, JOB_PROFILE);
-    shouldReturnBadRequestOnGetWhenSpecifiedIncompatibleMasterAndDetailTypes(MAPPING_PROFILE, JOB_PROFILE);
-    shouldReturnBadRequestOnGetWhenSpecifiedIncompatibleMasterAndDetailTypes(MATCH_PROFILE, JOB_PROFILE);
-  }
-
-  public void shouldReturnBadRequestOnGetWhenSpecifiedIncompatibleMasterAndDetailTypes(ProfileType masterProfileType, ProfileType detailProfileType) {
-    RestAssured.given()
-      .spec(spec)
-      .queryParam("master", masterProfileType.value())
-      .queryParam("detail", detailProfileType.value())
-      .when()
-      .get(ASSOCIATED_PROFILES_URL)
-      .then()
-      .statusCode(HttpStatus.SC_BAD_REQUEST);
-  }
-
-
-  @Test
   public void runTestShouldReturnNotFoundOnGetById(TestContext testContext) {
     shouldReturnNotFoundOnGetById(testContext, ACTION_PROFILE, ACTION_PROFILE);
     shouldReturnNotFoundOnGetById(testContext, ACTION_PROFILE, MAPPING_PROFILE);
@@ -257,7 +226,7 @@ public class CommonProfileAssociationTest extends AbstractRestVerticleTest {
       .queryParam("master", masterProfileType.value())
       .queryParam("detail", detailProfileType.value())
       .when()
-      .get(ASSOCIATED_PROFILES_URL + "/" + UUID.randomUUID().toString())
+      .get(ASSOCIATED_PROFILES_URL + "/" + UUID.randomUUID())
       .then()
       .statusCode(HttpStatus.SC_NOT_FOUND);
     async.complete();
@@ -309,7 +278,7 @@ public class CommonProfileAssociationTest extends AbstractRestVerticleTest {
       .body(profileAssociation)
       .when()
       .post(ASSOCIATED_PROFILES_URL);
-    Assert.assertThat(createResponse.statusCode(), is(HttpStatus.SC_CREATED));
+    Assert.assertEquals(HttpStatus.SC_CREATED, createResponse.statusCode());
     ProfileAssociation savedProfileAssociation = createResponse.body().as(ProfileAssociation.class);
     async.complete();
 
@@ -325,8 +294,7 @@ public class CommonProfileAssociationTest extends AbstractRestVerticleTest {
       .body("id", is(savedProfileAssociation.getId()))
       .body("masterProfileId", is(masterWrapper.getId()))
       .body("detailProfileId", is(detailWrapper.getId()))
-      .body("order", is(savedProfileAssociation.getOrder()))
-      .body("triggered", is(savedProfileAssociation.getTriggered()));
+      .body("order", is(savedProfileAssociation.getOrder()));
     async.complete();
 
     clearTables(testContext);
@@ -363,7 +331,7 @@ public class CommonProfileAssociationTest extends AbstractRestVerticleTest {
       .queryParam("master", masterProfileType.value())
       .queryParam("detail", detailProfileType.value())
       .when()
-      .delete(ASSOCIATED_PROFILES_URL + "/" + UUID.randomUUID().toString())
+      .delete(ASSOCIATED_PROFILES_URL + "/" + UUID.randomUUID())
       .then()
       .statusCode(HttpStatus.SC_NOT_FOUND);
     async.complete();
@@ -454,7 +422,7 @@ public class CommonProfileAssociationTest extends AbstractRestVerticleTest {
       .queryParam("detail", detailContentType.value())
       .body(new JobProfile())
       .when()
-      .put(ASSOCIATED_PROFILES_URL + "/" + UUID.randomUUID().toString())
+      .put(ASSOCIATED_PROFILES_URL + "/" + UUID.randomUUID())
       .then()
       .statusCode(HttpStatus.SC_UNPROCESSABLE_ENTITY);
     async.complete();
@@ -656,8 +624,7 @@ public class CommonProfileAssociationTest extends AbstractRestVerticleTest {
       .body("id", is(savedProfileAssociation.getId()))
       .body("masterProfileId", is(masterProfileWrapper.getId()))
       .body("detailProfileId", is(detailProfileWrapper2.getId()))
-      .body("order", is(savedProfileAssociation.getOrder()))
-      .body("triggered", is(savedProfileAssociation.getTriggered()));
+      .body("order", is(savedProfileAssociation.getOrder()));
     async.complete();
 
     clearTables(testContext);
@@ -714,7 +681,7 @@ public class CommonProfileAssociationTest extends AbstractRestVerticleTest {
       .withTriggered(true);
 
     Async async = testContext.async();
-    ProfileAssociation savedProfileAssociation = RestAssured.given()
+    RestAssured.given()
       .spec(spec)
       .queryParam("master", masterProfileType.value())
       .queryParam("detail", detailProfileType.value())
@@ -728,7 +695,7 @@ public class CommonProfileAssociationTest extends AbstractRestVerticleTest {
     async.complete();
 
     async = testContext.async();
-    ProfileAssociation savedProfileAssociation2 = RestAssured.given()
+    RestAssured.given()
       .spec(spec)
       .queryParam("master", masterProfileType.value())
       .queryParam("detail", detailProfileType.value())
@@ -1016,7 +983,7 @@ public class CommonProfileAssociationTest extends AbstractRestVerticleTest {
       .withTriggered(true);
 
     Async async = testContext.async();
-    ProfileAssociation savedProfileAssociation = RestAssured.given()
+    RestAssured.given()
       .spec(spec)
       .queryParam("master", masterProfileType.value())
       .queryParam("detail", detailProfileType.value())
@@ -1030,7 +997,7 @@ public class CommonProfileAssociationTest extends AbstractRestVerticleTest {
     async.complete();
 
     async = testContext.async();
-    ProfileAssociation savedProfileAssociation2 = RestAssured.given()
+    RestAssured.given()
       .spec(spec)
       .queryParam("master", masterProfileType.value())
       .queryParam("detail", detailProfileType.value())
@@ -1273,13 +1240,7 @@ public class CommonProfileAssociationTest extends AbstractRestVerticleTest {
   @Override
   public void clearTables(TestContext context) {
     Async async = context.async();
-    deleteTable(ACTION_TO_ACTION_PROFILES)
-      .compose(e -> deleteTable(ACTION_TO_MAPPING_PROFILES))
-      .compose(e -> deleteTable(ACTION_TO_MATCH_PROFILES))
-      .compose(e -> deleteTable(JOB_TO_ACTION_PROFILES))
-      .compose(e -> deleteTable(JOB_TO_MATCH_PROFILES))
-      .compose(e -> deleteTable(MATCH_TO_ACTION_PROFILES))
-      .compose(e -> deleteTable(MATCH_TO_MATCH_PROFILES))
+    deleteTable(ASSOCIATIONS_TABLE)
       .compose(e -> deleteTable(PROFILE_WRAPPERS))
       .compose(e -> deleteTable(ACTION_PROFILES_TABLE))
       .compose(e -> deleteTable(JOB_PROFILES_TABLE))

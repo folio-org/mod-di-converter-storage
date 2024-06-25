@@ -429,6 +429,21 @@
       "run": "after",
       "snippetPath": "get_profile_snapshot.sql",
       "fromModuleVersion": "mod-di-converter-storage-2.3.0"
+    },
+    {
+      "run": "after",
+      "snippetPath": "associations-migration-gen-table/create_profile_associations.sql",
+      "fromModuleVersion": "mod-di-converter-storage-2.3.0"
+    },
+    {
+      "run": "after",
+      "snippetPath": "associations-migration-gen-table/create_indexes_on_profile_wrappers_columns.sql",
+      "fromModuleVersion": "mod-di-converter-storage-2.3.0"
+    },
+    {
+      "run": "after",
+      "snippetPath": "associations-migration-gen-table/actualize_schema_for_migrations.sql",
+      "fromModuleVersion": "mod-di-converter-storage-2.3.0"
     }
   ]
 }

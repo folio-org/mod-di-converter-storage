@@ -628,7 +628,7 @@ public class DataImportProfilesImpl implements DataImportProfiles {
                                                         Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     vertxContext.runOnContext(v -> {
       try {
-        profileAssociationService.save(entity, mapContentType(master), mapContentType(detail), tenantId)
+        profileAssociationService.save(entity, tenantId)
           .map((Response) PostDataImportProfilesProfileAssociationsResponse
             .respond201WithApplicationJson(entity, PostDataImportProfilesProfileAssociationsResponse.headersFor201()))
           .otherwise(ExceptionHelper::mapExceptionToResponse)
@@ -681,7 +681,7 @@ public class DataImportProfilesImpl implements DataImportProfiles {
                                                               Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     vertxContext.runOnContext(v -> {
       try {
-        profileAssociationService.delete(id, mapContentType(master), mapContentType(detail), tenantId)
+        profileAssociationService.delete(id, tenantId)
           .map(deleted -> deleted
             ? DeleteDataImportProfilesProfileAssociationsByIdResponse.respond204WithTextPlain(
             format("Profile association with id '%s' was successfully deleted", id))
@@ -709,7 +709,7 @@ public class DataImportProfilesImpl implements DataImportProfiles {
     vertxContext.runOnContext(c -> {
       try {
         OkapiConnectionParams params = new OkapiConnectionParams(okapiHeaders);
-        profileAssociationService.getById(id, mapContentType(master), mapContentType(detail), params.getTenantId())
+        profileAssociationService.getById(id, params.getTenantId())
           .map(optionalProfile -> optionalProfile.orElseThrow(() ->
             new NotFoundException(format("Profile association with id '%s' was not found", id))))
           .map(GetDataImportProfilesProfileAssociationsByIdResponse::respond200WithApplicationJson)

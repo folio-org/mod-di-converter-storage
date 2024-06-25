@@ -19,9 +19,9 @@ public interface ProfileAssociationService { //NOSONAR
   /**
    * Searches for ProfileAssociation by masterType and detailType
    *
+   * @param tenantId   tenant id
    * @param masterType a master type in association
    * @param detailType a detail type in association
-   * @param tenantId   tenant id
    * @return future with {@link ProfileAssociationCollection}
    */
   Future<ProfileAssociationCollection> getAll(ProfileType masterType, ProfileType detailType, String tenantId);
@@ -30,23 +30,19 @@ public interface ProfileAssociationService { //NOSONAR
    * Searches for ProfileAssociation by id
    *
    * @param id         entity id
-   * @param masterType a master type in association
-   * @param detailType a detail type in association
    * @param tenantId   tenant id
    * @return future with optional {@link ProfileAssociation}
    */
-  Future<Optional<ProfileAssociation>> getById(String id, ProfileType masterType, ProfileType detailType, String tenantId);
+  Future<Optional<ProfileAssociation>> getById(String id, String tenantId);
 
     /**
      * Saves ProfileAssociation entity
      *
      * @param entity     ProfileAssociation to save
-     * @param masterType a master type in association
-     * @param detailType a detail type in association
      * @param tenantId   tenantId
      * @return future with saved entity
      */
-  Future<ProfileAssociation> save(ProfileAssociation entity, ProfileType masterType, ProfileType detailType, String tenantId);
+  Future<ProfileAssociation> save(ProfileAssociation entity, String tenantId);
 
   /**
    * Saves List of ProfileAssociation entities
@@ -72,12 +68,10 @@ public interface ProfileAssociationService { //NOSONAR
    * Deletes ProfileAssociation entity by id
    *
    * @param id         entity id
-   * @param masterType a master type in association
-   * @param detailType a detail type in association
    * @param tenantId   tenant id
    * @return future with true if succeeded
    */
-  Future<Boolean> delete(String id, ProfileType masterType, ProfileType detailType, String tenantId);
+  Future<Boolean> delete(String id, String tenantId);
 
   /**
    * Finds details by master id.
