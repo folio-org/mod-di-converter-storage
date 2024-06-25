@@ -34,7 +34,7 @@ CREATE OR REPLACE FUNCTION remove_related_wrappers_profile_associations()
 RETURNS trigger AS
 $$
 BEGIN
-    IF OLD.master_profile_type = 'ACTION_PROFILE' AND OLD.detail_profile_type IN ('ACTION_PROFILE', 'MAPPING_PROFILE', 'MATCH_PROFILE') OR
+    IF OLD.master_profile_type = 'ACTION_PROFILE' AND OLD.detail_profile_type IN ('MAPPING_PROFILE') OR
            OLD.master_profile_type IN ('JOB_PROFILE', 'MATCH_PROFILE') AND OLD.detail_profile_type = 'MATCH_PROFILE' THEN
             DELETE FROM ${myuniversity}_${mymodule}.profile_wrappers
             WHERE id = OLD.detail_wrapper_id;
