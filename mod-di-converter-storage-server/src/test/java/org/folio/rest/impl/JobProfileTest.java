@@ -1,20 +1,41 @@
 package org.folio.rest.impl;
 
+import static org.folio.rest.impl.ActionProfileTest.ACTION_PROFILES_PATH;
+import static org.folio.rest.impl.ActionProfileTest.ACTION_PROFILES_TABLE_NAME;
+import static org.folio.rest.impl.MatchProfileTest.MATCH_PROFILES_PATH;
+import static org.folio.rest.jaxrs.model.ActionProfile.Action.CREATE;
+import static org.folio.rest.jaxrs.model.ActionProfile.Action.MODIFY;
+import static org.folio.rest.jaxrs.model.ActionProfile.Action.UPDATE;
+import static org.folio.rest.jaxrs.model.ActionProfile.FolioRecord.INSTANCE;
+import static org.folio.rest.jaxrs.model.ActionProfile.FolioRecord.MARC_BIBLIOGRAPHIC;
+import static org.folio.rest.jaxrs.model.JobProfile.DataType.DELIMITED;
+import static org.folio.rest.jaxrs.model.JobProfile.DataType.EDIFACT;
+import static org.folio.rest.jaxrs.model.JobProfile.DataType.MARC;
+import static org.folio.rest.jaxrs.model.ProfileType.ACTION_PROFILE;
+import static org.folio.rest.jaxrs.model.ProfileType.JOB_PROFILE;
+import static org.folio.rest.jaxrs.model.ProfileType.MAPPING_PROFILE;
+import static org.folio.rest.jaxrs.model.ProfileType.MATCH_PROFILE;
+import static org.folio.rest.jaxrs.model.ReactToType.MATCH;
+import static org.folio.rest.jaxrs.model.ReactToType.NON_MATCH;
+import static org.hamcrest.Matchers.empty;
+import static org.hamcrest.Matchers.everyItem;
+import static org.hamcrest.Matchers.hasEntry;
+import static org.hamcrest.Matchers.hasItem;
+import static org.hamcrest.Matchers.is;
+
 import io.restassured.RestAssured;
 import io.restassured.response.Response;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
+import io.vertx.sqlclient.Tuple;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
-import io.vertx.sqlclient.Tuple;
 import org.apache.http.HttpStatus;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 import org.folio.rest.jaxrs.model.ActionProfile;
 import org.folio.rest.jaxrs.model.ActionProfileUpdateDto;
 import org.folio.rest.jaxrs.model.EntityType;
@@ -29,30 +50,12 @@ import org.folio.rest.jaxrs.model.ProfileAssociation;
 import org.folio.rest.jaxrs.model.ProfileAssociationCollection;
 import org.folio.rest.jaxrs.model.ProfileSnapshotWrapper;
 import org.folio.rest.jaxrs.model.ProfileType;
-import org.folio.rest.jaxrs.model.ReactToType;
 import org.folio.rest.jaxrs.model.Tags;
 import org.folio.rest.persist.Criteria.Criterion;
 import org.folio.rest.persist.PostgresClient;
 import org.junit.Assert;
 import org.junit.Test;
 import org.junit.runner.RunWith;
-
-import static org.folio.rest.impl.ActionProfileTest.ACTION_PROFILES_PATH;
-import static org.folio.rest.impl.ActionProfileTest.ACTION_PROFILES_TABLE_NAME;
-import static org.folio.rest.impl.MatchProfileTest.MATCH_PROFILES_PATH;
-import static org.folio.rest.jaxrs.model.ActionProfile.Action.CREATE;
-import static org.folio.rest.jaxrs.model.ActionProfile.Action.MODIFY;
-import static org.folio.rest.jaxrs.model.ActionProfile.Action.UPDATE;
-import static org.folio.rest.jaxrs.model.ActionProfile.FolioRecord.INSTANCE;
-import static org.folio.rest.jaxrs.model.ActionProfile.FolioRecord.MARC_BIBLIOGRAPHIC;
-import static org.folio.rest.jaxrs.model.JobProfile.DataType.*;
-import static org.folio.rest.jaxrs.model.ProfileType.ACTION_PROFILE;
-import static org.folio.rest.jaxrs.model.ProfileType.JOB_PROFILE;
-import static org.folio.rest.jaxrs.model.ProfileType.MAPPING_PROFILE;
-import static org.folio.rest.jaxrs.model.ProfileType.MATCH_PROFILE;
-import static org.folio.rest.jaxrs.model.ReactToType.MATCH;
-import static org.folio.rest.jaxrs.model.ReactToType.NON_MATCH;
-import static org.hamcrest.Matchers.*;
 
 @RunWith(VertxUnitRunner.class)
 public class JobProfileTest extends AbstractRestVerticleTest {
@@ -108,6 +111,7 @@ public class JobProfileTest extends AbstractRestVerticleTest {
   static JobProfileUpdateDto jobProfileNotEmptyChildAndParent = new JobProfileUpdateDto()
     .withProfile(new JobProfile()
       .withName("Job profile with child and parent")
+      .withTags(new Tags().withTagList(Arrays.asList("lorem", "ipsum")))
       .withDataType(MARC)
       .withChildProfiles(List.of(new ProfileSnapshotWrapper().withId(UUID.randomUUID().toString())))
       .withParentProfiles(List.of(new ProfileSnapshotWrapper().withId(UUID.randomUUID().toString()))));
@@ -185,7 +189,7 @@ public class JobProfileTest extends AbstractRestVerticleTest {
   }
 
   @Test
-  public void shouldReturnSortedProfilesOnGetWhenSortByIsSpecified(TestContext testContext) {
+  public void shouldReturnSortedProfilesOnGetWhenSortByIsSpecified() {
     createProfiles();
     List<JobProfile> jobProfileList = RestAssured.given()
       .spec(spec)
@@ -1013,6 +1017,8 @@ public class JobProfileTest extends AbstractRestVerticleTest {
 
     jobProfile.getProfile().setDescription("test");
     jobProfile.getProfile().setDataType(DELIMITED);
+    jobProfile.getAddedRelations().get(0).setId(UUID.randomUUID().toString());
+
     RestAssured.given()
       .spec(spec)
       .body(jobProfile)
@@ -1044,6 +1050,7 @@ public class JobProfileTest extends AbstractRestVerticleTest {
     jobProfile.getProfile().setName("updated name");
     jobProfile.getProfile().setDescription("updated description");
     jobProfile.getProfile().setDataType(EDIFACT);
+    jobProfile.getAddedRelations().get(0).setId(UUID.randomUUID().toString());
 
     RestAssured.given()
       .spec(spec)
@@ -1060,13 +1067,21 @@ public class JobProfileTest extends AbstractRestVerticleTest {
 
   @Test
   public void shouldUpdateProfileAssociationsOnPut() {
-    JobProfileUpdateDto jobProfile = createJobProfile(
-      new JobProfileUpdateDto()
-        .withProfile(new JobProfile()
+    var jobUpdateDto = new JobProfileUpdateDto()
+      .withProfile(new JobProfile()
         .withId(UUID.randomUUID().toString())
         .withName("Bla")
         .withTags(new Tags().withTagList(Arrays.asList("lorem", "ipsum", "dolor")))
-        .withDataType(MARC)), "createAction", "createMapping");
+        .withDataType(MARC));
+
+    var matchUpdateDto = new MatchProfileUpdateDto()
+      .withProfile(new MatchProfile()
+        .withId(UUID.randomUUID().toString())
+        .withName("testMatch")
+        .withIncomingRecordType(EntityType.MARC_BIBLIOGRAPHIC)
+        .withExistingRecordType(EntityType.INSTANCE));
+
+    JobProfileUpdateDto jobProfile = createJobProfileWithMatch(jobUpdateDto, matchUpdateDto);
 
     JobProfileUpdateDto jobProfileToUpdate = RestAssured.given()
       .spec(spec)
@@ -1077,33 +1092,12 @@ public class JobProfileTest extends AbstractRestVerticleTest {
       .statusCode(HttpStatus.SC_CREATED)
       .extract().as(JobProfileUpdateDto.class);
 
-    MatchProfileUpdateDto associatedMatchProfile = RestAssured.given()
-      .spec(spec)
-      .body(new MatchProfileUpdateDto()
-        .withProfile(new MatchProfile()
-          .withId(UUID.randomUUID().toString())
-          .withName("testMatch")
-          .withIncomingRecordType(EntityType.MARC_BIBLIOGRAPHIC)
-          .withExistingRecordType(EntityType.INSTANCE)))
-      .when()
-      .post(MATCH_PROFILES_PATH)
-      .then()
-      .statusCode(HttpStatus.SC_CREATED)
-      .extract().as(MatchProfileUpdateDto.class);
-
-    ProfileAssociation jobToMatchAssociation = postProfileAssociation(
-      new ProfileAssociation()
-        .withDetailProfileId(associatedMatchProfile.getProfile().getId())
-        .withMasterProfileId(jobProfileToUpdate.getProfile().getId())
-        .withMasterProfileType(JOB_PROFILE)
-        .withDetailProfileType(MATCH_PROFILE)
-        .withReactTo(ReactToType.MATCH)
-        .withOrder(1),
-      JOB_PROFILE, MATCH_PROFILE);
-
     RestAssured.given()
       .spec(spec)
-      .body(jobProfileToUpdate.withDeletedRelations(List.of(jobToMatchAssociation)))
+      .body(
+        jobProfileToUpdate
+          .withAddedRelations(null)
+          .withDeletedRelations(List.of(jobProfile.getAddedRelations().get(0))))
       .when()
       .put(JOB_PROFILES_PATH + "/" + jobProfile.getProfile().getId())
       .then()
@@ -1670,20 +1664,6 @@ public class JobProfileTest extends AbstractRestVerticleTest {
 
   @Test
   public void shouldDeleteAssociationsWithDetailProfilesOnDelete() {
-    String jobProfileId = UUID.randomUUID().toString();
-    JobProfileUpdateDto jobProfile = new JobProfileUpdateDto()
-      .withProfile(new JobProfile().withId(jobProfileId).withName("Bla")
-        .withTags(new Tags().withTagList(Arrays.asList("lorem", "ipsum", "dolor")))
-        .withDataType(MARC));
-
-    Response createResponse = RestAssured.given()
-      .spec(spec)
-      .body(jobProfile)
-      .when()
-      .post(JOB_PROFILES_PATH);
-    Assert.assertEquals(HttpStatus.SC_CREATED, createResponse.statusCode());
-    JobProfileUpdateDto profileToDelete = createResponse.body().as(JobProfileUpdateDto.class);
-
     // creation detail-profiles
     String actionProfileId = UUID.randomUUID().toString();
     Response createResponse = RestAssured.given()
@@ -1734,7 +1714,7 @@ public class JobProfileTest extends AbstractRestVerticleTest {
       .body(jobProfile)
       .when()
       .post(JOB_PROFILES_PATH);
-    Assert.assertThat(createResponse.statusCode(), is(HttpStatus.SC_CREATED));
+    Assert.assertEquals(HttpStatus.SC_CREATED, createResponse.statusCode());
     JobProfileUpdateDto profileToDelete = createResponse.body().as(JobProfileUpdateDto.class);
 
     ProfileAssociation jobToActionAssociation =
@@ -1937,11 +1917,9 @@ public class JobProfileTest extends AbstractRestVerticleTest {
       .body("errors[0].message", is("Job profile read-only 'child' field should be empty"))
       .body("errors[1].message", is("Job profile read-only 'parent' field should be empty"));
   }
-  private static final Logger logger = LogManager.getLogger();
+
   @Test
   public void shouldReturnBadRequestWhenChildOrParentProfileIsNotEmptyOnPut() {
-    logger.info("Starting test: shouldReturnBadRequestWhenChildOrParentProfileIsNotEmptyOnPut");
-
     JobProfileUpdateDto jobProfileUpdateDto = createJobProfile(jobProfile_2, "createAction",
       "createMapping");
 
@@ -1955,7 +1933,7 @@ public class JobProfileTest extends AbstractRestVerticleTest {
 
     RestAssured.given()
       .spec(spec)
-      .body(jobProfileNotEmptyChildAndParent)
+      .body(jobProfileNotEmptyChildAndParent.withAddedRelations(null))
       .when()
       .put(JOB_PROFILES_PATH + "/" + jobProfile.getProfile().getId())
       .then()
@@ -1966,11 +1944,18 @@ public class JobProfileTest extends AbstractRestVerticleTest {
 
 
   private void createProfiles() {
-    List<JobProfileUpdateDto> jobProfilesToPost = Arrays.asList(jobProfile_1, jobProfile_2, jobProfile_3);
-    for (JobProfileUpdateDto profile : jobProfilesToPost) {
+    List<Tuple> jobProfilesToPost = Arrays.asList(
+      Tuple.of(jobProfile_1, "actionCreate1", "mappingCreate1"),
+      Tuple.of(jobProfile_2, "actionCreate2", "mappingCreate2"),
+      Tuple.of(jobProfile_3, "actionCreate3", "mappingCreate3"));
+    for (Tuple profile : jobProfilesToPost) {
+      JobProfileUpdateDto jobProfile = createJobProfile(
+        profile.get(JobProfileUpdateDto.class, 0),
+        profile.getString(1),
+        profile.getString(2));
       RestAssured.given()
         .spec(spec)
-        .body(profile)
+        .body(jobProfile)
         .when()
         .post(JOB_PROFILES_PATH)
         .then()
@@ -1992,7 +1977,6 @@ public class JobProfileTest extends AbstractRestVerticleTest {
 
   @Override
   public void clearTables(TestContext context) {
-    logger.info("Tearing down test environment...");
     Async async = context.async();
     PostgresClient pgClient = PostgresClient.getInstance(vertx, TENANT_ID);
     pgClient.delete(ASSOCIATIONS_TABLE, new Criterion(), event1 ->
