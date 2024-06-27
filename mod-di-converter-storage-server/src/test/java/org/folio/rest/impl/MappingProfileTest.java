@@ -53,14 +53,10 @@ import static org.hamcrest.Matchers.notNullValue;
 public class MappingProfileTest extends AbstractRestVerticleTest {
 
   static final String MAPPING_PROFILES_TABLE_NAME = "mapping_profiles";
-  private static final String ACTION_TO_MAPPING_PROFILES_TABLE = "action_to_mapping_profiles";
   static final String MAPPING_PROFILES_PATH = "/data-import-profiles/mappingProfiles";
   private static final String ASSOCIATED_PROFILES_PATH = "/data-import-profiles/profileAssociations";
   private static final String JOB_PROFILES_TABLE_NAME = "job_profiles";
-  private static final String JOB_TO_ACTION_PROFILES_TABLE = "job_to_action_profiles";
-  private static final String JOB_TO_MATCH_PROFILES_TABLE = "job_to_match_profiles";
-  private static final String MATCH_TO_MATCH_PROFILES_TABLE = "match_to_match_profiles";
-  private static final String MATCH_TO_ACTION_PROFILES_TABLE = "match_to_action_profiles";
+  private static final String ASSOCIATIONS_TABLE = "profile_associations";
   static final String MATCH_PROFILES_TABLE_NAME = "match_profiles";
   private static final String PROFILE_WRAPPERS_TABLE = "profile_wrappers";
 
@@ -383,7 +379,7 @@ public class MappingProfileTest extends AbstractRestVerticleTest {
       .spec(spec)
       .body(new JsonObject().toString())
       .when()
-      .put(MAPPING_PROFILES_PATH + "/" + UUID.randomUUID().toString())
+      .put(MAPPING_PROFILES_PATH + "/" + UUID.randomUUID())
       .then()
       .statusCode(HttpStatus.SC_UNPROCESSABLE_ENTITY);
   }
@@ -394,7 +390,7 @@ public class MappingProfileTest extends AbstractRestVerticleTest {
       .spec(spec)
       .body(mappingProfile_2)
       .when()
-      .put(MAPPING_PROFILES_PATH + "/" + UUID.randomUUID().toString())
+      .put(MAPPING_PROFILES_PATH + "/" + UUID.randomUUID())
       .then()
       .statusCode(HttpStatus.SC_NOT_FOUND);
   }
@@ -411,7 +407,7 @@ public class MappingProfileTest extends AbstractRestVerticleTest {
         .withExistingRecordType(EntityType.INSTANCE)))
       .when()
       .post(MAPPING_PROFILES_PATH);
-    Assert.assertThat(createResponse.statusCode(), is(HttpStatus.SC_CREATED));
+    Assert.assertEquals(HttpStatus.SC_CREATED, createResponse.statusCode());
     MappingProfileUpdateDto createdProfile = createResponse.body().as(MappingProfileUpdateDto.class);
 
     createdProfile.getProfile().setName(mappingProfile_1.getProfile().getName());
@@ -431,7 +427,7 @@ public class MappingProfileTest extends AbstractRestVerticleTest {
       .body(mappingProfile_2)
       .when()
       .post(MAPPING_PROFILES_PATH);
-    Assert.assertThat(createResponse.statusCode(), is(HttpStatus.SC_CREATED));
+    Assert.assertEquals(HttpStatus.SC_CREATED, createResponse.statusCode());
     MappingProfileUpdateDto mappingProfile = createResponse.body().as(MappingProfileUpdateDto.class);
 
     mappingProfile.getProfile().setDescription("test");
@@ -456,7 +452,7 @@ public class MappingProfileTest extends AbstractRestVerticleTest {
     RestAssured.given()
       .spec(spec)
       .when()
-      .get(MAPPING_PROFILES_PATH + "/" + UUID.randomUUID().toString())
+      .get(MAPPING_PROFILES_PATH + "/" + UUID.randomUUID())
       .then()
       .statusCode(HttpStatus.SC_NOT_FOUND);
   }
@@ -468,7 +464,7 @@ public class MappingProfileTest extends AbstractRestVerticleTest {
       .body(mappingProfile_3)
       .when()
       .post(MAPPING_PROFILES_PATH);
-    Assert.assertThat(createResponse.statusCode(), is(HttpStatus.SC_CREATED));
+    Assert.assertEquals(HttpStatus.SC_CREATED, createResponse.statusCode());
     MappingProfileUpdateDto mappingProfile = createResponse.body().as(MappingProfileUpdateDto.class);
 
     RestAssured.given()
@@ -490,7 +486,7 @@ public class MappingProfileTest extends AbstractRestVerticleTest {
     RestAssured.given()
       .spec(spec)
       .when()
-      .delete(MAPPING_PROFILES_PATH + "/" + UUID.randomUUID().toString())
+      .delete(MAPPING_PROFILES_PATH + "/" + UUID.randomUUID())
       .then()
       .statusCode(HttpStatus.SC_NOT_FOUND);
   }
@@ -502,7 +498,7 @@ public class MappingProfileTest extends AbstractRestVerticleTest {
       .body(mappingProfile_1)
       .when()
       .post(MAPPING_PROFILES_PATH);
-    Assert.assertThat(createResponse.statusCode(), is(HttpStatus.SC_CREATED));
+    Assert.assertEquals(HttpStatus.SC_CREATED, createResponse.statusCode());
     MappingProfileUpdateDto profileToDelete = createResponse.body().as(MappingProfileUpdateDto.class);
 
     createResponse = RestAssured.given()
@@ -513,7 +509,7 @@ public class MappingProfileTest extends AbstractRestVerticleTest {
         .withFolioRecord(MARC_BIBLIOGRAPHIC)))
       .when()
       .post(ACTION_PROFILES_PATH);
-    Assert.assertThat(createResponse.statusCode(), is(HttpStatus.SC_CREATED));
+    Assert.assertEquals(HttpStatus.SC_CREATED, createResponse.statusCode());
     ActionProfileUpdateDto actionProfile = createResponse.body().as(ActionProfileUpdateDto.class);
 
     RestAssured.given()
@@ -547,7 +543,7 @@ public class MappingProfileTest extends AbstractRestVerticleTest {
       .body(mappingProfile_2)
       .when()
       .post(MAPPING_PROFILES_PATH);
-    Assert.assertThat(createResponse.statusCode(), is(HttpStatus.SC_CREATED));
+    Assert.assertEquals(HttpStatus.SC_CREATED, createResponse.statusCode());
     MappingProfileUpdateDto profile = createResponse.body().as(MappingProfileUpdateDto.class);
 
     RestAssured.given()
@@ -875,7 +871,6 @@ public class MappingProfileTest extends AbstractRestVerticleTest {
         .withDetailProfileType(ProfileType.MAPPING_PROFILE)
         .withReactTo(ReactToType.MATCH))));
 
-    String actionProfileWrapperId = mappingProfileDto.getAddedRelations().get(0).getMasterWrapperId();
     String actionProfileId = actionProfileDto.getId();
     String mappingProfileId = mappingProfileDto.getId();
 
@@ -1121,7 +1116,7 @@ public class MappingProfileTest extends AbstractRestVerticleTest {
         .withExistingRecordType(EntityType.INSTANCE)))
       .when()
       .post(MAPPING_PROFILES_PATH);
-    Assert.assertThat(createResponse.statusCode(), is(HttpStatus.SC_CREATED));
+    Assert.assertEquals(HttpStatus.SC_CREATED, createResponse.statusCode());
     MappingProfileUpdateDto createdProfile = createResponse.body().as(MappingProfileUpdateDto.class);
 
     createProfiles();
@@ -1153,21 +1148,17 @@ public class MappingProfileTest extends AbstractRestVerticleTest {
   public void clearTables(TestContext context) {
     Async async = context.async();
     PostgresClient pgClient = PostgresClient.getInstance(vertx, TENANT_ID);
-    pgClient.delete(PROFILE_WRAPPERS_TABLE, new Criterion(), event13 ->
-      pgClient.delete(JOB_TO_ACTION_PROFILES_TABLE, new Criterion(), event ->
-        pgClient.delete(JOB_TO_MATCH_PROFILES_TABLE, new Criterion(), event2 ->
-          pgClient.delete(ACTION_TO_MAPPING_PROFILES_TABLE, new Criterion(), event3 ->
-            pgClient.delete(MATCH_TO_MATCH_PROFILES_TABLE, new Criterion(), event4 ->
-              pgClient.delete(MATCH_TO_ACTION_PROFILES_TABLE, new Criterion(), event5 ->
-                pgClient.delete(JOB_PROFILES_TABLE_NAME, new Criterion(), event6 ->
-                  pgClient.delete(MATCH_PROFILES_TABLE_NAME, new Criterion(), event7 ->
-                    pgClient.delete(ACTION_PROFILES_TABLE_NAME, new Criterion(), event8 ->
-                      pgClient.delete(MAPPING_PROFILES_TABLE_NAME, new Criterion(), event9 -> {
-                        if (event7.failed()) {
-                          context.fail(event7.cause());
-                        }
-                        async.complete();
-                      }))))))))));
+    pgClient.delete(ASSOCIATIONS_TABLE, new Criterion(), event1 ->
+      pgClient.delete(PROFILE_WRAPPERS_TABLE, new Criterion(), event2 ->
+        pgClient.delete(JOB_PROFILES_TABLE_NAME, new Criterion(), event3 ->
+          pgClient.delete(MATCH_PROFILES_TABLE_NAME, new Criterion(), event4 ->
+            pgClient.delete(ACTION_PROFILES_TABLE_NAME, new Criterion(), event5 ->
+              pgClient.delete(MAPPING_PROFILES_TABLE_NAME, new Criterion(), event6 -> {
+                if (event6.failed()) {
+                  context.fail(event6.cause());
+                }
+                async.complete();
+              }))))));
   }
 
 }

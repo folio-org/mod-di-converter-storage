@@ -1,10 +1,10 @@
 package org.folio.services.migration;
 
-import io.micrometer.core.instrument.util.StringUtils;
 import io.vertx.core.Context;
 import io.vertx.core.Future;
 import io.vertx.core.Promise;
 import org.apache.commons.io.IOUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.folio.dao.PostgresClientFactory;
@@ -21,16 +21,20 @@ import java.util.Map;
 
 import static java.lang.String.format;
 
+/**
+ * todo:
+ * This class is going be removed after all migration processes will finish in all envs.
+ * think about what needs to be done with masterProfileId and detailProfileId.
+ * */
 @Service
 public class ProfileMigrationServiceImpl implements ProfileMigrationService {
   private static final Logger LOGGER = LogManager.getLogger();
-  private static final String UPDATE_SCHEMA_FOR_MIGRATION = "templates/db_scripts/associations-migration/actualize_schema_for_migrations.sql";
   private static final String INIT_WRAPPERS = "templates/db_scripts/associations-migration/init_wrappers.sql";
   private static final String REMOVE_WRAPPERS = "templates/db_scripts/associations-migration/clean_profile_wrappers.sql";
-  private static final String UPDATE_GET_PROFILE_SNAPSHOT_FUNCTION = "templates/db_scripts/get_profile_snapshot.sql";
   private static final String TENANT_PLACEHOLDER = "${myuniversity}";
   private static final String MODULE_PLACEHOLDER = "${mymodule}";
   private static final String SYSTEM_TABLE_NAME = "metadata_internal";
+  private static final String ASSOCIATIONS_MIGRATION = "templates/db_scripts/associations-migration-gen-table/associations_migration.sql";
 
   @Autowired
   protected PostgresClientFactory pgClientFactory;
@@ -47,26 +51,27 @@ public class ProfileMigrationServiceImpl implements ProfileMigrationService {
         if (isRowCount == 0) {
           return profileWrapperDao.checkIfDataInTableExists(tenantId)
             .compose(isDataPresent -> processMigration(isDataPresent, tenantId));
+        } else if (isRowCount == 1) {
+          LOGGER.info("migrateDataImportProfiles:: migrating associations...");
+          return runScript(tenantId, ASSOCIATIONS_MIGRATION);
         } else {
           LOGGER.info("migrateDataImportProfiles:: Migration already executed.");
           return Future.succeededFuture(true);
         }
       })
-      .onFailure(th -> {
-        LOGGER.error("migrateDataImportProfiles:: Something happened during the profile migration", th);
-      });
+      .onFailure(th -> LOGGER.error("migrateDataImportProfiles:: Something happened during the profile migration", th));
   }
 
   private Future<Boolean> processMigration(Boolean isDataPresent, String tenantId) {
-    if (!isDataPresent) {
-      return runScriptChain(tenantId, INIT_WRAPPERS, UPDATE_SCHEMA_FOR_MIGRATION, UPDATE_GET_PROFILE_SNAPSHOT_FUNCTION);
+    if (Boolean.TRUE.equals(isDataPresent)) {
+      return runScriptChain(tenantId, true, REMOVE_WRAPPERS, INIT_WRAPPERS);
     } else {
-      return runScriptChain(tenantId, REMOVE_WRAPPERS, INIT_WRAPPERS, UPDATE_SCHEMA_FOR_MIGRATION, UPDATE_GET_PROFILE_SNAPSHOT_FUNCTION);
+      return runScriptChain(tenantId, false, INIT_WRAPPERS);
     }
   }
 
-  private Future<Boolean> runScriptChain(String tenantId, String... scripts) {
-    Future<Boolean> future = Future.succeededFuture(true);
+  private Future<Boolean> runScriptChain(String tenantId, Boolean isDataPresent, String... scripts) {
+    Future<Boolean> future = Future.succeededFuture(isDataPresent);
     for (String script : scripts) {
       future = future.compose(ar -> runScript(tenantId, script));
     }
