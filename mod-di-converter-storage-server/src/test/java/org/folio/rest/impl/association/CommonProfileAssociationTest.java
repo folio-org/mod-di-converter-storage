@@ -74,8 +74,10 @@ public class CommonProfileAssociationTest extends AbstractRestVerticleTest {
   JobProfileUpdateDto jobProfile3 = new JobProfileUpdateDto()
     .withProfile(new JobProfile().withName("testJobProfile3").withDataType(MARC));
 
-  ActionProfileUpdateDto actionProfile1 = new ActionProfileUpdateDto().withId("f12db804-70d1-49dd-a58c-49edf9031371")
-    .withProfile(new ActionProfile().withName("testActionProfile1").withDescription("test-description")
+  ActionProfileUpdateDto actionProfile1 = new ActionProfileUpdateDto()
+    .withId("f12db804-70d1-49dd-a58c-49edf9031371")
+    .withProfile(new ActionProfile().withName("testActionProfile1")
+      .withDescription("test-description")
       .withAction(CREATE).withFolioRecord(MARC_BIBLIOGRAPHIC));
 
   ActionProfileUpdateDto actionProfile2 = new ActionProfileUpdateDto().withId("f12db804-70d1-49dd-a58c-49edf9031372")
@@ -136,9 +138,17 @@ public class CommonProfileAssociationTest extends AbstractRestVerticleTest {
       .statusCode(HttpStatus.SC_CREATED);
 
     String mappingProfileIdCreate = UUID.randomUUID().toString();
+
+    var validAssociation2 = new ProfileAssociation()
+      .withMasterProfileId(actionProfileIdCreate)
+      .withDetailProfileId(mappingProfileIdCreate)
+      .withMasterProfileType(ACTION_PROFILE)
+      .withDetailProfileType(MAPPING_PROFILE)
+      .withOrder(1);
+
     RestAssured.given()
       .spec(spec)
-      .body(matchProfileUpdateDto)
+      .body(matchProfileUpdateDto.withAddedRelations(List.of(validAssociation2)))
       .when()
       .post(MAPPING_PROFILES_URL)
       .then()
@@ -151,14 +161,7 @@ public class CommonProfileAssociationTest extends AbstractRestVerticleTest {
       .withDetailProfileType(ACTION_PROFILE)
       .withOrder(0);
 
-    var validAssociation2 = new ProfileAssociation()
-      .withMasterProfileId(actionProfileIdCreate)
-      .withDetailProfileId(mappingProfileIdCreate)
-      .withMasterProfileType(ACTION_PROFILE)
-      .withDetailProfileType(MAPPING_PROFILE)
-      .withOrder(1);
-
-    return jobProfileUpdateDto.withAddedRelations(List.of(validAssociation, validAssociation2));
+    return jobProfileUpdateDto.withAddedRelations(List.of(validAssociation));
   }
 
   @Test
@@ -293,15 +296,9 @@ public class CommonProfileAssociationTest extends AbstractRestVerticleTest {
 
   @Test
   public void runTestShouldPostAndGetById(TestContext testContext) {
-    // action to action
-    shouldPostAndGetById(testContext, new ActionProfileWrapper(actionProfile1), new ActionProfileWrapper(actionProfile2),
-      ACTION_PROFILES_URL, ACTION_PROFILES_URL, ACTION_PROFILE, ACTION_PROFILE);
     // action to mapping
     shouldPostAndGetById(testContext, new ActionProfileWrapper(actionProfile3), new MappingProfileWrapper(mappingProfile1),
       ACTION_PROFILES_URL, MAPPING_PROFILES_URL, ACTION_PROFILE, MAPPING_PROFILE);
-    // action to match
-    shouldPostAndGetById(testContext, new ActionProfileWrapper(actionProfile4), new MatchProfileWrapper(matchProfile1),
-      ACTION_PROFILES_URL, MATCH_PROFILES_URL, ACTION_PROFILE, MATCH_PROFILE);
     // job to action
     shouldPostAndGetById(testContext, new JobProfileWrapper(jobProfile1), new ActionProfileWrapper(actionProfile1),
       JOB_PROFILES_URL, ACTION_PROFILES_URL, JOB_PROFILE, ACTION_PROFILE);
@@ -398,15 +395,9 @@ public class CommonProfileAssociationTest extends AbstractRestVerticleTest {
 
   @Test
   public void runTestShouldDeleteProfileOnDelete(TestContext testContext) {
-    // action to action
-    shouldDeleteProfileOnDelete(testContext, new ActionProfileWrapper(actionProfile1), new ActionProfileWrapper(actionProfile2),
-      ACTION_PROFILES_URL, ACTION_PROFILES_URL, ACTION_PROFILE, ACTION_PROFILE);
     // action to mapping
     shouldDeleteProfileOnDelete(testContext, new ActionProfileWrapper(actionProfile3), new MappingProfileWrapper(mappingProfile1),
       ACTION_PROFILES_URL, MAPPING_PROFILES_URL, ACTION_PROFILE, MAPPING_PROFILE);
-    // action to match
-    shouldDeleteProfileOnDelete(testContext, new ActionProfileWrapper(actionProfile1), new MatchProfileWrapper(matchProfile1),
-      ACTION_PROFILES_URL, MATCH_PROFILES_URL, ACTION_PROFILE, MATCH_PROFILE);
     // job to action
     shouldDeleteProfileOnDelete(testContext, new JobProfileWrapper(jobProfile1), new ActionProfileWrapper(actionProfile1),
       JOB_PROFILES_URL, ACTION_PROFILES_URL, JOB_PROFILE, ACTION_PROFILE);
@@ -620,9 +611,6 @@ public class CommonProfileAssociationTest extends AbstractRestVerticleTest {
 
   @Test
   public void runTestShouldUpdateProfileAssociationOnPut(TestContext testContext) {
-    // action to action
-    shouldUpdateProfileAssociationOnPut(testContext, new ActionProfileWrapper(actionProfile1), new ActionProfileWrapper(actionProfile2),
-      new ActionProfileWrapper(actionProfile3), ACTION_PROFILES_URL, ACTION_PROFILES_URL, ACTION_PROFILE, ACTION_PROFILE);
     // action to mapping
     shouldUpdateProfileAssociationOnPut(testContext, new ActionProfileWrapper(actionProfile1), new MappingProfileWrapper(mappingProfile1),
       new MappingProfileWrapper(mappingProfile2), ACTION_PROFILES_URL, MAPPING_PROFILES_URL, ACTION_PROFILE, MAPPING_PROFILE);
@@ -691,15 +679,9 @@ public class CommonProfileAssociationTest extends AbstractRestVerticleTest {
 
   @Test
   public void runTestGetDetailsByMasterProfile_OK(TestContext testContext) {
-    // action to action
-    getDetailProfilesByMasterProfile_OK(testContext, new ActionProfileWrapper(actionProfile1), new ActionProfileWrapper(actionProfile2),
-      new ActionProfileWrapper(actionProfile3), new ActionProfileWrapper(actionProfile4), ACTION_PROFILES_URL, ACTION_PROFILES_URL, ACTION_PROFILE, ACTION_PROFILE);
     // action to mapping
     getDetailProfilesByMasterProfile_OK(testContext, new ActionProfileWrapper(actionProfile1), new ActionProfileWrapper(actionProfile2),
       new MappingProfileWrapper(mappingProfile1), new MappingProfileWrapper(mappingProfile2), ACTION_PROFILES_URL, MAPPING_PROFILES_URL, ACTION_PROFILE, MAPPING_PROFILE);
-    // action to match
-    getDetailProfilesByMasterProfile_OK(testContext, new ActionProfileWrapper(actionProfile1), new ActionProfileWrapper(actionProfile2),
-      new MatchProfileWrapper(matchProfile1), new MatchProfileWrapper(matchProfile2), ACTION_PROFILES_URL, MATCH_PROFILES_URL, ACTION_PROFILE, MATCH_PROFILE);
     // job to action
     getDetailProfilesByMasterProfile_OK(testContext, new JobProfileWrapper(jobProfile1), new JobProfileWrapper(jobProfile2),
       new ActionProfileWrapper(actionProfile1), new ActionProfileWrapper(actionProfile2), JOB_PROFILES_URL, ACTION_PROFILES_URL, JOB_PROFILE, ACTION_PROFILE);
@@ -830,8 +812,6 @@ public class CommonProfileAssociationTest extends AbstractRestVerticleTest {
 
   @Test
   public void runTestGetDetailsByMasterProfile_emptyDetailsListWithMasterProfile(TestContext testContext) {
-    // action to action, action to mapping
-    getDetailsByMasterProfile_emptyDetailsListWithMasterProfile(testContext, new ActionProfileWrapper(actionProfile1), ACTION_PROFILES_URL, ACTION_PROFILE);
     // job to action, job to match
     getDetailsByMasterProfile_emptyDetailsListWithMasterProfile(testContext, new JobProfileWrapper(jobProfile1), JOB_PROFILES_URL, JOB_PROFILE);
     // match to action, match to match
@@ -863,15 +843,9 @@ public class CommonProfileAssociationTest extends AbstractRestVerticleTest {
 
   @Test
   public void runTestGetDetailProfilesByMasterProfile_sortByName_OK(TestContext testContext) {
-    // action to action
-    getDetailProfilesByMasterProfile_sortByName_OK(testContext, new ActionProfileWrapper(actionProfile1), new ActionProfileWrapper(actionProfile2),
-      new ActionProfileWrapper(actionProfile3), new ActionProfileWrapper(actionProfile4), ACTION_PROFILES_URL, ACTION_PROFILES_URL, ACTION_PROFILE, ACTION_PROFILE);
     // action to mapping
     getDetailProfilesByMasterProfile_sortByName_OK(testContext, new ActionProfileWrapper(actionProfile2), new MappingProfileWrapper(mappingProfile1),
       new MappingProfileWrapper(mappingProfile2), new MappingProfileWrapper(mappingProfile3), ACTION_PROFILES_URL, MAPPING_PROFILES_URL, ACTION_PROFILE, MAPPING_PROFILE);
-    // action to match
-    getDetailProfilesByMasterProfile_sortByName_OK(testContext, new ActionProfileWrapper(actionProfile1), new MatchProfileWrapper(matchProfile1),
-      new MatchProfileWrapper(matchProfile2), new MatchProfileWrapper(matchProfile4), ACTION_PROFILES_URL, MATCH_PROFILES_URL, ACTION_PROFILE, MATCH_PROFILE);
     // job to action
     getDetailProfilesByMasterProfile_sortByName_OK(testContext, new JobProfileWrapper(jobProfile1), new ActionProfileWrapper(actionProfile1),
       new ActionProfileWrapper(actionProfile2), new ActionProfileWrapper(actionProfile4), JOB_PROFILES_URL, ACTION_PROFILES_URL, JOB_PROFILE, ACTION_PROFILE);
@@ -986,18 +960,10 @@ public class CommonProfileAssociationTest extends AbstractRestVerticleTest {
 
   @Test
   public void runTestGetMastersByDetailProfile_OK(TestContext testContext) {
-    // action to action
-    getMastersByDetailProfile_OK(testContext, new ActionProfileWrapper(actionProfile1), new ActionProfileWrapper(actionProfile2),
-      new ActionProfileWrapper(actionProfile3), new ActionProfileWrapper(actionProfile4),
-      ACTION_PROFILES_URL, ACTION_PROFILES_URL, ACTION_PROFILE, ACTION_PROFILE);
     // action to mapping
     getMastersByDetailProfile_OK(testContext, new ActionProfileWrapper(actionProfile1), new ActionProfileWrapper(actionProfile2),
       new MappingProfileWrapper(mappingProfile1), new MappingProfileWrapper(mappingProfile2),
       ACTION_PROFILES_URL, MAPPING_PROFILES_URL, ACTION_PROFILE, MAPPING_PROFILE);
-    // action to match
-    getMastersByDetailProfile_OK(testContext, new ActionProfileWrapper(actionProfile1), new ActionProfileWrapper(actionProfile2),
-      new MatchProfileWrapper(matchProfile1), new MatchProfileWrapper(matchProfile2),
-      ACTION_PROFILES_URL, MATCH_PROFILES_URL, ACTION_PROFILE, MATCH_PROFILE);
     // job to action
     getMastersByDetailProfile_OK(testContext, new JobProfileWrapper(jobProfile1), new JobProfileWrapper(jobProfile2),
       new ActionProfileWrapper(actionProfile1), new ActionProfileWrapper(actionProfile2),
@@ -1133,8 +1099,6 @@ public class CommonProfileAssociationTest extends AbstractRestVerticleTest {
 
   @Test
   public void runTestGetMastersByDetailProfile_emptyMastersListWithDetailProfile(TestContext testContext) {
-    // action to action, job to action, match to action
-    getMastersByDetailProfile_emptyMastersListWithDetailProfile(testContext, new ActionProfileWrapper(actionProfile1), ACTION_PROFILES_URL, ACTION_PROFILE);
     //action to match, job to match, match to match
     getMastersByDetailProfile_emptyMastersListWithDetailProfile(testContext, new MatchProfileWrapper(matchProfile1), MATCH_PROFILES_URL, MATCH_PROFILE);
     // action to mapping
@@ -1167,15 +1131,15 @@ public class CommonProfileAssociationTest extends AbstractRestVerticleTest {
 
   @Test
   public void runTestGetMastersByDetailProfile_sortBy_OK(TestContext testContext) {
-    // action to action
-    getMastersByDetailProfile_sortBy_OK(testContext, new ActionProfileWrapper(actionProfile2), new ActionProfileWrapper(actionProfile3), new ActionProfileWrapper(actionProfile4),
-      new ActionProfileWrapper(actionProfile1), ACTION_PROFILES_URL, ACTION_PROFILES_URL, ACTION_PROFILE, ACTION_PROFILE);
     // action to mapping
-    getMastersByDetailProfile_sortBy_OK(testContext, new ActionProfileWrapper(actionProfile1), new ActionProfileWrapper(actionProfile2), new ActionProfileWrapper(actionProfile4),
-      new MappingProfileWrapper(mappingProfile1), ACTION_PROFILES_URL, MAPPING_PROFILES_URL, ACTION_PROFILE, MAPPING_PROFILE);
-    // action to match
-    getMastersByDetailProfile_sortBy_OK(testContext, new ActionProfileWrapper(actionProfile1), new ActionProfileWrapper(actionProfile2), new ActionProfileWrapper(actionProfile4),
-      new MatchProfileWrapper(matchProfile1), ACTION_PROFILES_URL, MATCH_PROFILES_URL, ACTION_PROFILE, MATCH_PROFILE);
+    getMastersByDetailProfile_sortBy_OK(testContext,
+      new ActionProfileWrapper(actionProfile1),
+      new ActionProfileWrapper(actionProfile2),
+      new ActionProfileWrapper(actionProfile4),
+      new MappingProfileWrapper(mappingProfile1),
+      ACTION_PROFILES_URL, MAPPING_PROFILES_URL,
+      ACTION_PROFILE, MAPPING_PROFILE);
+
     // job to action
     getMastersByDetailProfile_sortBy_OK(testContext, new JobProfileWrapper(jobProfile1), new JobProfileWrapper(jobProfile2), new JobProfileWrapper(jobProfile3),
       new ActionProfileWrapper(actionProfile1), JOB_PROFILES_URL, ACTION_PROFILES_URL, JOB_PROFILE, ACTION_PROFILE);
@@ -1190,9 +1154,13 @@ public class CommonProfileAssociationTest extends AbstractRestVerticleTest {
       new MatchProfileWrapper(matchProfile1), MATCH_PROFILES_URL, MATCH_PROFILES_URL, MATCH_PROFILE, MATCH_PROFILE);
   }
 
-  public <M, D> void getMastersByDetailProfile_sortBy_OK(TestContext testContext, ProfileWrapper<M> masterProfileWrapper1, ProfileWrapper<M> masterProfileWrapper2,
-                                                         ProfileWrapper<M> masterProfileWrapper3, ProfileWrapper<D> detailProfileWrapper,
-                                                         String masterProfileUrl, String detailProfileUrl, ProfileType masterProfileType, ProfileType detailProfileType) {
+  public <M, D> void getMastersByDetailProfile_sortBy_OK(TestContext testContext,
+                                                         ProfileWrapper<M> masterProfileWrapper1,
+                                                         ProfileWrapper<M> masterProfileWrapper2,
+                                                         ProfileWrapper<M> masterProfileWrapper3,
+                                                         ProfileWrapper<D> detailProfileWrapper,
+                                                         String masterProfileUrl, String detailProfileUrl,
+                                                         ProfileType masterProfileType, ProfileType detailProfileType) {
     ProfileWrapper<D> detailWrapper = postProfile(testContext, detailProfileWrapper, detailProfileUrl);
     ProfileWrapper<M> masterWrapper3 = postProfile(testContext, masterProfileWrapper3, masterProfileUrl);
     ProfileWrapper<M> masterWrapper2 = postProfile(testContext, masterProfileWrapper2, masterProfileUrl);
