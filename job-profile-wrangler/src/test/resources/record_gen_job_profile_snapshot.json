@@ -1,0 +1,1160 @@
+{
+  "id" : "19a8dffa-2af6-4bc4-95cb-44163c4345cb",
+  "profileId" : "0db1f720-e396-4c2b-8238-c2f0aaf032c0",
+  "profileWrapperId" : "4dcfae9e-1149-407f-af02-c36572ea1855",
+  "contentType" : "JOB_PROFILE",
+  "content" : {
+    "id" : "0db1f720-e396-4c2b-8238-c2f0aaf032c0",
+    "name" : "Record Gen",
+    "description" : "",
+    "dataType" : "MARC",
+    "deleted" : false,
+    "userInfo" : {
+      "firstName" : "",
+      "lastName" : "Superuser",
+      "userName" : "diku_admin"
+    },
+    "parentProfiles" : [ ],
+    "childProfiles" : [ ],
+    "hidden" : false,
+    "metadata" : {
+      "createdDate" : "2024-05-15T15:37:24.361+00:00",
+      "createdByUserId" : "8ca8e682-af58-40f8-b969-4a133c8a085c",
+      "updatedDate" : "2024-05-16T07:05:57.324+00:00",
+      "updatedByUserId" : "8ca8e682-af58-40f8-b969-4a133c8a085c"
+    }
+  },
+  "order" : 0,
+  "childSnapshotWrappers" : [ {
+    "id" : "6501cfc7-c294-44e3-943f-15a026f38e69",
+    "profileId" : "d27d71ce-8a1e-44c6-acea-96961b5592c6",
+    "profileWrapperId" : "96dde2e2-e362-408f-b659-3e47054f7dab",
+    "contentType" : "MATCH_PROFILE",
+    "content" : {
+      "id" : "d27d71ce-8a1e-44c6-acea-96961b5592c6",
+      "name" : "Inventory Single Record - Default match for existing SRS record",
+      "description" : "Matches the Instance UUID from the 999 ff $i in the incoming MARC record to the same field in any SRS MARC Bib",
+      "incomingRecordType" : "MARC_BIBLIOGRAPHIC",
+      "existingRecordType" : "MARC_BIBLIOGRAPHIC",
+      "matchDetails" : [ {
+        "incomingRecordType" : "MARC_BIBLIOGRAPHIC",
+        "existingRecordType" : "MARC_BIBLIOGRAPHIC",
+        "incomingMatchExpression" : {
+          "dataValueType" : "VALUE_FROM_RECORD",
+          "fields" : [ {
+            "label" : "field",
+            "value" : "999"
+          }, {
+            "label" : "indicator1",
+            "value" : "f"
+          }, {
+            "label" : "indicator2",
+            "value" : "f"
+          }, {
+            "label" : "recordSubfield",
+            "value" : "i"
+          } ]
+        },
+        "matchCriterion" : "EXACTLY_MATCHES",
+        "existingMatchExpression" : {
+          "dataValueType" : "VALUE_FROM_RECORD",
+          "fields" : [ {
+            "label" : "field",
+            "value" : "999"
+          }, {
+            "label" : "indicator1",
+            "value" : "f"
+          }, {
+            "label" : "indicator2",
+            "value" : "f"
+          }, {
+            "label" : "recordSubfield",
+            "value" : "i"
+          } ]
+        }
+      } ],
+      "deleted" : false,
+      "userInfo" : {
+        "firstName" : "System",
+        "lastName" : "System",
+        "userName" : "System"
+      },
+      "parentProfiles" : [ ],
+      "childProfiles" : [ ],
+      "hidden" : false,
+      "metadata" : {
+        "createdDate" : "2020-11-30T09:06:01.520+00:00",
+        "createdByUserId" : "6a010e5b-5421-5b1c-9b52-568b37038575",
+        "updatedDate" : "2020-11-30T09:59:01.248+00:00",
+        "updatedByUserId" : "6a010e5b-5421-5b1c-9b52-568b37038575"
+      }
+    },
+    "order" : 0,
+    "childSnapshotWrappers" : [ {
+      "id" : "260033c2-13a5-4967-9726-145b3a5c81dd",
+      "profileId" : "31ccc13e-fc14-4d2d-899b-eacabb3ca6f3",
+      "profileWrapperId" : "4df5e5b9-bb45-4db7-ae73-795da3428a02",
+      "contentType" : "MATCH_PROFILE",
+      "reactTo" : "NON_MATCH",
+      "content" : {
+        "id" : "31ccc13e-fc14-4d2d-899b-eacabb3ca6f3",
+        "name" : "Match static value \"test\" with 445a",
+        "description" : "",
+        "incomingRecordType" : "STATIC_VALUE",
+        "existingRecordType" : "MARC_BIBLIOGRAPHIC",
+        "matchDetails" : [ {
+          "incomingRecordType" : "STATIC_VALUE",
+          "existingRecordType" : "MARC_BIBLIOGRAPHIC",
+          "incomingMatchExpression" : {
+            "dataValueType" : "STATIC_VALUE",
+            "fields" : [ ],
+            "staticValueDetails" : {
+              "staticValueType" : "TEXT",
+              "text" : "test",
+              "number" : ""
+            }
+          },
+          "matchCriterion" : "EXACTLY_MATCHES",
+          "existingMatchExpression" : {
+            "dataValueType" : "VALUE_FROM_RECORD",
+            "fields" : [ {
+              "label" : "field",
+              "value" : "445"
+            }, {
+              "label" : "indicator1",
+              "value" : ""
+            }, {
+              "label" : "indicator2",
+              "value" : ""
+            }, {
+              "label" : "recordSubfield",
+              "value" : "a"
+            } ]
+          }
+        } ],
+        "deleted" : false,
+        "userInfo" : {
+          "firstName" : "",
+          "lastName" : "Superuser",
+          "userName" : "diku_admin"
+        },
+        "parentProfiles" : [ ],
+        "childProfiles" : [ ],
+        "hidden" : false,
+        "metadata" : {
+          "createdDate" : "2024-05-16T06:47:56.531+00:00",
+          "createdByUserId" : "8ca8e682-af58-40f8-b969-4a133c8a085c",
+          "updatedDate" : "2024-05-16T06:47:56.531+00:00",
+          "updatedByUserId" : "8ca8e682-af58-40f8-b969-4a133c8a085c"
+        }
+      },
+      "order" : 0,
+      "childSnapshotWrappers" : [ {
+        "id" : "30f76089-085d-4bee-91c5-018bb0292feb",
+        "profileId" : "fa45f3ec-9b83-11eb-a8b3-0242ac130003",
+        "profileWrapperId" : "02b30f94-db35-4701-81fd-c00e5ac01cce",
+        "contentType" : "ACTION_PROFILE",
+        "reactTo" : "MATCH",
+        "content" : {
+          "id" : "fa45f3ec-9b83-11eb-a8b3-0242ac130003",
+          "name" : "Default - Create instance",
+          "description" : "This action profile is used with FOLIO's default job profile for creating Inventory Instances and SRS MARC Bibliographic records. It can be edited, duplicated, or deleted.",
+          "action" : "CREATE",
+          "folioRecord" : "INSTANCE",
+          "deleted" : false,
+          "userInfo" : {
+            "firstName" : "System",
+            "lastName" : "System",
+            "userName" : "System"
+          },
+          "parentProfiles" : [ ],
+          "childProfiles" : [ ],
+          "hidden" : false,
+          "remove9Subfields" : true,
+          "metadata" : {
+            "createdDate" : "2021-04-13T14:00:00.000+00:00",
+            "createdByUserId" : "00000000-0000-0000-0000-000000000000",
+            "updatedDate" : "2021-04-13T15:00:00.462+00:00",
+            "updatedByUserId" : "00000000-0000-0000-0000-000000000000"
+          }
+        },
+        "order" : 0,
+        "childSnapshotWrappers" : [ {
+          "id" : "08a70824-107b-4d81-bf1c-6326a44e22e8",
+          "profileId" : "bf7b3b86-9b84-11eb-a8b3-0242ac130003",
+          "profileWrapperId" : "3ebe30ff-27d3-41f8-9457-4410cbca813d",
+          "contentType" : "MAPPING_PROFILE",
+          "content" : {
+            "id" : "bf7b3b86-9b84-11eb-a8b3-0242ac130003",
+            "name" : "Default - Create instance",
+            "description" : "This field mapping profile is used with FOLIO's default job profile for creating Inventory Instances and SRS MARC Bibliographic records. It can be edited, duplicated, deleted, or linked to additional action profiles.",
+            "incomingRecordType" : "MARC_BIBLIOGRAPHIC",
+            "existingRecordType" : "INSTANCE",
+            "deleted" : false,
+            "userInfo" : {
+              "firstName" : "System",
+              "lastName" : "System",
+              "userName" : "System"
+            },
+            "marcFieldProtectionSettings" : [ ],
+            "parentProfiles" : [ ],
+            "childProfiles" : [ ],
+            "mappingDetails" : {
+              "name" : "instance",
+              "recordType" : "INSTANCE",
+              "mappingFields" : [ {
+                "name" : "discoverySuppress",
+                "enabled" : "true",
+                "required" : false,
+                "path" : "instance.discoverySuppress",
+                "value" : "",
+                "subfields" : [ ]
+              }, {
+                "name" : "staffSuppress",
+                "enabled" : "true",
+                "required" : false,
+                "path" : "instance.staffSuppress",
+                "value" : "",
+                "subfields" : [ ]
+              }, {
+                "name" : "previouslyHeld",
+                "enabled" : "true",
+                "required" : false,
+                "path" : "instance.previouslyHeld",
+                "value" : "",
+                "subfields" : [ ]
+              }, {
+                "name" : "hrid",
+                "enabled" : "false",
+                "required" : false,
+                "path" : "instance.hrid",
+                "value" : "",
+                "subfields" : [ ]
+              }, {
+                "name" : "source",
+                "enabled" : "false",
+                "required" : false,
+                "path" : "instance.source",
+                "value" : "",
+                "subfields" : [ ]
+              }, {
+                "name" : "catalogedDate",
+                "enabled" : "true",
+                "required" : false,
+                "path" : "instance.catalogedDate",
+                "value" : "",
+                "subfields" : [ ]
+              }, {
+                "name" : "statusId",
+                "enabled" : "true",
+                "required" : false,
+                "path" : "instance.statusId",
+                "value" : "",
+                "subfields" : [ ],
+                "acceptedValues" : {
+                  "26f5208e-110a-4394-be29-1569a8c84a65" : "Uncataloged",
+                  "52a2ff34-2a12-420d-8539-21aa8d3cf5d8" : "Batch Loaded",
+                  "f5cc2ab6-bb92-4cab-b83f-5a3d09261a41" : "Not yet assigned",
+                  "2a340d34-6b70-443a-bb1b-1b8d1c65d862" : "Other",
+                  "9634a5ab-9228-4703-baf2-4d12ebc77d56" : "Cataloged",
+                  "daf2681c-25af-4202-a3fa-e58fdf806183" : "Temporary"
+                }
+              }, {
+                "name" : "modeOfIssuanceId",
+                "enabled" : "false",
+                "required" : false,
+                "path" : "instance.modeOfIssuanceId",
+                "value" : "",
+                "subfields" : [ ]
+              }, {
+                "name" : "statisticalCodeIds",
+                "enabled" : "true",
+                "required" : false,
+                "path" : "instance.statisticalCodeIds[]",
+                "value" : "",
+                "subfields" : [ ]
+              }, {
+                "name" : "title",
+                "enabled" : "false",
+                "required" : false,
+                "path" : "instance.title",
+                "value" : "",
+                "subfields" : [ ]
+              }, {
+                "name" : "alternativeTitles",
+                "enabled" : "false",
+                "required" : false,
+                "path" : "instance.alternativeTitles[]",
+                "value" : "",
+                "subfields" : [ ]
+              }, {
+                "name" : "indexTitle",
+                "enabled" : "false",
+                "required" : false,
+                "path" : "instance.indexTitle",
+                "value" : "",
+                "subfields" : [ ]
+              }, {
+                "name" : "series",
+                "enabled" : "false",
+                "required" : false,
+                "path" : "instance.series[]",
+                "value" : "",
+                "subfields" : [ ]
+              }, {
+                "name" : "precedingTitles",
+                "enabled" : "false",
+                "required" : false,
+                "path" : "instance.precedingTitles[]",
+                "value" : "",
+                "subfields" : [ ]
+              }, {
+                "name" : "succeedingTitles",
+                "enabled" : "false",
+                "required" : false,
+                "path" : "instance.succeedingTitles[]",
+                "value" : "",
+                "subfields" : [ ]
+              }, {
+                "name" : "identifiers",
+                "enabled" : "false",
+                "required" : false,
+                "path" : "instance.identifiers[]",
+                "value" : "",
+                "subfields" : [ ]
+              }, {
+                "name" : "contributors",
+                "enabled" : "false",
+                "required" : false,
+                "path" : "instance.contributors[]",
+                "value" : "",
+                "subfields" : [ ]
+              }, {
+                "name" : "publication",
+                "enabled" : "false",
+                "required" : false,
+                "path" : "instance.publication[]",
+                "value" : "",
+                "subfields" : [ ]
+              }, {
+                "name" : "editions",
+                "enabled" : "false",
+                "required" : false,
+                "path" : "instance.editions[]",
+                "value" : "",
+                "subfields" : [ ]
+              }, {
+                "name" : "physicalDescriptions",
+                "enabled" : "false",
+                "required" : false,
+                "path" : "instance.physicalDescriptions[]",
+                "value" : "",
+                "subfields" : [ ]
+              }, {
+                "name" : "instanceTypeId",
+                "enabled" : "false",
+                "required" : false,
+                "path" : "instance.instanceTypeId",
+                "value" : "",
+                "subfields" : [ ]
+              }, {
+                "name" : "natureOfContentTermIds",
+                "enabled" : "true",
+                "required" : false,
+                "path" : "instance.natureOfContentTermIds[]",
+                "value" : "",
+                "subfields" : [ ]
+              }, {
+                "name" : "instanceFormatIds",
+                "enabled" : "false",
+                "required" : false,
+                "path" : "instance.instanceFormatIds[]",
+                "value" : "",
+                "subfields" : [ ]
+              }, {
+                "name" : "languages",
+                "enabled" : "false",
+                "required" : false,
+                "path" : "instance.languages[]",
+                "value" : "",
+                "subfields" : [ ]
+              }, {
+                "name" : "publicationFrequency",
+                "enabled" : "false",
+                "required" : false,
+                "path" : "instance.publicationFrequency[]",
+                "value" : "",
+                "subfields" : [ ]
+              }, {
+                "name" : "publicationRange",
+                "enabled" : "false",
+                "required" : false,
+                "path" : "instance.publicationRange[]",
+                "value" : "",
+                "subfields" : [ ]
+              }, {
+                "name" : "notes",
+                "enabled" : "false",
+                "required" : false,
+                "path" : "instance.notes[]",
+                "value" : "",
+                "subfields" : [ ]
+              }, {
+                "name" : "electronicAccess",
+                "enabled" : "false",
+                "required" : false,
+                "path" : "instance.electronicAccess[]",
+                "value" : "",
+                "subfields" : [ ]
+              }, {
+                "name" : "subjects",
+                "enabled" : "false",
+                "required" : false,
+                "path" : "instance.subjects[]",
+                "value" : "",
+                "subfields" : [ ]
+              }, {
+                "name" : "classifications",
+                "enabled" : "false",
+                "required" : false,
+                "path" : "instance.classifications[]",
+                "value" : "",
+                "subfields" : [ ]
+              }, {
+                "name" : "parentInstances",
+                "enabled" : "true",
+                "required" : false,
+                "path" : "instance.parentInstances[]",
+                "value" : "",
+                "subfields" : [ ]
+              }, {
+                "name" : "childInstances",
+                "enabled" : "true",
+                "required" : false,
+                "path" : "instance.childInstances[]",
+                "value" : "",
+                "subfields" : [ ]
+              } ],
+              "marcMappingDetails" : [ ]
+            },
+            "hidden" : false,
+            "metadata" : {
+              "createdDate" : "2021-04-13T14:00:00.000+00:00",
+              "createdByUserId" : "00000000-0000-0000-0000-000000000000",
+              "updatedDate" : "2021-04-13T15:00:00.462+00:00",
+              "updatedByUserId" : "00000000-0000-0000-0000-000000000000"
+            }
+          },
+          "order" : 0,
+          "childSnapshotWrappers" : [ ]
+        } ]
+      } ]
+    }, {
+      "id" : "21b390d4-d2d2-4822-b599-0adee62c678d",
+      "profileId" : "d7a0e5a9-d1be-4c31-83aa-63b848b86071",
+      "profileWrapperId" : "6fd462d4-f87a-436a-86a0-84e83f799a8a",
+      "contentType" : "MATCH_PROFILE",
+      "reactTo" : "MATCH",
+      "content" : {
+        "id" : "d7a0e5a9-d1be-4c31-83aa-63b848b86071",
+        "name" : "Match on 245$a to Instance Title",
+        "description" : "",
+        "incomingRecordType" : "MARC_BIBLIOGRAPHIC",
+        "existingRecordType" : "INSTANCE",
+        "matchDetails" : [ {
+          "incomingRecordType" : "MARC_BIBLIOGRAPHIC",
+          "existingRecordType" : "INSTANCE",
+          "incomingMatchExpression" : {
+            "dataValueType" : "VALUE_FROM_RECORD",
+            "fields" : [ {
+              "label" : "field",
+              "value" : "245"
+            }, {
+              "label" : "indicator1",
+              "value" : ""
+            }, {
+              "label" : "indicator2",
+              "value" : ""
+            }, {
+              "label" : "recordSubfield",
+              "value" : "a"
+            } ]
+          },
+          "matchCriterion" : "EXACTLY_MATCHES",
+          "existingMatchExpression" : {
+            "dataValueType" : "VALUE_FROM_RECORD",
+            "fields" : [ {
+              "label" : "field",
+              "value" : "instance.title"
+            } ]
+          }
+        } ],
+        "deleted" : false,
+        "userInfo" : {
+          "firstName" : "",
+          "lastName" : "Superuser",
+          "userName" : "diku_admin"
+        },
+        "parentProfiles" : [ ],
+        "childProfiles" : [ ],
+        "hidden" : false,
+        "metadata" : {
+          "createdDate" : "2024-05-15T15:49:17.143+00:00",
+          "createdByUserId" : "8ca8e682-af58-40f8-b969-4a133c8a085c",
+          "updatedDate" : "2024-05-15T21:10:31.320+00:00",
+          "updatedByUserId" : "8ca8e682-af58-40f8-b969-4a133c8a085c"
+        }
+      },
+      "order" : 0,
+      "childSnapshotWrappers" : [ {
+        "id" : "006ea283-6cb0-45bb-b014-e16c72093b8c",
+        "profileId" : "a222984f-546f-45c3-8a37-20c0fbf93365",
+        "profileWrapperId" : "4b9075dc-0b40-4b51-a0af-95cea367af05",
+        "contentType" : "MATCH_PROFILE",
+        "reactTo" : "NON_MATCH",
+        "content" : {
+          "id" : "a222984f-546f-45c3-8a37-20c0fbf93365",
+          "name" : "Match on 856.4.0$u to Holdings electronic access URI",
+          "description" : "",
+          "incomingRecordType" : "MARC_BIBLIOGRAPHIC",
+          "existingRecordType" : "HOLDINGS",
+          "matchDetails" : [ {
+            "incomingRecordType" : "MARC_BIBLIOGRAPHIC",
+            "existingRecordType" : "HOLDINGS",
+            "incomingMatchExpression" : {
+              "dataValueType" : "VALUE_FROM_RECORD",
+              "fields" : [ {
+                "label" : "field",
+                "value" : "856"
+              }, {
+                "label" : "indicator1",
+                "value" : "4"
+              }, {
+                "label" : "indicator2",
+                "value" : "0"
+              }, {
+                "label" : "recordSubfield",
+                "value" : "u"
+              } ]
+            },
+            "matchCriterion" : "EXACTLY_MATCHES",
+            "existingMatchExpression" : {
+              "dataValueType" : "VALUE_FROM_RECORD",
+              "fields" : [ {
+                "label" : "field",
+                "value" : "holdingsrecord.electronicAccess[].uri"
+              } ]
+            }
+          } ],
+          "deleted" : false,
+          "userInfo" : {
+            "firstName" : "",
+            "lastName" : "Superuser",
+            "userName" : "diku_admin"
+          },
+          "parentProfiles" : [ ],
+          "childProfiles" : [ ],
+          "hidden" : false,
+          "metadata" : {
+            "createdDate" : "2024-05-15T15:41:34.118+00:00",
+            "createdByUserId" : "8ca8e682-af58-40f8-b969-4a133c8a085c",
+            "updatedDate" : "2024-05-15T21:13:16.778+00:00",
+            "updatedByUserId" : "8ca8e682-af58-40f8-b969-4a133c8a085c"
+          }
+        },
+        "order" : 0,
+        "childSnapshotWrappers" : [ {
+          "id" : "375bb7b1-71ba-4bd2-88fb-324cf29d7d7f",
+          "profileId" : "b822339d-bae5-48e0-948b-7f7aee5ea545",
+          "profileWrapperId" : "9fbc6e93-1166-45c8-a3c0-a02c3e17a5a2",
+          "contentType" : "ACTION_PROFILE",
+          "reactTo" : "MATCH",
+          "content" : {
+            "id" : "b822339d-bae5-48e0-948b-7f7aee5ea545",
+            "name" : "Update Holdings",
+            "description" : "",
+            "action" : "UPDATE",
+            "folioRecord" : "HOLDINGS",
+            "deleted" : false,
+            "userInfo" : {
+              "firstName" : "",
+              "lastName" : "Superuser",
+              "userName" : "diku_admin"
+            },
+            "parentProfiles" : [ ],
+            "childProfiles" : [ ],
+            "hidden" : false,
+            "remove9Subfields" : false,
+            "metadata" : {
+              "createdDate" : "2024-05-15T15:43:48.462+00:00",
+              "createdByUserId" : "8ca8e682-af58-40f8-b969-4a133c8a085c",
+              "updatedDate" : "2024-05-15T15:43:48.462+00:00",
+              "updatedByUserId" : "8ca8e682-af58-40f8-b969-4a133c8a085c"
+            }
+          },
+          "order" : 0,
+          "childSnapshotWrappers" : [ {
+            "id" : "8ed00123-6bae-4d2a-b5f3-e3f3a7e21fad",
+            "profileId" : "08ec0c02-e52d-43c4-91f7-209bd56e7688",
+            "profileWrapperId" : "30eeae29-a1bf-40d8-bd97-f6e00aa2b02f",
+            "contentType" : "MAPPING_PROFILE",
+            "content" : {
+              "id" : "08ec0c02-e52d-43c4-91f7-209bd56e7688",
+              "name" : "Holdings Mapping profile FAT-937",
+              "description" : "",
+              "incomingRecordType" : "MARC_BIBLIOGRAPHIC",
+              "existingRecordType" : "HOLDINGS",
+              "deleted" : false,
+              "userInfo" : {
+                "firstName" : "",
+                "lastName" : "Superuser",
+                "userName" : "diku_admin"
+              },
+              "marcFieldProtectionSettings" : [ ],
+              "parentProfiles" : [ ],
+              "childProfiles" : [ ],
+              "mappingDetails" : {
+                "name" : "holdings",
+                "recordType" : "HOLDINGS",
+                "mappingFields" : [ {
+                  "name" : "holdingsTypeId",
+                  "enabled" : "true",
+                  "required" : false,
+                  "path" : "holdings.holdingsTypeId",
+                  "value" : "\"Electronic\"",
+                  "subfields" : [ ],
+                  "acceptedValues" : {
+                    "996f93e2-5b5e-4cf2-9168-33ced1f95eed" : "Electronic"
+                  }
+                }, {
+                  "name" : "permanentLocationId",
+                  "enabled" : "true",
+                  "required" : false,
+                  "path" : "holdings.permanentLocationId",
+                  "value" : "\"Online (E)\"",
+                  "subfields" : [ ],
+                  "acceptedValues" : {
+                    "184aae84-a5bf-4c6a-85ba-4a7c73026cd5" : "Online (E)",
+                    "fcd64ce1-6995-48f0-840e-89ffa2288371" : "Main Library (KU/CC/DI/M)",
+                    "53cf956f-c1df-410b-8bea-27f712cca7c0" : "Annex (KU/CC/DI/A)"
+                  }
+                }, {
+                  "name" : "callNumberTypeId",
+                  "enabled" : "true",
+                  "required" : false,
+                  "path" : "holdings.callNumberTypeId",
+                  "value" : "\"Library of Congress classification\"",
+                  "subfields" : [ ],
+                  "acceptedValues" : {
+                    "512173a7-bd09-490e-b773-17d83f2b63fe" : "LC Modified",
+                    "95467209-6d7b-468b-94df-0f5d7ad2747d" : "Library of Congress classification"
+                  }
+                }, {
+                  "name" : "callNumber",
+                  "enabled" : "true",
+                  "required" : false,
+                  "path" : "holdings.callNumber",
+                  "value" : "050$a \" \" 050$b",
+                  "subfields" : [ ]
+                }, {
+                  "name" : "electronicAccess",
+                  "enabled" : "true",
+                  "required" : false,
+                  "path" : "holdings.electronicAccess[]",
+                  "value" : "",
+                  "repeatableFieldAction" : "EXTEND_EXISTING",
+                  "subfields" : [ {
+                    "order" : 0,
+                    "path" : "holdings.electronicAccess[]",
+                    "fields" : [ {
+                      "name" : "relationshipId",
+                      "enabled" : "true",
+                      "required" : false,
+                      "path" : "holdings.electronicAccess[].relationshipId",
+                      "value" : "\"Resource\"",
+                      "subfields" : [ ],
+                      "acceptedValues" : {
+                        "3b430592-2e09-4b48-9a0c-0636d66b9fb3" : "Version of resource",
+                        "f5d0068e-6272-458e-8a81-b85e7b9a14aa" : "Resource"
+                      }
+                    }, {
+                      "name" : "uri",
+                      "enabled" : "true",
+                      "required" : false,
+                      "path" : "holdings.electronicAccess[].uri",
+                      "value" : "856$u",
+                      "subfields" : [ ]
+                    }, {
+                      "name" : "linkText",
+                      "enabled" : "true",
+                      "required" : false,
+                      "path" : "holdings.electronicAccess[].linkText",
+                      "value" : "",
+                      "subfields" : [ ]
+                    }, {
+                      "name" : "materialsSpecification",
+                      "enabled" : "true",
+                      "required" : false,
+                      "path" : "holdings.electronicAccess[].materialsSpecification",
+                      "value" : "",
+                      "subfields" : [ ]
+                    }, {
+                      "name" : "publicNote",
+                      "enabled" : "true",
+                      "required" : false,
+                      "path" : "holdings.electronicAccess[].publicNote",
+                      "value" : "",
+                      "subfields" : [ ]
+                    } ]
+                  } ]
+                } ],
+                "marcMappingDetails" : [ ]
+              },
+              "hidden" : false,
+              "metadata" : {
+                "createdDate" : "2024-05-14T17:45:54.686+00:00",
+                "createdByUserId" : "8ca8e682-af58-40f8-b969-4a133c8a085c",
+                "updatedDate" : "2024-05-14T17:45:54.686+00:00",
+                "updatedByUserId" : "8ca8e682-af58-40f8-b969-4a133c8a085c"
+              }
+            },
+            "order" : 0,
+            "childSnapshotWrappers" : [ ]
+          } ]
+        }, {
+          "id" : "a9026590-1ef5-4372-a8b6-34ccc0aa3986",
+          "profileId" : "4eacd228-77a5-4343-868b-8a7c1ccde79e",
+          "profileWrapperId" : "c7d5295c-1d80-4a70-a272-ed61e647845c",
+          "contentType" : "ACTION_PROFILE",
+          "reactTo" : "NON_MATCH",
+          "content" : {
+            "id" : "4eacd228-77a5-4343-868b-8a7c1ccde79e",
+            "name" : "Update Instance",
+            "description" : "",
+            "action" : "UPDATE",
+            "folioRecord" : "INSTANCE",
+            "deleted" : false,
+            "userInfo" : {
+              "firstName" : "",
+              "lastName" : "Superuser",
+              "userName" : "diku_admin"
+            },
+            "parentProfiles" : [ ],
+            "childProfiles" : [ ],
+            "hidden" : false,
+            "remove9Subfields" : true,
+            "metadata" : {
+              "createdDate" : "2024-05-14T18:06:48.907+00:00",
+              "createdByUserId" : "8ca8e682-af58-40f8-b969-4a133c8a085c",
+              "updatedDate" : "2024-05-15T15:42:35.748+00:00",
+              "updatedByUserId" : "8ca8e682-af58-40f8-b969-4a133c8a085c"
+            }
+          },
+          "order" : 0,
+          "childSnapshotWrappers" : [ {
+            "id" : "bbde2fa6-a40c-4c87-9351-ee6e40742f57",
+            "profileId" : "bf7b3b86-9b84-11eb-a8b3-0242ac130003",
+            "profileWrapperId" : "cc424faf-2473-47e5-979a-5f4a90f67adf",
+            "contentType" : "MAPPING_PROFILE",
+            "content" : {
+              "id" : "bf7b3b86-9b84-11eb-a8b3-0242ac130003",
+              "name" : "Default - Create instance",
+              "description" : "This field mapping profile is used with FOLIO's default job profile for creating Inventory Instances and SRS MARC Bibliographic records. It can be edited, duplicated, deleted, or linked to additional action profiles.",
+              "incomingRecordType" : "MARC_BIBLIOGRAPHIC",
+              "existingRecordType" : "INSTANCE",
+              "deleted" : false,
+              "userInfo" : {
+                "firstName" : "System",
+                "lastName" : "System",
+                "userName" : "System"
+              },
+              "marcFieldProtectionSettings" : [ ],
+              "parentProfiles" : [ ],
+              "childProfiles" : [ ],
+              "mappingDetails" : {
+                "name" : "instance",
+                "recordType" : "INSTANCE",
+                "mappingFields" : [ {
+                  "name" : "discoverySuppress",
+                  "enabled" : "true",
+                  "required" : false,
+                  "path" : "instance.discoverySuppress",
+                  "value" : "",
+                  "subfields" : [ ]
+                }, {
+                  "name" : "staffSuppress",
+                  "enabled" : "true",
+                  "required" : false,
+                  "path" : "instance.staffSuppress",
+                  "value" : "",
+                  "subfields" : [ ]
+                }, {
+                  "name" : "previouslyHeld",
+                  "enabled" : "true",
+                  "required" : false,
+                  "path" : "instance.previouslyHeld",
+                  "value" : "",
+                  "subfields" : [ ]
+                }, {
+                  "name" : "hrid",
+                  "enabled" : "false",
+                  "required" : false,
+                  "path" : "instance.hrid",
+                  "value" : "",
+                  "subfields" : [ ]
+                }, {
+                  "name" : "source",
+                  "enabled" : "false",
+                  "required" : false,
+                  "path" : "instance.source",
+                  "value" : "",
+                  "subfields" : [ ]
+                }, {
+                  "name" : "catalogedDate",
+                  "enabled" : "true",
+                  "required" : false,
+                  "path" : "instance.catalogedDate",
+                  "value" : "",
+                  "subfields" : [ ]
+                }, {
+                  "name" : "statusId",
+                  "enabled" : "true",
+                  "required" : false,
+                  "path" : "instance.statusId",
+                  "value" : "",
+                  "subfields" : [ ],
+                  "acceptedValues" : {
+                    "26f5208e-110a-4394-be29-1569a8c84a65" : "Uncataloged",
+                    "52a2ff34-2a12-420d-8539-21aa8d3cf5d8" : "Batch Loaded",
+                    "f5cc2ab6-bb92-4cab-b83f-5a3d09261a41" : "Not yet assigned",
+                    "2a340d34-6b70-443a-bb1b-1b8d1c65d862" : "Other",
+                    "9634a5ab-9228-4703-baf2-4d12ebc77d56" : "Cataloged",
+                    "daf2681c-25af-4202-a3fa-e58fdf806183" : "Temporary"
+                  }
+                }, {
+                  "name" : "modeOfIssuanceId",
+                  "enabled" : "false",
+                  "required" : false,
+                  "path" : "instance.modeOfIssuanceId",
+                  "value" : "",
+                  "subfields" : [ ]
+                }, {
+                  "name" : "statisticalCodeIds",
+                  "enabled" : "true",
+                  "required" : false,
+                  "path" : "instance.statisticalCodeIds[]",
+                  "value" : "",
+                  "subfields" : [ ]
+                }, {
+                  "name" : "title",
+                  "enabled" : "false",
+                  "required" : false,
+                  "path" : "instance.title",
+                  "value" : "",
+                  "subfields" : [ ]
+                }, {
+                  "name" : "alternativeTitles",
+                  "enabled" : "false",
+                  "required" : false,
+                  "path" : "instance.alternativeTitles[]",
+                  "value" : "",
+                  "subfields" : [ ]
+                }, {
+                  "name" : "indexTitle",
+                  "enabled" : "false",
+                  "required" : false,
+                  "path" : "instance.indexTitle",
+                  "value" : "",
+                  "subfields" : [ ]
+                }, {
+                  "name" : "series",
+                  "enabled" : "false",
+                  "required" : false,
+                  "path" : "instance.series[]",
+                  "value" : "",
+                  "subfields" : [ ]
+                }, {
+                  "name" : "precedingTitles",
+                  "enabled" : "false",
+                  "required" : false,
+                  "path" : "instance.precedingTitles[]",
+                  "value" : "",
+                  "subfields" : [ ]
+                }, {
+                  "name" : "succeedingTitles",
+                  "enabled" : "false",
+                  "required" : false,
+                  "path" : "instance.succeedingTitles[]",
+                  "value" : "",
+                  "subfields" : [ ]
+                }, {
+                  "name" : "identifiers",
+                  "enabled" : "false",
+                  "required" : false,
+                  "path" : "instance.identifiers[]",
+                  "value" : "",
+                  "subfields" : [ ]
+                }, {
+                  "name" : "contributors",
+                  "enabled" : "false",
+                  "required" : false,
+                  "path" : "instance.contributors[]",
+                  "value" : "",
+                  "subfields" : [ ]
+                }, {
+                  "name" : "publication",
+                  "enabled" : "false",
+                  "required" : false,
+                  "path" : "instance.publication[]",
+                  "value" : "",
+                  "subfields" : [ ]
+                }, {
+                  "name" : "editions",
+                  "enabled" : "false",
+                  "required" : false,
+                  "path" : "instance.editions[]",
+                  "value" : "",
+                  "subfields" : [ ]
+                }, {
+                  "name" : "physicalDescriptions",
+                  "enabled" : "false",
+                  "required" : false,
+                  "path" : "instance.physicalDescriptions[]",
+                  "value" : "",
+                  "subfields" : [ ]
+                }, {
+                  "name" : "instanceTypeId",
+                  "enabled" : "false",
+                  "required" : false,
+                  "path" : "instance.instanceTypeId",
+                  "value" : "",
+                  "subfields" : [ ]
+                }, {
+                  "name" : "natureOfContentTermIds",
+                  "enabled" : "true",
+                  "required" : false,
+                  "path" : "instance.natureOfContentTermIds[]",
+                  "value" : "",
+                  "subfields" : [ ]
+                }, {
+                  "name" : "instanceFormatIds",
+                  "enabled" : "false",
+                  "required" : false,
+                  "path" : "instance.instanceFormatIds[]",
+                  "value" : "",
+                  "subfields" : [ ]
+                }, {
+                  "name" : "languages",
+                  "enabled" : "false",
+                  "required" : false,
+                  "path" : "instance.languages[]",
+                  "value" : "",
+                  "subfields" : [ ]
+                }, {
+                  "name" : "publicationFrequency",
+                  "enabled" : "false",
+                  "required" : false,
+                  "path" : "instance.publicationFrequency[]",
+                  "value" : "",
+                  "subfields" : [ ]
+                }, {
+                  "name" : "publicationRange",
+                  "enabled" : "false",
+                  "required" : false,
+                  "path" : "instance.publicationRange[]",
+                  "value" : "",
+                  "subfields" : [ ]
+                }, {
+                  "name" : "notes",
+                  "enabled" : "false",
+                  "required" : false,
+                  "path" : "instance.notes[]",
+                  "value" : "",
+                  "subfields" : [ ]
+                }, {
+                  "name" : "electronicAccess",
+                  "enabled" : "false",
+                  "required" : false,
+                  "path" : "instance.electronicAccess[]",
+                  "value" : "",
+                  "subfields" : [ ]
+                }, {
+                  "name" : "subjects",
+                  "enabled" : "false",
+                  "required" : false,
+                  "path" : "instance.subjects[]",
+                  "value" : "",
+                  "subfields" : [ ]
+                }, {
+                  "name" : "classifications",
+                  "enabled" : "false",
+                  "required" : false,
+                  "path" : "instance.classifications[]",
+                  "value" : "",
+                  "subfields" : [ ]
+                }, {
+                  "name" : "parentInstances",
+                  "enabled" : "true",
+                  "required" : false,
+                  "path" : "instance.parentInstances[]",
+                  "value" : "",
+                  "subfields" : [ ]
+                }, {
+                  "name" : "childInstances",
+                  "enabled" : "true",
+                  "required" : false,
+                  "path" : "instance.childInstances[]",
+                  "value" : "",
+                  "subfields" : [ ]
+                } ],
+                "marcMappingDetails" : [ ]
+              },
+              "hidden" : false,
+              "metadata" : {
+                "createdDate" : "2021-04-13T14:00:00.000+00:00",
+                "createdByUserId" : "00000000-0000-0000-0000-000000000000",
+                "updatedDate" : "2021-04-13T15:00:00.462+00:00",
+                "updatedByUserId" : "00000000-0000-0000-0000-000000000000"
+              }
+            },
+            "order" : 0,
+            "childSnapshotWrappers" : [ ]
+          } ]
+        }, {
+          "id" : "997b3d1e-6556-44d5-a4c0-c04dbecefa98",
+          "profileId" : "360a74a0-787b-4797-b86a-be82e1012911",
+          "profileWrapperId" : "2f6a8a1f-c968-4e9c-b4d6-95c2fbeff3e6",
+          "contentType" : "ACTION_PROFILE",
+          "reactTo" : "MATCH",
+          "content" : {
+            "id" : "360a74a0-787b-4797-b86a-be82e1012911",
+            "name" : "ITEM action profile for FAT-937",
+            "description" : "ITEM action profile for FAT-937",
+            "action" : "CREATE",
+            "folioRecord" : "ITEM",
+            "deleted" : false,
+            "userInfo" : {
+              "firstName" : "",
+              "lastName" : "Superuser",
+              "userName" : "diku_admin"
+            },
+            "parentProfiles" : [ ],
+            "childProfiles" : [ ],
+            "hidden" : false,
+            "remove9Subfields" : false,
+            "metadata" : {
+              "createdDate" : "2024-05-14T17:45:54.984+00:00",
+              "createdByUserId" : "8ca8e682-af58-40f8-b969-4a133c8a085c",
+              "updatedDate" : "2024-05-14T17:45:54.984+00:00",
+              "updatedByUserId" : "8ca8e682-af58-40f8-b969-4a133c8a085c"
+            }
+          },
+          "order" : 1,
+          "childSnapshotWrappers" : [ {
+            "id" : "f8a7d919-557b-49c7-91aa-f075bc206309",
+            "profileId" : "d87eac3e-fd3f-4928-b57d-63849fe07193",
+            "profileWrapperId" : "4581794d-7b8e-47a5-b0ca-07878008b202",
+            "contentType" : "MAPPING_PROFILE",
+            "content" : {
+              "id" : "d87eac3e-fd3f-4928-b57d-63849fe07193",
+              "name" : "Item Mapping profile FAT-937",
+              "description" : "",
+              "incomingRecordType" : "MARC_BIBLIOGRAPHIC",
+              "existingRecordType" : "ITEM",
+              "deleted" : false,
+              "userInfo" : {
+                "firstName" : "",
+                "lastName" : "Superuser",
+                "userName" : "diku_admin"
+              },
+              "marcFieldProtectionSettings" : [ ],
+              "parentProfiles" : [ ],
+              "childProfiles" : [ ],
+              "mappingDetails" : {
+                "name" : "item",
+                "recordType" : "ITEM",
+                "mappingFields" : [ {
+                  "name" : "materialType.id",
+                  "enabled" : "true",
+                  "required" : false,
+                  "path" : "item.materialType.id",
+                  "value" : "\"electronic resource\"",
+                  "subfields" : [ ],
+                  "acceptedValues" : {
+                    "1a54b431-2e4f-452d-9cae-9cee66c9a892" : "book",
+                    "615b8413-82d5-4203-aa6e-e37984cb5ac3" : "electronic resource"
+                  }
+                }, {
+                  "name" : "notes",
+                  "enabled" : "true",
+                  "required" : false,
+                  "path" : "item.notes[]",
+                  "value" : "",
+                  "repeatableFieldAction" : "EXTEND_EXISTING",
+                  "subfields" : [ {
+                    "order" : 0,
+                    "path" : "item.notes[]",
+                    "fields" : [ {
+                      "name" : "itemNoteTypeId",
+                      "enabled" : "true",
+                      "required" : false,
+                      "path" : "item.notes[].itemNoteTypeId",
+                      "value" : "\"Electronic bookplate\"",
+                      "subfields" : [ ],
+                      "acceptedValues" : {
+                        "0e40884c-3523-4c6d-8187-d578e3d2794e" : "Action note",
+                        "f3ae3823-d096-4c65-8734-0c1efd2ffea8" : "Electronic bookplate"
+                      }
+                    }, {
+                      "name" : "note",
+                      "enabled" : "true",
+                      "required" : false,
+                      "path" : "item.notes[].note",
+                      "value" : "\"Smith Family Foundation\"",
+                      "subfields" : [ ]
+                    }, {
+                      "name" : "staffOnly",
+                      "enabled" : "true",
+                      "required" : false,
+                      "path" : "item.notes[].staffOnly",
+                      "booleanFieldAction" : "ALL_TRUE",
+                      "subfields" : [ ]
+                    } ]
+                  } ]
+                }, {
+                  "name" : "permanentLoanType.id",
+                  "enabled" : "true",
+                  "required" : false,
+                  "path" : "item.permanentLoanType.id",
+                  "value" : "\"Can circulate\"",
+                  "subfields" : [ ],
+                  "acceptedValues" : {
+                    "2b94c631-fca9-4892-a730-03ee529ffe27" : "Can circulate",
+                    "a1dc1ce3-d56f-4d8a-b498-d5d674ccc845" : "Selected"
+                  }
+                }, {
+                  "name" : "status.name",
+                  "enabled" : "true",
+                  "required" : false,
+                  "path" : "item.status.name",
+                  "value" : "\"Available\"",
+                  "subfields" : [ ]
+                } ],
+                "marcMappingDetails" : [ ]
+              },
+              "hidden" : false,
+              "metadata" : {
+                "createdDate" : "2024-05-14T17:45:54.890+00:00",
+                "createdByUserId" : "8ca8e682-af58-40f8-b969-4a133c8a085c",
+                "updatedDate" : "2024-05-14T17:45:54.890+00:00",
+                "updatedByUserId" : "8ca8e682-af58-40f8-b969-4a133c8a085c"
+              }
+            },
+            "order" : 0,
+            "childSnapshotWrappers" : [ ]
+          } ]
+        } ]
+      } ]
+    } ]
+  } ]
+}

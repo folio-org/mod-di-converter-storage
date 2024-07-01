@@ -1,0 +1,117 @@
+{
+  "id": "5beece6a-f008-4689-8155-bcc907c81476",
+  "_version": "1",
+  "hrid": "in00000000001",
+  "source": "MARC",
+  "title": "The Journal of ecclesiastical history.",
+  "administrativeNotes": [],
+  "indexTitle": "Journal of ecclesiastical history.",
+  "parentInstances": [],
+  "childInstances": [],
+  "isBoundWith": false,
+  "alternativeTitles": [],
+  "editions": [],
+  "series": [],
+  "identifiers": [
+    {
+      "identifierTypeId": "c858e4f2-2b6b-4385-842b-60732ee14abb",
+      "value": "58020553"
+    },
+    {
+      "identifierTypeId": "913300b2-03ed-469a-8179-c1092c991227",
+      "value": "0022-0469"
+    },
+    {
+      "identifierTypeId": "7e591197-f335-4afb-bc6d-a6d76ca3bace",
+      "value": "(CStRLIN)NYCX1604275S"
+    },
+    {
+      "identifierTypeId": "7e591197-f335-4afb-bc6d-a6d76ca3bace",
+      "value": "(NIC)notisABP6388"
+    },
+    {
+      "identifierTypeId": "7e591197-f335-4afb-bc6d-a6d76ca3bace",
+      "value": "366832"
+    },
+    {
+      "identifierTypeId": "439bfbae-75bc-4f74-9fc7-b2a2d47ce3ef",
+      "value": "(OCoLC)1604275"
+    }
+  ],
+  "contributors": [
+    {
+      "authorityId": null,
+      "contributorNameTypeId": "2b94c631-fca9-4892-a730-03ee529ffe2a",
+      "name": "Dugmore, C. W. (Clifford William)",
+      "contributorTypeId": null,
+      "contributorTypeText": "ed.",
+      "primary": false
+    }
+  ],
+  "subjects": [
+    {
+      "authorityId": null,
+      "value": "Church history--Periodicals"
+    },
+    {
+      "authorityId": null,
+      "value": "Church history"
+    },
+    {
+      "authorityId": null,
+      "value": "Periodicals"
+    }
+  ],
+  "classifications": [
+    {
+      "classificationNumber": "BR140 .J6",
+      "classificationTypeId": "ce176ace-a53e-4b4d-aa89-725ed7b2edac"
+    },
+    {
+      "classificationNumber": "270.05",
+      "classificationTypeId": "42471af9-7d25-4f3a-bf78-60d29dcf463b"
+    }
+  ],
+  "publication": [
+    {
+      "publisher": "Cambridge University Press [etc.]",
+      "place": "London",
+      "dateOfPublication": null,
+      "role": null
+    }
+  ],
+  "publicationFrequency": [
+    "Quarterly, 1970-",
+    "Semiannual, 1950-69"
+  ],
+  "publicationRange": [
+    "v. 1-   Apr. 1950-"
+  ],
+  "electronicAccess": [],
+  "instanceTypeId": "30fffe0e-e985-4144-b2e2-1e8179bdb41f",
+  "instanceFormatIds": [],
+  "physicalDescriptions": [
+    "v. 25 cm."
+  ],
+  "languages": [
+    "eng"
+  ],
+  "notes": [],
+  "modeOfIssuanceId": "068b5344-e2a6-40df-9186-1829e13cd344",
+  "previouslyHeld": false,
+  "discoverySuppress": false,
+  "statisticalCodeIds": [],
+  "statusUpdatedDate": "2024-05-14T12:25:52.634+0000",
+  "metadata": {
+    "createdDate": "2024-05-14T12:25:52.634+00:00",
+    "createdByUserId": "8ca8e682-af58-40f8-b969-4a133c8a085c",
+    "updatedDate": "2024-05-14T12:25:52.634+00:00",
+    "updatedByUserId": "8ca8e682-af58-40f8-b969-4a133c8a085c"
+  },
+  "tags": {
+    "tagList": []
+  },
+  "natureOfContentTermIds": [],
+  "precedingTitles": [],
+  "succeedingTitles": []
+}

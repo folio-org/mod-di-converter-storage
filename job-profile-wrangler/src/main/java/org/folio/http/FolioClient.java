@@ -51,6 +51,23 @@ public class FolioClient {
     this.token = okapiToken.get();
   }
 
+  public enum ExportRecordType {
+    INSTANCE("6f7f3cd7-9f24-42eb-ae91-91af1cd54d0a"),
+    HOLDINGS("5e9835fc-0e51-44c8-8a47-f7b8fce35da7"),
+    ITEM(""),
+    AUTHORITY("56944b1c-f3f9-475b-bed0-7387c33620ce");
+
+    private final String jobProfileId;
+
+    ExportRecordType(String jobProfileId) {
+      this.jobProfileId = jobProfileId;
+    }
+
+    public String getJobProfileId() {
+      return jobProfileId;
+    }
+  }
+
   protected void setHttpClient(OkHttpClient client) {
     httpClient = client;
   }
@@ -144,12 +161,116 @@ public class FolioClient {
     return Optional.empty();
   }
 
+  public Optional<JsonNode> getInstance(String instanceId) {
+    HttpUrl url = baseUrlBuilderSupplier.get()
+      .addPathSegments("inventory/instances")
+      .addPathSegment(instanceId)
+      .build();
+
+    return executeGet(url);
+  }
+
+  public Optional<JsonNode> getHoldings(String holdingsId) {
+    HttpUrl url = baseUrlBuilderSupplier.get()
+      .addPathSegments("holdings-storage/holdings")
+      .addPathSegment(holdingsId)
+      .build();
+
+    return executeGet(url);
+  }
+
+  public Optional<JsonNode> getItem(String itemId) {
+    HttpUrl url = baseUrlBuilderSupplier.get()
+      .addPathSegments("inventory/items")
+      .addPathSegment(itemId)
+      .build();
+
+    return executeGet(url);
+  }
+
+  public Optional<JsonNode> getSourceRecordBySRSId(String srsId) {
+    HttpUrl url = baseUrlBuilderSupplier.get()
+      .addPathSegments("source-storage/records")
+      .addPathSegment(srsId)
+      .build();
+
+    return executeGet(url);
+  }
+
+  public Optional<JsonNode> getSourceRecordByExternalId(String externalId) {
+    HttpUrl url = baseUrlBuilderSupplier.get()
+      .addPathSegments("source-storage/records")
+      .addQueryParameter("externalId", externalId)
+      .build();
+
+    return executeGet(url);
+  }
+
+  public Optional<byte[]> exportFolioObject(ExportRecordType recordType, String uuid) {
+    // trigger export
+    String payload = OBJECT_MAPPER.createObjectNode()
+      .put("type", "uuid")
+      .put("recordType", recordType.name())
+      .put("jobProfileId", recordType.getJobProfileId())
+      .set("uuids", OBJECT_MAPPER.createArrayNode().add(uuid))
+      .toString();
+    HttpUrl url = baseUrlBuilderSupplier.get()
+      .addPathSegments("data-export/quick-export")
+      .build();
+    Optional<JsonNode> jobExecutionIdentifierOptional = executePost(url, payload);
+    if (jobExecutionIdentifierOptional.isEmpty()) return Optional.empty();
+    String jobExecutionId = jobExecutionIdentifierOptional.get().get("jobExecutionId").asText();
+
+    // get job execution
+    String fileId = null;
+    int count = 3;
+    while(true) {
+      url = baseUrlBuilderSupplier.get()
+        .addPathSegments("data-export/job-executions")
+        .addQueryParameter("query", "id==" + jobExecutionId)
+        .build();
+      Optional<JsonNode> jobExecutionOptional = executeGet(url);
+      if (jobExecutionOptional.isEmpty()) return Optional.empty();
+      JsonNode jobExecution = jobExecutionOptional.get().path("jobExecutions")
+        .get(0);
+      String status = jobExecution.get("status").asText();
+      fileId = jobExecution.path("exportedFiles")
+        .get(0)
+        .path("fileId")
+        .asText();
+      if(status.equals("COMPLETED") || (count <= 0)) break;
+      count--;
+      try {
+        LOGGER.info("Pausing for export job execution {}", jobExecutionId);
+        Thread.sleep(3000);
+      } catch (InterruptedException e) {
+        LOGGER.error(e);
+      }
+    }
+
+
+    // get download url
+    url = baseUrlBuilderSupplier.get()
+      .addPathSegments("data-export/job-executions")
+      .addPathSegment(jobExecutionId)
+      .addPathSegment("download")
+      .addPathSegment(fileId)
+      .build();
+    Optional<JsonNode> downloadUrlOptional = executeGet(url);
+    if (downloadUrlOptional.isEmpty()) return Optional.empty();
+    String downloadLink = downloadUrlOptional.get().path("link")
+      .asText();
+
+    // download MARC
+    return executeGetBinary(downloadLink);
+  }
+
   public Optional<JsonNode> createJobProfile(String jobProfile) {
     HttpUrl url = baseUrlBuilderSupplier.get()
       .addPathSegments("data-import-profiles/jobProfiles")
       .build();
 
-    return createObjInFolio(url, jobProfile);
+    return executePost(url, jobProfile);
   }
 
   public Optional<JsonNode> createMatchProfile(String matchProfile) {
@@ -157,7 +278,7 @@ public class FolioClient {
       .addPathSegments("data-import-profiles/matchProfiles")
       .build();
 
-    return createObjInFolio(url, matchProfile);
+    return executePost(url, matchProfile);
   }
 
   public Optional<JsonNode> createActionProfile(String actionProfile) {
@@ -165,7 +286,7 @@ public class FolioClient {
       .addPathSegments("data-import-profiles/actionProfiles")
       .build();
 
-    return createObjInFolio(url, actionProfile);
+    return executePost(url, actionProfile);
   }
 
   public Optional<JsonNode> createMappingProfile(String mappingProfile) {
@@ -173,10 +294,10 @@ public class FolioClient {
       .addPathSegments("data-import-profiles/mappingProfiles")
       .build();
 
-    return createObjInFolio(url, mappingProfile);
+    return executePost(url, mappingProfile);
   }
 
-  private Optional<JsonNode> createObjInFolio(HttpUrl url, String obj) {
+  private Optional<JsonNode> executePost(HttpUrl url, String obj) {
     RequestBody body = RequestBody.create(obj, MediaType.parse("application/json"));
 
     Request request = new Request.Builder()
@@ -190,7 +311,49 @@ public class FolioClient {
       String result = response.body().string();
       return Optional.of(OBJECT_MAPPER.readTree(result));
     } catch (IOException e) {
-      LOGGER.error("Something happened while querying for profile snapshot", e);
+      LOGGER.error("Something happened while executing POST request url={}", url, e);
+    }
+    return Optional.empty();
+  }
+
+  private Optional<JsonNode> executeGet(HttpUrl url) {
+    Request request = new Request.Builder()
+      .url(url)
+      .addHeader(OKAPI_TOKEN_HEADER, token)
+      .get()
+      .build();
+
+    try (Response response = httpClient.newCall(request).execute()) {
+      assert response.body() != null;
+      if (!response.isSuccessful()) {
+        LOGGER.error("Unexpected result: {}", response);
+        return Optional.empty();
+      }
+      String result = response.body().string();
+      return Optional.of(OBJECT_MAPPER.readTree(result));
+    } catch (IOException e) {
+      LOGGER.error("Something happened while executing GET request url={}", url, e);
+    }
+    return Optional.empty();
+  }
+
+  private Optional<byte[]> executeGetBinary(String url) {
+    Request request = new Request.Builder()
+      .url(url)
+      .addHeader(OKAPI_TOKEN_HEADER, token)
+      .get()
+      .build();
+
+    try (Response response = httpClient.newCall(request).execute()) {
+      assert response.body() != null;
+      if (!response.isSuccessful()) {
+        LOGGER.error("Unexpected result: {}", response);
+        return Optional.empty();
+      }
+      byte[] result = response.body().bytes();
+      return Optional.of(result);
+    } catch (IOException e) {
+      LOGGER.error("Something happened while executing GET binary request url={}", url, e);
     }
     return Optional.empty();
   }

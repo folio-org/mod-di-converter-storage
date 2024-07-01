@@ -1,0 +1,27 @@
+{
+  "holdingsItems": [],
+  "bareHoldingsItems": [],
+  "id": "c5c90588-4163-46c5-9abe-2165843ec703",
+  "_version": 4,
+  "sourceId": "f32d531e-df79-46b3-8932-cdd35f7a2264",
+  "hrid": "ho00000000003",
+  "holdingsTypeId": "996f93e2-5b5e-4cf2-9168-33ced1f95eed",
+  "formerIds": [],
+  "instanceId": "7e2ad1dc-1f3b-4133-a975-2b08411b26c6",
+  "permanentLocationId": "184aae84-a5bf-4c6a-85ba-4a7c73026cd5",
+  "effectiveLocationId": "184aae84-a5bf-4c6a-85ba-4a7c73026cd5",
+  "electronicAccess": [],
+  "callNumberTypeId": "95467209-6d7b-468b-94df-0f5d7ad2747d",
+  "administrativeNotes": [],
+  "notes": [],
+  "holdingsStatements": [],
+  "holdingsStatementsForIndexes": [],
+  "holdingsStatementsForSupplements": [],
+  "statisticalCodeIds": [],
+  "metadata": {
+    "createdDate": "2024-05-14T17:55:56.536+00:00",
+    "createdByUserId": "8ca8e682-af58-40f8-b969-4a133c8a085c",
+    "updatedDate": "2024-05-15T22:39:01.570+00:00",
+    "updatedByUserId": "8ca8e682-af58-40f8-b969-4a133c8a085c"
+  }
+}
