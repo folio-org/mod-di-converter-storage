@@ -57,6 +57,7 @@ import static org.folio.rest.jaxrs.model.ActionProfile.FolioRecord.MARC_BIBLIOGR
 import static org.folio.rest.jaxrs.model.MatchDetail.MatchCriterion.EXACTLY_MATCHES;
 import static org.folio.rest.jaxrs.model.MatchExpression.DataValueType.VALUE_FROM_RECORD;
 import static org.folio.rest.jaxrs.model.ProfileType.ACTION_PROFILE;
+import static org.folio.rest.jaxrs.model.ProfileType.JOB_PROFILE;
 import static org.folio.rest.jaxrs.model.ProfileType.MATCH_PROFILE;
 import static org.folio.rest.jaxrs.model.Qualifier.ComparisonPart.NUMERICS_ONLY;
 import static org.hamcrest.Matchers.empty;
@@ -833,12 +834,25 @@ MatchDetail receivedMatchDetail1 = receivedMatchProfile.getMatchDetails().get(0)
         .spec(spec)
         .body(new JobProfileUpdateDto()
           .withProfile(profile.getProfile().withName(nameForProfiles + i))
-          .withAddedRelations(Collections.singletonList(new ProfileAssociation()
-            .withDetailProfileId(profilesIds.get(i))
-            .withDetailProfileType(ProfileType.MATCH_PROFILE)
-            .withMasterProfileType(ProfileType.JOB_PROFILE)
-            .withOrder(0)
-            .withTriggered(false).withReactTo(ReactToType.MATCH)
+          .withAddedRelations(List.of(
+            new ProfileAssociation()
+              .withDetailProfileId(profilesIds.get(i))
+              .withDetailProfileType(ProfileType.MATCH_PROFILE)
+              .withMasterProfileType(ProfileType.JOB_PROFILE)
+              .withOrder(0)
+              .withTriggered(false).withReactTo(ReactToType.MATCH),
+            new ProfileAssociation()
+              .withDetailProfileId(createdActions.get(i).getId())
+              .withDetailProfileType(ACTION_PROFILE)
+              .withMasterProfileType(MATCH_PROFILE)
+              .withOrder(0)
+              .withTriggered(false),
+            new ProfileAssociation()
+              .withDetailProfileId(createdActions.get(i).getId())
+              .withDetailProfileType(ACTION_PROFILE)
+              .withMasterProfileType(JOB_PROFILE)
+              .withOrder(0)
+              .withTriggered(false)
           )))
         .when()
         .post(JOB_PROFILES_PATH)
@@ -849,12 +863,13 @@ MatchDetail receivedMatchDetail1 = receivedMatchProfile.getMatchDetails().get(0)
     i = 0;
     for (JobProfileUpdateDto profile : created) {
       profile.setDeletedRelations(Collections.singletonList(new ProfileAssociation()
-        .withDetailProfileId(profilesIds.get(i))
+        .withDetailProfileId(createdActions.get(i).getId())
         .withMasterProfileId(profile.getProfile().getId())
-        .withDetailProfileType(ProfileType.MATCH_PROFILE)
-        .withMasterProfileType(ProfileType.JOB_PROFILE)
+        .withDetailProfileType(ACTION_PROFILE)
+        .withMasterProfileType(JOB_PROFILE)
         .withOrder(0)
-        .withTriggered(false).withReactTo(ReactToType.MATCH)));
+        .withTriggered(false).withReactTo(ReactToType.MATCH)
+      ));
       profile.getAddedRelations().clear();
       RestAssured.given()
         .spec(spec)
