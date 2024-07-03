@@ -26,7 +26,6 @@ import org.folio.rest.jaxrs.model.ProfileSnapshotWrapper;
 import org.folio.rest.jaxrs.model.ProfileType;
 import org.folio.rest.jaxrs.model.Qualifier;
 import org.folio.rest.jaxrs.model.Tags;
-import org.folio.rest.jaxrs.model.ProfileType;
 import org.folio.rest.jaxrs.model.ReactToType;
 import org.folio.rest.persist.Criteria.Criterion;
 import org.folio.rest.persist.PostgresClient;
@@ -801,7 +800,33 @@ MatchDetail receivedMatchDetail1 = receivedMatchProfile.getMatchDetails().get(0)
         .statusCode(HttpStatus.SC_CREATED).extract().body().as(MappingProfileUpdateDto.class));
       i++;
     }
-
+    i = 0;
+    for (ActionProfileUpdateDto action : actionProfiles) {
+      createdActions.add(RestAssured.given()
+        .spec(spec)
+        .body(new ActionProfileUpdateDto()
+          .withProfile(action.getProfile()
+            .withName(nameForProfiles + i))
+          .withAddedRelations(Lists.newArrayList(new ProfileAssociation()
+              .withMasterProfileId(profilesIds.get(i))
+              .withDetailProfileType(ProfileType.ACTION_PROFILE)
+              .withMasterProfileType(ProfileType.MATCH_PROFILE)
+              .withOrder(0)
+              .withTriggered(false)
+              .withReactTo(ReactToType.MATCH),
+            new ProfileAssociation()
+              .withMasterProfileId(action.getProfile().getId())
+              .withDetailProfileId(createdMappings.get(i).getId())
+              .withDetailProfileType(ProfileType.MAPPING_PROFILE)
+              .withMasterProfileType(ProfileType.ACTION_PROFILE)
+              .withOrder(0)
+              .withTriggered(false))))
+        .when()
+        .post(ACTION_PROFILES_PATH)
+        .then()
+        .statusCode(HttpStatus.SC_CREATED).extract().body().as(ActionProfileUpdateDto.class));
+      i++;
+    }
     i = 0;
     for (JobProfileUpdateDto profile : jobProfiles) {
       created.add(RestAssured.given()
@@ -857,33 +882,6 @@ MatchDetail receivedMatchDetail1 = receivedMatchProfile.getMatchDetails().get(0)
         .put(JOB_PROFILES_PATH + "/" + profile.getProfile().getId())
         .then()
         .statusCode(HttpStatus.SC_OK);
-      i++;
-    }
-    i = 0;
-    for (ActionProfileUpdateDto action : actionProfiles) {
-      createdActions.add(RestAssured.given()
-        .spec(spec)
-        .body(new ActionProfileUpdateDto()
-          .withProfile(action.getProfile()
-            .withName(nameForProfiles + i))
-          .withAddedRelations(Lists.newArrayList(new ProfileAssociation()
-              .withMasterProfileId(profilesIds.get(i))
-              .withDetailProfileType(ProfileType.ACTION_PROFILE)
-              .withMasterProfileType(ProfileType.MATCH_PROFILE)
-              .withOrder(0)
-              .withTriggered(false)
-              .withReactTo(ReactToType.MATCH),
-            new ProfileAssociation()
-              .withMasterProfileId(action.getProfile().getId())
-              .withDetailProfileId(createdMappings.get(i).getId())
-              .withDetailProfileType(ProfileType.MAPPING_PROFILE)
-              .withMasterProfileType(ProfileType.ACTION_PROFILE)
-              .withOrder(0)
-              .withTriggered(false))))
-        .when()
-        .post(ACTION_PROFILES_PATH)
-        .then()
-        .statusCode(HttpStatus.SC_CREATED).extract().body().as(ActionProfileUpdateDto.class));
       i++;
     }
   }
