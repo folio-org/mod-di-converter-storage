@@ -39,6 +39,7 @@ import java.util.UUID;
 
 import static org.folio.rest.jaxrs.model.ActionProfile.Action.CREATE;
 import static org.folio.rest.jaxrs.model.ActionProfile.Action.UPDATE;
+import static org.folio.rest.jaxrs.model.ActionProfile.FolioRecord.INSTANCE;
 import static org.folio.rest.jaxrs.model.ActionProfile.FolioRecord.MARC_BIBLIOGRAPHIC;
 import static org.folio.rest.jaxrs.model.JobProfile.DataType.MARC;
 import static org.folio.rest.jaxrs.model.ProfileType.ACTION_PROFILE;
@@ -66,19 +67,16 @@ public class CommonProfileAssociationTest extends AbstractRestVerticleTest {
   public static final String ASSOCIATED_PROFILES_URL = "/data-import-profiles/profileAssociations";
   private static final String DETAILS_BY_MASTER_URL = "/data-import-profiles/profileAssociations/{masterId}/details";
   private static final String MASTERS_BY_DETAIL_URL = "/data-import-profiles/profileAssociations/{detailId}/masters";
+  private static final String ASSOCIATION_UUID = "7e5da9cf-e9e8-4734-b23e-a4a1129ebcdb";
 
   JobProfileUpdateDto jobProfile1 = new JobProfileUpdateDto()
     .withProfile(new JobProfile().withName("testJobProfile1").withDataType(MARC).withDescription("test-description"));
   JobProfileUpdateDto jobProfile2 = new JobProfileUpdateDto()
     .withProfile(new JobProfile().withName("testJobProfile2").withDataType(MARC).withDescription("test-description"));
-  JobProfileUpdateDto jobProfile3 = new JobProfileUpdateDto()
-    .withProfile(new JobProfile().withName("testJobProfile3").withDataType(MARC));
 
-  ActionProfileUpdateDto actionProfile1 = new ActionProfileUpdateDto()
-    .withId("f12db804-70d1-49dd-a58c-49edf9031371")
-    .withProfile(new ActionProfile().withName("testActionProfile1")
-      .withDescription("test-description")
-      .withAction(CREATE).withFolioRecord(MARC_BIBLIOGRAPHIC));
+  ActionProfileUpdateDto actionProfile1 = new ActionProfileUpdateDto().withId("f12db804-70d1-49dd-a58c-49edf9031371")
+    .withProfile(new ActionProfile().withName("testActionProfile1").withDescription("test-description")
+      .withAction(CREATE).withFolioRecord(INSTANCE));
 
   ActionProfileUpdateDto actionProfile2 = new ActionProfileUpdateDto().withId("f12db804-70d1-49dd-a58c-49edf9031372")
     .withProfile(new ActionProfile().withName("testActionProfile2").withDescription("test-description")
@@ -108,7 +106,7 @@ public class CommonProfileAssociationTest extends AbstractRestVerticleTest {
   MatchProfileUpdateDto matchProfile1 = new MatchProfileUpdateDto()
     .withProfile(new MatchProfile().withName("testMatchProfile1")
       .withIncomingRecordType(EntityType.MARC_BIBLIOGRAPHIC)
-      .withExistingRecordType(EntityType.MARC_BIBLIOGRAPHIC)
+      .withExistingRecordType(EntityType.INSTANCE)
       .withDescription("test-description"));
   MatchProfileUpdateDto matchProfile2 = new MatchProfileUpdateDto()
     .withProfile(new MatchProfile().withName("testMatchProfile2")
@@ -124,45 +122,6 @@ public class CommonProfileAssociationTest extends AbstractRestVerticleTest {
     .withProfile(new MatchProfile().withName("testMatchProfile4")
       .withIncomingRecordType(EntityType.MARC_BIBLIOGRAPHIC)
       .withExistingRecordType(EntityType.MARC_BIBLIOGRAPHIC));
-
-  private JobProfileUpdateDto createJobProfile(JobProfileUpdateDto jobProfileUpdateDto,
-                                               ActionProfileUpdateDto actionProfileUpdateDto,
-                                               MatchProfileUpdateDto matchProfileUpdateDto) {
-    var actionProfileIdCreate = UUID.randomUUID().toString();
-    RestAssured.given()
-      .spec(spec)
-      .body(actionProfileUpdateDto)
-      .when()
-      .post(ACTION_PROFILES_URL)
-      .then()
-      .statusCode(HttpStatus.SC_CREATED);
-
-    String mappingProfileIdCreate = UUID.randomUUID().toString();
-
-    var validAssociation2 = new ProfileAssociation()
-      .withMasterProfileId(actionProfileIdCreate)
-      .withDetailProfileId(mappingProfileIdCreate)
-      .withMasterProfileType(ACTION_PROFILE)
-      .withDetailProfileType(MAPPING_PROFILE)
-      .withOrder(1);
-
-    RestAssured.given()
-      .spec(spec)
-      .body(matchProfileUpdateDto.withAddedRelations(List.of(validAssociation2)))
-      .when()
-      .post(MAPPING_PROFILES_URL)
-      .then()
-      .statusCode(HttpStatus.SC_CREATED);
-
-    var validAssociation = new ProfileAssociation()
-      .withMasterProfileId(jobProfileUpdateDto.getId())
-      .withDetailProfileId(actionProfileIdCreate)
-      .withMasterProfileType(JOB_PROFILE)
-      .withDetailProfileType(ACTION_PROFILE)
-      .withOrder(0);
-
-    return jobProfileUpdateDto.withAddedRelations(List.of(validAssociation));
-  }
 
   @Test
   public void runTestShouldReturnEmptyOkResultOnGetAll(TestContext testContext) {
@@ -195,53 +154,82 @@ public class CommonProfileAssociationTest extends AbstractRestVerticleTest {
     shouldReturnProfileAssociationListOnGet(testContext, new ActionProfileWrapper(actionProfile3), new MappingProfileWrapper(mappingProfile1),
       ACTION_PROFILES_URL, MAPPING_PROFILES_URL, ACTION_PROFILE, MAPPING_PROFILE);
     // job to action
-    shouldReturnProfileAssociationListOnGet(testContext, new JobProfileWrapper(jobProfile1), new ActionProfileWrapper(actionProfile1),
-      JOB_PROFILES_URL, ACTION_PROFILES_URL, JOB_PROFILE, ACTION_PROFILE);
+    shouldReturnJobToActionAssociationListOnGet(testContext, new JobProfileWrapper(jobProfile1),
+      new ActionProfileWrapper(actionProfile1), new MappingProfileWrapper(mappingProfile1));
     // job to match
-    shouldReturnProfileAssociationListOnGet(testContext, new JobProfileWrapper(jobProfile2), new MatchProfileWrapper(matchProfile1),
-      JOB_PROFILES_URL, MATCH_PROFILES_URL, JOB_PROFILE, MATCH_PROFILE);
+    shouldReturnJobToMatchAssociationListOnGet(testContext, new JobProfileWrapper(jobProfile2), new ActionProfileWrapper(actionProfile2),
+      new MappingProfileWrapper(mappingProfile1), new MatchProfileWrapper(matchProfile1));
     // match to action
-    shouldReturnProfileAssociationListOnGet(testContext, new MatchProfileWrapper(matchProfile1), new ActionProfileWrapper(actionProfile1),
+    shouldReturnProfileAssociationListOnGet(testContext, new MatchProfileWrapper(matchProfile1),
+      new ActionProfileWrapper(actionProfile1),
       MATCH_PROFILES_URL, ACTION_PROFILES_URL, MATCH_PROFILE, ACTION_PROFILE);
     // match to match
     shouldReturnProfileAssociationListOnGet(testContext, new MatchProfileWrapper(matchProfile2), new MatchProfileWrapper(matchProfile3),
       MATCH_PROFILES_URL, MATCH_PROFILES_URL, MATCH_PROFILE, MATCH_PROFILE);
   }
 
-  private <M, D> ProfileAssociation createMasterDetailProfile(TestContext testContext, ProfileWrapper<M> masterWrapper,
-                                                     ProfileWrapper<D> detailWrapper, String masterProfileUrl, String detailProfileUrl,
-                                                     ProfileType masterProfileType, ProfileType detailProfileType) {
-    ProfileAssociation profileAssociation;
-    ProfileWrapper<D> detailProfileWrapper1 = postProfile(testContext, detailWrapper, detailProfileUrl);
-    if (masterWrapper instanceof JobProfileWrapper jobProfileWrapper) {
-      profileAssociation = new ProfileAssociation()
-        .withMasterProfileId(masterWrapper.getId())
-        .withDetailProfileId(detailProfileWrapper1.getId())
-        .withMasterProfileType(ProfileType.valueOf(masterProfileType.value()))
-        .withDetailProfileType(ProfileType.valueOf(detailProfileType.value()))
-        .withOrder(5)
-        .withTriggered(true);
-      jobProfileWrapper.getProfile().getAddedRelations().add(profileAssociation);
-      postProfile(testContext, jobProfileWrapper, masterProfileUrl);
+  public <M, D> void shouldReturnJobToMatchAssociationListOnGet(TestContext testContext,
+                                                                JobProfileWrapper jobProfileWrapper,
+                                                                ActionProfileWrapper actionProfileWrapper,
+                                                                MappingProfileWrapper mappingProfileWrapper,
+                                                                MatchProfileWrapper matchProfileWrapper) {
+    var jobProfile = createJobProfileWithMatch(testContext, jobProfileWrapper, actionProfileWrapper,
+      mappingProfileWrapper, matchProfileWrapper);
 
-    } else {
-      ProfileWrapper<M> masterProfileWrapper1 = postProfile(testContext, masterWrapper, masterProfileUrl);
+    postProfile(testContext, new JobProfileWrapper(jobProfile), JOB_PROFILES_URL);
 
-      profileAssociation = new ProfileAssociation()
-        .withMasterProfileId(masterProfileWrapper1.getId())
-        .withDetailProfileId(detailProfileWrapper1.getId())
-        .withMasterProfileType(ProfileType.valueOf(masterProfileType.value()))
-        .withDetailProfileType(ProfileType.valueOf(detailProfileType.value()))
-        .withOrder(5)
-        .withTriggered(true);
-    }
-    return profileAssociation;
+    Async async = testContext.async();
+    RestAssured.given()
+      .spec(spec)
+      .queryParam("master", JOB_PROFILE)
+      .queryParam("detail", MATCH_PROFILE)
+      .when()
+      .get(ASSOCIATED_PROFILES_URL)
+      .then()
+      .statusCode(HttpStatus.SC_OK)
+      .body("totalRecords", is(1));
+    async.complete();
+
+    clearTables(testContext);
+  }
+
+  public <M, D> void shouldReturnJobToActionAssociationListOnGet(TestContext testContext,
+                                                                            JobProfileWrapper jobProfileWrapper,
+                                                                            ActionProfileWrapper actionProfileWrapper,
+                                                                            MappingProfileWrapper mappingProfileWrapper) {
+    var jobProfile = createJobProfileWithAction(testContext, jobProfileWrapper, actionProfileWrapper,
+      mappingProfileWrapper);
+
+    ProfileWrapper<JobProfileUpdateDto> masterWrapper = postProfile(testContext, new JobProfileWrapper(jobProfile),
+      JOB_PROFILES_URL);
+
+    Async async = testContext.async();
+    RestAssured.given()
+      .spec(spec)
+      .queryParam("master", JOB_PROFILE)
+      .queryParam("detail", ACTION_PROFILE)
+      .when()
+      .get(ASSOCIATED_PROFILES_URL)
+      .then()
+      .statusCode(HttpStatus.SC_OK)
+      .body("totalRecords", is(1));
+    async.complete();
+
+    clearTables(testContext);
   }
 
   public <M, D> void shouldReturnProfileAssociationListOnGet(TestContext testContext, ProfileWrapper<M> masterWrapper1, ProfileWrapper<D> detailWrapper1,
                                                              String masterProfileUrl, String detailProfileUrl, ProfileType masterProfileType, ProfileType detailProfileType) {
-    var profileAssociation = createMasterDetailProfile(testContext, masterWrapper1, detailWrapper1, masterProfileUrl,
-      detailProfileUrl, masterProfileType, detailProfileType);
+    ProfileWrapper<M> masterProfileWrapper1 = postProfile(testContext, masterWrapper1, masterProfileUrl);
+    ProfileWrapper<D> detailProfileWrapper1 = postProfile(testContext, detailWrapper1, detailProfileUrl);
+
+    ProfileAssociation profileAssociation = new ProfileAssociation()
+      .withMasterProfileId(masterProfileWrapper1.getId())
+      .withDetailProfileId(detailProfileWrapper1.getId())
+      .withMasterProfileType(ProfileType.valueOf(masterProfileType.value()))
+      .withDetailProfileType(ProfileType.valueOf(detailProfileType.value()))
+      .withOrder(5)
+      .withTriggered(true);
 
     Async async = testContext.async();
     RestAssured.given()
@@ -297,20 +285,137 @@ public class CommonProfileAssociationTest extends AbstractRestVerticleTest {
   @Test
   public void runTestShouldPostAndGetById(TestContext testContext) {
     // action to mapping
-    shouldPostAndGetById(testContext, new ActionProfileWrapper(actionProfile3), new MappingProfileWrapper(mappingProfile1),
+    shouldPostAndGetById(testContext, new ActionProfileWrapper(actionProfile1),
+      new MappingProfileWrapper(mappingProfile1),
       ACTION_PROFILES_URL, MAPPING_PROFILES_URL, ACTION_PROFILE, MAPPING_PROFILE);
     // job to action
-    shouldPostAndGetById(testContext, new JobProfileWrapper(jobProfile1), new ActionProfileWrapper(actionProfile1),
-      JOB_PROFILES_URL, ACTION_PROFILES_URL, JOB_PROFILE, ACTION_PROFILE);
+    shouldPostJobToActionAndGetById(testContext, new JobProfileWrapper(jobProfile1),
+      new ActionProfileWrapper(actionProfile1),
+      new MappingProfileWrapper(mappingProfile1));
     // job to match
-    shouldPostAndGetById(testContext, new JobProfileWrapper(jobProfile2), new MatchProfileWrapper(matchProfile1),
-      JOB_PROFILES_URL, MATCH_PROFILES_URL, JOB_PROFILE, MATCH_PROFILE);
+    shouldPostJobToMatchAndGetById(testContext, new JobProfileWrapper(jobProfile2), new ActionProfileWrapper(actionProfile2),
+      new MappingProfileWrapper(mappingProfile1), new MatchProfileWrapper(matchProfile1));
     // match to action
     shouldPostAndGetById(testContext, new ActionProfileWrapper(actionProfile1), new MatchProfileWrapper(matchProfile2),
       ACTION_PROFILES_URL, MATCH_PROFILES_URL, ACTION_PROFILE, MATCH_PROFILE);
     // match to match
     shouldPostAndGetById(testContext, new MatchProfileWrapper(matchProfile1), new MatchProfileWrapper(matchProfile3),
       MATCH_PROFILES_URL, MATCH_PROFILES_URL, MATCH_PROFILE, MATCH_PROFILE);
+  }
+
+  private void shouldPostJobToActionAndGetById(TestContext testContext,
+                                              JobProfileWrapper jobProfileWrapper,
+                                              ActionProfileWrapper actionProfileWrapper,
+                                              MappingProfileWrapper mappingProfileWrapper) {
+    var jobProfile = createJobProfileWithAction(testContext, jobProfileWrapper, actionProfileWrapper,
+      mappingProfileWrapper);
+
+    ProfileWrapper<JobProfileUpdateDto> masterWrapper = postProfile(testContext, new JobProfileWrapper(jobProfile),
+      JOB_PROFILES_URL);
+
+    RestAssured.given()
+      .spec(spec)
+      .queryParam("master", JOB_PROFILE)
+      .queryParam("detail", ACTION_PROFILE)
+      .when()
+      .get(ASSOCIATED_PROFILES_URL + "/" + ASSOCIATION_UUID)
+      .then()
+      .statusCode(HttpStatus.SC_OK)
+      .body("id", is(ASSOCIATION_UUID))
+      .body("masterProfileId", is(masterWrapper.getId()))
+      .body("detailProfileId", is(jobProfile.getAddedRelations().get(0).getDetailProfileId()))
+      .body("order", is(jobProfile.getAddedRelations().get(0).getOrder()));
+
+    clearTables(testContext);
+  }
+
+  private JobProfileUpdateDto createJobProfileWithAction(TestContext testContext,
+                                                         JobProfileWrapper jobProfileWrapper,
+                                                         ActionProfileWrapper actionProfileWrapper,
+                                                         MappingProfileWrapper mappingProfileWrapper) {
+    var mappingWrapper = postProfile(testContext, mappingProfileWrapper, MAPPING_PROFILES_URL);
+    var actionWrapper = postProfile(testContext, actionProfileWrapper, ACTION_PROFILES_URL);
+
+    var actionToMappingAssociation = new ProfileAssociation()
+      .withMasterProfileId(actionWrapper.getId())
+      .withDetailProfileId(mappingWrapper.getId())
+      .withMasterProfileType(ACTION_PROFILE)
+      .withDetailProfileType(MAPPING_PROFILE)
+      .withOrder(0);
+
+    var jobToActionAssociation = new ProfileAssociation()
+      .withId(ASSOCIATION_UUID)
+      .withMasterProfileId(jobProfileWrapper.getProfile().getId())
+      .withDetailProfileId(actionWrapper.getId())
+      .withMasterProfileType(JOB_PROFILE)
+      .withDetailProfileType(ACTION_PROFILE)
+      .withOrder(5)
+      .withTriggered(true);
+
+    return jobProfileWrapper.getProfile().withAddedRelations(List.of(jobToActionAssociation, actionToMappingAssociation));
+  }
+
+  private JobProfileUpdateDto createJobProfileWithMatch(TestContext testContext,
+                                                        JobProfileWrapper jobProfileWrapper,
+                                                        ActionProfileWrapper actionProfileWrapper,
+                                                        MappingProfileWrapper mappingProfileWrapper,
+                                                        MatchProfileWrapper matchProfileWrapper) {
+    var mappingWrapper = postProfile(testContext, mappingProfileWrapper, MAPPING_PROFILES_URL);
+    var actionWrapper = postProfile(testContext, actionProfileWrapper, ACTION_PROFILES_URL);
+    var matchWrapper = postProfile(testContext, matchProfileWrapper, MATCH_PROFILES_URL);
+
+    var actionToMappingAssociation = new ProfileAssociation()
+      .withMasterProfileId(actionWrapper.getId())
+      .withDetailProfileId(mappingWrapper.getId())
+      .withMasterProfileType(ACTION_PROFILE)
+      .withDetailProfileType(MAPPING_PROFILE)
+      .withOrder(0);
+
+    var matchToActionAssociation = new ProfileAssociation()
+      .withMasterProfileId(matchWrapper.getId())
+      .withDetailProfileId(actionWrapper.getId())
+      .withMasterProfileType(MATCH_PROFILE)
+      .withDetailProfileType(ACTION_PROFILE)
+      .withOrder(5)
+      .withTriggered(true);
+
+    var jobToMatchAssociation = new ProfileAssociation()
+      .withId(ASSOCIATION_UUID)
+      .withMasterProfileId(jobProfileWrapper.getProfile().getId())
+      .withDetailProfileId(matchProfileWrapper.getId())
+      .withMasterProfileType(JOB_PROFILE)
+      .withDetailProfileType(MATCH_PROFILE)
+      .withOrder(5)
+      .withTriggered(true);
+
+    return jobProfileWrapper.getProfile()
+      .withAddedRelations(List.of(jobToMatchAssociation, matchToActionAssociation, actionToMappingAssociation));
+  }
+
+  private void shouldPostJobToMatchAndGetById(TestContext testContext,
+                                              JobProfileWrapper jobProfileWrapper,
+                                              ActionProfileWrapper actionProfileWrapper,
+                                              MappingProfileWrapper mappingProfileWrapper,
+                                              MatchProfileWrapper matchProfileWrapper) {
+    var jobProfile = createJobProfileWithMatch(testContext, jobProfileWrapper, actionProfileWrapper,
+      mappingProfileWrapper, matchProfileWrapper);
+    ProfileWrapper<JobProfileUpdateDto> masterWrapper = postProfile(testContext, new JobProfileWrapper(jobProfile),
+      JOB_PROFILES_URL);
+
+    RestAssured.given()
+      .spec(spec)
+      .queryParam("master", JOB_PROFILE)
+      .queryParam("detail", MATCH_PROFILE)
+      .when()
+      .get(ASSOCIATED_PROFILES_URL + "/" + ASSOCIATION_UUID)
+      .then()
+      .statusCode(HttpStatus.SC_OK)
+      .body("id", is(ASSOCIATION_UUID))
+      .body("masterProfileId", is(masterWrapper.getId()))
+      .body("detailProfileId", is(jobProfile.getAddedRelations().get(0).getDetailProfileId()))
+      .body("order", is(jobProfile.getAddedRelations().get(0).getOrder()));
+
+    clearTables(testContext);
   }
 
   public <M, D> void shouldPostAndGetById(TestContext testContext, ProfileWrapper<M> masterProfileWrapper, ProfileWrapper<D> detailProfileWrapper,
@@ -399,17 +504,65 @@ public class CommonProfileAssociationTest extends AbstractRestVerticleTest {
     shouldDeleteProfileOnDelete(testContext, new ActionProfileWrapper(actionProfile3), new MappingProfileWrapper(mappingProfile1),
       ACTION_PROFILES_URL, MAPPING_PROFILES_URL, ACTION_PROFILE, MAPPING_PROFILE);
     // job to action
-    shouldDeleteProfileOnDelete(testContext, new JobProfileWrapper(jobProfile1), new ActionProfileWrapper(actionProfile1),
-      JOB_PROFILES_URL, ACTION_PROFILES_URL, JOB_PROFILE, ACTION_PROFILE);
+    shouldDeleteJobToActionOnDelete(testContext, new JobProfileWrapper(jobProfile1),
+      new ActionProfileWrapper(actionProfile1), new MappingProfileWrapper(mappingProfile1));
     // job to match
-    shouldDeleteProfileOnDelete(testContext, new JobProfileWrapper(jobProfile2), new MatchProfileWrapper(matchProfile1),
-      JOB_PROFILES_URL, MATCH_PROFILES_URL, JOB_PROFILE, MATCH_PROFILE);
+    shouldDeleteJobToMatchOnDelete(testContext, new JobProfileWrapper(jobProfile2), new ActionProfileWrapper(actionProfile2),
+      new MappingProfileWrapper(mappingProfile1), new MatchProfileWrapper(matchProfile1));
     // match to action
-    shouldDeleteProfileOnDelete(testContext, new MatchProfileWrapper(matchProfile2), new ActionProfileWrapper(actionProfile1),
+    shouldDeleteProfileOnDelete(testContext, new MatchProfileWrapper(matchProfile2),
+      new ActionProfileWrapper(actionProfile1),
       MATCH_PROFILES_URL, ACTION_PROFILES_URL, MATCH_PROFILE, ACTION_PROFILE);
     // match to match
     shouldDeleteProfileOnDelete(testContext, new MatchProfileWrapper(matchProfile1), new MatchProfileWrapper(matchProfile2),
       MATCH_PROFILES_URL, MATCH_PROFILES_URL, MATCH_PROFILE, MATCH_PROFILE);
+  }
+
+  public <M, D> void shouldDeleteJobToActionOnDelete(TestContext testContext,
+                                                     JobProfileWrapper jobProfileWrapper,
+                                                     ActionProfileWrapper actionProfileWrapper,
+                                                     MappingProfileWrapper mappingProfileWrapper) {
+    var jobProfile = createJobProfileWithAction(testContext, jobProfileWrapper, actionProfileWrapper,
+      mappingProfileWrapper);
+
+    postProfile(testContext, new JobProfileWrapper(jobProfile), JOB_PROFILES_URL);
+
+    Async async = testContext.async();
+    RestAssured.given()
+      .spec(spec)
+      .queryParam("master", JOB_PROFILE)
+      .queryParam("detail", ACTION_PROFILE)
+      .when()
+      .delete(ASSOCIATED_PROFILES_URL + "/" + ASSOCIATION_UUID)
+      .then()
+      .statusCode(HttpStatus.SC_NO_CONTENT);
+    async.complete();
+
+    clearTables(testContext);
+  }
+
+  public <M, D> void shouldDeleteJobToMatchOnDelete(TestContext testContext,
+                                                     JobProfileWrapper jobProfileWrapper,
+                                                     ActionProfileWrapper actionProfileWrapper,
+                                                     MappingProfileWrapper mappingProfileWrapper,
+                                                     MatchProfileWrapper matchProfileWrapper) {
+    var jobProfile = createJobProfileWithMatch(testContext, jobProfileWrapper, actionProfileWrapper,
+      mappingProfileWrapper, matchProfileWrapper);
+
+    postProfile(testContext, new JobProfileWrapper(jobProfile), JOB_PROFILES_URL);
+
+    Async async = testContext.async();
+    RestAssured.given()
+      .spec(spec)
+      .queryParam("master", JOB_PROFILE)
+      .queryParam("detail", ACTION_PROFILE)
+      .when()
+      .delete(ASSOCIATED_PROFILES_URL + "/" + ASSOCIATION_UUID)
+      .then()
+      .statusCode(HttpStatus.SC_NO_CONTENT);
+    async.complete();
+
+    clearTables(testContext);
   }
 
   public <M, D> void shouldDeleteProfileOnDelete(TestContext testContext, ProfileWrapper<M> masterWrapper, ProfileWrapper<D> detailWrapper,
@@ -536,15 +689,6 @@ public class CommonProfileAssociationTest extends AbstractRestVerticleTest {
 
     RestAssured.given()
       .spec(spec)
-      .body(existingJobProfileWrapper.getProfile())
-      .when()
-      .post(JOB_PROFILES_URL)
-      .then().log().all()
-      .statusCode(HttpStatus.SC_CREATED)
-      .body("profile.id", is(jobProfileId));
-
-    RestAssured.given()
-      .spec(spec)
       .body(existingActionProfileWrapper.getProfile())
       .when()
       .post(ACTION_PROFILES_URL)
@@ -580,11 +724,56 @@ public class CommonProfileAssociationTest extends AbstractRestVerticleTest {
       .body("profile.id", is(mappingProfileId));
 
     shouldReturnNotFoundOnPut(testContext, ACTION_PROFILE, MAPPING_PROFILE, actionProfileId, mappingProfileId, ProfileType.ACTION_PROFILE, ProfileType.MAPPING_PROFILE);
+    shouldReturnNotFoundOnPutJobToAction(testContext, existingJobProfileWrapper, actionProfileId, mappingProfileId, firstMatchProfileId);
     shouldReturnNotFoundOnPut(testContext, ACTION_PROFILE, MATCH_PROFILE, actionProfileId, firstMatchProfileId, ProfileType.ACTION_PROFILE, ProfileType.MATCH_PROFILE);
-    shouldReturnNotFoundOnPut(testContext, JOB_PROFILE, ACTION_PROFILE, jobProfileId, actionProfileId, ProfileType.JOB_PROFILE, ProfileType.ACTION_PROFILE);
-    shouldReturnNotFoundOnPut(testContext, JOB_PROFILE, MATCH_PROFILE, jobProfileId, firstMatchProfileId, ProfileType.JOB_PROFILE, ProfileType.MATCH_PROFILE);
     shouldReturnNotFoundOnPut(testContext, MATCH_PROFILE, ACTION_PROFILE, firstMatchProfileId, actionProfileId, ProfileType.MATCH_PROFILE, ProfileType.ACTION_PROFILE);
     shouldReturnNotFoundOnPut(testContext, MATCH_PROFILE, MATCH_PROFILE, firstMatchProfileId, secondMatchProfileId, ProfileType.MATCH_PROFILE, ProfileType.MATCH_PROFILE);
+  }
+
+  public void shouldReturnNotFoundOnPutJobToAction(TestContext testContext,
+                                                   JobProfileWrapper jobProfileWrapper,
+                                                   String actionProfileId,
+                                                   String mappingProfileId,
+                                                   String matchProfileId) {
+    Async async = testContext.async();
+
+    var jobToMatchAssociation = new ProfileAssociation()
+      .withMasterProfileId(jobProfileWrapper.getId())
+      .withDetailProfileId(matchProfileId)
+      .withMasterProfileType(JOB_PROFILE)
+      .withDetailProfileType(MATCH_PROFILE);
+
+    var matchToActionAssociation = new ProfileAssociation()
+      .withMasterProfileId(matchProfileId)
+      .withDetailProfileId(actionProfileId)
+      .withMasterProfileType(MATCH_PROFILE)
+      .withDetailProfileType(ACTION_PROFILE);
+
+    var actionToMappingAssociation = new ProfileAssociation()
+      .withMasterProfileId(actionProfileId)
+      .withDetailProfileId(mappingProfileId)
+      .withMasterProfileType(ACTION_PROFILE)
+      .withDetailProfileType(MAPPING_PROFILE);
+
+    RestAssured.given()
+      .spec(spec)
+      .body(jobProfileWrapper.getProfile()
+        .withAddedRelations(List.of(jobToMatchAssociation, matchToActionAssociation, actionToMappingAssociation)))
+      .when()
+      .post(JOB_PROFILES_URL)
+      .then().log().all()
+      .statusCode(HttpStatus.SC_CREATED);
+
+    RestAssured.given()
+      .spec(spec)
+      .queryParam("master", JOB_PROFILE)
+      .queryParam("detail", ACTION_PROFILE)
+      .body(jobToMatchAssociation)
+      .when()
+      .put(ASSOCIATED_PROFILES_URL + "/" + UUID.randomUUID())
+      .then()
+      .statusCode(HttpStatus.SC_NOT_FOUND);
+    async.complete();
   }
 
   public void shouldReturnNotFoundOnPut(TestContext testContext, ProfileType masterContentType, ProfileType detailContentType, String masterId, String detailId,
@@ -612,20 +801,57 @@ public class CommonProfileAssociationTest extends AbstractRestVerticleTest {
   @Test
   public void runTestShouldUpdateProfileAssociationOnPut(TestContext testContext) {
     // action to mapping
-    shouldUpdateProfileAssociationOnPut(testContext, new ActionProfileWrapper(actionProfile1), new MappingProfileWrapper(mappingProfile1),
+    shouldUpdateProfileAssociationOnPut(testContext, new ActionProfileWrapper(actionProfile2), new MappingProfileWrapper(mappingProfile1),
       new MappingProfileWrapper(mappingProfile2), ACTION_PROFILES_URL, MAPPING_PROFILES_URL, ACTION_PROFILE, MAPPING_PROFILE);
-    // job to action
-    shouldUpdateProfileAssociationOnPut(testContext, new JobProfileWrapper(jobProfile1), new ActionProfileWrapper(actionProfile1),
-      new ActionProfileWrapper(actionProfile2), JOB_PROFILES_URL, ACTION_PROFILES_URL, JOB_PROFILE, ACTION_PROFILE);
-    // job to match
-    shouldUpdateProfileAssociationOnPut(testContext, new JobProfileWrapper(jobProfile1), new MatchProfileWrapper(matchProfile1),
-      new MatchProfileWrapper(matchProfile2), JOB_PROFILES_URL, MATCH_PROFILES_URL, JOB_PROFILE, MATCH_PROFILE);
+    // job to match to action
+    shouldUpdateJobToMatchAssociationOnPut(testContext, new JobProfileWrapper(jobProfile1),
+      new ActionProfileWrapper(actionProfile2), new MappingProfileWrapper(mappingProfile1),
+      new MatchProfileWrapper(matchProfile1));
     // match to action
-    shouldUpdateProfileAssociationOnPut(testContext, new MatchProfileWrapper(matchProfile1), new ActionProfileWrapper(actionProfile1),
+    shouldUpdateProfileAssociationOnPut(testContext, new MatchProfileWrapper(matchProfile1),
+      new ActionProfileWrapper(actionProfile1),
       new ActionProfileWrapper(actionProfile2), MATCH_PROFILES_URL, ACTION_PROFILES_URL, MATCH_PROFILE, ACTION_PROFILE);
     // match to match
     shouldUpdateProfileAssociationOnPut(testContext, new MatchProfileWrapper(matchProfile1), new MatchProfileWrapper(matchProfile2),
       new MatchProfileWrapper(matchProfile3), MATCH_PROFILES_URL, MATCH_PROFILES_URL, MATCH_PROFILE, MATCH_PROFILE);
+  }
+
+  public <M, D> void shouldUpdateJobToMatchAssociationOnPut(TestContext testContext,
+                                                            JobProfileWrapper jobProfileWrapper,
+                                                            ActionProfileWrapper actionProfileWrapper,
+                                                            MappingProfileWrapper mappingProfileWrapper,
+                                                            MatchProfileWrapper matchProfileWrapper) {
+    var jobProfile = createJobProfileWithMatch(testContext, jobProfileWrapper, actionProfileWrapper,
+      mappingProfileWrapper, matchProfileWrapper);
+
+    var jobWrapper = postProfile(testContext, new JobProfileWrapper(jobProfile), JOB_PROFILES_URL);
+
+    var mappingProfile = postProfile(testContext, new MappingProfileWrapper(mappingProfile2), MAPPING_PROFILES_URL);
+
+    var actionToMappingAssociation = new ProfileAssociation()
+      .withId(jobWrapper.getProfile().getAddedRelations().get(2).getId())
+      .withMasterProfileId(jobWrapper.getProfile().getAddedRelations().get(2).getMasterProfileId())
+      .withDetailProfileId(mappingProfile.getProfile().getId())
+      .withMasterProfileType(ACTION_PROFILE)
+      .withDetailProfileType(MAPPING_PROFILE);
+
+    Async async = testContext.async();
+    RestAssured.given()
+      .spec(spec)
+      .queryParam("master", ACTION_PROFILE)
+      .queryParam("detail", MAPPING_PROFILE)
+      .body(actionToMappingAssociation)
+      .when()
+      .put(ASSOCIATED_PROFILES_URL + "/" + actionToMappingAssociation.getId())
+      .then()
+      .statusCode(is(HttpStatus.SC_OK))
+      .body("id", is(actionToMappingAssociation.getId()))
+      .body("masterProfileId", is(jobWrapper.getProfile().getAddedRelations().get(2).getMasterProfileId()))
+      .body("detailProfileId", is(mappingProfile.getId()))
+      .body("order", is(actionToMappingAssociation.getOrder()));
+    async.complete();
+
+    clearTables(testContext);
   }
 
   public <M, D> void shouldUpdateProfileAssociationOnPut(TestContext testContext, ProfileWrapper<M> masterWrapper, ProfileWrapper<D> detailWrapper, ProfileWrapper<D> detailWrapper2,
@@ -680,21 +906,60 @@ public class CommonProfileAssociationTest extends AbstractRestVerticleTest {
   @Test
   public void runTestGetDetailsByMasterProfile_OK(TestContext testContext) {
     // action to mapping
-    getDetailProfilesByMasterProfile_OK(testContext, new ActionProfileWrapper(actionProfile1), new ActionProfileWrapper(actionProfile2),
+    getDetailProfilesByMasterProfile_OK(testContext, new ActionProfileWrapper(actionProfile1),
+      new ActionProfileWrapper(actionProfile2),
       new MappingProfileWrapper(mappingProfile1), new MappingProfileWrapper(mappingProfile2), ACTION_PROFILES_URL, MAPPING_PROFILES_URL, ACTION_PROFILE, MAPPING_PROFILE);
-    // job to action
-    getDetailProfilesByMasterProfile_OK(testContext, new JobProfileWrapper(jobProfile1), new JobProfileWrapper(jobProfile2),
-      new ActionProfileWrapper(actionProfile1), new ActionProfileWrapper(actionProfile2), JOB_PROFILES_URL, ACTION_PROFILES_URL, JOB_PROFILE, ACTION_PROFILE);
-    // job to match
-    getDetailProfilesByMasterProfile_OK(testContext, new JobProfileWrapper(jobProfile1), new JobProfileWrapper(jobProfile2),
-      new MatchProfileWrapper(matchProfile2), new MatchProfileWrapper(matchProfile3), JOB_PROFILES_URL, MATCH_PROFILES_URL, JOB_PROFILE, MATCH_PROFILE);
+    // job to match to action
+    getDetailProfilesByMasterProfile_OKJobToMatchToAction(testContext, new JobProfileWrapper(jobProfile1),
+      new ActionProfileWrapper(actionProfile2), new MappingProfileWrapper(mappingProfile1),
+      new MatchProfileWrapper(matchProfile1));
     // match to action
-    getDetailProfilesByMasterProfile_OK(testContext, new MatchProfileWrapper(matchProfile1), new MatchProfileWrapper(matchProfile2),
-      new ActionProfileWrapper(actionProfile1), new ActionProfileWrapper(actionProfile2), MATCH_PROFILES_URL, ACTION_PROFILES_URL, MATCH_PROFILE, ACTION_PROFILE);
+    getDetailProfilesByMasterProfile_OK(testContext, new MatchProfileWrapper(matchProfile1),
+      new MatchProfileWrapper(matchProfile2), new ActionProfileWrapper(actionProfile1), new ActionProfileWrapper(actionProfile2), MATCH_PROFILES_URL,
+      ACTION_PROFILES_URL, MATCH_PROFILE, ACTION_PROFILE);
     // match to match
     getDetailProfilesByMasterProfile_OK(testContext, new MatchProfileWrapper(matchProfile1), new MatchProfileWrapper(matchProfile2),
       new MatchProfileWrapper(matchProfile3), new MatchProfileWrapper(matchProfile4),
       MATCH_PROFILES_URL, MATCH_PROFILES_URL, MATCH_PROFILE, MATCH_PROFILE);
+  }
+
+
+  public <M, D> void getDetailProfilesByMasterProfile_OKJobToMatchToAction(TestContext testContext,
+                                                                           JobProfileWrapper jobProfileWrapper,
+                                                                           ActionProfileWrapper actionProfileWrapper,
+                                                                           MappingProfileWrapper mappingProfileWrapper,
+                                                                           MatchProfileWrapper matchProfileWrapper) {
+    var jobProfile = createJobProfileWithMatch(testContext, jobProfileWrapper, actionProfileWrapper,
+      mappingProfileWrapper, matchProfileWrapper);
+
+    var jobWrapper = postProfile(testContext, new JobProfileWrapper(jobProfile), JOB_PROFILES_URL);
+
+    RestAssured.given()
+      .spec(spec)
+      .queryParam("masterType", JOB_PROFILE)
+      .queryParam("detailType", MATCH_PROFILE)
+      .queryParam("query", "name=" + matchProfileWrapper.getName())
+      .when()
+      .get(DETAILS_BY_MASTER_URL, jobWrapper.getProfile().getId())
+      .then().statusCode(is(HttpStatus.SC_OK))
+      .body("contentType", is(JOB_PROFILE.value()))
+      .body("id", is(jobWrapper.getProfile().getId()))
+      .body("content.id", is(jobWrapper.getProfile().getId()))
+      .body("content.userInfo.firstName", is(jobWrapper.getUserInfo().getFirstName()))
+      .body("content.userInfo.lastName", is(jobWrapper.getUserInfo().getLastName()))
+      .body("content.userInfo.userName", is(jobWrapper.getUserInfo().getUserName()))
+      .body("content.metadata.createdByUserId", is(jobWrapper.getMetadata().getCreatedByUserId()))
+      .body("content.metadata.updatedByUserId", is(jobWrapper.getMetadata().getUpdatedByUserId()))
+      .body("childSnapshotWrappers.size()", is(1))
+      .body("childSnapshotWrappers[0].id", is(matchProfileWrapper.getId()))
+      .body("childSnapshotWrappers[0].contentType", is(MATCH_PROFILE.value()))
+      .body("childSnapshotWrappers[0].content.id", is(matchProfileWrapper.getProfile().getId()))
+      .body("childSnapshotWrappers[0].content.name", is(matchProfileWrapper.getName()))
+      .body("childSnapshotWrappers[0].content.userInfo.firstName", is(matchProfileWrapper.getUserInfo().getFirstName()))
+      .body("childSnapshotWrappers[0].content.userInfo.lastName", is(matchProfileWrapper.getUserInfo().getLastName()))
+      .body("childSnapshotWrappers[0].content.userInfo.userName", is(matchProfileWrapper.getUserInfo().getUserName()));
+
+    clearTables(testContext);
   }
 
   public <M, D> void getDetailProfilesByMasterProfile_OK(TestContext testContext, ProfileWrapper<M> masterWrapper, ProfileWrapper<M> masterWrapper2,
@@ -812,10 +1077,42 @@ public class CommonProfileAssociationTest extends AbstractRestVerticleTest {
 
   @Test
   public void runTestGetDetailsByMasterProfile_emptyDetailsListWithMasterProfile(TestContext testContext) {
-    // job to action, job to match
-    getDetailsByMasterProfile_emptyDetailsListWithMasterProfile(testContext, new JobProfileWrapper(jobProfile1), JOB_PROFILES_URL, JOB_PROFILE);
+    // job to match, match to action
+    getDetailsJobToMatchToActionByMasterProfile_emptyDetailsListWithMasterProfile(testContext,
+      new JobProfileWrapper(jobProfile1), new ActionProfileWrapper(actionProfile2),
+      new MappingProfileWrapper(mappingProfile1), new MatchProfileWrapper(matchProfile1));
     // match to action, match to match
     getDetailsByMasterProfile_emptyDetailsListWithMasterProfile(testContext, new MatchProfileWrapper(matchProfile1), MATCH_PROFILES_URL, MATCH_PROFILE);
+  }
+
+  public <M> void getDetailsJobToMatchToActionByMasterProfile_emptyDetailsListWithMasterProfile(TestContext testContext,
+                                                                                                JobProfileWrapper jobProfileWrapper,
+                                                                                                ActionProfileWrapper actionProfileWrapper,
+                                                                                                MappingProfileWrapper mappingProfileWrapper,
+                                                                                                MatchProfileWrapper matchProfileWrapper) {
+    var jobProfile = createJobProfileWithMatch(testContext, jobProfileWrapper, actionProfileWrapper,
+      mappingProfileWrapper, matchProfileWrapper);
+
+    var jobWrapper = postProfile(testContext, new JobProfileWrapper(jobProfile), JOB_PROFILES_URL);
+    Async async = testContext.async();
+    RestAssured.given()
+      .spec(spec)
+      .queryParam("masterType", JOB_PROFILE)
+      .when()
+      .get(DETAILS_BY_MASTER_URL, jobWrapper.getId())
+      .then()
+      .statusCode(HttpStatus.SC_OK)
+      .body("contentType", is(JOB_PROFILE.value()))
+      .body("id", is(jobWrapper.getId()))
+      .body("content.id", is(jobWrapper.getId()))
+      .body("content.userInfo.firstName", is(jobWrapper.getUserInfo().getFirstName()))
+      .body("content.userInfo.lastName", is(jobWrapper.getUserInfo().getLastName()))
+      .body("content.userInfo.userName", is(jobWrapper.getUserInfo().getUserName()))
+      .body("content.metadata.createdByUserId", is(jobWrapper.getMetadata().getCreatedByUserId()))
+      .body("content.metadata.updatedByUserId", is(jobWrapper.getMetadata().getUpdatedByUserId()))
+      .body("childSnapshotWrappers.size()", is(2));
+    async.complete();
+    clearTables(testContext);
   }
 
   public <M> void getDetailsByMasterProfile_emptyDetailsListWithMasterProfile(TestContext testContext, ProfileWrapper<M> masterWrapper,
@@ -847,18 +1144,44 @@ public class CommonProfileAssociationTest extends AbstractRestVerticleTest {
     getDetailProfilesByMasterProfile_sortByName_OK(testContext, new ActionProfileWrapper(actionProfile2), new MappingProfileWrapper(mappingProfile1),
       new MappingProfileWrapper(mappingProfile2), new MappingProfileWrapper(mappingProfile3), ACTION_PROFILES_URL, MAPPING_PROFILES_URL, ACTION_PROFILE, MAPPING_PROFILE);
     // job to action
-    getDetailProfilesByMasterProfile_sortByName_OK(testContext, new JobProfileWrapper(jobProfile1), new ActionProfileWrapper(actionProfile1),
-      new ActionProfileWrapper(actionProfile2), new ActionProfileWrapper(actionProfile4), JOB_PROFILES_URL, ACTION_PROFILES_URL, JOB_PROFILE, ACTION_PROFILE);
-    // job to match
-    getDetailProfilesByMasterProfile_sortByName_OK(testContext, new JobProfileWrapper(jobProfile2), new MatchProfileWrapper(matchProfile1),
-      new MatchProfileWrapper(matchProfile2), new MatchProfileWrapper(matchProfile4), JOB_PROFILES_URL, MATCH_PROFILES_URL, JOB_PROFILE, MATCH_PROFILE);
+    getDetailProfilesJobToMatchByMasterProfile_sortByName_OK(testContext, new JobProfileWrapper(jobProfile1),
+      new ActionProfileWrapper(actionProfile2), new MappingProfileWrapper(mappingProfile1), new MatchProfileWrapper(matchProfile2));
     // match to action
-    getDetailProfilesByMasterProfile_sortByName_OK(testContext, new MatchProfileWrapper(matchProfile1), new ActionProfileWrapper(actionProfile1),
+    getDetailProfilesByMasterProfile_sortByName_OK(testContext, new MatchProfileWrapper(matchProfile1),
+      new ActionProfileWrapper(actionProfile1),
       new ActionProfileWrapper(actionProfile2), new ActionProfileWrapper(actionProfile4), MATCH_PROFILES_URL, ACTION_PROFILES_URL, MATCH_PROFILE, ACTION_PROFILE);
     // match to match
     getDetailProfilesByMasterProfile_sortByName_OK(testContext, new MatchProfileWrapper(matchProfile1), new MatchProfileWrapper(matchProfile2),
       new MatchProfileWrapper(matchProfile3), new MatchProfileWrapper(matchProfile4), MATCH_PROFILES_URL, MATCH_PROFILES_URL, MATCH_PROFILE, MATCH_PROFILE);
   }
+
+  public <M, D> void getDetailProfilesJobToMatchByMasterProfile_sortByName_OK(TestContext testContext,
+                                                                              JobProfileWrapper jobProfileWrapper,
+                                                                              ActionProfileWrapper actionProfileWrapper,
+                                                                              MappingProfileWrapper mappingProfileWrapper,
+                                                                              MatchProfileWrapper matchProfileWrapper) {
+    var jobProfile = createJobProfileWithMatch(testContext, jobProfileWrapper, actionProfileWrapper,
+      mappingProfileWrapper, matchProfileWrapper);
+
+    var jobWrapper = postProfile(testContext, new JobProfileWrapper(jobProfile), JOB_PROFILES_URL);
+
+    //searching by description and sorting by name
+    RestAssured.given()
+      .spec(spec)
+      .queryParam("masterType", JOB_PROFILE.value())
+      .queryParam("detailType", MATCH_PROFILE.value())
+      .queryParam("query", "description=test-description and (cql.allRecords=1) sortBy name")
+      .when()
+      .get(DETAILS_BY_MASTER_URL, jobWrapper.getId())
+      .then().statusCode(is(HttpStatus.SC_OK))
+      .log().all()
+      .body("contentType", is(JOB_PROFILE.value()))
+      .body("childSnapshotWrappers.size()", is(1))
+      .body("childSnapshotWrappers[0].content.name", is(matchProfileWrapper.getName()));
+
+    clearTables(testContext);
+  }
+
 
   public <M, D> void getDetailProfilesByMasterProfile_sortByName_OK(TestContext testContext, ProfileWrapper<M> masterWrapper,
                                                                     ProfileWrapper<D> detailWrapper, ProfileWrapper<D> detailWrapper2, ProfileWrapper<D> detailWrapper3,
@@ -961,17 +1284,12 @@ public class CommonProfileAssociationTest extends AbstractRestVerticleTest {
   @Test
   public void runTestGetMastersByDetailProfile_OK(TestContext testContext) {
     // action to mapping
-    getMastersByDetailProfile_OK(testContext, new ActionProfileWrapper(actionProfile1), new ActionProfileWrapper(actionProfile2),
+    getMastersByDetailProfile_OK(testContext, new ActionProfileWrapper(actionProfile3), new ActionProfileWrapper(actionProfile2),
       new MappingProfileWrapper(mappingProfile1), new MappingProfileWrapper(mappingProfile2),
       ACTION_PROFILES_URL, MAPPING_PROFILES_URL, ACTION_PROFILE, MAPPING_PROFILE);
-    // job to action
-    getMastersByDetailProfile_OK(testContext, new JobProfileWrapper(jobProfile1), new JobProfileWrapper(jobProfile2),
-      new ActionProfileWrapper(actionProfile1), new ActionProfileWrapper(actionProfile2),
-      JOB_PROFILES_URL, ACTION_PROFILES_URL, JOB_PROFILE, ACTION_PROFILE);
-    // job to match
-    getMastersByDetailProfile_OK(testContext, new JobProfileWrapper(jobProfile1), new JobProfileWrapper(jobProfile2),
-      new MatchProfileWrapper(matchProfile1), new MatchProfileWrapper(matchProfile2),
-      JOB_PROFILES_URL, MATCH_PROFILES_URL, JOB_PROFILE, MATCH_PROFILE);
+    // job to match, match to action
+    getMastersJobToMatchToActionByDetailProfile_OK(testContext, new JobProfileWrapper(jobProfile1), new ActionProfileWrapper(actionProfile2),
+      new MappingProfileWrapper(mappingProfile1), new MatchProfileWrapper(matchProfile1));
     // match to action
     getMastersByDetailProfile_OK(testContext, new MatchProfileWrapper(matchProfile1), new MatchProfileWrapper(matchProfile2),
       new ActionProfileWrapper(actionProfile1), new ActionProfileWrapper(actionProfile2),
@@ -980,6 +1298,45 @@ public class CommonProfileAssociationTest extends AbstractRestVerticleTest {
     getMastersByDetailProfile_OK(testContext, new MatchProfileWrapper(matchProfile1), new MatchProfileWrapper(matchProfile2),
       new MatchProfileWrapper(matchProfile3), new MatchProfileWrapper(matchProfile4),
       MATCH_PROFILES_URL, MATCH_PROFILES_URL, MATCH_PROFILE, MATCH_PROFILE);
+  }
+
+  public <M, D> void getMastersJobToMatchToActionByDetailProfile_OK(TestContext testContext,
+                                                                    JobProfileWrapper jobProfileWrapper,
+                                                                    ActionProfileWrapper actionProfileWrapper,
+                                                                    MappingProfileWrapper mappingProfileWrapper,
+                                                                    MatchProfileWrapper matchProfileWrapper) {
+    var jobProfile = createJobProfileWithMatch(testContext, jobProfileWrapper, actionProfileWrapper,
+      mappingProfileWrapper, matchProfileWrapper);
+
+    var jobWrapper = postProfile(testContext, new JobProfileWrapper(jobProfile), JOB_PROFILES_URL);
+
+    Async async = testContext.async();
+    RestAssured.given()
+      .spec(spec)
+      .queryParam("detailType", MATCH_PROFILE.value())
+      .queryParam("masterType", JOB_PROFILE.value())
+      .queryParam("query", "name=" + jobWrapper.getName())
+      .when()
+      .get(MASTERS_BY_DETAIL_URL, matchProfileWrapper.getId())
+      .then().statusCode(is(HttpStatus.SC_OK))
+      .body("contentType", is(MATCH_PROFILE.value()))
+      .body("id", is(matchProfileWrapper.getId()))
+      .body("content.id", is(matchProfileWrapper.getId()))
+      .body("content.userInfo.firstName", is(matchProfileWrapper.getUserInfo().getFirstName()))
+      .body("content.userInfo.lastName", is(matchProfileWrapper.getUserInfo().getLastName()))
+      .body("content.userInfo.userName", is(matchProfileWrapper.getUserInfo().getUserName()))
+      .body("content.metadata.createdByUserId", is(matchProfileWrapper.getMetadata().getCreatedByUserId()))
+      .body("content.metadata.updatedByUserId", is(matchProfileWrapper.getMetadata().getUpdatedByUserId()))
+      .body("childSnapshotWrappers.size()", is(1))
+      .body("childSnapshotWrappers[0].id", is(jobWrapper.getId()))
+      .body("childSnapshotWrappers[0].contentType", is(JOB_PROFILE.value()))
+      .body("childSnapshotWrappers[0].content.id", is(jobWrapper.getId()))
+      .body("childSnapshotWrappers[0].content.name", is(jobWrapper.getName()))
+      .body("childSnapshotWrappers[0].content.userInfo.firstName", is(jobWrapper.getUserInfo().getFirstName()))
+      .body("childSnapshotWrappers[0].content.userInfo.lastName", is(jobWrapper.getUserInfo().getLastName()))
+      .body("childSnapshotWrappers[0].content.userInfo.userName", is(jobWrapper.getUserInfo().getUserName()));
+    async.complete();
+    clearTables(testContext);
   }
 
   public <M, D> void getMastersByDetailProfile_OK(TestContext testContext, ProfileWrapper<M> masterWrapper, ProfileWrapper<M> masterWrapper2,
@@ -1132,26 +1489,45 @@ public class CommonProfileAssociationTest extends AbstractRestVerticleTest {
   @Test
   public void runTestGetMastersByDetailProfile_sortBy_OK(TestContext testContext) {
     // action to mapping
-    getMastersByDetailProfile_sortBy_OK(testContext,
-      new ActionProfileWrapper(actionProfile1),
-      new ActionProfileWrapper(actionProfile2),
-      new ActionProfileWrapper(actionProfile4),
-      new MappingProfileWrapper(mappingProfile1),
-      ACTION_PROFILES_URL, MAPPING_PROFILES_URL,
-      ACTION_PROFILE, MAPPING_PROFILE);
-
-    // job to action
-    getMastersByDetailProfile_sortBy_OK(testContext, new JobProfileWrapper(jobProfile1), new JobProfileWrapper(jobProfile2), new JobProfileWrapper(jobProfile3),
-      new ActionProfileWrapper(actionProfile1), JOB_PROFILES_URL, ACTION_PROFILES_URL, JOB_PROFILE, ACTION_PROFILE);
-    // job to match
-    getMastersByDetailProfile_sortBy_OK(testContext, new JobProfileWrapper(jobProfile1), new JobProfileWrapper(jobProfile2), new JobProfileWrapper(jobProfile3),
-      new MatchProfileWrapper(matchProfile1), JOB_PROFILES_URL, MATCH_PROFILES_URL, JOB_PROFILE, MATCH_PROFILE);
+    getMastersByDetailProfile_sortBy_OK(testContext, new ActionProfileWrapper(actionProfile1), new ActionProfileWrapper(actionProfile2), new ActionProfileWrapper(actionProfile4),
+      new MappingProfileWrapper(mappingProfile1), ACTION_PROFILES_URL, MAPPING_PROFILES_URL, ACTION_PROFILE, MAPPING_PROFILE);
+    // job to match, match to action
+    getMastersJobToMatchToActionByDetailProfile_sortBy_OK(testContext, new JobProfileWrapper(jobProfile1), new ActionProfileWrapper(actionProfile1),
+      new MappingProfileWrapper(mappingProfile1), new MatchProfileWrapper(matchProfile1));
     // match to action
     getMastersByDetailProfile_sortBy_OK(testContext, new MatchProfileWrapper(matchProfile2), new MatchProfileWrapper(matchProfile3), new MatchProfileWrapper(matchProfile4),
       new ActionProfileWrapper(actionProfile1), MATCH_PROFILES_URL, ACTION_PROFILES_URL, MATCH_PROFILE, ACTION_PROFILE);
     // match to match
     getMastersByDetailProfile_sortBy_OK(testContext, new MatchProfileWrapper(matchProfile2), new MatchProfileWrapper(matchProfile3), new MatchProfileWrapper(matchProfile4),
       new MatchProfileWrapper(matchProfile1), MATCH_PROFILES_URL, MATCH_PROFILES_URL, MATCH_PROFILE, MATCH_PROFILE);
+  }
+
+  public <M, D> void getMastersJobToMatchToActionByDetailProfile_sortBy_OK(TestContext testContext,
+                                                                           JobProfileWrapper jobProfileWrapper,
+                                                                           ActionProfileWrapper actionProfileWrapper,
+                                                                           MappingProfileWrapper mappingProfileWrapper,
+                                                                           MatchProfileWrapper matchProfileWrapper) {
+    var jobProfile = createJobProfileWithMatch(testContext, jobProfileWrapper, actionProfileWrapper,
+      mappingProfileWrapper, matchProfileWrapper);
+
+    var jobWrapper = postProfile(testContext, new JobProfileWrapper(jobProfile), JOB_PROFILES_URL);
+
+    //creates association 3
+    Async async = testContext.async();
+    RestAssured.given()
+      .spec(spec)
+      .queryParam("detailType", MATCH_PROFILE.value())
+      .queryParam("masterType", JOB_PROFILE.value())
+      .queryParam("query", "description=\"test*\" or description==\"*description\" sortBy name")
+      .when()
+      .get(MASTERS_BY_DETAIL_URL, matchProfileWrapper.getId())
+      .then().statusCode(is(HttpStatus.SC_OK))
+      .body("contentType", is(MATCH_PROFILE.value()))
+      .body("childSnapshotWrappers.size()", is(1))
+      .body("childSnapshotWrappers[0].content.name", is(jobWrapper.getName()));
+
+    clearTables(testContext);
+    async.complete();
   }
 
   public <M, D> void getMastersByDetailProfile_sortBy_OK(TestContext testContext,
