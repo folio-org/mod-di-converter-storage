@@ -1119,17 +1119,6 @@ public class DataImportProfilesImpl implements DataImportProfiles {
     }
   }
 
-  private List<String> addedProfileIdsByType(JobProfileUpdateDto jobProfileUpdateDto, ProfileType type) {
-  return jobProfileUpdateDto.getAddedRelations()
-      .stream()
-      .filter(element -> element.getDetailProfileType().equals(type)
-        || element.getMasterProfileType().equals(type))
-      .map(element -> element.getDetailProfileType().equals(type)
-        ? element.getDetailProfileId() : element.getMasterProfileId())
-      .distinct()
-      .collect(Collectors.toList());
-  }
-
   private List<ProfileAssociation> actionProfileAssociations(List<ProfileAssociation> profileAssociations) {
     return profileAssociations.stream()
       .filter(association -> association.getDetailProfileType() == ACTION_PROFILE).toList();
@@ -1138,12 +1127,6 @@ public class DataImportProfilesImpl implements DataImportProfiles {
   private List<ProfileAssociation> matchProfileAssociations(List<ProfileAssociation> profileAssociations) {
     return profileAssociations.stream()
       .filter(profileAssociation -> profileAssociation.getDetailProfileType() == MATCH_PROFILE).toList();
-  }
-
-  private <T> List<Map.Entry<Integer, T>> zipWithIndex(List<T> list) {
-    return IntStream.range(0, list.size())
-      .mapToObj(i -> new AbstractMap.SimpleEntry<>(i, list.get(i)))
-      .collect(Collectors.toList());
   }
 
   private Future<Errors> validateMappingProfile(OperationType operationType, MappingProfile mappingProfile, String tenantId) {

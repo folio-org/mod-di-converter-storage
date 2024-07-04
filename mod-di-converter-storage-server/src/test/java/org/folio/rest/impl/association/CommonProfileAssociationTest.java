@@ -200,8 +200,7 @@ public class CommonProfileAssociationTest extends AbstractRestVerticleTest {
     var jobProfile = createJobProfileWithAction(testContext, jobProfileWrapper, actionProfileWrapper,
       mappingProfileWrapper);
 
-    ProfileWrapper<JobProfileUpdateDto> masterWrapper = postProfile(testContext, new JobProfileWrapper(jobProfile),
-      JOB_PROFILES_URL);
+    postProfile(testContext, new JobProfileWrapper(jobProfile), JOB_PROFILES_URL);
 
     Async async = testContext.async();
     RestAssured.given()
