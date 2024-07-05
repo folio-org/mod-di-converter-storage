@@ -58,16 +58,16 @@ import java.util.Base64;
 import java.util.Date;
 import java.util.LinkedHashMap;
 import java.util.LinkedList;
-import java.util.AbstractMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
-import java.util.stream.IntStream;
 
 import static java.lang.String.format;
 import static org.folio.rest.RestVerticle.OKAPI_HEADER_TOKEN;
 import static org.folio.rest.RestVerticle.OKAPI_USERID_HEADER;
+import static org.folio.rest.jaxrs.model.ProfileType.ACTION_PROFILE;
+import static org.folio.rest.jaxrs.model.ProfileType.MATCH_PROFILE;
 
 public class DataImportProfilesImpl implements DataImportProfiles {
 
@@ -89,6 +89,7 @@ public class DataImportProfilesImpl implements DataImportProfiles {
   private static final String INVALID_ACTION_PROFILE_ACTION_TYPE = "Can't create ActionProfile for MARC Bib record type with Create action";
   private static final String INVALID_ACTION_PROFILE_LINKED_TO_JOB_PROFILE = "ActionProfile with id '%s' and action UPDATE requires linked MatchProfile";
   private static final String LINKED_ACTION_PROFILES_WERE_NOT_FOUND = "Linked ActionProfiles with ids %s were not found";
+  private static final String LINKED_MATCH_PROFILES_WERE_NOT_FOUND = "Linked MatchProfiles with ids %s were not found";
   private static final String MODIFY_ACTION_CANNOT_BE_USED_RIGHT_AFTER_THE_MATCH = "Modify action cannot be used right after a Match";
   private static final String MODIFY_ACTION_CANNOT_BE_USED_AS_A_STANDALONE_ACTION = "Modify action cannot be used as a standalone action";
 
@@ -174,6 +175,7 @@ public class DataImportProfilesImpl implements DataImportProfiles {
       try {
         entity.getProfile().setMetadata(getMetadata(okapiHeaders));
         composeFutureErrors(
+          validateJobProfileAssociations(entity),
           validateProfile(OperationType.CREATE, entity.getProfile(), jobProfileService, tenantId),
           validateJobProfileLinkedActionProfiles(entity),
           validateJobProfileLinkedMatchProfile(entity)
@@ -227,6 +229,7 @@ public class DataImportProfilesImpl implements DataImportProfiles {
             entity.getProfile().setMetadata(getMetadata(okapiHeaders));
             return composeFutureErrors(
               validateProfile(OperationType.UPDATE, entity.getProfile(), jobProfileService, tenantId),
+              validateJobProfileAssociations(entity),
               validateJobProfileLinkedActionProfiles(entity),
               validateJobProfileLinkedMatchProfile(entity)
             ).compose(errors -> {
@@ -910,33 +913,84 @@ public class DataImportProfilesImpl implements DataImportProfiles {
     return validateConditions;
   }
 
+  private Future<Errors> validateJobProfileAssociations(List<ProfileAssociation> profileAssociations, List<Error> errors) {
+    logger.debug("validateJobProfileAssociations:: Validating JobProfile if it contains associations");
+    if (CollectionUtils.isEmpty(profileAssociations)) {
+      logger.warn("validateJobProfileAssociations:: Job profile does not contain any associations");
+      errors.add(new Error().withMessage("Job profile does not contain any associations"));
+    }
+    return Future.succeededFuture(new Errors().withErrors(errors).withTotalRecords(errors.size()));
+  }
+
   private Future<Errors> validateJobProfileLinkedMatchProfile(JobProfileUpdateDto jobProfileUpdateDto) {
-    logger.debug("validateJobProfileLinkedMatchProfile:: Validating MatchProfiles added to JobProfile {}", jobProfileUpdateDto.getProfile().getId());
+    String jobProfileId = jobProfileUpdateDto.getProfile().getId();
+    logger.debug("validateJobProfileLinkedMatchProfile:: Validating MatchProfiles added to JobProfile {}", jobProfileId);
 
-    Promise<Errors> promise = Promise.promise();
+    List<Error> errors = new LinkedList<>();
+    Future<List<ProfileAssociation>> existingJobProfileAssociationsFuture = (jobProfileId != null) ?
+                                                                            profileSnapshotService.getSnapshotAssociations(jobProfileId, ProfileType.JOB_PROFILE, jobProfileId, tenantId):
+                                                                            Future.succeededFuture(new ArrayList<>());
 
-    var matchProfileIds = addedProfileIdsByType(jobProfileUpdateDto, ProfileType.MATCH_PROFILE);
+    return existingJobProfileAssociationsFuture
+      .map(this::filterProfileAssociations)
+      .map(profileAssociations -> removeDeletedProfileAssociations(profileAssociations, jobProfileUpdateDto))
+      .compose(profileAssociations -> validateJobProfileLinkedMatchProfile(profileAssociations, errors));
+  }
+
+  private Future<Errors> validateJobProfileLinkedMatchProfile(List<ProfileAssociation> profileAssociations,
+                                                               List<Error> errors) {
+    var childActionProfileAssociations = actionProfileAssociations(profileAssociations);
+    validateMatchProfilesAssociations(childActionProfileAssociations, errors);
+
+    var matchProfileAssociations = matchProfileAssociations(profileAssociations);
+    var matchProfileIds = matchProfileAssociations.stream().map(ProfileAssociation::getDetailProfileId).toList();
+
     var futures = matchProfileIds.stream()
       .map(id -> matchProfileService.getProfileById(id, false, tenantId))
       .collect(Collectors.toList());
 
-    GenericCompositeFuture.all(futures)
-      .map(it -> zipWithIndex(it.result().<Optional<MatchProfile>>list()))
-      .map(entries -> entries.stream()
-        .filter(entry -> entry.getValue().isEmpty())
-        .map(entry -> String.format("'%s'", matchProfileIds.get(entry.getKey())))
-        .collect(Collectors.joining(", ")))
-      .onSuccess(ids -> {
-        if (StringUtils.isBlank(ids)) {
-          promise.complete(new Errors().withTotalRecords(0));
-        } else {
-          logger.warn("validateJobProfileLinkedMatchProfile:: Linked MatchProfiles with ids {} not founded", ids);
-          promise.fail(new NotFoundException((String.format("Linked MatchProfiles with ids %s were not found", ids))));
-        }
-      })
-      .onFailure(promise::fail);
+    return GenericCompositeFuture.all(futures)
+      .compose(matchProfiles -> {
+        List<MatchProfile> existingMatchProfiles = matchProfiles.result().<Optional<MatchProfile>>list().stream()
+          .filter(Optional::isPresent).map(Optional::get).toList();
 
-    return promise.future();
+        var existingMatchProfilesIds = existingMatchProfiles.stream().map(MatchProfile::getId).toList();
+        var notFoundIds = matchProfileIds.stream()
+          .filter(id -> !existingMatchProfilesIds.contains(id))
+          .map(notFoundedId -> String.format("'%s'", notFoundedId)).toList();
+
+        if (!notFoundIds.isEmpty()) {
+          var idStr = String.join(", ", notFoundIds);
+          logger.warn("validateJobProfileLinkedMatchProfile:: Linked MatchProfiles with ids {} not founded", idStr);
+          return Future.failedFuture(new NotFoundException((String.format(LINKED_MATCH_PROFILES_WERE_NOT_FOUND, idStr))));
+        }
+        return Future.succeededFuture(new Errors().withErrors(errors).withTotalRecords(errors.size()));
+      });
+  }
+
+
+  private Future<Errors> validateMatchProfilesAssociations(List<ProfileAssociation> profileAssociations,
+                                                           List<Error> errors) {
+    logger.debug("validateMatchProfilesAssociations:: Validating JobProfile if its MatchProfile contains ActionProfile");
+    if (CollectionUtils.isEmpty(profileAssociations)) {
+      logger.warn("validateMatchProfilesAssociations:: Job profile does not contain any associations");
+      errors.add(new Error().withMessage("Linked ActionProfile was not found after MatchProfile"));
+    }
+    return Future.succeededFuture(new Errors().withErrors(errors).withTotalRecords(errors.size()));
+  }
+
+
+  private Future<Errors> validateJobProfileAssociations(JobProfileUpdateDto entity) {
+    String jobProfileId = entity.getProfile().getId();
+    Future<List<ProfileAssociation>> existingJobProfileAssociationsFuture = (jobProfileId != null) ?
+      profileSnapshotService.getSnapshotAssociations(jobProfileId, ProfileType.JOB_PROFILE, jobProfileId, tenantId):
+      Future.succeededFuture(new ArrayList<>());
+
+    List<Error> errors = new LinkedList<>();
+    return existingJobProfileAssociationsFuture
+      .map(this::filterProfileAssociations)
+      .map(profileAssociations -> removeDeletedProfileAssociations(profileAssociations, entity))
+      .compose(profileAssociations -> validateJobProfileAssociations(profileAssociations, errors));
   }
 
   private Future<Errors> validateJobProfileLinkedActionProfiles(JobProfileUpdateDto jobProfileUpdateDto) {
@@ -951,22 +1005,34 @@ public class DataImportProfilesImpl implements DataImportProfiles {
     }
 
     return existingJobProfileAssociationsFuture
-      .map(profileAssociations -> profileAssociations.stream()
-        .filter(profileAssociation -> profileAssociation.getDetailProfileType() != ProfileType.MAPPING_PROFILE &&
-                profileAssociation.getDetailProfileType() != ProfileType.JOB_PROFILE).collect(Collectors.toList()))
-      .map(profileAssociations -> {
-        if (!profileAssociations.isEmpty() && !jobProfileUpdateDto.getDeletedRelations().isEmpty()) {
-          profileAssociations.removeIf(profileAssociation ->
-            jobProfileUpdateDto.getDeletedRelations().stream().anyMatch(deleteAssociation ->
-              Objects.equals(profileAssociation.getMasterWrapperId(), deleteAssociation.getMasterWrapperId()) &&
-              Objects.equals(profileAssociation.getDetailWrapperId(), deleteAssociation.getDetailWrapperId())
-            ));
-        }
-        profileAssociations.addAll(jobProfileUpdateDto.getAddedRelations());
-
-        return profileAssociations;
-      })
+      .map(this::filterProfileAssociations)
+      .map(profileAssociations -> removeDeletedProfileAssociations(profileAssociations, jobProfileUpdateDto))
       .compose(profileAssociations -> validateActionProfilesAssociations(profileAssociations, errors));
+  }
+
+  private List<ProfileAssociation> filterProfileAssociations(List<ProfileAssociation> profileAssociations) {
+    return profileAssociations.stream()
+      .filter(profileAssociation -> profileAssociation.getDetailProfileType() != ProfileType.MAPPING_PROFILE &&
+        profileAssociation.getDetailProfileType() != ProfileType.JOB_PROFILE)
+      .collect(Collectors.toList());
+  }
+
+  private List<ProfileAssociation> removeDeletedProfileAssociations(List<ProfileAssociation> profileAssociations,
+                                                        JobProfileUpdateDto jobProfileUpdateDto) {
+    if (!profileAssociations.isEmpty() && !jobProfileUpdateDto.getDeletedRelations().isEmpty()) {
+      profileAssociations.removeIf(profileAssociation ->
+        jobProfileUpdateDto.getDeletedRelations().stream().anyMatch(deleteAssociation -> {
+          if (profileAssociation.getId() != null && deleteAssociation.getId() != null) {
+            return Objects.equals(profileAssociation.getId(), deleteAssociation.getId());
+          }
+           return Objects.equals(profileAssociation.getMasterWrapperId(), deleteAssociation.getMasterWrapperId()) &&
+             Objects.equals(profileAssociation.getDetailWrapperId(), deleteAssociation.getDetailWrapperId());
+          }
+        )
+      );
+    }
+    profileAssociations.addAll(jobProfileUpdateDto.getAddedRelations());
+    return profileAssociations;
   }
 
   private Future<Errors> validateActionProfilesAssociations(List<ProfileAssociation> profileAssociations, List<Error> errors) {
@@ -1019,7 +1085,7 @@ public class DataImportProfilesImpl implements DataImportProfiles {
       errors.add(new Error().withMessage(MODIFY_ACTION_CANNOT_BE_USED_AS_A_STANDALONE_ACTION));
     }
 
-    if (association.getMasterProfileType() == ProfileType.MATCH_PROFILE && isFirstAtMatchBlock(profileAssociations, association)) {
+    if (association.getMasterProfileType() == MATCH_PROFILE && isFirstAtMatchBlock(profileAssociations, association)) {
       logger.warn("validateAddedModifyActionProfileAssociation:: Modify profile with id {}, used right after Match profile", actionProfile.getId());
       errors.add(new Error().withMessage(MODIFY_ACTION_CANNOT_BE_USED_RIGHT_AFTER_THE_MATCH));
     }
@@ -1045,32 +1111,20 @@ public class DataImportProfilesImpl implements DataImportProfiles {
   }
 
   private static void validateAddedUpdateActionProfileAssociation(ProfileAssociation association, ActionProfile actionProfile, List<Error> errors) {
-    if (association.getMasterProfileType() != ProfileType.MATCH_PROFILE) {
+    if (association.getMasterProfileType() != MATCH_PROFILE) {
       logger.warn("validateAddedUpdateActionProfileAssociation:: Missing linked MatchProfile for ActionProfile {} with action UPDATE", actionProfile.getId());
       errors.add(new Error().withMessage(String.format(INVALID_ACTION_PROFILE_LINKED_TO_JOB_PROFILE, actionProfile.getId())));
     }
   }
 
-  private List<String> addedProfileIdsByType(JobProfileUpdateDto jobProfileUpdateDto, ProfileType type) {
-  return jobProfileUpdateDto.getAddedRelations()
-      .stream()
-      .filter(element -> element.getDetailProfileType().equals(type)
-        || element.getMasterProfileType().equals(type))
-      .map(element -> element.getDetailProfileType().equals(type)
-        ? element.getDetailProfileId() : element.getMasterProfileId())
-      .distinct()
-      .collect(Collectors.toList());
-  }
-
   private List<ProfileAssociation> actionProfileAssociations(List<ProfileAssociation> profileAssociations) {
     return profileAssociations.stream()
-      .filter(association -> association.getDetailProfileType() == ProfileType.ACTION_PROFILE).toList();
+      .filter(association -> association.getDetailProfileType() == ACTION_PROFILE).toList();
   }
 
-  private <T> List<Map.Entry<Integer, T>> zipWithIndex(List<T> list) {
-    return IntStream.range(0, list.size())
-      .mapToObj(i -> new AbstractMap.SimpleEntry<>(i, list.get(i)))
-      .collect(Collectors.toList());
+  private List<ProfileAssociation> matchProfileAssociations(List<ProfileAssociation> profileAssociations) {
+    return profileAssociations.stream()
+      .filter(profileAssociation -> profileAssociation.getDetailProfileType() == MATCH_PROFILE).toList();
   }
 
   private Future<Errors> validateMappingProfile(OperationType operationType, MappingProfile mappingProfile, String tenantId) {
@@ -1157,7 +1211,7 @@ public class DataImportProfilesImpl implements DataImportProfiles {
     var futures = mappingProfileUpdateDto
       .getAddedRelations()
       .stream()
-      .filter(profileAssociation -> profileAssociation.getMasterProfileType() == ProfileType.ACTION_PROFILE)
+      .filter(profileAssociation -> profileAssociation.getMasterProfileType() == ACTION_PROFILE)
       .map(profileAssociation -> actionProfileService.getProfileById(profileAssociation.getMasterProfileId(), false, tenantId))
       .map(futureActionProfile -> futureActionProfile.onSuccess(optionalActionProfile ->
         optionalActionProfile.ifPresent(actionProfile -> validateAssociations(actionProfile, mappingProfileUpdateDto.getProfile(), errors,
@@ -1181,7 +1235,7 @@ public class DataImportProfilesImpl implements DataImportProfiles {
         optionalMappingProfile.ifPresentOrElse(mappingProfile -> {
             var existActionProfiles = CollectionUtils.isEmpty(deletedRelations) ? mappingProfile.getParentProfiles() :
               mappingProfile.getParentProfiles().stream()
-                .filter(profileSnapshotWrapper -> profileSnapshotWrapper.getContentType() == ProfileType.ACTION_PROFILE)
+                .filter(profileSnapshotWrapper -> profileSnapshotWrapper.getContentType() == ACTION_PROFILE)
                 .filter(profileSnapshotWrapper -> deletedRelations.stream()
                   .noneMatch(deletedRelation -> Objects.equals(deletedRelation.getMasterProfileId(), profileSnapshotWrapper.getProfileId())))
                 .toList();
