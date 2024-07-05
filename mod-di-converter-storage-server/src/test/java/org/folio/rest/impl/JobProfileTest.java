@@ -1276,11 +1276,11 @@ public class JobProfileTest extends AbstractRestVerticleTest {
   public void shouldReturnBadRequestOnPostJobProfileWithEmptyAssociations() {
     RestAssured.given()
       .spec(spec)
-      .body(jobProfile_3)
+      .body(jobProfile_3.withAddedRelations(emptyList()))
       .when()
       .post(JOB_PROFILES_PATH)
       .then()
-      .statusCode(HttpStatus.SC_NOT_FOUND);
+      .statusCode(HttpStatus.SC_UNPROCESSABLE_ENTITY);
   }
 
     @Test
@@ -1741,7 +1741,7 @@ public class JobProfileTest extends AbstractRestVerticleTest {
       .statusCode(HttpStatus.SC_UNPROCESSABLE_ENTITY)
       .body("errors", hasItem(
         hasEntry(is("message"),
-          is("Linked ActionProfile were not found after MatchProfile"))
+          is("Linked ActionProfile was not found after MatchProfile"))
       ));
   }
 
@@ -1765,7 +1765,7 @@ public class JobProfileTest extends AbstractRestVerticleTest {
       .statusCode(HttpStatus.SC_UNPROCESSABLE_ENTITY)
       .body("errors", hasItem(
         hasEntry(is("message"),
-          is("Linked ActionProfile were not found after MatchProfile"))
+          is("Linked ActionProfile was not found after MatchProfile"))
       ));
   }
 
@@ -1990,7 +1990,7 @@ public class JobProfileTest extends AbstractRestVerticleTest {
       .spec(spec)
       .queryParam("master", JOB_PROFILE.value())
       .queryParam("detail", ACTION_PROFILE.value())
-      .when() // null
+      .when()
       .get(ASSOCIATED_PROFILES_PATH + "/" + jobToActionAssociation.getId())
       .then()
       .statusCode(HttpStatus.SC_NOT_FOUND);
