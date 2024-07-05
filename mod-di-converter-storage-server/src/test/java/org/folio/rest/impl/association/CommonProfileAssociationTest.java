@@ -168,7 +168,7 @@ public class CommonProfileAssociationTest extends AbstractRestVerticleTest {
       MATCH_PROFILES_URL, MATCH_PROFILES_URL, MATCH_PROFILE, MATCH_PROFILE);
   }
 
-  public <M, D> void shouldReturnJobToMatchAssociationListOnGet(TestContext testContext,
+  private <M, D> void shouldReturnJobToMatchAssociationListOnGet(TestContext testContext,
                                                                 JobProfileWrapper jobProfileWrapper,
                                                                 ActionProfileWrapper actionProfileWrapper,
                                                                 MappingProfileWrapper mappingProfileWrapper,
@@ -193,7 +193,7 @@ public class CommonProfileAssociationTest extends AbstractRestVerticleTest {
     clearTables(testContext);
   }
 
-  public <M, D> void shouldReturnJobToActionAssociationListOnGet(TestContext testContext,
+  private  <M, D> void shouldReturnJobToActionAssociationListOnGet(TestContext testContext,
                                                                             JobProfileWrapper jobProfileWrapper,
                                                                             ActionProfileWrapper actionProfileWrapper,
                                                                             MappingProfileWrapper mappingProfileWrapper) {
@@ -289,8 +289,7 @@ public class CommonProfileAssociationTest extends AbstractRestVerticleTest {
       ACTION_PROFILES_URL, MAPPING_PROFILES_URL, ACTION_PROFILE, MAPPING_PROFILE);
     // job to action
     shouldPostJobToActionAndGetById(testContext, new JobProfileWrapper(jobProfile1),
-      new ActionProfileWrapper(actionProfile1),
-      new MappingProfileWrapper(mappingProfile1));
+      new ActionProfileWrapper(actionProfile1), new MappingProfileWrapper(mappingProfile1));
     // job to match
     shouldPostJobToMatchAndGetById(testContext, new JobProfileWrapper(jobProfile2), new ActionProfileWrapper(actionProfile2),
       new MappingProfileWrapper(mappingProfile1), new MatchProfileWrapper(matchProfile1));
@@ -510,14 +509,13 @@ public class CommonProfileAssociationTest extends AbstractRestVerticleTest {
       new MappingProfileWrapper(mappingProfile1), new MatchProfileWrapper(matchProfile1));
     // match to action
     shouldDeleteProfileOnDelete(testContext, new MatchProfileWrapper(matchProfile2),
-      new ActionProfileWrapper(actionProfile1),
-      MATCH_PROFILES_URL, ACTION_PROFILES_URL, MATCH_PROFILE, ACTION_PROFILE);
+      new ActionProfileWrapper(actionProfile1), MATCH_PROFILES_URL, ACTION_PROFILES_URL, MATCH_PROFILE, ACTION_PROFILE);
     // match to match
     shouldDeleteProfileOnDelete(testContext, new MatchProfileWrapper(matchProfile1), new MatchProfileWrapper(matchProfile2),
       MATCH_PROFILES_URL, MATCH_PROFILES_URL, MATCH_PROFILE, MATCH_PROFILE);
   }
 
-  public <M, D> void shouldDeleteJobToActionOnDelete(TestContext testContext,
+  private <M, D> void shouldDeleteJobToActionOnDelete(TestContext testContext,
                                                      JobProfileWrapper jobProfileWrapper,
                                                      ActionProfileWrapper actionProfileWrapper,
                                                      MappingProfileWrapper mappingProfileWrapper) {
@@ -540,7 +538,7 @@ public class CommonProfileAssociationTest extends AbstractRestVerticleTest {
     clearTables(testContext);
   }
 
-  public <M, D> void shouldDeleteJobToMatchOnDelete(TestContext testContext,
+  private <M, D> void shouldDeleteJobToMatchOnDelete(TestContext testContext,
                                                      JobProfileWrapper jobProfileWrapper,
                                                      ActionProfileWrapper actionProfileWrapper,
                                                      MappingProfileWrapper mappingProfileWrapper,
@@ -803,19 +801,17 @@ public class CommonProfileAssociationTest extends AbstractRestVerticleTest {
     shouldUpdateProfileAssociationOnPut(testContext, new ActionProfileWrapper(actionProfile2), new MappingProfileWrapper(mappingProfile1),
       new MappingProfileWrapper(mappingProfile2), ACTION_PROFILES_URL, MAPPING_PROFILES_URL, ACTION_PROFILE, MAPPING_PROFILE);
     // job to match to action
-    shouldUpdateJobToMatchAssociationOnPut(testContext, new JobProfileWrapper(jobProfile1),
-      new ActionProfileWrapper(actionProfile2), new MappingProfileWrapper(mappingProfile1),
-      new MatchProfileWrapper(matchProfile1));
+    shouldUpdateJobToMatchAssociationOnPut(testContext, new JobProfileWrapper(jobProfile1), new ActionProfileWrapper(actionProfile2),
+      new MappingProfileWrapper(mappingProfile1), new MatchProfileWrapper(matchProfile1));
     // match to action
-    shouldUpdateProfileAssociationOnPut(testContext, new MatchProfileWrapper(matchProfile1),
-      new ActionProfileWrapper(actionProfile1),
+    shouldUpdateProfileAssociationOnPut(testContext, new MatchProfileWrapper(matchProfile1), new ActionProfileWrapper(actionProfile1),
       new ActionProfileWrapper(actionProfile2), MATCH_PROFILES_URL, ACTION_PROFILES_URL, MATCH_PROFILE, ACTION_PROFILE);
     // match to match
     shouldUpdateProfileAssociationOnPut(testContext, new MatchProfileWrapper(matchProfile1), new MatchProfileWrapper(matchProfile2),
       new MatchProfileWrapper(matchProfile3), MATCH_PROFILES_URL, MATCH_PROFILES_URL, MATCH_PROFILE, MATCH_PROFILE);
   }
 
-  public <M, D> void shouldUpdateJobToMatchAssociationOnPut(TestContext testContext,
+  private <M, D> void shouldUpdateJobToMatchAssociationOnPut(TestContext testContext,
                                                             JobProfileWrapper jobProfileWrapper,
                                                             ActionProfileWrapper actionProfileWrapper,
                                                             MappingProfileWrapper mappingProfileWrapper,
@@ -923,7 +919,7 @@ public class CommonProfileAssociationTest extends AbstractRestVerticleTest {
   }
 
 
-  public <M, D> void getDetailProfilesByMasterProfile_OKJobToMatchToAction(TestContext testContext,
+  private <M, D> void getDetailProfilesByMasterProfile_OKJobToMatchToAction(TestContext testContext,
                                                                            JobProfileWrapper jobProfileWrapper,
                                                                            ActionProfileWrapper actionProfileWrapper,
                                                                            MappingProfileWrapper mappingProfileWrapper,
@@ -1084,7 +1080,7 @@ public class CommonProfileAssociationTest extends AbstractRestVerticleTest {
     getDetailsByMasterProfile_emptyDetailsListWithMasterProfile(testContext, new MatchProfileWrapper(matchProfile1), MATCH_PROFILES_URL, MATCH_PROFILE);
   }
 
-  public <M> void getDetailsJobToMatchToActionByMasterProfile_emptyDetailsListWithMasterProfile(TestContext testContext,
+  private <M> void getDetailsJobToMatchToActionByMasterProfile_emptyDetailsListWithMasterProfile(TestContext testContext,
                                                                                                 JobProfileWrapper jobProfileWrapper,
                                                                                                 ActionProfileWrapper actionProfileWrapper,
                                                                                                 MappingProfileWrapper mappingProfileWrapper,
@@ -1154,7 +1150,7 @@ public class CommonProfileAssociationTest extends AbstractRestVerticleTest {
       new MatchProfileWrapper(matchProfile3), new MatchProfileWrapper(matchProfile4), MATCH_PROFILES_URL, MATCH_PROFILES_URL, MATCH_PROFILE, MATCH_PROFILE);
   }
 
-  public <M, D> void getDetailProfilesJobToMatchByMasterProfile_sortByName_OK(TestContext testContext,
+  private <M, D> void getDetailProfilesJobToMatchByMasterProfile_sortByName_OK(TestContext testContext,
                                                                               JobProfileWrapper jobProfileWrapper,
                                                                               ActionProfileWrapper actionProfileWrapper,
                                                                               MappingProfileWrapper mappingProfileWrapper,
@@ -1299,7 +1295,7 @@ public class CommonProfileAssociationTest extends AbstractRestVerticleTest {
       MATCH_PROFILES_URL, MATCH_PROFILES_URL, MATCH_PROFILE, MATCH_PROFILE);
   }
 
-  public <M, D> void getMastersJobToMatchToActionByDetailProfile_OK(TestContext testContext,
+  private <M, D> void getMastersJobToMatchToActionByDetailProfile_OK(TestContext testContext,
                                                                     JobProfileWrapper jobProfileWrapper,
                                                                     ActionProfileWrapper actionProfileWrapper,
                                                                     MappingProfileWrapper mappingProfileWrapper,
@@ -1501,7 +1497,7 @@ public class CommonProfileAssociationTest extends AbstractRestVerticleTest {
       new MatchProfileWrapper(matchProfile1), MATCH_PROFILES_URL, MATCH_PROFILES_URL, MATCH_PROFILE, MATCH_PROFILE);
   }
 
-  public <M, D> void getMastersJobToMatchToActionByDetailProfile_sortBy_OK(TestContext testContext,
+  private <M, D> void getMastersJobToMatchToActionByDetailProfile_sortBy_OK(TestContext testContext,
                                                                            JobProfileWrapper jobProfileWrapper,
                                                                            ActionProfileWrapper actionProfileWrapper,
                                                                            MappingProfileWrapper mappingProfileWrapper,

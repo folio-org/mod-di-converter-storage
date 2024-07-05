@@ -974,7 +974,7 @@ public class DataImportProfilesImpl implements DataImportProfiles {
     logger.debug("validateMatchProfilesAssociations:: Validating JobProfile if its MatchProfile contains ActionProfile");
     if (CollectionUtils.isEmpty(profileAssociations)) {
       logger.warn("validateMatchProfilesAssociations:: Job profile does not contain any associations");
-      errors.add(new Error().withMessage("Linked ActionProfile were not found after MatchProfile"));
+      errors.add(new Error().withMessage("Linked ActionProfile was not found after MatchProfile"));
     }
     return Future.succeededFuture(new Errors().withErrors(errors).withTotalRecords(errors.size()));
   }
