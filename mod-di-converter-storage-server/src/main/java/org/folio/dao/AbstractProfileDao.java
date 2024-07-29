@@ -155,6 +155,12 @@ public abstract class AbstractProfileDao<T, S> implements ProfileDao<T, S> {
     return promise.future().map(profile);
   }
 
+  protected Future<String> deleteProfile(PostgresClient pgClient, String profileId) {
+    Promise<RowSet<Row>> promise = Promise.promise();
+    pgClient.delete(getTableName(), profileId, promise);
+    return promise.future().map(profileId);
+  }
+
   @Override
   public Future<Boolean> isProfileExistByName(String profileName, String profileId, String tenantId) {
     Promise<Boolean> promise = Promise.promise();
@@ -189,40 +195,23 @@ public abstract class AbstractProfileDao<T, S> implements ProfileDao<T, S> {
   }
 
   @Override
-  public Future<Boolean> markProfileAsDeleted(String profileId, String tenantId) {
-    Promise<Boolean> promise = Promise.promise();
-    Promise<SQLConnection> tx = Promise.promise();
+  public Future<Boolean> hardDeleteProfile(String profileId, String tenantId) {
     Criteria idCrit = constructCriteria(ID_FIELD, profileId);
     PostgresClient pgClient = pgClientFactory.createInstance(tenantId);
 
-    pgClient.startTx(tx);
-    tx.future()
-      .compose(sqlConnection -> {
-        // updating profile field 'deleted' to true in DB
-        Promise<Results<T>> selectPromise = Promise.promise();
-        pgClient.get(tx.future(), getTableName(), getProfileType(), new Criterion(idCrit), true, false, selectPromise);
-        return selectPromise.future();
-      })
+    Promise<Results<T>> selectPromise = Promise.promise();
+    pgClient.get(getTableName(), getProfileType(), new Criterion(idCrit), true, false, selectPromise);
+
+    return selectPromise.future()
       .compose(profileList -> profileList.getResults().isEmpty()
         ? Future.failedFuture(new NotFoundException(format("%s with id '%s' was not found", getProfileType().getSimpleName(), profileId)))
         : Future.succeededFuture(profileList.getResults().get(0)))
-      .map(this::markProfileEntityAsDeleted)
-      .compose(markedProfile -> updateProfile(tx.future(), profileId, markedProfile, tenantId))
-
-      // deletion all associations of marked profile with other detail-profiles
-      .compose(updatedProfile -> deleteAssociationsWithDetails(tx.future(), profileId, tenantId))
-      .onComplete(ar -> {
-        if (ar.succeeded()) {
-          pgClient.endTx(tx.future(), endTx -> promise.complete(true));
-        } else {
-          pgClient.rollbackTx(tx.future(), rollbackAr -> {
-            String message = format("markProfileAsDeleted:: Rollback transaction. Error during mark %s as deleted by id: %s ", getProfileType().getSimpleName(), profileId);
-            logger.warn(message, ar.cause());
-            promise.fail(ar.cause());
-          });
-        }
+      .compose(profile -> deleteProfile(pgClient, profileId))
+      .map(v -> true)
+      .onFailure(throwable -> {
+        String message = format("hardDeleteProfile:: Error during hard delete %s with id: %s ", getProfileType().getSimpleName(), profileId);
+        logger.warn(message, throwable);
       });
-    return promise.future();
   }
 
   @Override
@@ -235,37 +224,6 @@ public abstract class AbstractProfileDao<T, S> implements ProfileDao<T, S> {
       } else {
         logger.warn("getTotalProfilesNumber:: Error during retrieving total count for profiles", selectAr.cause());
         promise.fail(selectAr.cause());
-      }
-    });
-    return promise.future();
-  }
-
-  /**
-   * Sets deleted to {@code true} in Profile entity
-   *
-   * @param profile Profile entity
-   * @return Profile entity marked as deleted
-   */
-  protected abstract T markProfileEntityAsDeleted(T profile);
-
-  /**
-   * Deletes all associations of certain profile with other detail-profiles by its id.
-   *
-   * @param txConnection future with connection which will be used to perform deletion
-   * @param profileId    profile id
-   * @param tenantId     tenant id
-   * @return future with true if succeeded
-   */
-  protected Future<Boolean> deleteAssociationsWithDetails(Future<SQLConnection> txConnection, String profileId, String tenantId) {
-    Promise<Boolean> promise = Promise.promise();
-    PostgresClient pgClient = pgClientFactory.createInstance(tenantId);
-    String deleteQuery = String.format("DELETE FROM associations_view WHERE master_id = '%s'", profileId);
-    pgClient.execute(txConnection, deleteQuery, deleteAr -> {
-      if (deleteAr.failed()) {
-        logger.warn("deleteAssociationsWithDetails:: Error during delete associations of profile with other detail-profiles by its id '{}'", profileId, deleteAr.cause());
-        promise.fail(deleteAr.cause());
-      } else {
-        promise.complete(true);
       }
     });
     return promise.future();

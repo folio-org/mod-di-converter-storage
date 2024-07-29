@@ -280,7 +280,7 @@ public class DataImportProfilesImpl implements DataImportProfiles {
           asyncResultHandler.handle(Future.succeededFuture(ExceptionHelper.mapExceptionToResponse(new BadRequestException("Can`t delete default OCLC Job Profile with"))));
         } else {
           OkapiConnectionParams params = new OkapiConnectionParams(okapiHeaders);
-          jobProfileService.markProfileAsDeleted(id, params.getTenantId())
+          jobProfileService.hardDeleteProfile(id, params.getTenantId())
             .map(DeleteDataImportProfilesJobProfilesByIdResponse.respond204WithTextPlain(
               format("Job Profile with id '%s' was successfully deleted", id)))
             .map(Response.class::cast)
@@ -472,7 +472,7 @@ public class DataImportProfilesImpl implements DataImportProfiles {
           asyncResultHandler.handle(Future.succeededFuture(ExceptionHelper.mapExceptionToResponse(new BadRequestException("Can`t delete default OCLC Mapping Profile"))));
         } else {
           OkapiConnectionParams params = new OkapiConnectionParams(okapiHeaders);
-          mappingProfileService.markProfileAsDeleted(id, params.getTenantId())
+          mappingProfileService.hardDeleteProfile(id, params.getTenantId())
             .map(DeleteDataImportProfilesMappingProfilesByIdResponse.respond204WithTextPlain(
               format("Mapping Profile with id '%s' was successfully deleted", id)))
             .map(Response.class::cast)
@@ -514,7 +514,7 @@ public class DataImportProfilesImpl implements DataImportProfiles {
           asyncResultHandler.handle(Future.succeededFuture(ExceptionHelper.mapExceptionToResponse(new BadRequestException("Can`t delete default OCLC Match Profile"))));
         } else {
           OkapiConnectionParams params = new OkapiConnectionParams(okapiHeaders);
-          matchProfileService.markProfileAsDeleted(id, params.getTenantId())
+          matchProfileService.hardDeleteProfile(id, params.getTenantId())
             .map(DeleteDataImportProfilesMatchProfilesByIdResponse.respond204WithTextPlain(
               format("Match Profile with id '%s' was successfully deleted", id)))
             .map(Response.class::cast)
@@ -834,7 +834,7 @@ public class DataImportProfilesImpl implements DataImportProfiles {
           logger.warn("deleteDataImportProfilesActionProfilesById:: Can`t delete default OCLC Action Profile with id {}", id);
           asyncResultHandler.handle(Future.succeededFuture(ExceptionHelper.mapExceptionToResponse(new BadRequestException("Can`t delete default OCLC Action Profile"))));
         } else {
-          actionProfileService.markProfileAsDeleted(id, tenantId)
+          actionProfileService.hardDeleteProfile(id, tenantId)
             .map(DeleteDataImportProfilesActionProfilesByIdResponse.respond204WithTextPlain(
               format("Action Profile with id '%s' was successfully deleted", id)))
             .map(Response.class::cast)

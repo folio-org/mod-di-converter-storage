@@ -86,13 +86,13 @@ public interface ProfileService<T, S, D> {
   Future<Boolean> isProfileDtoValidForUpdate(String id, D profile, boolean isDefaultProfile, String tenantId);
 
   /**
-   * Marks profile as deleted by its id
+   * Hard deletes profile by its id
    *
    * @param id       Profile id
    * @param tenantId tenant id from request
    * @return future with true if succeeded
    */
-  Future<Boolean> markProfileAsDeleted(String id, String tenantId);
+  Future<Boolean> hardDeleteProfile(String id, String tenantId);
 
   /**
    * Returns {@link EntityTypeCollection}

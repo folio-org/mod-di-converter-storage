@@ -227,11 +227,12 @@ public abstract class AbstractProfileService<T, S, D> implements ProfileService<
       .map(getProfile(profile));
   }
 
-  public Future<Boolean> markProfileAsDeleted(String id, String tenantId) {
+  @Override
+  public Future<Boolean> hardDeleteProfile(String id, String tenantId) {
     return profileDao.isProfileAssociatedAsDetail(id, tenantId)
       .compose(isAssociated -> isAssociated
         ? Future.failedFuture(new ConflictException(String.format(DELETE_PROFILE_ERROR_MESSAGE, id)))
-        : profileDao.markProfileAsDeleted(id, tenantId))
+        : profileDao.hardDeleteProfile(id, tenantId))
       .map(true);
   }
 

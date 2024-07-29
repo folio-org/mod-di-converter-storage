@@ -35,9 +35,4 @@ public class MappingProfileDaoImpl extends AbstractProfileDao<MappingProfile, Ma
   String getProfileId(MappingProfile profile) {
     return profile.getId();
   }
-
-  @Override
-  protected MappingProfile markProfileEntityAsDeleted(MappingProfile profile) {
-    return profile.withDeleted(true);
-  }
 }

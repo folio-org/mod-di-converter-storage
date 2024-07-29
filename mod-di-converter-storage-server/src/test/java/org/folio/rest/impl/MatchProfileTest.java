@@ -468,7 +468,7 @@ public class MatchProfileTest extends AbstractRestVerticleTest {
   }
 
   @Test
-  public void shouldMarkAsDeletedProfileOnDelete() {
+  public void shouldHardDeleteProfileOnDeletion() {
     Response createResponse = RestAssured.given()
       .spec(spec)
       .body(matchProfile_2)
@@ -490,15 +490,6 @@ public class MatchProfileTest extends AbstractRestVerticleTest {
       .get(MATCH_PROFILES_PATH + "/" + profile.getProfile().getId())
       .then()
       .statusCode(HttpStatus.SC_NOT_FOUND);
-
-    RestAssured.given()
-      .spec(spec)
-      .when()
-      .get(MATCH_PROFILES_PATH + "?showDeleted=true")
-      .then()
-      .statusCode(HttpStatus.SC_OK)
-      .body("totalRecords", is(1))
-      .body("matchProfiles.get(0).deleted", is(true));
   }
 
   @Test
@@ -578,39 +569,6 @@ public class MatchProfileTest extends AbstractRestVerticleTest {
       .get(ASSOCIATED_PROFILES_PATH + "/" + matchToActionAssociation.getId())
       .then()
       .statusCode(HttpStatus.SC_NOT_FOUND);
-  }
-
-  @Test
-  public void shouldReturnMarkedAndUnmarkedAsDeletedProfilesOnGetWhenParameterDeletedIsTrue(TestContext context) {
-    clearTables(context);
-    createProfiles();
-    MatchProfileUpdateDto matchProfileToDelete = RestAssured.given()
-      .spec(spec)
-      .body(new MatchProfileUpdateDto().withProfile(new MatchProfile()
-        .withName("ProfileToDelete")
-        .withIncomingRecordType(EntityType.MARC_BIBLIOGRAPHIC)
-        .withExistingRecordType(EntityType.MARC_BIBLIOGRAPHIC)))
-      .when()
-      .post(MATCH_PROFILES_PATH)
-      .then()
-      .statusCode(HttpStatus.SC_CREATED)
-      .extract().body().as(MatchProfileUpdateDto.class);
-
-    RestAssured.given()
-      .spec(spec)
-      .when()
-      .delete(MATCH_PROFILES_PATH + "/" + matchProfileToDelete.getProfile().getId())
-      .then()
-      .statusCode(HttpStatus.SC_NO_CONTENT);
-
-    RestAssured.given()
-      .spec(spec)
-      .when()
-      .param("showDeleted", true)
-      .get(MATCH_PROFILES_PATH)
-      .then()
-      .statusCode(HttpStatus.SC_OK)
-      .body("totalRecords", is(4));
   }
 
   @Test

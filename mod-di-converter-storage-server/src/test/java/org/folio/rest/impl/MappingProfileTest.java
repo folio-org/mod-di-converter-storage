@@ -537,7 +537,7 @@ public class MappingProfileTest extends AbstractRestVerticleTest {
   }
 
   @Test
-  public void shouldMarkedProfileAsDeletedOnDelete() {
+  public void shouldHardDeleteProfileOnDeletion() {
     Response createResponse = RestAssured.given()
       .spec(spec)
       .body(mappingProfile_2)
@@ -559,47 +559,6 @@ public class MappingProfileTest extends AbstractRestVerticleTest {
       .get(MAPPING_PROFILES_PATH + "/" + profile.getProfile().getId())
       .then()
       .statusCode(HttpStatus.SC_NOT_FOUND);
-
-    RestAssured.given()
-      .spec(spec)
-      .when()
-      .get(MAPPING_PROFILES_PATH + "?showDeleted=true")
-      .then()
-      .statusCode(HttpStatus.SC_OK)
-      .body("totalRecords", is(1))
-      .body("mappingProfiles.get(0).deleted", is(true));
-  }
-
-  @Test
-  public void shouldReturnMarkedAndUnmarkedAsDeletedProfilesOnGetWhenParameterDeletedIsTrue() {
-    createProfiles();
-    MappingProfileUpdateDto mappingProfileToDelete = RestAssured.given()
-      .spec(spec)
-      .body(new MappingProfileUpdateDto().withProfile(new MappingProfile()
-        .withName("ProfileToDelete")
-        .withIncomingRecordType(EntityType.MARC_BIBLIOGRAPHIC)
-        .withExistingRecordType(EntityType.INSTANCE)))
-      .when()
-      .post(MAPPING_PROFILES_PATH)
-      .then()
-      .statusCode(HttpStatus.SC_CREATED)
-      .extract().body().as(MappingProfileUpdateDto.class);
-
-    RestAssured.given()
-      .spec(spec)
-      .when()
-      .delete(MAPPING_PROFILES_PATH + "/" + mappingProfileToDelete.getProfile().getId())
-      .then()
-      .statusCode(HttpStatus.SC_NO_CONTENT);
-
-    RestAssured.given()
-      .spec(spec)
-      .when()
-      .param("showDeleted", true)
-      .get(MAPPING_PROFILES_PATH)
-      .then()
-      .statusCode(HttpStatus.SC_OK)
-      .body("totalRecords", is(4));
   }
 
   @Test

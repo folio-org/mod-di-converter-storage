@@ -666,7 +666,7 @@ public class ActionProfileTest extends AbstractRestVerticleTest {
   }
 
   @Test
-  public void shouldMarkProfileAsDeletedOnDelete() {
+  public void shouldHardDeleteProfileOnDeletion() {
     Response createResponse = RestAssured.given()
       .spec(spec)
       .body(actionProfile_2)
@@ -688,15 +688,6 @@ public class ActionProfileTest extends AbstractRestVerticleTest {
       .get(ACTION_PROFILES_PATH + "/" + profile.getProfile().getId())
       .then()
       .statusCode(HttpStatus.SC_NOT_FOUND);
-
-    RestAssured.given()
-      .spec(spec)
-      .when()
-      .get(ACTION_PROFILES_PATH + "?showDeleted=true")
-      .then()
-      .statusCode(HttpStatus.SC_OK)
-      .body("totalRecords", is(1))
-      .body("actionProfiles.get(0).deleted", is(true));
   }
 
   @Test
@@ -775,38 +766,6 @@ public class ActionProfileTest extends AbstractRestVerticleTest {
       .get(ASSOCIATED_PROFILES_PATH + "/" + actionToMappingAssociation.getId())
       .then()
       .statusCode(HttpStatus.SC_NOT_FOUND);
-  }
-
-  @Test
-  public void shouldReturnMarkedAndUnmarkedAsDeletedProfilesOnGetWhenParameterDeletedIsTrue() {
-    createProfiles();
-    ActionProfileUpdateDto profileToDelete = RestAssured.given()
-      .spec(spec)
-      .body(new ActionProfileUpdateDto().withProfile(new ActionProfile()
-        .withName("ProfileToDelete")
-        .withAction(CREATE)
-        .withFolioRecord(INSTANCE)))
-      .when()
-      .post(ACTION_PROFILES_PATH)
-      .then()
-      .statusCode(HttpStatus.SC_CREATED)
-      .extract().body().as(ActionProfileUpdateDto.class);
-
-    RestAssured.given()
-      .spec(spec)
-      .when()
-      .delete(ACTION_PROFILES_PATH + "/" + profileToDelete.getProfile().getId())
-      .then()
-      .statusCode(HttpStatus.SC_NO_CONTENT);
-
-    RestAssured.given()
-      .spec(spec)
-      .when()
-      .param("showDeleted", true)
-      .get(ACTION_PROFILES_PATH)
-      .then()
-      .statusCode(HttpStatus.SC_OK)
-      .body("totalRecords", is(4));
   }
 
   @Test
