@@ -201,13 +201,13 @@ public class DataImportProfilesImpl implements DataImportProfiles {
   }
 
   @Override
-  public void getDataImportProfilesJobProfiles(boolean showDeleted, boolean showHidden, boolean withRelations,
+  public void getDataImportProfilesJobProfiles(boolean showHidden, boolean withRelations,
                                                String query, String totalRecords, int offset, int limit,
                                                Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler,
                                                Context vertxContext) {
     vertxContext.runOnContext(v -> {
       try {
-        jobProfileService.getProfiles(showDeleted, withRelations, showHidden, query, offset, limit, tenantId)
+        jobProfileService.getProfiles(withRelations, showHidden, query, offset, limit, tenantId)
           .map(GetDataImportProfilesJobProfilesResponse::respond200WithApplicationJson)
           .map(Response.class::cast)
           .otherwise(ExceptionHelper::mapExceptionToResponse)
@@ -257,7 +257,7 @@ public class DataImportProfilesImpl implements DataImportProfiles {
     vertxContext.runOnContext(c -> {
       try {
         jobProfileService.getProfileById(id, withRelations, tenantId)
-          .map(optionalProfile -> optionalProfile.filter(jobProfile -> !jobProfile.getDeleted()).orElseThrow(() ->
+          .map(optionalProfile -> optionalProfile.orElseThrow(() ->
             new NotFoundException(format("Job Profile with id '%s' was not found", id))))
           .map(GetDataImportProfilesJobProfilesByIdResponse::respond200WithApplicationJson)
           .map(Response.class::cast)
@@ -322,13 +322,13 @@ public class DataImportProfilesImpl implements DataImportProfiles {
   }
 
   @Override
-  public void getDataImportProfilesMatchProfiles(boolean showDeleted, boolean showHidden, boolean withRelations,
+  public void getDataImportProfilesMatchProfiles(boolean showHidden, boolean withRelations,
                                                  String query, String totalRecords, int offset, int limit,
                                                  Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler,
                                                  Context vertxContext) {
     vertxContext.runOnContext(v -> {
       try {
-        matchProfileService.getProfiles(showDeleted, withRelations, showHidden, query, offset, limit, tenantId)
+        matchProfileService.getProfiles(withRelations, showHidden, query, offset, limit, tenantId)
           .map(GetDataImportProfilesMatchProfilesResponse::respond200WithApplicationJson)
           .map(Response.class::cast)
           .otherwise(ExceptionHelper::mapExceptionToResponse)
@@ -373,7 +373,7 @@ public class DataImportProfilesImpl implements DataImportProfiles {
     vertxContext.runOnContext(c -> {
       try {
         matchProfileService.getProfileById(id, withRelations, tenantId)
-          .map(optionalProfile -> optionalProfile.filter(matchProfile -> !matchProfile.getDeleted()).orElseThrow(() ->
+          .map(optionalProfile -> optionalProfile.orElseThrow(() ->
             new NotFoundException(format("Match Profile with id '%s' was not found", id))))
           .map(GetDataImportProfilesMatchProfilesByIdResponse::respond200WithApplicationJson)
           .map(Response.class::cast)
@@ -415,13 +415,13 @@ public class DataImportProfilesImpl implements DataImportProfiles {
   }
 
   @Override
-  public void getDataImportProfilesMappingProfiles(boolean showDeleted, boolean showHidden, boolean withRelations,
+  public void getDataImportProfilesMappingProfiles(boolean showHidden, boolean withRelations,
                                                    String query, String totalRecords, int offset, int limit,
                                                    Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler,
                                                    Context vertxContext) {
     vertxContext.runOnContext(v -> {
       try {
-        mappingProfileService.getProfiles(showDeleted, withRelations, showHidden, query, offset, limit, tenantId)
+        mappingProfileService.getProfiles(withRelations, showHidden, query, offset, limit, tenantId)
           .map(GetDataImportProfilesMappingProfilesResponse::respond200WithApplicationJson)
           .map(Response.class::cast)
           .otherwise(ExceptionHelper::mapExceptionToResponse)
@@ -491,7 +491,7 @@ public class DataImportProfilesImpl implements DataImportProfiles {
     vertxContext.runOnContext(c -> {
       try {
         mappingProfileService.getProfileById(id, withRelations, tenantId)
-          .map(optionalProfile -> optionalProfile.filter(mappingProfile -> !mappingProfile.getDeleted()).orElseThrow(() ->
+          .map(optionalProfile -> optionalProfile.orElseThrow(() ->
             new NotFoundException(format("Mapping Profile with id '%s' was not found", id))))
           .map(GetDataImportProfilesMappingProfilesByIdResponse::respond200WithApplicationJson)
           .map(Response.class::cast)
@@ -558,13 +558,13 @@ public class DataImportProfilesImpl implements DataImportProfiles {
   }
 
   @Override
-  public void getDataImportProfilesActionProfiles(boolean showDeleted, boolean showHidden, boolean withRelations,
+  public void getDataImportProfilesActionProfiles(boolean showHidden, boolean withRelations,
                                                   String query, String totalRecords, int offset, int limit,
                                                   Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler,
                                                   Context vertxContext) {
     vertxContext.runOnContext(v -> {
       try {
-        actionProfileService.getProfiles(showDeleted, withRelations, showHidden, query, offset, limit, tenantId)
+        actionProfileService.getProfiles(withRelations, showHidden, query, offset, limit, tenantId)
           .map(GetDataImportProfilesActionProfilesResponse::respond200WithApplicationJson)
           .map(Response.class::cast)
           .otherwise(ExceptionHelper::mapExceptionToResponse)
@@ -613,7 +613,7 @@ public class DataImportProfilesImpl implements DataImportProfiles {
     vertxContext.runOnContext(c -> {
       try {
         actionProfileService.getProfileById(id, withRelations, tenantId)
-          .map(optionalProfile -> optionalProfile.filter(actionProfile -> !actionProfile.getDeleted()).orElseThrow(() ->
+          .map(optionalProfile -> optionalProfile.orElseThrow(() ->
             new NotFoundException(format("Action Profile with id '%s' was not found", id))))
           .map(GetDataImportProfilesActionProfilesByIdResponse::respond200WithApplicationJson)
           .map(Response.class::cast)

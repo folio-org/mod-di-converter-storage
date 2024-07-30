@@ -69,8 +69,8 @@ public abstract class AbstractProfileService<T, S, D> implements ProfileService<
   private ProfileWrapperDao profileWrapperDao;
 
   @Override
-  public Future<S> getProfiles(boolean showDeleted, boolean withRelations, boolean showHidden, String query, int offset, int limit, String tenantId) {
-    return profileDao.getProfiles(showDeleted, showHidden, query, offset, limit, tenantId)
+  public Future<S> getProfiles(boolean withRelations, boolean showHidden, String query, int offset, int limit, String tenantId) {
+    return profileDao.getProfiles(showHidden, query, offset, limit, tenantId)
       .compose(profilesCollection -> {
         if (withRelations) {
           return fetchRelationsForCollection(profilesCollection, tenantId);

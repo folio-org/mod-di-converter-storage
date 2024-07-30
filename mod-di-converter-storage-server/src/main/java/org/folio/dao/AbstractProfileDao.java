@@ -40,18 +40,14 @@ public abstract class AbstractProfileDao<T, S> implements ProfileDao<T, S> {
   @Autowired
   protected PostgresClientFactory pgClientFactory;
   public static final String IS_PROFILE_ASSOCIATED_AS_DETAIL_BY_ID_SQL = "SELECT exists (SELECT association_id FROM associations_view WHERE detail_id = '%s')";
-  public static final String IS_PROFILE_EXIST_BY_NAME = "SELECT jsonb FROM %s WHERE trim(both ' ' from lower(jsonb ->> 'name')) = $1 AND jsonb ->> %s != $2 AND jsonb ->> 'deleted' = 'false'  LIMIT 1;";
+  public static final String IS_PROFILE_EXIST_BY_NAME = "SELECT jsonb FROM %s WHERE trim(both ' ' from lower(jsonb ->> 'name')) = $1 AND jsonb ->> %s != $2 LIMIT 1;";
 
   @Override
-  public Future<S> getProfiles(boolean showDeleted, boolean showHidden, String query, int offset, int limit, String tenantId) {
+  public Future<S> getProfiles(boolean showHidden, String query, int offset, int limit, String tenantId) {
     Promise<Results<T>> promise = Promise.promise();
     try {
       String[] fieldList = {"*"};
       CQLWrapper cql = getCQLWrapper(getTableName(), query, limit, offset);
-      if (!showDeleted) {
-        var notDeletedProfilesFilter = "deleted==false";
-        cql.addWrapper(getCQLWrapper(getTableName(), notDeletedProfilesFilter));
-      }
       if (!showHidden) {
         var notHiddenProfilesFilter = "hidden==false";
         cql.addWrapper(getCQLWrapper(getTableName(), notHiddenProfilesFilter));
