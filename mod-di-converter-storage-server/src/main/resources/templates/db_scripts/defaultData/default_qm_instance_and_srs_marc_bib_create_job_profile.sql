@@ -2,7 +2,6 @@ INSERT INTO ${myuniversity}_${mymodule}.job_profiles (id, jsonb) values
     ('6409dcff-71fa-433a-bc6a-e70ad38a9604', '{
 	"id": "6409dcff-71fa-433a-bc6a-e70ad38a9604",
 	"name": "quickMARC - Derive a new SRS MARC Bib and Instance",
-	"deleted": false,
 	"dataType": "MARC",
 	"metadata": {
 		"createdDate": "2021-01-14T14:00:00.000",
@@ -28,7 +27,6 @@ INSERT INTO ${myuniversity}_${mymodule}.action_profiles (id, jsonb) values
 	"id": "f8e58651-f651-485d-aead-d2fa8700e2d1",
 	"name": "quickMARC Derive - Create Inventory Instance",
 	"action": "CREATE",
-	"deleted": false,
     "remove9Subfields": false,
 	"metadata": {
 		"createdDate": "2021-01-14T14:00:00.000",
@@ -52,7 +50,6 @@ INSERT INTO ${myuniversity}_${mymodule}.mapping_profiles (id, jsonb) values
     '{
 	"id": "991c0300-44a6-47e3-8ea2-b01bb56a38cc",
 	"name": "quickMARC Derive - Create Inventory Instance",
-	"deleted": false,
 	"metadata": {
 		"createdDate": "2021-01-14T14:00:00.000",
 		"updatedDate": "2021-01-14T15:00:00.462+0000",

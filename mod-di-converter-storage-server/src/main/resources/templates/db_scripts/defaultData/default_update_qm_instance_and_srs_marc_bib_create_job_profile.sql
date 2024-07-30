@@ -2,7 +2,6 @@ UPDATE ${myuniversity}_${mymodule}.job_profiles
     SET jsonb =  '{
 	"id": "6409dcff-71fa-433a-bc6a-e70ad38a9604",
 	"name": "quickMARC - Derive a new SRS MARC Bib and Instance",
-	"deleted": false,
 	"hidden": false,
 	"dataType": "MARC",
 	"metadata": {
@@ -27,7 +26,6 @@ SET jsonb =  '{
 	"id": "f8e58651-f651-485d-aead-d2fa8700e2d1",
 	"name": "quickMARC Derive - Create Inventory Instance",
 	"action": "CREATE",
-	"deleted": false,
 	"hidden": false,
     "remove9Subfields": false,
 	"metadata": {
@@ -52,7 +50,6 @@ UPDATE ${myuniversity}_${mymodule}.mapping_profiles
 SET jsonb =  '{
 	"id": "991c0300-44a6-47e3-8ea2-b01bb56a38cc",
 	"name": "quickMARC Derive - Create Inventory Instance",
-	"deleted": false,
 	"hidden": false,
 	"metadata": {
 		"createdDate": "2021-01-14T14:00:00.000",

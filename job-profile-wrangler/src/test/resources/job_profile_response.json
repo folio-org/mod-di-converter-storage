@@ -5,7 +5,6 @@
     "name" : "test",
     "description" : "",
     "dataType" : "MARC",
-    "deleted" : false,
     "userInfo" : {
       "firstName" : "DIKU",
       "lastName" : "ADMINISTRATOR",

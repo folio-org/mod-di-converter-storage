@@ -65,6 +65,7 @@ import static org.hamcrest.Matchers.everyItem;
 import static org.hamcrest.Matchers.hasItem;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.notNullValue;
+import static org.hamcrest.Matchers.nullValue;
 
 @RunWith(VertxUnitRunner.class)
 public class MatchProfileTest extends AbstractRestVerticleTest {
@@ -131,7 +132,7 @@ public class MatchProfileTest extends AbstractRestVerticleTest {
       .then()
       .statusCode(HttpStatus.SC_OK)
       .body("totalRecords", is(3))
-      .body("matchProfiles*.deleted", everyItem(is(false)))
+      .body("matchProfiles*.deleted", everyItem(is(nullValue())))
       .body("matchProfiles*.hidden", everyItem(is(false)));
   }
 
@@ -149,7 +150,7 @@ public class MatchProfileTest extends AbstractRestVerticleTest {
       .body("totalRecords", is(1))
       .body("matchProfiles*.childProfiles*.id", everyItem(is(notNullValue())))
       .body("matchProfiles*.parentProfiles*.id", everyItem(is(notNullValue())))
-      .body("matchProfiles*.deleted", everyItem(is(false)))
+      .body("matchProfiles*.deleted", everyItem(is(nullValue())))
       .body("matchProfiles*.hidden", everyItem(is(false)));
   }
 
@@ -165,7 +166,7 @@ public class MatchProfileTest extends AbstractRestVerticleTest {
       .statusCode(HttpStatus.SC_OK).log().all()
       .body("childProfiles*.id", everyItem(is(notNullValue())))
       .body("parentProfiles*.id", everyItem(is(notNullValue())))
-      .body("deleted", is(false));
+      .body("deleted", is(nullValue()));
   }
 
   @Test
@@ -179,7 +180,7 @@ public class MatchProfileTest extends AbstractRestVerticleTest {
       .then()
       .statusCode(HttpStatus.SC_OK)
       .body("totalRecords", is(3))
-      .body("matchProfiles*.deleted", everyItem(is(false)))
+      .body("matchProfiles*.deleted", everyItem(is(nullValue())))
       .body("matchProfiles*.hidden", everyItem(is(false)))
       .body("matchProfiles*.userInfo.lastName", everyItem(is("Doe")));
   }
@@ -601,7 +602,7 @@ public class MatchProfileTest extends AbstractRestVerticleTest {
       .then()
       .statusCode(HttpStatus.SC_OK)
       .body("totalRecords", is(3))
-      .body("matchProfiles*.deleted", everyItem(is(false)))
+      .body("matchProfiles*.deleted", everyItem(is(nullValue())))
       .body("matchProfiles*.hidden", everyItem(is(false)));
   }
 

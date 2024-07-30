@@ -7,7 +7,6 @@ SET jsonb =  '{
   "tags": {
     "tagList": []
   },
-  "deleted": false,
   "hidden": false,
   "userInfo": {
     "firstName": "System",
@@ -32,7 +31,6 @@ SET jsonb =  '{
 	"id": "d0ebba8a-2f0f-11eb-adc1-0242ac120002",
 	"name": "Inventory Single Record - Default Create Instance",
 	"action": "CREATE",
-	"deleted": false,
 	"hidden": false,
 	"remove9Subfields": true,
 	"userInfo": {
@@ -59,7 +57,6 @@ UPDATE ${myuniversity}_${mymodule}.mapping_profiles
 SET jsonb =  '{
 	"id": "d0ebbc2e-2f0f-11eb-adc1-0242ac120002",
 	"name": "Inventory Single Record - Default Create Instance",
-	"deleted": false,
 	"hidden": false,
 	"userInfo": {
 		"lastName": "System",

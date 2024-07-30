@@ -3,7 +3,6 @@ INSERT INTO ${myuniversity}_${mymodule}.job_profiles (id, jsonb) values
 	"id": "6cb347c6-c0b0-4363-89fc-32cedede87ba",
 	"name": "quickMARC - Default Update holdings",
 	"description": "This job profile is used by the quickMARC to allow a user to update an SRS MARC holdings record and corresponding Inventory holdings. Profile cannot be edited or deleted",
-	"deleted": false,
 	"hidden": true,
 	"dataType": "MARC",
 	"metadata": {
@@ -28,7 +27,6 @@ INSERT INTO ${myuniversity}_${mymodule}.action_profiles (id, jsonb) values
 	"id": "7e24a466-349b-451d-a18e-38fb21d71b38",
 	"name": "quickMARC - Default Update MARC holdings",
 	"action": "UPDATE",
-	"deleted": false,
 	"hidden": true,
     "remove9Subfields": false,
 	"metadata": {
@@ -55,7 +53,6 @@ INSERT INTO ${myuniversity}_${mymodule}.match_profiles (id, jsonb) values
 '{
 	"id": "2a599369-817f-4fe8-bae2-f3e3987990fe",
 	"name": "quickMARC - Default match for existing SRS holdings",
-	"deleted": false,
 	"hidden": true,
 	"metadata": {
 		"createdDate": "2020-11-30T09:06:01.52",
@@ -121,7 +118,6 @@ INSERT INTO ${myuniversity}_${mymodule}.mapping_profiles (id, jsonb) values
 '{
 	"id": "b8a9ca7d-4a33-44d3-86e1-f7c6cb7b265f",
 	"name": "quickMARC - Default Update MARC holdings",
-	"deleted": false,
 	"hidden": true,
 	"metadata": {
 		"createdDate": "2020-11-30T09:02:06.555",

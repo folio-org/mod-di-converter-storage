@@ -3,7 +3,6 @@ INSERT INTO ${myuniversity}_${mymodule}.job_profiles (id, jsonb) values
 	"id": "cf6f2718-5aa5-482a-bba5-5bc9b75614da",
 	"name": "quickMARC - Default Update instance",
 	"description": "This job profile is used by the quickMARC to allow a user to update an SRS MARC bib record and corresponding Inventory instance. Profile cannot be edited or deleted",
-	"deleted": false,
     "hidden": true,
 	"dataType": "MARC",
 	"metadata": {
@@ -28,7 +27,6 @@ INSERT INTO ${myuniversity}_${mymodule}.action_profiles (id, jsonb) values
 	"id": "c2e2d482-9486-476e-a28c-8f1e303cbe1a",
 	"name": "quickMARC - Default Update MARC bib",
 	"action": "UPDATE",
-	"deleted": false,
 	"hidden": true,
     "remove9Subfields": false,
 	"metadata": {
@@ -55,7 +53,6 @@ INSERT INTO ${myuniversity}_${mymodule}.match_profiles (id, jsonb) values
 '{
 	"id": "91cec42a-260d-4a8c-a9fb-90d9435ca2f4",
 	"name": "quickMARC - Default match for existing SRS bib",
-	"deleted": false,
 	"hidden": true,
 	"metadata": {
 		"createdDate": "2020-11-30T09:06:01.52",
@@ -121,7 +118,6 @@ INSERT INTO ${myuniversity}_${mymodule}.mapping_profiles (id, jsonb) values
 '{
 	"id": "39b265e1-c963-4e5f-859d-6e8c327a265c",
 	"name": "quickMARC - Default Update MARC bib",
-	"deleted": false,
 	"hidden": true,
 	"metadata": {
 		"createdDate": "2020-11-30T09:02:06.555",

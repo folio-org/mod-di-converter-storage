@@ -48,6 +48,7 @@ import static org.hamcrest.Matchers.hasItem;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.notNullValue;
+import static org.hamcrest.Matchers.nullValue;
 
 @RunWith(VertxUnitRunner.class)
 public class MappingProfileTest extends AbstractRestVerticleTest {
@@ -175,7 +176,7 @@ public class MappingProfileTest extends AbstractRestVerticleTest {
       .then()
       .statusCode(HttpStatus.SC_OK)
       .body("totalRecords", is(3))
-      .body("mappingProfiles*.deleted", everyItem(is(false)))
+      .body("mappingProfiles*.deleted", everyItem(is(nullValue())))
       .body("mappingProfiles*.hidden", everyItem(is(false)));
   }
 
@@ -590,7 +591,7 @@ public class MappingProfileTest extends AbstractRestVerticleTest {
       .then()
       .statusCode(HttpStatus.SC_OK)
       .body("totalRecords", is(3))
-      .body("mappingProfiles*.deleted", everyItem(is(false)))
+      .body("mappingProfiles*.deleted", everyItem(is(nullValue())))
       .body("mappingProfiles*.hidden", everyItem(is(false)));
   }
 

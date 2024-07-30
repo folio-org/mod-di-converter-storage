@@ -23,6 +23,7 @@ import static org.hamcrest.Matchers.everyItem;
 import static org.hamcrest.Matchers.hasEntry;
 import static org.hamcrest.Matchers.hasItem;
 import static org.hamcrest.Matchers.is;
+import static org.hamcrest.Matchers.nullValue;
 
 import io.restassured.RestAssured;
 import io.restassured.response.Response;
@@ -141,7 +142,7 @@ public class JobProfileTest extends AbstractRestVerticleTest {
       .then()
       .statusCode(HttpStatus.SC_OK)
       .body("totalRecords", is(3))
-      .body("jobProfiles*.deleted", everyItem(is(false)))
+      .body("jobProfiles*.deleted", everyItem(is(nullValue())))
       .body("jobProfiles*.hidden", everyItem(is(false)));
   }
 
@@ -155,7 +156,7 @@ public class JobProfileTest extends AbstractRestVerticleTest {
       .then()
       .statusCode(HttpStatus.SC_OK)
       .body("totalRecords", is(3))
-      .body("jobProfiles*.deleted", everyItem(is(false)))
+      .body("jobProfiles*.deleted", everyItem(is(nullValue())))
       .body("jobProfiles*.hidden", everyItem(is(false)))
       .body("jobProfiles*.userInfo.lastName", everyItem(is("Doe")));
   }
@@ -170,7 +171,7 @@ public class JobProfileTest extends AbstractRestVerticleTest {
       .then()
       .statusCode(HttpStatus.SC_OK)
       .body("totalRecords", is(2))
-      .body("jobProfiles*.deleted", everyItem(is(false)))
+      .body("jobProfiles*.deleted", everyItem(is(nullValue())))
       .body("jobProfiles*.hidden", everyItem(is(false)))
       .body("jobProfiles.get(0).tags.tagList", hasItem("ipsum"))
       .body("jobProfiles.get(1).tags.tagList", hasItem("ipsum"));
@@ -186,7 +187,7 @@ public class JobProfileTest extends AbstractRestVerticleTest {
       .then()
       .statusCode(HttpStatus.SC_OK)
       .body("jobProfiles.size()", is(2))
-      .body("jobProfiles*.deleted", everyItem(is(false)))
+      .body("jobProfiles*.deleted", everyItem(is(nullValue())))
       .body("jobProfiles*.hidden", everyItem(is(false)))
       .body("totalRecords", is(3));
   }

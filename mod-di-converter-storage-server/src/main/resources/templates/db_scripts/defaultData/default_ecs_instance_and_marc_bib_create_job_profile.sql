@@ -2,7 +2,6 @@ INSERT INTO ${myuniversity}_${mymodule}.job_profiles (id, jsonb) values
   ('90fd4389-e5a9-4cc5-88cf-1568c0ff7e8b', '{
 	"id": "90fd4389-e5a9-4cc5-88cf-1568c0ff7e8b",
 	"name": "ECS - Create instance and SRS MARC Bib",
-	"deleted": false,
 	"dataType": "MARC",
 	"metadata": {
 		"createdDate": "2023-10-18T14:00:00.000",
@@ -29,7 +28,6 @@ INSERT INTO ${myuniversity}_${mymodule}.action_profiles (id, jsonb) values
      "id": "671a848a-eb4e-49d2-9e01-41c179e789f5",
      "name": "ECS - Create instance",
      "action": "CREATE",
-     "deleted": false,
      "remove9Subfields": false,
      "metadata": {
        "createdDate": "2023-10-18T14:00:00.000",
@@ -54,7 +52,6 @@ INSERT INTO ${myuniversity}_${mymodule}.mapping_profiles (id, jsonb) values
    '{
  "id": "f8d7e135-3c35-4c60-bb33-0a3cf01e7b94",
  "name": "ECS - Create instance",
- "deleted": false,
  "hidden": true,
  "metadata": {
    "createdDate": "2023-10-18T14:00:00.000",
