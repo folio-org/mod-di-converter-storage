@@ -449,6 +449,16 @@
       "run": "after",
       "snippetPath": "associations-migration/improve_foreign_keys_cascade_for_profile_wrappers.sql",
       "fromModuleVersion": "mod-di-converter-storage-2.3.0"
+    },
+    {
+      "run": "after",
+      "snippetPath": "data-migration/remove_deleted_profiles.sql",
+      "fromModuleVersion": "mod-di-converter-storage-2.3.0"
+    },
+    {
+      "run": "after",
+      "snippetPath": "data-migration/remove_deleted_property.sql",
+      "fromModuleVersion": "mod-di-converter-storage-2.3.0"
     }
   ]
 }
