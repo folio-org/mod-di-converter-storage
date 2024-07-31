@@ -151,10 +151,10 @@ public abstract class AbstractProfileDao<T, S> implements ProfileDao<T, S> {
     return promise.future().map(profile);
   }
 
-  protected Future<String> deleteProfile(PostgresClient pgClient, String profileId) {
+  protected Future<Boolean> deleteProfile(PostgresClient pgClient, String profileId) {
     Promise<RowSet<Row>> promise = Promise.promise();
     pgClient.delete(getTableName(), profileId, promise);
-    return promise.future().map(profileId);
+    return promise.future().map(true);
   }
 
   @Override
@@ -203,7 +203,6 @@ public abstract class AbstractProfileDao<T, S> implements ProfileDao<T, S> {
         ? Future.failedFuture(new NotFoundException(format("%s with id '%s' was not found", getProfileType().getSimpleName(), profileId)))
         : Future.succeededFuture(profileList.getResults().get(0)))
       .compose(profile -> deleteProfile(pgClient, profileId))
-      .map(v -> true)
       .onFailure(throwable -> {
         String message = format("hardDeleteProfile:: Error during hard delete %s with id: %s ", getProfileType().getSimpleName(), profileId);
         logger.warn(message, throwable);
