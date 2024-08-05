@@ -123,7 +123,6 @@ public class ActionProfileTest extends AbstractRestVerticleTest {
       .then()
       .statusCode(HttpStatus.SC_OK)
       .body("totalRecords", is(3))
-      .body("actionProfiles*.deleted", everyItem(is(nullValue())))
       .body("actionProfiles*.hidden", everyItem(is(false)));
   }
 
@@ -137,7 +136,6 @@ public class ActionProfileTest extends AbstractRestVerticleTest {
       .then()
       .statusCode(HttpStatus.SC_OK)
       .body("totalRecords", is(3))
-      .body("actionProfiles*.deleted", everyItem(is(nullValue())))
       .body("actionProfiles*.hidden", everyItem(is(false)))
       .body("actionProfiles*.userInfo.lastName", everyItem(is("Doe")));
   }
@@ -152,7 +150,6 @@ public class ActionProfileTest extends AbstractRestVerticleTest {
       .then()
       .statusCode(HttpStatus.SC_OK)
       .body("totalRecords", is(2))
-      .body("actionProfiles*.deleted", everyItem(is(nullValue())))
       .body("actionProfiles*.hidden", everyItem(is(false)))
       .body("actionProfiles.get(0).tags.tagList", hasItem("ipsum"))
       .body("actionProfiles.get(1).tags.tagList", hasItem("ipsum"));
@@ -798,7 +795,6 @@ public class ActionProfileTest extends AbstractRestVerticleTest {
       .then()
       .statusCode(HttpStatus.SC_OK)
       .body("totalRecords", is(3))
-      .body("actionProfiles*.deleted", everyItem(is(nullValue())))
       .body("actionProfiles*.hidden", everyItem(is(false)));
   }
 

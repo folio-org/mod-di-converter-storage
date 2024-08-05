@@ -132,7 +132,6 @@ public class MatchProfileTest extends AbstractRestVerticleTest {
       .then()
       .statusCode(HttpStatus.SC_OK)
       .body("totalRecords", is(3))
-      .body("matchProfiles*.deleted", everyItem(is(nullValue())))
       .body("matchProfiles*.hidden", everyItem(is(false)));
   }
 
@@ -150,7 +149,6 @@ public class MatchProfileTest extends AbstractRestVerticleTest {
       .body("totalRecords", is(1))
       .body("matchProfiles*.childProfiles*.id", everyItem(is(notNullValue())))
       .body("matchProfiles*.parentProfiles*.id", everyItem(is(notNullValue())))
-      .body("matchProfiles*.deleted", everyItem(is(nullValue())))
       .body("matchProfiles*.hidden", everyItem(is(false)));
   }
 
@@ -165,8 +163,7 @@ public class MatchProfileTest extends AbstractRestVerticleTest {
       .then().log().all()
       .statusCode(HttpStatus.SC_OK).log().all()
       .body("childProfiles*.id", everyItem(is(notNullValue())))
-      .body("parentProfiles*.id", everyItem(is(notNullValue())))
-      .body("deleted", is(nullValue()));
+      .body("parentProfiles*.id", everyItem(is(notNullValue())));
   }
 
   @Test
@@ -180,7 +177,6 @@ public class MatchProfileTest extends AbstractRestVerticleTest {
       .then()
       .statusCode(HttpStatus.SC_OK)
       .body("totalRecords", is(3))
-      .body("matchProfiles*.deleted", everyItem(is(nullValue())))
       .body("matchProfiles*.hidden", everyItem(is(false)))
       .body("matchProfiles*.userInfo.lastName", everyItem(is("Doe")));
   }
@@ -602,7 +598,6 @@ public class MatchProfileTest extends AbstractRestVerticleTest {
       .then()
       .statusCode(HttpStatus.SC_OK)
       .body("totalRecords", is(3))
-      .body("matchProfiles*.deleted", everyItem(is(nullValue())))
       .body("matchProfiles*.hidden", everyItem(is(false)));
   }
 
