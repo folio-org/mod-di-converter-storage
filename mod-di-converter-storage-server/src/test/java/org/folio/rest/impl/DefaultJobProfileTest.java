@@ -32,7 +32,6 @@ public class DefaultJobProfileTest extends AbstractRestVerticleTest {
   private static final String DEFAULT_QM_HOLDINGS_UPDATE_JOB_PROFILE_ID = "6cb347c6-c0b0-4363-89fc-32cedede87ba";
   private static final String DEFAULT_QM_AUTHORITY_UPDATE_JOB_PROFILE_ID = "c7fcbc40-c4c0-411d-b569-1fc6bc142a92";
   private static final String DEFAULT_QM_AUTHORITY_CREATE_JOB_PROFILE_ID = "6eefa4c6-bbf7-4845-ad82-de7fc4abd0e3";
-  private static final String DEPRECATED_CREATE_MARC_BIB_PROFILE_ID = "22fafcc3-f582-493d-88b0-3c538480cd83";
 
   @Test
   public void shouldReturnDefaultProfilesListOnGet() {
@@ -66,16 +65,6 @@ public class DefaultJobProfileTest extends AbstractRestVerticleTest {
       .statusCode(HttpStatus.SC_OK).extract().as(JobProfile.class);
     Assert.assertEquals("Default - Create SRS MARC Authority", profile.getName());
     Assert.assertEquals(JobProfile.DataType.MARC, profile.getDataType());
-  }
-
-  @Test
-  public void shouldNotReturnDeprecatedCreateMarcBibProfile() {
-    RestAssured.given()
-      .spec(spec)
-      .when()
-      .get(JOB_PROFILES_PATH + "/" + DEPRECATED_CREATE_MARC_BIB_PROFILE_ID)
-      .then()
-      .statusCode(HttpStatus.SC_NOT_FOUND);
   }
 
   @Test
