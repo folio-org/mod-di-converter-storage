@@ -7,7 +7,6 @@ INSERT INTO ${myuniversity}_${mymodule}.job_profiles (id, jsonb) values
   "tags": {
     "tagList": []
   },
-  "deleted": false,
   "userInfo": {
     "firstName": "System",
     "lastName": "System",
@@ -32,7 +31,6 @@ INSERT INTO ${myuniversity}_${mymodule}.action_profiles (id, jsonb) values
 	"id": "d0ebba8a-2f0f-11eb-adc1-0242ac120002",
 	"name": "Inventory Single Record - Default Create Instance",
 	"action": "CREATE",
-	"deleted": false,
 	"remove9Subfields": true,
 	"userInfo": {
 		"lastName": "System",
@@ -58,7 +56,6 @@ INSERT INTO ${myuniversity}_${mymodule}.mapping_profiles (id, jsonb) values
 '{
 	"id": "d0ebbc2e-2f0f-11eb-adc1-0242ac120002",
 	"name": "Inventory Single Record - Default Create Instance",
-	"deleted": false,
 	"userInfo": {
 		"lastName": "System",
 		"userName": "System",

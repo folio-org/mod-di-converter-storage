@@ -3,7 +3,6 @@ INSERT INTO ${myuniversity}_${mymodule}.job_profiles (id, jsonb) values
 	"id": "6eefa4c6-bbf7-4845-ad82-de7fc4abd0e3",
 	"name": "quickMARC - Default Create authority",
 	"description": "This job profile is used by the quickMARC to allow a user to create an SRS MARC authority record and corresponding Inventory authority. Profile cannot be edited or deleted",
-	"deleted": false,
 	"hidden": true,
 	"dataType": "MARC",
 	"metadata": {
@@ -28,7 +27,6 @@ INSERT INTO ${myuniversity}_${mymodule}.action_profiles (id, jsonb) values
      "id": "7915c72e-c7af-4962-969d-403c7238b051",
      "name": "quickMARC - Default Create authority",
      "action": "CREATE",
-     "deleted": false,
      "hidden": true,
      "remove9Subfields": false,
      "metadata": {
@@ -53,7 +51,6 @@ INSERT INTO ${myuniversity}_${mymodule}.mapping_profiles (id, jsonb) values
   ('6a0ec1de-68eb-4833-bdbf-0741db85c314', '{
   "id": "6a0ec1de-68eb-4833-bdbf-0741db85c314",
   "name": "Default - Create authorities",
-  "deleted": false,
   "metadata": {
     "createdDate": "2021-10-08T14:00:00.000",
     "updatedDate": "2021-10-08T15:00:00.462+0000",

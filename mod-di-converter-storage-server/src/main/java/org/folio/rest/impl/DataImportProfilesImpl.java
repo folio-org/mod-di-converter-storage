@@ -201,13 +201,13 @@ public class DataImportProfilesImpl implements DataImportProfiles {
   }
 
   @Override
-  public void getDataImportProfilesJobProfiles(boolean showDeleted, boolean showHidden, boolean withRelations,
+  public void getDataImportProfilesJobProfiles(boolean showHidden, boolean withRelations,
                                                String query, String totalRecords, int offset, int limit,
                                                Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler,
                                                Context vertxContext) {
     vertxContext.runOnContext(v -> {
       try {
-        jobProfileService.getProfiles(showDeleted, withRelations, showHidden, query, offset, limit, tenantId)
+        jobProfileService.getProfiles(withRelations, showHidden, query, offset, limit, tenantId)
           .map(GetDataImportProfilesJobProfilesResponse::respond200WithApplicationJson)
           .map(Response.class::cast)
           .otherwise(ExceptionHelper::mapExceptionToResponse)
@@ -257,7 +257,7 @@ public class DataImportProfilesImpl implements DataImportProfiles {
     vertxContext.runOnContext(c -> {
       try {
         jobProfileService.getProfileById(id, withRelations, tenantId)
-          .map(optionalProfile -> optionalProfile.filter(jobProfile -> !jobProfile.getDeleted()).orElseThrow(() ->
+          .map(optionalProfile -> optionalProfile.orElseThrow(() ->
             new NotFoundException(format("Job Profile with id '%s' was not found", id))))
           .map(GetDataImportProfilesJobProfilesByIdResponse::respond200WithApplicationJson)
           .map(Response.class::cast)
@@ -280,7 +280,7 @@ public class DataImportProfilesImpl implements DataImportProfiles {
           asyncResultHandler.handle(Future.succeededFuture(ExceptionHelper.mapExceptionToResponse(new BadRequestException("Can`t delete default OCLC Job Profile with"))));
         } else {
           OkapiConnectionParams params = new OkapiConnectionParams(okapiHeaders);
-          jobProfileService.markProfileAsDeleted(id, params.getTenantId())
+          jobProfileService.hardDeleteProfile(id, params.getTenantId())
             .map(DeleteDataImportProfilesJobProfilesByIdResponse.respond204WithTextPlain(
               format("Job Profile with id '%s' was successfully deleted", id)))
             .map(Response.class::cast)
@@ -322,13 +322,13 @@ public class DataImportProfilesImpl implements DataImportProfiles {
   }
 
   @Override
-  public void getDataImportProfilesMatchProfiles(boolean showDeleted, boolean showHidden, boolean withRelations,
+  public void getDataImportProfilesMatchProfiles(boolean showHidden, boolean withRelations,
                                                  String query, String totalRecords, int offset, int limit,
                                                  Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler,
                                                  Context vertxContext) {
     vertxContext.runOnContext(v -> {
       try {
-        matchProfileService.getProfiles(showDeleted, withRelations, showHidden, query, offset, limit, tenantId)
+        matchProfileService.getProfiles(withRelations, showHidden, query, offset, limit, tenantId)
           .map(GetDataImportProfilesMatchProfilesResponse::respond200WithApplicationJson)
           .map(Response.class::cast)
           .otherwise(ExceptionHelper::mapExceptionToResponse)
@@ -373,7 +373,7 @@ public class DataImportProfilesImpl implements DataImportProfiles {
     vertxContext.runOnContext(c -> {
       try {
         matchProfileService.getProfileById(id, withRelations, tenantId)
-          .map(optionalProfile -> optionalProfile.filter(matchProfile -> !matchProfile.getDeleted()).orElseThrow(() ->
+          .map(optionalProfile -> optionalProfile.orElseThrow(() ->
             new NotFoundException(format("Match Profile with id '%s' was not found", id))))
           .map(GetDataImportProfilesMatchProfilesByIdResponse::respond200WithApplicationJson)
           .map(Response.class::cast)
@@ -415,13 +415,13 @@ public class DataImportProfilesImpl implements DataImportProfiles {
   }
 
   @Override
-  public void getDataImportProfilesMappingProfiles(boolean showDeleted, boolean showHidden, boolean withRelations,
+  public void getDataImportProfilesMappingProfiles(boolean showHidden, boolean withRelations,
                                                    String query, String totalRecords, int offset, int limit,
                                                    Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler,
                                                    Context vertxContext) {
     vertxContext.runOnContext(v -> {
       try {
-        mappingProfileService.getProfiles(showDeleted, withRelations, showHidden, query, offset, limit, tenantId)
+        mappingProfileService.getProfiles(withRelations, showHidden, query, offset, limit, tenantId)
           .map(GetDataImportProfilesMappingProfilesResponse::respond200WithApplicationJson)
           .map(Response.class::cast)
           .otherwise(ExceptionHelper::mapExceptionToResponse)
@@ -472,7 +472,7 @@ public class DataImportProfilesImpl implements DataImportProfiles {
           asyncResultHandler.handle(Future.succeededFuture(ExceptionHelper.mapExceptionToResponse(new BadRequestException("Can`t delete default OCLC Mapping Profile"))));
         } else {
           OkapiConnectionParams params = new OkapiConnectionParams(okapiHeaders);
-          mappingProfileService.markProfileAsDeleted(id, params.getTenantId())
+          mappingProfileService.hardDeleteProfile(id, params.getTenantId())
             .map(DeleteDataImportProfilesMappingProfilesByIdResponse.respond204WithTextPlain(
               format("Mapping Profile with id '%s' was successfully deleted", id)))
             .map(Response.class::cast)
@@ -491,7 +491,7 @@ public class DataImportProfilesImpl implements DataImportProfiles {
     vertxContext.runOnContext(c -> {
       try {
         mappingProfileService.getProfileById(id, withRelations, tenantId)
-          .map(optionalProfile -> optionalProfile.filter(mappingProfile -> !mappingProfile.getDeleted()).orElseThrow(() ->
+          .map(optionalProfile -> optionalProfile.orElseThrow(() ->
             new NotFoundException(format("Mapping Profile with id '%s' was not found", id))))
           .map(GetDataImportProfilesMappingProfilesByIdResponse::respond200WithApplicationJson)
           .map(Response.class::cast)
@@ -514,7 +514,7 @@ public class DataImportProfilesImpl implements DataImportProfiles {
           asyncResultHandler.handle(Future.succeededFuture(ExceptionHelper.mapExceptionToResponse(new BadRequestException("Can`t delete default OCLC Match Profile"))));
         } else {
           OkapiConnectionParams params = new OkapiConnectionParams(okapiHeaders);
-          matchProfileService.markProfileAsDeleted(id, params.getTenantId())
+          matchProfileService.hardDeleteProfile(id, params.getTenantId())
             .map(DeleteDataImportProfilesMatchProfilesByIdResponse.respond204WithTextPlain(
               format("Match Profile with id '%s' was successfully deleted", id)))
             .map(Response.class::cast)
@@ -558,13 +558,13 @@ public class DataImportProfilesImpl implements DataImportProfiles {
   }
 
   @Override
-  public void getDataImportProfilesActionProfiles(boolean showDeleted, boolean showHidden, boolean withRelations,
+  public void getDataImportProfilesActionProfiles(boolean showHidden, boolean withRelations,
                                                   String query, String totalRecords, int offset, int limit,
                                                   Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler,
                                                   Context vertxContext) {
     vertxContext.runOnContext(v -> {
       try {
-        actionProfileService.getProfiles(showDeleted, withRelations, showHidden, query, offset, limit, tenantId)
+        actionProfileService.getProfiles(withRelations, showHidden, query, offset, limit, tenantId)
           .map(GetDataImportProfilesActionProfilesResponse::respond200WithApplicationJson)
           .map(Response.class::cast)
           .otherwise(ExceptionHelper::mapExceptionToResponse)
@@ -613,7 +613,7 @@ public class DataImportProfilesImpl implements DataImportProfiles {
     vertxContext.runOnContext(c -> {
       try {
         actionProfileService.getProfileById(id, withRelations, tenantId)
-          .map(optionalProfile -> optionalProfile.filter(actionProfile -> !actionProfile.getDeleted()).orElseThrow(() ->
+          .map(optionalProfile -> optionalProfile.orElseThrow(() ->
             new NotFoundException(format("Action Profile with id '%s' was not found", id))))
           .map(GetDataImportProfilesActionProfilesByIdResponse::respond200WithApplicationJson)
           .map(Response.class::cast)
@@ -834,7 +834,7 @@ public class DataImportProfilesImpl implements DataImportProfiles {
           logger.warn("deleteDataImportProfilesActionProfilesById:: Can`t delete default OCLC Action Profile with id {}", id);
           asyncResultHandler.handle(Future.succeededFuture(ExceptionHelper.mapExceptionToResponse(new BadRequestException("Can`t delete default OCLC Action Profile"))));
         } else {
-          actionProfileService.markProfileAsDeleted(id, tenantId)
+          actionProfileService.hardDeleteProfile(id, tenantId)
             .map(DeleteDataImportProfilesActionProfilesByIdResponse.respond204WithTextPlain(
               format("Action Profile with id '%s' was successfully deleted", id)))
             .map(Response.class::cast)

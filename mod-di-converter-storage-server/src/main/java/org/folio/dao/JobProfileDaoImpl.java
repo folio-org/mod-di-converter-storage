@@ -35,9 +35,4 @@ public class JobProfileDaoImpl extends AbstractProfileDao<JobProfile, JobProfile
   String getProfileId(JobProfile profile) {
     return profile.getId();
   }
-
-  @Override
-  protected JobProfile markProfileEntityAsDeleted(JobProfile profile) {
-    return profile.withDeleted(true);
-  }
 }

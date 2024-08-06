@@ -3,7 +3,6 @@ INSERT INTO ${myuniversity}_${mymodule}.job_profiles (id, jsonb) values
   "id": "80898dee-449f-44dd-9c8e-37d5eb469b1d",
   "name": "Default - Create Holdings and SRS MARC Holdings",
   "description": "Load MARC Holdings to create SRS MARC Holdings and Inventory Holdings",
-  "deleted": false,
   "dataType": "MARC",
   "tags": {
     "tagList": []
@@ -29,7 +28,6 @@ INSERT INTO ${myuniversity}_${mymodule}.action_profiles (id, jsonb) values
   "id": "8aa0b850-9182-4005-8435-340b704b2a19",
   "name": "Default - Create Holdings",
   "action": "CREATE",
-  "deleted": false,
   "remove9Subfields": false,
   "description": "This action profile is used with FOLIO''s default job profile for creating Inventory Holdings and SRS MARC Holdings records. It can be edited, duplicated.",
   "folioRecord": "HOLDINGS",
@@ -54,7 +52,6 @@ INSERT INTO ${myuniversity}_${mymodule}.mapping_profiles (id, jsonb) values
 ('13cf7adf-c7a7-4c2e-838f-14d0ac36ec0a', '{
   "id": "13cf7adf-c7a7-4c2e-838f-14d0ac36ec0a",
   "name": "Default - Create holdings",
-  "deleted": false,
   "metadata": {
     "createdDate": "2021-08-05T14:00:00.000",
     "updatedDate": "2021-08-05T15:00:00.462+0000",

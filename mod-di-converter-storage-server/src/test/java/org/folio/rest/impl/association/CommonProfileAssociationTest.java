@@ -641,7 +641,6 @@ public class CommonProfileAssociationTest extends AbstractRestVerticleTest {
         .withId(jobProfileId)
         .withName("Existing JobProfile")
         .withDataType(MARC)
-        .withDeleted(false)
         .withHidden(false)
         .withDescription("test-description")));
 
@@ -651,7 +650,6 @@ public class CommonProfileAssociationTest extends AbstractRestVerticleTest {
         .withName("Existing ActionProfile")
         .withFolioRecord(MARC_BIBLIOGRAPHIC)
         .withAction(UPDATE)
-        .withDeleted(false)
         .withHidden(false)
         .withDescription("test-description")));
 
@@ -660,7 +658,6 @@ public class CommonProfileAssociationTest extends AbstractRestVerticleTest {
         .withId(firstMatchProfileId)
         .withName("Existing MatchProfile")
         .withMatchDetails(Lists.newArrayList())
-        .withDeleted(false)
         .withHidden(false)
         .withDescription("test-description")));
 
@@ -669,7 +666,6 @@ public class CommonProfileAssociationTest extends AbstractRestVerticleTest {
         .withId(secondMatchProfileId)
         .withName("Second Existing MatchProfile")
         .withMatchDetails(Lists.newArrayList())
-        .withDeleted(false)
         .withHidden(false)
         .withDescription("test-description")));
 
@@ -680,7 +676,6 @@ public class CommonProfileAssociationTest extends AbstractRestVerticleTest {
         .withExistingRecordType(EntityType.INSTANCE)
         .withIncomingRecordType(EntityType.MARC_BIBLIOGRAPHIC)
         .withMappingDetails(new MappingDetail())
-        .withDeleted(false)
         .withHidden(false)
         .withDescription("test-description")));
 

@@ -3,7 +3,6 @@ SET jsonb =  '{
   "id": "80898dee-449f-44dd-9c8e-37d5eb469b1d",
   "name": "Default - Create Holdings and SRS MARC Holdings",
   "description": "Default job profile for creating MARC holdings and corresponding Inventory holdings. Profile cannot be edited or deleted",
-  "deleted": false,
   "hidden": false,
   "dataType": "MARC",
   "tags": {
@@ -30,7 +29,6 @@ SET jsonb =  '{
   "id": "8aa0b850-9182-4005-8435-340b704b2a19",
   "name": "Default - Create MARC holdings",
   "action": "CREATE",
-  "deleted": false,
   "hidden": false,
   "remove9Subfields": false,
   "description": "This action profile is used with FOLIO''s default job profile for creating Inventory Holdings and SRS MARC Holdings records. It cannot be edited, duplicated, or deleted.",
@@ -55,7 +53,6 @@ UPDATE ${myuniversity}_${mymodule}.mapping_profiles
 SET jsonb =  '{
   "id": "13cf7adf-c7a7-4c2e-838f-14d0ac36ec0a",
   "name": "Default Create MARC holdings and Inventory holdings",
-  "deleted": false,
   "hidden": false,
   "metadata": {
     "createdDate": "2021-08-05T14:00:00.000",

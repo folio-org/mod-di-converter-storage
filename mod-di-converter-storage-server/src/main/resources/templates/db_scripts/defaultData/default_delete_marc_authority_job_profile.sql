@@ -4,7 +4,6 @@ INSERT INTO ${myuniversity}_${mymodule}.job_profiles (id, jsonb) values
   "name": "Default - Delete MARC Authority",
   "description": "This job profile is used for deleting an MARC authority record via the MARC authority app. This profile deletes the authority record stored in source-record-storage and mod-inventory-storage. This job profile cannot be edited, duplicated, or deleted.",
   "dataType": "MARC",
-  "deleted": false,
   "hidden": true,
   "userInfo": {
     "firstName": "System",
@@ -28,7 +27,6 @@ INSERT INTO ${myuniversity}_${mymodule}.action_profiles (id, jsonb) values
   "description": "This action profile is used with FOLIO''s default job profile for deleting an MARC authority record via the MARC authority app. This profile deletes the authority record stored in source-record-storage and mod-inventory-storage. This action profile cannot be edited, duplicated, or deleted.",
   "action": "DELETE",
   "folioRecord": "MARC_AUTHORITY",
-  "deleted": false,
   "hidden": true,
   "remove9Subfields": false,
   "userInfo": {
@@ -104,7 +102,6 @@ INSERT INTO ${myuniversity}_${mymodule}.match_profiles (id, jsonb) values
       }
     }
   ],
-  "deleted": false,
   "hidden": true,
   "userInfo": {
     "firstName": "System",

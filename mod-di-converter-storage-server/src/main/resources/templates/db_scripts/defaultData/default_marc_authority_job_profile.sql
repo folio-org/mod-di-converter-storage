@@ -3,7 +3,6 @@ INSERT INTO ${myuniversity}_${mymodule}.job_profiles (id, jsonb) values
   "id": "6eefa4c6-bbf7-4845-ad82-de7fc5abd0e3",
   "name": "Default - Create SRS MARC Authority",
   "description": "Load MARC Authority to create SRS MARC Authority",
-  "deleted": false,
   "dataType": "MARC",
   "tags": {
     "tagList": []
@@ -28,7 +27,6 @@ INSERT INTO ${myuniversity}_${mymodule}.action_profiles (id, jsonb) values
   "id": "7915c72e-c6af-4962-969d-403c7238b051",
   "name": "Default - Create Authorities",
   "action": "CREATE",
-  "deleted": false,
   "remove9Subfields": false,
   "description": "This action profile is used with FOLIO''s default job profile for creating Inventory Authorities and SRS MARC Authorities records. It can be edited, duplicated.",
   "folioRecord": "AUTHORITY",
@@ -52,7 +50,6 @@ INSERT INTO ${myuniversity}_${mymodule}.mapping_profiles (id, jsonb) values
   ('6a0ec1de-68eb-4833-bdbf-0741db25c314', '{
   "id": "6a0ec1de-68eb-4833-bdbf-0741db25c314",
   "name": "Default - Create authorities",
-  "deleted": false,
   "metadata": {
     "createdDate": "2021-10-08T14:00:00.000",
     "updatedDate": "2021-10-08T15:00:00.462+0000",

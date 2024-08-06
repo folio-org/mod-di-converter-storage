@@ -6,7 +6,6 @@ import io.vertx.sqlclient.Row;
 import io.vertx.sqlclient.RowIterator;
 import io.vertx.sqlclient.RowSet;
 import io.vertx.sqlclient.Tuple;
-import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.folio.dao.PostgresClientFactory;
@@ -14,6 +13,7 @@ import org.folio.rest.jaxrs.model.ProfileType;
 import org.folio.rest.jaxrs.model.ProfileWrapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Repository;
+import org.springframework.util.ObjectUtils;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -125,16 +125,16 @@ public class ProfileWrapperDaoImpl implements ProfileWrapperDao {
 
   private ProfileWrapper mapRowToProfileWrapper(Row row) {
     String profileId = "";
-    if (StringUtils.isNotEmpty(row.getValue("action_profile_id").toString())){
+    if (!ObjectUtils.isEmpty(row.getValue("action_profile_id"))){
       profileId = row.getValue("action_profile_id").toString();
     }
-    else if  (StringUtils.isNotEmpty(row.getValue("match_profile_id").toString())){
+    else if (!ObjectUtils.isEmpty(row.getValue("match_profile_id"))){
       profileId = row.getValue("match_profile_id").toString();
     }
-    else if  (StringUtils.isNotEmpty(row.getValue("mapping_profile_id").toString())){
+    else if (!ObjectUtils.isEmpty(row.getValue("mapping_profile_id"))){
       profileId = row.getValue("mapping_profile_id").toString();
     }
-    else if  (StringUtils.isNotEmpty(row.getValue("job_profile_id").toString())){
+    else if (!ObjectUtils.isEmpty(row.getValue("job_profile_id"))){
       profileId = row.getValue("job_profile_id").toString();
     }
     return new ProfileWrapper()

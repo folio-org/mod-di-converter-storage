@@ -69,8 +69,8 @@ public abstract class AbstractProfileService<T, S, D> implements ProfileService<
   private ProfileWrapperDao profileWrapperDao;
 
   @Override
-  public Future<S> getProfiles(boolean showDeleted, boolean withRelations, boolean showHidden, String query, int offset, int limit, String tenantId) {
-    return profileDao.getProfiles(showDeleted, showHidden, query, offset, limit, tenantId)
+  public Future<S> getProfiles(boolean withRelations, boolean showHidden, String query, int offset, int limit, String tenantId) {
+    return profileDao.getProfiles(showHidden, query, offset, limit, tenantId)
       .compose(profilesCollection -> {
         if (withRelations) {
           return fetchRelationsForCollection(profilesCollection, tenantId);
@@ -227,11 +227,12 @@ public abstract class AbstractProfileService<T, S, D> implements ProfileService<
       .map(getProfile(profile));
   }
 
-  public Future<Boolean> markProfileAsDeleted(String id, String tenantId) {
+  @Override
+  public Future<Boolean> hardDeleteProfile(String id, String tenantId) {
     return profileDao.isProfileAssociatedAsDetail(id, tenantId)
       .compose(isAssociated -> isAssociated
         ? Future.failedFuture(new ConflictException(String.format(DELETE_PROFILE_ERROR_MESSAGE, id)))
-        : profileDao.markProfileAsDeleted(id, tenantId))
+        : profileDao.hardDeleteProfile(id, tenantId))
       .map(true);
   }
 

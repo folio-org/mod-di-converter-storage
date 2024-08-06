@@ -8,7 +8,6 @@
     "name" : "test",
     "description" : "",
     "dataType" : "MARC",
-    "deleted" : false,
     "userInfo" : {
       "firstName" : "DIKU",
       "lastName" : "ADMINISTRATOR",
@@ -36,7 +35,6 @@
       "incomingRecordType" : "MARC_BIBLIOGRAPHIC",
       "existingRecordType" : "MARC_BIBLIOGRAPHIC",
       "matchDetails" : [ ],
-      "deleted" : false,
       "userInfo" : {
         "firstName" : "DIKU",
         "lastName" : "ADMINISTRATOR",
@@ -65,7 +63,6 @@
         "incomingRecordType" : "MARC_BIBLIOGRAPHIC",
         "existingRecordType" : "MARC_BIBLIOGRAPHIC",
         "matchDetails" : [ ],
-        "deleted" : false,
         "userInfo" : {
           "firstName" : "DIKU",
           "lastName" : "ADMINISTRATOR",
@@ -94,7 +91,6 @@
           "description" : "This action profile is used with FOLIO's default job profile for creating Inventory Instances and SRS MARC Bibliographic records. It can be edited, duplicated, or deleted.",
           "action" : "CREATE",
           "folioRecord" : "INSTANCE",
-          "deleted" : false,
           "userInfo" : {
             "firstName" : "System",
             "lastName" : "System",
@@ -123,7 +119,6 @@
             "description" : "This field mapping profile is used with FOLIO's default job profile for creating Inventory Instances and SRS MARC Bibliographic records. It can be edited, duplicated, deleted, or linked to additional action profiles.",
             "incomingRecordType" : "MARC_BIBLIOGRAPHIC",
             "existingRecordType" : "INSTANCE",
-            "deleted" : false,
             "userInfo" : {
               "firstName" : "System",
               "lastName" : "System",

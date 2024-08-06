@@ -35,9 +35,4 @@ public class MatchProfileDaoImpl extends AbstractProfileDao<MatchProfile, MatchP
   String getProfileId(MatchProfile profile) {
     return profile.getId();
   }
-
-  @Override
-  protected MatchProfile markProfileEntityAsDeleted(MatchProfile profile) {
-    return profile.withDeleted(true);
-  }
 }
