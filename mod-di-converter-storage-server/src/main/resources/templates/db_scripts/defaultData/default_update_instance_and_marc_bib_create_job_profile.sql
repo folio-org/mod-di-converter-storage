@@ -3,7 +3,6 @@ SET jsonb =  '{
 	"id": "fa45f3ec-9b83-11eb-a8b3-0242ac130003",
 	"name": "Default - Create instance",
 	"action": "CREATE",
-	"deleted": false,
 	"hidden": false,
 	"remove9Subfields": true,
 	"metadata": {
@@ -28,7 +27,6 @@ UPDATE ${myuniversity}_${mymodule}.job_profiles
 SET jsonb =  '{
 	"id": "e34d7b92-9b83-11eb-a8b3-0242ac130003",
 	"name": "Default - Create instance and SRS MARC Bib",
-	"deleted": false,
 	"hidden": false,
 	"dataType": "MARC",
 	"metadata": {
@@ -52,7 +50,6 @@ UPDATE ${myuniversity}_${mymodule}.mapping_profiles
 SET jsonb =  '{
 	"id": "bf7b3b86-9b84-11eb-a8b3-0242ac130003",
 	"name": "Default - Create instance",
-	"deleted": false,
 	"hidden": false,
 	"metadata": {
 		"createdDate": "2021-04-13T14:00:00.000",

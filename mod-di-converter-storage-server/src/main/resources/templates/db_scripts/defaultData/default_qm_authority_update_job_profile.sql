@@ -3,7 +3,6 @@ INSERT INTO ${myuniversity}_${mymodule}.job_profiles (id, jsonb) values
 	"id": "c7fcbc40-c4c0-411d-b569-1fc6bc142a92",
 	"name": "quickMARC - Default Update authority",
 	"description": "This job profile is used by the quickMARC to allow a user to update an SRS MARC authority record and corresponding Inventory authority. Profile cannot be edited or deleted",
-	"deleted": false,
 	"hidden": true,
 	"dataType": "MARC",
 	"metadata": {
@@ -28,7 +27,6 @@ INSERT INTO ${myuniversity}_${mymodule}.action_profiles (id, jsonb) values
 	"id": "f0f788c8-2e65-4e3a-9247-e9444eeb7d70",
 	"name": "quickMARC - Default Update MARC authority",
 	"action": "UPDATE",
-	"deleted": false,
 	"hidden": true,
     "remove9Subfields": false,
 	"metadata": {
@@ -55,7 +53,6 @@ INSERT INTO ${myuniversity}_${mymodule}.match_profiles (id, jsonb) values
 '{
 	"id": "aff72eae-847c-4a97-b7b9-c1ddb8cdcbbf",
 	"name": "quickMARC - Default match for existing SRS authority",
-	"deleted": false,
 	"hidden": true,
 	"metadata": {
 		"createdDate": "2020-11-30T09:06:01.52",
@@ -121,7 +118,6 @@ INSERT INTO ${myuniversity}_${mymodule}.mapping_profiles (id, jsonb) values
 '{
 	"id": "041f8ff9-9d17-4436-b305-1033e0879501",
 	"name": "quickMARC - Default Update MARC authority",
-	"deleted": false,
 	"hidden": true,
 	"metadata": {
 		"createdDate": "2020-11-30T09:02:06.555",

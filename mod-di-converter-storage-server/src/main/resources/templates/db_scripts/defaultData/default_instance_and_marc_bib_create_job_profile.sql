@@ -2,7 +2,6 @@ INSERT INTO ${myuniversity}_${mymodule}.job_profiles (id, jsonb) values
     ('e34d7b92-9b83-11eb-a8b3-0242ac130003', '{
 	"id": "e34d7b92-9b83-11eb-a8b3-0242ac130003",
 	"name": "Default - Create instance and SRS MARC Bib",
-	"deleted": false,
 	"dataType": "MARC",
 	"metadata": {
 		"createdDate": "2021-04-13T14:00:00.000",
@@ -28,7 +27,6 @@ INSERT INTO ${myuniversity}_${mymodule}.action_profiles (id, jsonb) values
 	"id": "fa45f3ec-9b83-11eb-a8b3-0242ac130003",
 	"name": "Default - Create instance",
 	"action": "CREATE",
-	"deleted": false,
 	"remove9Subfields": true,
 	"metadata": {
 		"createdDate": "2021-04-13T14:00:00.000",
@@ -52,7 +50,6 @@ INSERT INTO ${myuniversity}_${mymodule}.mapping_profiles (id, jsonb) values
     '{
 	"id": "bf7b3b86-9b84-11eb-a8b3-0242ac130003",
 	"name": "Default - Create instance",
-	"deleted": false,
 	"metadata": {
 		"createdDate": "2021-04-13T14:00:00.000",
 		"updatedDate": "2021-04-13T15:00:00.462+0000",

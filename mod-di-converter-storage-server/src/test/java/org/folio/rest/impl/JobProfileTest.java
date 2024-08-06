@@ -141,7 +141,6 @@ public class JobProfileTest extends AbstractRestVerticleTest {
       .then()
       .statusCode(HttpStatus.SC_OK)
       .body("totalRecords", is(3))
-      .body("jobProfiles*.deleted", everyItem(is(false)))
       .body("jobProfiles*.hidden", everyItem(is(false)));
   }
 
@@ -155,7 +154,6 @@ public class JobProfileTest extends AbstractRestVerticleTest {
       .then()
       .statusCode(HttpStatus.SC_OK)
       .body("totalRecords", is(3))
-      .body("jobProfiles*.deleted", everyItem(is(false)))
       .body("jobProfiles*.hidden", everyItem(is(false)))
       .body("jobProfiles*.userInfo.lastName", everyItem(is("Doe")));
   }
@@ -170,7 +168,6 @@ public class JobProfileTest extends AbstractRestVerticleTest {
       .then()
       .statusCode(HttpStatus.SC_OK)
       .body("totalRecords", is(2))
-      .body("jobProfiles*.deleted", everyItem(is(false)))
       .body("jobProfiles*.hidden", everyItem(is(false)))
       .body("jobProfiles.get(0).tags.tagList", hasItem("ipsum"))
       .body("jobProfiles.get(1).tags.tagList", hasItem("ipsum"));
@@ -186,7 +183,6 @@ public class JobProfileTest extends AbstractRestVerticleTest {
       .then()
       .statusCode(HttpStatus.SC_OK)
       .body("jobProfiles.size()", is(2))
-      .body("jobProfiles*.deleted", everyItem(is(false)))
       .body("jobProfiles*.hidden", everyItem(is(false)))
       .body("totalRecords", is(3));
   }
@@ -2037,46 +2033,7 @@ public class JobProfileTest extends AbstractRestVerticleTest {
   }
 
   @Test
-  public void shouldReturnMarkedAndUnmarkedAsDeletedProfilesOnGetWhenParameterDeletedIsTrue() {
-    createProfiles();
-
-    JobProfileUpdateDto jobProfile = new JobProfileUpdateDto()
-      .withProfile(new JobProfile()
-        .withName("ProfileToDelete")
-        .withDataType(MARC));
-
-    JobProfileUpdateDto jobProfileToDelete = createJobProfile(jobProfile, "createAction", "createMapping");
-
-    jobProfileToDelete = RestAssured.given()
-      .spec(spec)
-      .body(jobProfileToDelete)
-      .when()
-      .post(JOB_PROFILES_PATH)
-      .then()
-      .log().all()
-      .statusCode(HttpStatus.SC_CREATED)
-      .extract().body().as(JobProfileUpdateDto.class);
-
-    RestAssured.given()
-      .spec(spec)
-      .when()
-      .delete(JOB_PROFILES_PATH + "/" + jobProfileToDelete.getProfile().getId())
-      .then()
-      .statusCode(HttpStatus.SC_NO_CONTENT);
-
-    RestAssured.given()
-      .spec(spec)
-      .when()
-      .param("showDeleted", true)
-      .get(JOB_PROFILES_PATH)
-      .then()
-      .log().all()
-      .statusCode(HttpStatus.SC_OK)
-      .body("totalRecords", is(4));
-  }
-
-  @Test
-  public void shouldReturnOnlyUnmarkedAsDeletedProfilesOnGetWhenParameterDeletedIsNotPassed() {
+  public void shouldHardDeleteProfileOnDeletion() {
     createProfiles();
 
     JobProfileUpdateDto jobProfile = new JobProfileUpdateDto()
@@ -2107,12 +2064,9 @@ public class JobProfileTest extends AbstractRestVerticleTest {
     RestAssured.given()
       .spec(spec)
       .when()
-      .get(JOB_PROFILES_PATH)
+      .get(JOB_PROFILES_PATH + "/" + jobProfileToDelete.getProfile().getId())
       .then()
-      .statusCode(HttpStatus.SC_OK)
-      .body("totalRecords", is(3))
-      .body("jobProfiles*.deleted", everyItem(is(false)))
-      .body("jobProfiles*.hidden", everyItem(is(false)));
+      .statusCode(HttpStatus.SC_NOT_FOUND);
   }
 
   @Test

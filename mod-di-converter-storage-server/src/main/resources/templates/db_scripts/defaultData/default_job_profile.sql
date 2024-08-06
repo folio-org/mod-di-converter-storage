@@ -2,6 +2,7 @@ INSERT INTO ${myuniversity}_${mymodule}.job_profiles (id, jsonb) values
 ('22fafcc3-f582-493d-88b0-3c538480cd83', '{
   "id": "22fafcc3-f582-493d-88b0-3c538480cd83",
   "name": "Create MARC Bibs",
+  "hidden": true,
   "description": "Load MARC Bibs to create SRS MARC Bibs and Inventory instances",
   "dataType": "MARC",
   "tags": {

@@ -4,7 +4,6 @@ SET jsonb =  '{
   "name": "Default - GOBI monograph invoice",
   "incomingRecordType": "EDIFACT_INVOICE",
   "existingRecordType": "INVOICE",
-  "deleted": false,
   "hidden": false,
   "description": "Default EDIFACT invoice field mapping profile for GOBI. Edit to add details specific to your library and invoices. If additional GOBI invoice profiles are needed, duplicate this one. If no GOBI invoice profile is needed, delete this one.",
   "metadata": {
@@ -389,7 +388,6 @@ SET jsonb =  '{
   "name": "Default - EBSCO serials invoice",
   "incomingRecordType": "EDIFACT_INVOICE",
   "existingRecordType": "INVOICE",
-  "deleted": false,
   "hidden": false,
   "description": "Default EDIFACT invoice field mapping profile for EBSCO. Edit to add details specific to your library and invoices. If additional EBSCO invoice profiles are needed, duplicate this one. If no EBSCO invoice profile is needed, delete this one.",
   "metadata": {
@@ -774,7 +772,6 @@ SET jsonb =  '{
   "name": "Default - WT Cox serials invoice",
   "incomingRecordType": "EDIFACT_INVOICE",
   "existingRecordType": "INVOICE",
-  "deleted": false,
   "hidden": false,
   "description": "Default EDIFACT invoice field mapping profile for WT Cox. Edit to add details specific to your library and invoices. If additional WT Cox invoice profiles are needed, duplicate this one. If no WT Cox invoice profile is needed, delete this one.",
   "metadata": {
@@ -1159,7 +1156,6 @@ SET jsonb =  '{
   "name": "Default - Harrassowitz serials invoice",
   "incomingRecordType": "EDIFACT_INVOICE",
   "existingRecordType": "INVOICE",
-  "deleted": false,
   "hidden": false,
   "description": "Default EDIFACT invoice field mapping profile for Harrassowitz. Edit to add details specific to your library and invoices. If additional Harrassowitz invoice profiles are needed, duplicate this one. If no Harrassowitz invoice profile is needed, delete this one.",
   "metadata": {
@@ -1544,7 +1540,6 @@ SET jsonb =  '{
   "name": "Default - Amalivre monograph invoice",
   "incomingRecordType": "EDIFACT_INVOICE",
   "existingRecordType": "INVOICE",
-  "deleted": false,
   "hidden": false,
   "description": "Default EDIFACT invoice field mapping profile for Amalivre. Edit to add details specific to your library and invoices. If additional Amalivre invoice profiles are needed, duplicate this one. If no Amalivre invoice profile is needed, delete this one.",
   "metadata": {
@@ -1907,7 +1902,6 @@ SET jsonb =  '{
   "name": "Default - Casalini monograph invoice",
   "incomingRecordType": "EDIFACT_INVOICE",
   "existingRecordType": "INVOICE",
-  "deleted": false,
   "hidden": false,
   "description": "Default EDIFACT invoice field mapping profile for Casalini. Edit to add details specific to your library and invoices. If additional Casalini invoice profiles are needed, duplicate this one. If no Casalini invoice profile is needed, delete this one.",
   "metadata": {
@@ -2292,7 +2286,6 @@ SET jsonb =  '{
   "name": "Default - CNPIEC monograph invoice",
   "incomingRecordType": "EDIFACT_INVOICE",
   "existingRecordType": "INVOICE",
-  "deleted": false,
   "hidden": false,
   "description": "Default EDIFACT invoice field mapping profile for CNPIEC. Edit to add details specific to your library and invoices. If additional CNPIEC invoice profiles are needed, duplicate this one. If no CNPIEC invoice profile is needed, delete this one.",
   "metadata": {
@@ -2677,7 +2670,6 @@ SET jsonb =  '{
   "name": "Default - Coutts monograph invoice",
   "incomingRecordType": "EDIFACT_INVOICE",
   "existingRecordType": "INVOICE",
-  "deleted": false,
   "hidden": false,
   "description": "Default EDIFACT invoice field mapping profile for Coutts. Edit to add details specific to your library and invoices. If additional Coutts invoice profiles are needed, duplicate this one. If no Coutts invoice profile is needed, delete this one.",
   "metadata": {
@@ -3040,7 +3032,6 @@ SET jsonb =  '{
   "name": "Default - Erasmus monograph invoice",
   "incomingRecordType": "EDIFACT_INVOICE",
   "existingRecordType": "INVOICE",
-  "deleted": false,
   "hidden": false,
   "description": "Default EDIFACT invoice field mapping profile for Erasmus. Edit to add details specific to your library and invoices. If additional Erasmus invoice profiles are needed, duplicate this one. If no Erasmus invoice profile is needed, delete this one.",
   "metadata": {
@@ -3403,7 +3394,6 @@ SET jsonb =  '{
   "name": "Default - Hein serials invoice",
   "incomingRecordType": "EDIFACT_INVOICE",
   "existingRecordType": "INVOICE",
-  "deleted": false,
   "hidden": false,
   "description": "Default EDIFACT invoice field mapping profile for Hein. Edit to add details specific to your library and invoices. If additional Hein invoice profiles are needed, duplicate this one. If no Hein invoice profile is needed, delete this one.",
   "metadata": {
@@ -3788,7 +3778,6 @@ SET jsonb =  '{
   "name": "Default - Midwest monograph invoice",
   "incomingRecordType": "EDIFACT_INVOICE",
   "existingRecordType": "INVOICE",
-  "deleted": false,
   "hidden": false,
   "description": "Default EDIFACT invoice field mapping profile for Midwest. Review and edit to add details specific to your library and invoices. If additional Midwest invoice profiles are needed, duplicate this one. If no Midwest invoice profile is needed, delete this one.",
   "metadata": {
@@ -4173,7 +4162,6 @@ SET jsonb =  '{
   "name": "Default - Nardi monograph invoice",
   "incomingRecordType": "EDIFACT_INVOICE",
   "existingRecordType": "INVOICE",
-  "deleted": false,
   "hidden": false,
   "description": "Default EDIFACT invoice field mapping profile for Nardi. Edit to add details specific to your library and invoices. If additional Nardi invoice profiles are needed, duplicate this one. If no Nardi invoice profile is needed, delete this one.",
   "metadata": {

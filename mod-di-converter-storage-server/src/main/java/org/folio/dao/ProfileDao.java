@@ -16,7 +16,6 @@ public interface ProfileDao<T, S> {
   /**
    * Searches for T entities in database
    *
-   * @param showDeleted indicates to return T entities marked as deleted or not
    * @param showHidden  indicates to return T entities marked as hidden or not
    * @param query       query from URL
    * @param offset      starting index in a list of results
@@ -24,7 +23,7 @@ public interface ProfileDao<T, S> {
    * @param tenantId    tenant id
    * @return future with S, a collection of T entities
    */
-  Future<S> getProfiles(boolean showDeleted, boolean showHidden, String query, int offset, int limit, String tenantId);
+  Future<S> getProfiles(boolean showHidden, String query, int offset, int limit, String tenantId);
 
   /**
    * Searches for T entity by id
@@ -84,13 +83,13 @@ public interface ProfileDao<T, S> {
   Future<Boolean> isProfileAssociatedAsDetail(String profileId, String tenantId);
 
   /**
-   * Marks profile as deleted by its id and deletes all associations of this profile with other detail-profiles.
+   * Hard deletes profile by its id and deletes all associations of this profile with other detail-profiles.
    *
    * @param profileId profile id
    * @param tenantId  tenant id
    * @return future with true if succeeded
    */
-  Future<Boolean> markProfileAsDeleted(String profileId, String tenantId);
+  Future<Boolean> hardDeleteProfile(String profileId, String tenantId);
 
   /**
    * Retrieve total profile's number

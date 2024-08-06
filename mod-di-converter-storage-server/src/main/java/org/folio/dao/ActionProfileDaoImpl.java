@@ -35,9 +35,4 @@ public class ActionProfileDaoImpl extends AbstractProfileDao<ActionProfile, Acti
   String getProfileId(ActionProfile profile) {
     return profile.getId();
   }
-
-  @Override
-  protected ActionProfile markProfileEntityAsDeleted(ActionProfile profile) {
-    return profile.withDeleted(true);
-  }
 }

@@ -4,7 +4,6 @@
     "name" : "Gobi",
     "description" : "",
     "dataType" : "EDIFACT",
-    "deleted" : false,
     "userInfo" : {
       "firstName" : "DIKU",
       "lastName" : "ADMINISTRATOR",
@@ -24,7 +23,6 @@
     "name" : "quickMARC - Derive a new SRS MARC Bib and Instance",
     "description" : "This job profile is used by the quickMARC Derive action to create a new SRS MARC Bib record and corresponding Inventory Instance. It cannot be edited or deleted.",
     "dataType" : "MARC",
-    "deleted" : false,
     "userInfo" : {
       "firstName" : "System",
       "lastName" : "System",
@@ -47,7 +45,6 @@
     "tags" : {
       "tagList" : [ ]
     },
-    "deleted" : false,
     "userInfo" : {
       "firstName" : "System",
       "lastName" : "System",
