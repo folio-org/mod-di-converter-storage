@@ -27,7 +27,6 @@ import java.util.Map;
 public class ModTenantAPI extends TenantAPI {
 
   private static final Logger LOGGER = LogManager.getLogger();
-  private static final String DEFAULT_JOB_PROFILE_SQL = "templates/db_scripts/defaultData/default_job_profile.sql";
   private static final String DEFAULT_OCLC_JOB_PROFILE_SQL = "templates/db_scripts/defaultData/default_oclc_job_profile.sql";
   private static final String DEFAULT_OCLC_UPDATE_JOB_PROFILE_SQL = "templates/db_scripts/defaultData/default_oclc_update_job_profile.sql";
   private static final String DEFAULT_MARC_FIELD_PROTECTION_SETTINGS_SQL = "templates/db_scripts/defaultData/default_marc_field_protection_settings.sql";
@@ -75,7 +74,6 @@ public class ModTenantAPI extends TenantAPI {
   Future<Integer> loadData(TenantAttributes attributes, String tenantId, Map<String, String> headers, Context context) {
     return super.loadData(attributes, tenantId, headers, context)
       .compose(num -> profileMigrationService.migrateDataImportProfiles(headers, context)
-        .compose(m -> runSqlScript(DEFAULT_JOB_PROFILE_SQL, headers, context))
         .compose(r -> runSqlScript(DEFAULT_MARC_FIELD_PROTECTION_SETTINGS_SQL, headers, context))
         .compose(d -> runSqlScript(DEFAULT_OCLC_JOB_PROFILE_SQL, headers, context))
         .compose(u -> runSqlScript(DEFAULT_OCLC_UPDATE_JOB_PROFILE_SQL, headers, context))
