@@ -34,6 +34,7 @@ import org.folio.rest.jaxrs.model.MatchProfile;
 import org.folio.rest.jaxrs.model.MatchProfileCollection;
 import org.folio.rest.jaxrs.model.MatchProfileUpdateDto;
 import org.folio.rest.jaxrs.model.Metadata;
+import org.folio.rest.jaxrs.model.ProfileSnapshotWrapper;
 import org.folio.rest.jaxrs.model.ProfileType;
 import org.folio.rest.jaxrs.model.OperationType;
 import org.folio.rest.jaxrs.model.ProfileAssociation;
@@ -173,7 +174,6 @@ public class DataImportProfilesImpl implements DataImportProfiles {
                                                 Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     vertxContext.runOnContext(v -> {
       try {
-        entity.getProfile().setMetadata(getMetadata(okapiHeaders));
         composeFutureErrors(
           validateJobProfileAssociations(entity),
           validateProfile(OperationType.CREATE, entity.getProfile(), jobProfileService, tenantId),
@@ -226,7 +226,6 @@ public class DataImportProfilesImpl implements DataImportProfiles {
       try {
         jobProfileService.isProfileDtoValidForUpdate(id, entity, canDeleteOrUpdateProfile(id, JOB_PROFILES), tenantId).compose(isDtoValidForUpdate -> {
           if (isDtoValidForUpdate) {
-            entity.getProfile().setMetadata(getMetadata(okapiHeaders));
             return composeFutureErrors(
               validateProfile(OperationType.UPDATE, entity.getProfile(), jobProfileService, tenantId),
               validateJobProfileAssociations(entity),
@@ -299,7 +298,6 @@ public class DataImportProfilesImpl implements DataImportProfiles {
                                                   Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     vertxContext.runOnContext(v -> {
       try {
-        entity.getProfile().setMetadata(getMetadata(okapiHeaders));
         validateProfile(OperationType.CREATE, entity.getProfile(), matchProfileService, tenantId).onComplete(errors -> {
           if (errors.failed()) {
             logger.warn(format(PROFILE_VALIDATE_ERROR_MESSAGE, entity.getClass().getSimpleName()), errors.cause());
@@ -347,7 +345,6 @@ public class DataImportProfilesImpl implements DataImportProfiles {
       try {
         matchProfileService.isProfileDtoValidForUpdate(id, entity, canDeleteOrUpdateProfile(id, MATCH_PROFILES), tenantId).compose(isDtoValidForUpdate -> {
           if(isDtoValidForUpdate) {
-            entity.getProfile().setMetadata(getMetadata(okapiHeaders));
             return validateProfile(OperationType.UPDATE, entity.getProfile(), matchProfileService, tenantId).compose(errors -> {
               entity.getProfile().setId(id);
               return errors.getTotalRecords() > 0 ?
@@ -390,7 +387,6 @@ public class DataImportProfilesImpl implements DataImportProfiles {
   public void postDataImportProfilesMappingProfiles(MappingProfileUpdateDto entity, Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     vertxContext.runOnContext(v -> {
       try {
-        entity.getProfile().setMetadata(getMetadata(okapiHeaders));
         composeFutureErrors(
           validateMappingProfileAddedRelationsFolioRecord(entity, tenantId),
           validateMappingProfile(OperationType.CREATE, entity.getProfile(), tenantId)).onComplete(errors -> {
@@ -439,7 +435,6 @@ public class DataImportProfilesImpl implements DataImportProfiles {
       try {
         mappingProfileService.isProfileDtoValidForUpdate(id, entity, canDeleteOrUpdateProfile(id, MAPPING_PROFILES), tenantId).compose(isDtoValidForUpdate -> {
           if(isDtoValidForUpdate) {
-            entity.getProfile().setMetadata(getMetadata(okapiHeaders));
             return composeFutureErrors(
               validateMappingProfile(OperationType.UPDATE, entity.getProfile(), tenantId),
               validateMappingProfileExistProfilesFolioRecord(entity, tenantId, id),
@@ -533,7 +528,6 @@ public class DataImportProfilesImpl implements DataImportProfiles {
                                                    Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     vertxContext.runOnContext(v -> {
       try {
-        entity.getProfile().setMetadata(getMetadata(okapiHeaders));
         composeFutureErrors(
           validateActionProfile(OperationType.CREATE, entity.getProfile(), tenantId),
           validateActionProfileAddedRelationsFolioRecord(entity, tenantId)).onComplete(errors -> {
@@ -583,7 +577,6 @@ public class DataImportProfilesImpl implements DataImportProfiles {
       try {
         actionProfileService.isProfileDtoValidForUpdate(id, entity, canDeleteOrUpdateProfile(id, ACTION_PROFILES), tenantId).compose(isDtoValidForUpdate -> {
           if (isDtoValidForUpdate) {
-            entity.getProfile().setMetadata(getMetadata(okapiHeaders));
             return composeFutureErrors(
               validateActionProfile(OperationType.UPDATE, entity.getProfile(), tenantId),
               validateActionProfileChildProfilesFolioRecord(entity, tenantId, id),
@@ -859,6 +852,22 @@ public class DataImportProfilesImpl implements DataImportProfiles {
           .onComplete(asyncResultHandler);
       } catch (Exception e) {
         logger.warn("getDataImportProfilesEntityTypes:: Failed to get all entity types", e);
+        asyncResultHandler.handle(Future.succeededFuture(ExceptionHelper.mapExceptionToResponse(e)));
+      }
+    });
+  }
+
+  @Override
+  public void postDataImportProfilesProfileSnapshots(ProfileSnapshotWrapper profileSnapshot, Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
+    vertxContext.runOnContext(v -> {
+      try {
+        profileSnapshotService.importSnapshot(profileSnapshot, tenantId, new OkapiConnectionParams(okapiHeaders))
+          .map((Response) PostDataImportProfilesProfileSnapshotsResponse
+            .respond201WithApplicationJson(profileSnapshot))
+          .otherwise(ExceptionHelper::mapExceptionToResponse)
+          .onComplete(asyncResultHandler);
+      } catch (Exception e) {
+        logger.warn("postDataImportProfilesProfileSnapshots:: Failed to construct Profile Snapshot", e);
         asyncResultHandler.handle(Future.succeededFuture(ExceptionHelper.mapExceptionToResponse(e)));
       }
     });
@@ -1300,37 +1309,6 @@ public class DataImportProfilesImpl implements DataImportProfiles {
       String message = "The specified type: %s is wrong. It should be " + Arrays.toString(ProfileType.values());
       throw new BadRequestException(format(message, contentType), e);
     }
-  }
-
-  private Metadata getMetadata(Map<String, String> okapiHeaders) {
-    String userId = okapiHeaders.get(OKAPI_USERID_HEADER);
-    String token = okapiHeaders.get(OKAPI_HEADER_TOKEN);
-    if (userId == null && token != null) {
-      userId = userIdFromToken(token);
-    }
-    Metadata md = new Metadata();
-    md.setUpdatedDate(new Date());
-    md.setUpdatedByUserId(userId);
-    md.setCreatedDate(md.getUpdatedDate());
-    md.setCreatedByUserId(userId);
-    return md;
-  }
-
-  private static String userIdFromToken(String token) {
-    try {
-      String[] split = token.split("\\.");
-      String json = getJson(split[1]);
-      JsonObject j = new JsonObject(json);
-      return j.getString("user_id");
-    } catch (Exception e) {
-      logger.warn("userIdFromToken:: Invalid x-okapi-token: {}", token, e);
-      return null;
-    }
-  }
-
-  private static String getJson(String strEncoded) {
-    byte[] decodedBytes = Base64.getDecoder().decode(strEncoded);
-    return new String(decodedBytes, StandardCharsets.UTF_8);
   }
 
   private boolean canDeleteOrUpdateProfile(String id, String... uids) {

@@ -503,23 +503,17 @@ resourceTypes:
           body:
             text/plain:
               example: "Internal server error"
-  /profileSnapshots/{profileId}:
+  /profileSnapshots:
     displayName: Profile Snapshot structure
-    get:
-      description: Get a profile snapshot structure for specified profile id and type.
-        Acceptable profileType values are JOB_PROFILE, ACTION_PROFILE, MATCH_PROFILE, MAPPING_PROFILE.
-      queryParameters:
-        profileType:
-          description: Indicates profile type
-          required: true
-          type: string
-          example: "JOB_PROFILE"
-        jobProfileId:
-          description: Indicates job profile id, should be specified when {profileType} parameter has value JOB_PROFILE or MATCH_PROFILE
-          required: false
-          type: string
+    description: API for managing a Profile Snapshots.
+    post:
+      description: Method to import profile snapshot with related profiles.
+      is: [validate]
+      body:
+        application/json:
+          type: profileSnapshotWrapper
       responses:
-        200:
+        201:
           body:
             application/json:
               type: profileSnapshotWrapper
@@ -533,4 +527,32 @@ resourceTypes:
           body:
             text/plain:
               example: "Internal server error"
-
+    /{profileId}:
+      get:
+        description: Get a profile snapshot structure for specified profile id and type.
+          Acceptable profileType values are JOB_PROFILE, ACTION_PROFILE, MATCH_PROFILE, MAPPING_PROFILE.
+        queryParameters:
+          profileType:
+            description: Indicates profile type
+            required: true
+            type: string
+            example: "JOB_PROFILE"
+          jobProfileId:
+            description: Indicates job profile id, should be specified when {profileType} parameter has value JOB_PROFILE or MATCH_PROFILE
+            required: false
+            type: string
+        responses:
+          200:
+            body:
+              application/json:
+                type: profileSnapshotWrapper
+          400:
+            description: "Bad request"
+            body:
+              text/plain:
+                example: "Bad request"
+          500:
+            description: "Internal server error"
+            body:
+              text/plain:
+                example: "Internal server error"

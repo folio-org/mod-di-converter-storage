@@ -28,6 +28,7 @@ public class JobProfileServiceImpl extends AbstractProfileService<JobProfile, Jo
 
   @Override
   Future<JobProfile> setUserInfoForProfile(JobProfileUpdateDto profile, OkapiConnectionParams params) {
+    profile.getProfile().setMetadata(getMetadata(params.getHeaders()));
     return lookupUser(profile.getProfile().getMetadata().getUpdatedByUserId(), params)
       .compose(userInfo -> Future.succeededFuture(profile.getProfile().withUserInfo(userInfo)));
   }

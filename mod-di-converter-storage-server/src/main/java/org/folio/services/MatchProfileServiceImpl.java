@@ -26,6 +26,7 @@ public class MatchProfileServiceImpl extends AbstractProfileService<MatchProfile
 
   @Override
   Future<MatchProfile> setUserInfoForProfile(MatchProfileUpdateDto profile, OkapiConnectionParams params) {
+    profile.getProfile().setMetadata(getMetadata(params.getHeaders()));
     return lookupUser(profile.getProfile().getMetadata().getUpdatedByUserId(), params)
       .compose(userInfo -> Future.succeededFuture(profile.getProfile().withUserInfo(userInfo)));
   }

@@ -4,12 +4,14 @@ import com.google.common.collect.Lists;
 import io.restassured.RestAssured;
 import io.restassured.response.ExtractableResponse;
 import io.restassured.response.Response;
+import io.vertx.core.json.JsonObject;
 import io.vertx.core.json.jackson.DatabindCodec;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
 
 import org.apache.http.HttpStatus;
+import org.folio.TestUtil;
 import org.folio.rest.impl.AbstractRestVerticleTest;
 import org.folio.rest.jaxrs.model.ActionProfile;
 import org.folio.rest.jaxrs.model.ActionProfileUpdateDto;
@@ -30,6 +32,7 @@ import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
+import java.io.IOException;
 import java.util.Arrays;
 import java.util.Collections;
 
@@ -48,7 +51,7 @@ import static org.folio.rest.jaxrs.model.ProfileType.MATCH_PROFILE;
 
 @RunWith(VertxUnitRunner.class)
 public class JobProfileSnapshotTest extends AbstractRestVerticleTest {
-
+  private static final String PROFILE_SNAPSHOT_FILE_PATH = "src/test/resources/snapshots/";
   private static final String JOB_PROFILE_SNAPSHOT_PATH = "/data-import-profiles/jobProfileSnapshots";
   public static final String PROFILE_SNAPSHOT_PATH = "/data-import-profiles/profileSnapshots";
   private static final String JOB_PROFILES_PATH = "/data-import-profiles/jobProfiles";
@@ -365,6 +368,34 @@ public class JobProfileSnapshotTest extends AbstractRestVerticleTest {
     ActionProfile actualActionProfile = DatabindCodec.mapper().convertValue(actionProfileSnapshot.getContent(), ActionProfile.class);
     Assert.assertEquals(actionProfile2.getId(), actualActionProfile.getId());
     Assert.assertEquals(1, actionProfileSnapshot.getChildSnapshotWrappers().size());
+    async.complete();
+  }
+
+  @Test
+  public void shouldImportProfileSnapshot(TestContext testContext) throws IOException {
+    String importWrapper = TestUtil.readFileFromPath(PROFILE_SNAPSHOT_FILE_PATH + "profileSnapshot.json");
+    Async async = testContext.async();
+    ProfileSnapshotWrapper profileSnapshotWrapper = RestAssured.given()
+      .spec(spec)
+      .when()
+      .body(importWrapper)
+      .post(PROFILE_SNAPSHOT_PATH)
+      .then()
+      .statusCode(HttpStatus.SC_CREATED)
+      .extract().body().as(ProfileSnapshotWrapper.class);
+
+    ProfileSnapshotWrapper resultSnapshotWrapper = RestAssured.given()
+      .spec(spec)
+      .when()
+      .queryParam(PROFILE_TYPE_PARAM, JOB_PROFILE.value())
+      .queryParam(JOB_PROFILE_ID_PARAM, profileSnapshotWrapper.getProfileId())
+      .get(PROFILE_SNAPSHOT_PATH + "/" + profileSnapshotWrapper.getProfileId())
+      .then()
+      .statusCode(HttpStatus.SC_OK)
+      .extract().body().as(ProfileSnapshotWrapper.class);
+
+    Assert.assertEquals(resultSnapshotWrapper.getChildSnapshotWrappers().size(), 1);
+
     async.complete();
   }
 
