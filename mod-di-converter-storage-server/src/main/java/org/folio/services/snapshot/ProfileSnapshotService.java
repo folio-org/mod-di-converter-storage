@@ -1,6 +1,7 @@
 package org.folio.services.snapshot;
 
 import io.vertx.core.Future;
+import org.folio.rest.impl.util.OkapiConnectionParams;
 import org.folio.rest.jaxrs.model.ProfileAssociation;
 import org.folio.rest.jaxrs.model.ProfileSnapshotWrapper;
 import org.folio.rest.jaxrs.model.ProfileType;
@@ -41,6 +42,15 @@ public interface ProfileSnapshotService {
    * @return future with snapshot {@link ProfileSnapshotWrapper}
    */
   Future<ProfileSnapshotWrapper> constructSnapshot(String profileId, ProfileType profileType, String jobProfileId, String tenantId);
+
+  /**
+   * Import a profile snapshot with related profiles
+   *
+   * @param profileSnapshot  profile snapshot
+   * @param tenantId     tenant id
+   * @return future with snapshot {@link ProfileSnapshotWrapper}
+   */
+  Future<ProfileSnapshotWrapper> importSnapshot(ProfileSnapshotWrapper profileSnapshot, String tenantId, OkapiConnectionParams okapiParams);
 
   /**
    * Return profile associations for a snapshot

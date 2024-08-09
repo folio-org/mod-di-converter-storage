@@ -1,0 +1,105 @@
+{
+  "id": "1ba402bd-ec86-4eb5-9bce-1f3388a3dc85",
+  "profileId": "a0624733-49ad-4310-94d6-8e8c340200dc",
+  "profileWrapperId": "d1fd7dbf-69fa-4878-9222-45b96c65ae42",
+  "contentType": "JOB_PROFILE",
+  "content": {
+    "id": "a0624733-49ad-4310-94d6-8e8c340200dc",
+    "name": "Test Create Instance",
+    "description": "",
+    "dataType": "MARC",
+    "userInfo": {
+      "firstName": "DIKU",
+      "lastName": "ADMINISTRATOR",
+      "userName": "diku_admin"
+    },
+    "parentProfiles": [],
+    "childProfiles": [],
+    "hidden": false,
+    "metadata": {
+      "createdDate": "2024-08-06T09:05:04.876+00:00",
+      "createdByUserId": "cbb1ba5e-6f90-5f43-8ab2-aead8b7662c8",
+      "updatedDate": "2024-08-06T09:05:04.876+00:00",
+      "updatedByUserId": "cbb1ba5e-6f90-5f43-8ab2-aead8b7662c8"
+    }
+  },
+  "order": 0,
+  "childSnapshotWrappers": [
+    {
+      "id": "aaf39fca-62ba-44ed-adac-e936a97ad25d",
+      "profileId": "86922bac-58fb-40c9-8adc-edd9e4d27606",
+      "profileWrapperId": "b289a9bd-8b4e-4f75-8b35-e2da6401c7df",
+      "contentType": "ACTION_PROFILE",
+      "content": {
+        "id": "86922bac-58fb-40c9-8adc-edd9e4d27606",
+        "name": "Test Create Instance",
+        "description": "",
+        "action": "CREATE",
+        "folioRecord": "INSTANCE",
+        "userInfo": {
+          "firstName": "DIKU",
+          "lastName": "ADMINISTRATOR",
+          "userName": "diku_admin"
+        },
+        "parentProfiles": [],
+        "childProfiles": [],
+        "hidden": false,
+        "remove9Subfields": true,
+        "metadata": {
+          "createdDate": "2024-08-06T09:04:46.682+00:00",
+          "createdByUserId": "cbb1ba5e-6f90-5f43-8ab2-aead8b7662c8",
+          "updatedDate": "2024-08-06T09:04:46.682+00:00",
+          "updatedByUserId": "cbb1ba5e-6f90-5f43-8ab2-aead8b7662c8"
+        }
+      },
+      "order": 0,
+      "childSnapshotWrappers": [
+        {
+          "id": "1e95be91-efa5-45e3-8e63-6f4a9ce0655f",
+          "profileId": "4658a9be-b510-4459-9420-db7ede347ddd",
+          "profileWrapperId": "ff3cba26-2377-4410-8fba-fbe94b88baa4",
+          "contentType": "MAPPING_PROFILE",
+          "content": {
+            "id": "4658a9be-b510-4459-9420-db7ede347ddd",
+            "name": "Test Create Instance",
+            "description": "",
+            "incomingRecordType": "MARC_BIBLIOGRAPHIC",
+            "existingRecordType": "INSTANCE",
+            "userInfo": {
+              "firstName": "DIKU",
+              "lastName": "ADMINISTRATOR",
+              "userName": "diku_admin"
+            },
+            "marcFieldProtectionSettings": [],
+            "parentProfiles": [],
+            "childProfiles": [],
+            "mappingDetails": {
+              "name": "instance",
+              "recordType": "INSTANCE",
+              "mappingFields": [
+                {
+                  "name": "childInstances",
+                  "enabled": "true",
+                  "required": false,
+                  "path": "instance.childInstances[]",
+                  "value": "",
+                  "subfields": []
+                }
+              ],
+              "marcMappingDetails": []
+            },
+            "hidden": false,
+            "metadata": {
+              "createdDate": "2024-08-06T09:04:10.902+00:00",
+              "createdByUserId": "cbb1ba5e-6f90-5f43-8ab2-aead8b7662c8",
+              "updatedDate": "2024-08-06T09:04:10.902+00:00",
+              "updatedByUserId": "cbb1ba5e-6f90-5f43-8ab2-aead8b7662c8"
+            }
+          },
+          "order": 0,
+          "childSnapshotWrappers": []
+        }
+      ]
+    }
+  ]
+}

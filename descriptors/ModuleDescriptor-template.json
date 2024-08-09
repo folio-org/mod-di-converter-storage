@@ -309,6 +309,15 @@
           "permissionsRequired": [
             "converter-storage.profileSnapshots.get"
           ]
+        },
+        {
+          "methods": [
+            "POST"
+          ],
+          "pathPattern": "/data-import-profiles/profileSnapshots",
+          "permissionsRequired": [
+            "converter-storage.profileSnapshots.post"
+          ]
         }
       ]
     },
@@ -557,6 +566,11 @@
       "description": "Get Profile Snapshot"
     },
     {
+      "permissionName": "converter-storage.profileSnapshots.post",
+      "displayName": "Data Import Converter Storage - create Profile Snapshot",
+      "description": "Post Profile Snapshot"
+    },
+    {
       "permissionName": "converter-storage.forms-configs.get",
       "displayName": "Data Import Converter Storage - get Form Config",
       "description": "Get Form Config"
@@ -625,6 +639,7 @@
         "converter-storage.jobprofilesnapshots.post",
         "converter-storage.entitytypes.get",
         "converter-storage.profileSnapshots.get",
+        "converter-storage.profileSnapshots.post",
         "converter-storage.forms-configs.get",
         "converter-storage.forms-configs.post",
         "converter-storage.forms-configs.put",

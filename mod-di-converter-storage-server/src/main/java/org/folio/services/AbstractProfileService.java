@@ -1,6 +1,7 @@
 package org.folio.services;
 
 import io.vertx.core.Future;
+import io.vertx.core.MultiMap;
 import io.vertx.core.Promise;
 import io.vertx.core.http.HttpMethod;
 import io.vertx.core.json.JsonObject;
@@ -13,6 +14,7 @@ import org.folio.okapi.common.GenericCompositeFuture;
 import org.folio.rest.impl.util.OkapiConnectionParams;
 import org.folio.rest.impl.util.RestUtil;
 import org.folio.rest.jaxrs.model.EntityTypeCollection;
+import org.folio.rest.jaxrs.model.Metadata;
 import org.folio.rest.jaxrs.model.ProfileAssociation;
 import org.folio.rest.jaxrs.model.ProfileSnapshotWrapper;
 import org.folio.rest.jaxrs.model.ProfileType;
@@ -24,14 +26,20 @@ import org.folio.services.util.EntityTypes;
 import org.springframework.beans.factory.annotation.Autowired;
 
 import javax.ws.rs.NotFoundException;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Base64;
+import java.util.Date;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static java.lang.String.format;
+import static org.folio.rest.RestVerticle.OKAPI_HEADER_TOKEN;
+import static org.folio.rest.RestVerticle.OKAPI_USERID_HEADER;
 import static org.folio.rest.jaxrs.model.ProfileType.ACTION_PROFILE;
 import static org.folio.rest.jaxrs.model.ProfileType.MAPPING_PROFILE;
 
@@ -460,5 +468,36 @@ public abstract class AbstractProfileService<T, S, D> implements ProfileService<
         }
       });
     return promise.future();
+  }
+
+  Metadata getMetadata(MultiMap okapiHeaders) {
+    String userId = okapiHeaders.get(OKAPI_USERID_HEADER);
+    String token = okapiHeaders.get(OKAPI_HEADER_TOKEN);
+    if (userId == null && token != null) {
+      userId = userIdFromToken(token);
+    }
+    Metadata md = new Metadata();
+    md.setUpdatedDate(new Date());
+    md.setUpdatedByUserId(userId);
+    md.setCreatedDate(md.getUpdatedDate());
+    md.setCreatedByUserId(userId);
+    return md;
+  }
+
+  String userIdFromToken(String token) {
+    try {
+      String[] split = token.split("\\.");
+      String json = getJson(split[1]);
+      JsonObject j = new JsonObject(json);
+      return j.getString("user_id");
+    } catch (Exception e) {
+      LOGGER.warn("userIdFromToken:: Invalid x-okapi-token: {}", token, e);
+      return null;
+    }
+  }
+
+  String getJson(String strEncoded) {
+    byte[] decodedBytes = Base64.getDecoder().decode(strEncoded);
+    return new String(decodedBytes, StandardCharsets.UTF_8);
   }
 }

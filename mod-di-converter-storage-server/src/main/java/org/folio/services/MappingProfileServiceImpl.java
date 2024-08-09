@@ -46,6 +46,7 @@ public class MappingProfileServiceImpl extends AbstractProfileService<MappingPro
 
   @Override
   Future<MappingProfile> setUserInfoForProfile(MappingProfileUpdateDto profile, OkapiConnectionParams params) {
+    profile.getProfile().setMetadata(getMetadata(params.getHeaders()));
     return lookupUser(profile.getProfile().getMetadata().getUpdatedByUserId(), params)
       .compose(userInfo -> Future.succeededFuture(profile.getProfile().withUserInfo(userInfo)));
   }

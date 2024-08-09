@@ -37,6 +37,7 @@ public class ActionProfileServiceImpl extends AbstractProfileService<ActionProfi
 
   @Override
   Future<ActionProfile> setUserInfoForProfile(ActionProfileUpdateDto profile, OkapiConnectionParams params) {
+    profile.getProfile().setMetadata(getMetadata(params.getHeaders()));
     return lookupUser(profile.getProfile().getMetadata().getUpdatedByUserId(), params)
       .compose(userInfo -> Future.succeededFuture(profile.getProfile().withUserInfo(userInfo)));
   }

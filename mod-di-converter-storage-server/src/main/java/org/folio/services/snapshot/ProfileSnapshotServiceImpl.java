@@ -3,6 +3,7 @@ package org.folio.services.snapshot;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
+import io.vertx.core.CompositeFuture;
 import io.vertx.core.Context;
 import io.vertx.core.Future;
 import io.vertx.core.Promise;
@@ -11,17 +12,33 @@ import org.apache.commons.collections4.CollectionUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.folio.dao.snapshot.ProfileSnapshotDao;
+import org.folio.okapi.common.GenericCompositeFuture;
+import org.folio.rest.impl.util.OkapiConnectionParams;
 import org.folio.rest.jaxrs.model.ActionProfile;
+import org.folio.rest.jaxrs.model.ActionProfileCollection;
+import org.folio.rest.jaxrs.model.ActionProfileUpdateDto;
 import org.folio.rest.jaxrs.model.JobProfile;
+import org.folio.rest.jaxrs.model.JobProfileCollection;
+import org.folio.rest.jaxrs.model.JobProfileUpdateDto;
 import org.folio.rest.jaxrs.model.MappingProfile;
+import org.folio.rest.jaxrs.model.MappingProfileCollection;
+import org.folio.rest.jaxrs.model.MappingProfileUpdateDto;
 import org.folio.rest.jaxrs.model.MatchProfile;
+import org.folio.rest.jaxrs.model.MatchProfileCollection;
+import org.folio.rest.jaxrs.model.MatchProfileUpdateDto;
 import org.folio.rest.jaxrs.model.ProfileAssociation;
 import org.folio.rest.jaxrs.model.ProfileSnapshotWrapper;
 import org.folio.rest.jaxrs.model.ProfileType;
+import org.folio.services.ProfileService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import jakarta.validation.constraints.NotNull;
+
+import javax.ws.rs.BadRequestException;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
@@ -29,16 +46,26 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.Executor;
 import java.util.concurrent.ForkJoinPool;
+import java.util.function.BiFunction;
 
+import static org.folio.rest.jaxrs.model.ProfileType.ACTION_PROFILE;
 import static org.folio.rest.jaxrs.model.ProfileType.JOB_PROFILE;
+import static org.folio.rest.jaxrs.model.ProfileType.MAPPING_PROFILE;
+import static org.folio.rest.jaxrs.model.ProfileType.MATCH_PROFILE;
 
 /**
  * Implementation for Profile snapshot service
  */
 @Service
 public class ProfileSnapshotServiceImpl implements ProfileSnapshotService {
-
   private static final Logger LOGGER = LogManager.getLogger();
+  private static final List<ProfileType> IMPORT_PROFILES_ORDER = List.of(MAPPING_PROFILE, ACTION_PROFILE, MATCH_PROFILE, JOB_PROFILE);
+  public static final String PROFILE_SNAPSHOT_INVALID_TYPE = "Cannot import profile snapshot of %s required type is %s";
+  private ProfileService<JobProfile, JobProfileCollection, JobProfileUpdateDto> jobProfileService;
+  private ProfileService<MatchProfile, MatchProfileCollection, MatchProfileUpdateDto> matchProfileService;
+  private ProfileService<ActionProfile, ActionProfileCollection, ActionProfileUpdateDto> actionProfileService;
+  private ProfileService<MappingProfile, MappingProfileCollection, MappingProfileUpdateDto> mappingProfileService;
+  private final HashMap<ProfileType, BiFunction<ProfileSnapshotWrapper, OkapiConnectionParams, Future<Object>>> profileTypeToSaveFunction;
   private final ProfileSnapshotDao profileSnapshotDao;
   private final Cache<String, ProfileSnapshotWrapper> profileSnapshotWrapperCache;
   private final Executor cacheExecutor = runnable -> {
@@ -51,8 +78,42 @@ public class ProfileSnapshotServiceImpl implements ProfileSnapshotService {
     }
   };
 
-  public ProfileSnapshotServiceImpl(@Autowired ProfileSnapshotDao profileSnapshotDao) {
+  {
+    profileTypeToSaveFunction = new HashMap<>();
+
+    profileTypeToSaveFunction.put(MAPPING_PROFILE, (snapshot, okapiParams) ->
+      mappingProfileService.saveProfile(new MappingProfileUpdateDto()
+          .withProfile((MappingProfile) snapshot.getContent()), okapiParams)
+        .map(p -> p));
+
+    profileTypeToSaveFunction.put(ACTION_PROFILE, (snapshot, okapiParams) ->
+      actionProfileService.saveProfile(new ActionProfileUpdateDto()
+          .withProfile((ActionProfile) snapshot.getContent())
+          .withAddedRelations(formAddedRelations(snapshot, ACTION_PROFILE)), okapiParams)
+        .map(p -> p));
+
+    profileTypeToSaveFunction.put(MATCH_PROFILE, (snapshot, okapiParams) ->
+      matchProfileService.saveProfile(new MatchProfileUpdateDto()
+          .withProfile((MatchProfile) snapshot.getContent()), okapiParams)
+        .map(p -> p));
+
+    profileTypeToSaveFunction.put(JOB_PROFILE, (snapshot, okapiParams) ->
+      jobProfileService.saveProfile(new JobProfileUpdateDto()
+          .withProfile((JobProfile) snapshot.getContent())
+          .withAddedRelations(formAddedRelations(snapshot, JOB_PROFILE)), okapiParams)
+        .map(p -> p));
+  }
+
+  public ProfileSnapshotServiceImpl(@Autowired ProfileSnapshotDao profileSnapshotDao,
+                                    @Autowired ProfileService<JobProfile, JobProfileCollection, JobProfileUpdateDto> jobProfileService,
+                                    @Autowired ProfileService<MatchProfile, MatchProfileCollection, MatchProfileUpdateDto> matchProfileService,
+                                    @Autowired ProfileService<ActionProfile, ActionProfileCollection, ActionProfileUpdateDto> actionProfileService,
+                                    @Autowired ProfileService<MappingProfile, MappingProfileCollection, MappingProfileUpdateDto> mappingProfileService) {
     this.profileSnapshotDao = profileSnapshotDao;
+    this.jobProfileService = jobProfileService;
+    this.matchProfileService = matchProfileService;
+    this.actionProfileService = actionProfileService;
+    this.mappingProfileService = mappingProfileService;
     this.profileSnapshotWrapperCache = Caffeine.newBuilder()
       .maximumSize(20)
       .executor(cacheExecutor)
@@ -108,8 +169,83 @@ public class ProfileSnapshotServiceImpl implements ProfileSnapshotService {
   }
 
   @Override
+  public Future<ProfileSnapshotWrapper> importSnapshot(ProfileSnapshotWrapper profileSnapshot, String tenantId, OkapiConnectionParams okapiParams) {
+    if (profileSnapshot.getContentType() != JOB_PROFILE) {
+      return Future.failedFuture(new BadRequestException(String.format(PROFILE_SNAPSHOT_INVALID_TYPE,
+        profileSnapshot.getContentType(), JOB_PROFILE)));
+    }
+
+    convertProfileSnapshotWrapperContent(profileSnapshot);
+
+    HashMap<ProfileType, List<ProfileSnapshotWrapper>> profileTypeToSnapshots = getProfileTypeToSnapshot(profileSnapshot);
+    List<ProfileType> profileTypeInSaveOrder = profileTypeToSnapshots.keySet().stream()
+      .sorted(Comparator.comparingInt(IMPORT_PROFILES_ORDER::indexOf))
+      .toList();
+
+    Future<List<Object>> saveFuture = Future.succeededFuture();
+    for (ProfileType profileType : profileTypeInSaveOrder) {
+      saveFuture = saveFuture.compose(v -> saveProfiles(profileTypeToSnapshots.get(profileType), profileType, okapiParams));
+    }
+    return saveFuture.map(profileSnapshot);
+  }
+
+  @Override
   public Future<List<ProfileAssociation>> getSnapshotAssociations(String profileId, ProfileType profileType, String jobProfileId, String tenantId) {
     return profileSnapshotDao.getSnapshotAssociations(profileId, profileType, jobProfileId, tenantId);
+  }
+
+  private Future<List<Object>> saveProfiles(List<ProfileSnapshotWrapper> profileSnapshots, ProfileType profileType, OkapiConnectionParams okapiParams) {
+    List<Future<Object>> futures = new ArrayList<>();
+    var saveProfileFunction = profileTypeToSaveFunction.get(profileType);
+
+    profileSnapshots.forEach(profileSnapshot -> futures.add(saveProfileFunction.apply(profileSnapshot, okapiParams)));
+
+    return GenericCompositeFuture.all(futures).map(CompositeFuture::list);
+  }
+
+  private HashMap<ProfileType, List<ProfileSnapshotWrapper>>  getProfileTypeToSnapshot(ProfileSnapshotWrapper snapshot) {
+    HashMap<ProfileType, List<ProfileSnapshotWrapper>> profileTypeToSnapshots = new HashMap<>();
+    addSnapshotsToMap(snapshot, profileTypeToSnapshots);
+    return profileTypeToSnapshots;
+  }
+
+  private void addSnapshotsToMap(ProfileSnapshotWrapper snapshot, HashMap<ProfileType, List<ProfileSnapshotWrapper>> profileTypeToSnapshots) {
+    List<ProfileSnapshotWrapper> snapshots = profileTypeToSnapshots.computeIfAbsent(snapshot.getContentType(), k -> new ArrayList<>());
+
+    if (snapshots.stream().noneMatch(s -> s.getId().equals(snapshot.getId()))) {
+      snapshots.add(snapshot);
+    }
+
+    if (snapshot.getChildSnapshotWrappers() != null) {
+      for (ProfileSnapshotWrapper child : snapshot.getChildSnapshotWrappers()) {
+        addSnapshotsToMap(child, profileTypeToSnapshots);
+      }
+    }
+  }
+
+  private List<ProfileAssociation> formAddedRelations(ProfileSnapshotWrapper rootSnapshot, ProfileType rootContentType) {
+    List<ProfileAssociation> associations = new ArrayList<>();
+    if (rootSnapshot.getChildSnapshotWrappers() != null) {
+      for (ProfileSnapshotWrapper childSnapshot : rootSnapshot.getChildSnapshotWrappers()) {
+        if (rootContentType == ACTION_PROFILE || childSnapshot.getContentType() != MAPPING_PROFILE) {
+          ProfileAssociation association = createAssociation(rootSnapshot, childSnapshot);
+          associations.add(association);
+          associations.addAll(formAddedRelations(childSnapshot, rootContentType));
+        }
+      }
+    }
+    return associations;
+  }
+
+  private ProfileAssociation createAssociation(ProfileSnapshotWrapper parent, ProfileSnapshotWrapper child) {
+    ProfileAssociation association = new ProfileAssociation();
+    association.setMasterProfileId(parent.getProfileId());
+    association.setDetailProfileId(child.getProfileId());
+    association.setOrder(child.getOrder());
+    association.setMasterProfileType(parent.getContentType());
+    association.setDetailProfileType(child.getContentType());
+    association.setReactTo(child.getReactTo());
+    return association;
   }
 
   /**
