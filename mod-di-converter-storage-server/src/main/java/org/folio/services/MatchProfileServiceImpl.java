@@ -11,19 +11,20 @@ import org.folio.rest.jaxrs.model.ProfileSnapshotWrapper;
 import org.folio.rest.jaxrs.model.ProfileType;
 import org.springframework.stereotype.Component;
 
+import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
 
 @Component
 public class MatchProfileServiceImpl extends AbstractProfileService<MatchProfile, MatchProfileCollection, MatchProfileUpdateDto> {
-  private static final String[] DEFAULT_MATCH_PROFILES = {
+  private static final List<String> DEFAULT_MATCH_PROFILES = Arrays.asList(
     "d27d71ce-8a1e-44c6-acea-96961b5592c6", //OCLC_MARC_MARC_MATCH_PROFILE_ID
     "31dbb554-0826-48ec-a0a4-3c55293d4dee", //OCLC_INSTANCE_UUID_MATCH_PROFILE_ID
     "4be5d1d2-1f5a-42ff-a9bd-fc90609d94b6",  //DEFAULT_DELETE_MARC_AUTHORITY_MATCH_PROFILE_ID
     "91cec42a-260d-4a8c-a9fb-90d9435ca2f4", //DEFAULT_QM_MARC_BIB_UPDATE_MATCH_PROFILE_ID
     "2a599369-817f-4fe8-bae2-f3e3987990fe", //DEFAULT_QM_HOLDINGS_UPDATE_MATCH_PROFILE_ID
     "aff72eae-847c-4a97-b7b9-c1ddb8cdcbbf"  //DEFAULT_QM_AUTHORITY_UPDATE_MATCH_PROFILE_ID
-  };
+    );
 
   @Override
   MatchProfile setProfileId(MatchProfile profile) {
@@ -107,7 +108,7 @@ public class MatchProfileServiceImpl extends AbstractProfileService<MatchProfile
   }
 
   @Override
-  protected String[] getDefaultProfiles() {
+  protected List<String> getDefaultProfiles() {
     return DEFAULT_MATCH_PROFILES;
   }
 }

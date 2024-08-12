@@ -11,12 +11,13 @@ import org.folio.rest.jaxrs.model.ProfileSnapshotWrapper;
 import org.folio.rest.jaxrs.model.ProfileType;
 import org.springframework.stereotype.Component;
 
+import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
 
 @Component
 public class ActionProfileServiceImpl extends AbstractProfileService<ActionProfile, ActionProfileCollection, ActionProfileUpdateDto> {
-  private static final String[] DEFAULT_ACTION_PROFILES = {
+  private static final List<String> DEFAULT_ACTION_PROFILES = Arrays.asList(
     "d0ebba8a-2f0f-11eb-adc1-0242ac120002", //OCLC_CREATE_INSTANCE_ACTION_PROFILE_ID
     "cddff0e1-233c-47ba-8be5-553c632709d9", //OCLC_UPDATE_INSTANCE_ACTION_PROFILE_ID
     "6aa8e98b-0d9f-41dd-b26f-15658d07eb52", //OCLC_UPDATE_MARC_BIB_ACTION_PROFILE_ID
@@ -29,7 +30,7 @@ public class ActionProfileServiceImpl extends AbstractProfileService<ActionProfi
     "c2e2d482-9486-476e-a28c-8f1e303cbe1a", //DEFAULT_QM_MARC_BIB_UPDATE_ACTION_PROFILE_ID
     "7e24a466-349b-451d-a18e-38fb21d71b38", //DEFAULT_QM_HOLDINGS_UPDATE_ACTION_PROFILE_ID
     "f0f788c8-2e65-4e3a-9247-e9444eeb7d70" //DEFAULT_QM_AUTHORITY_UPDATE_ACTION_PROFILE_ID
-  };
+  );
 
   @Override
   public Future<ActionProfile> saveProfile(ActionProfileUpdateDto profileDto, OkapiConnectionParams params) {
@@ -124,7 +125,7 @@ public class ActionProfileServiceImpl extends AbstractProfileService<ActionProfi
   }
 
   @Override
-  protected String[] getDefaultProfiles() {
+  protected List<String> getDefaultProfiles() {
     return DEFAULT_ACTION_PROFILES;
   }
 

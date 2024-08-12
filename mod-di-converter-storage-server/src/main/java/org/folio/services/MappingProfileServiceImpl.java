@@ -14,6 +14,7 @@ import org.folio.rest.jaxrs.model.ProfileSnapshotWrapper;
 import org.folio.rest.jaxrs.model.ProfileType;
 import org.springframework.stereotype.Component;
 
+import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -24,7 +25,7 @@ import static org.folio.rest.jaxrs.model.ProfileType.ACTION_PROFILE;
 public class MappingProfileServiceImpl extends AbstractProfileService<MappingProfile, MappingProfileCollection, MappingProfileUpdateDto> {
   private static final Logger LOGGER = LogManager.getLogger();
 
-  private static final String[] DEFAULT_MAPPING_PROFILES = {
+  private static final List<String> DEFAULT_MAPPING_PROFILES = Arrays.asList(
     "d0ebbc2e-2f0f-11eb-adc1-0242ac120002", //OCLC_CREATE_MAPPING_PROFILE_ID
     "862000b9-84ea-4cae-a223-5fc0552f2b42", //OCLC_UPDATE_MAPPING_PROFILE_ID
     "f90864ef-8030-480f-a43f-8cdd21233252", //OCLC_UPDATE_MARC_BIB_MAPPING_PROFILE_ID
@@ -36,7 +37,7 @@ public class MappingProfileServiceImpl extends AbstractProfileService<MappingPro
     "39b265e1-c963-4e5f-859d-6e8c327a265c", //DEFAULT_QM_MARC_BIB_UPDATE_MAPPING_PROFILE_ID
     "b8a9ca7d-4a33-44d3-86e1-f7c6cb7b265f", //DEFAULT_QM_HOLDINGS_UPDATE_MAPPING_PROFILE_ID
     "041f8ff9-9d17-4436-b305-1033e0879501" //DEFAULT_QM_AUTHORITY_UPDATE_MAPPING_PROFILE_ID
-  };
+    );
 
   @Override
   public Future<MappingProfile> saveProfile(MappingProfileUpdateDto profileDto, OkapiConnectionParams params) {
@@ -132,7 +133,7 @@ public class MappingProfileServiceImpl extends AbstractProfileService<MappingPro
   }
 
   @Override
-  protected String[] getDefaultProfiles() {
+  protected List<String> getDefaultProfiles() {
     return DEFAULT_MAPPING_PROFILES;
   }
 

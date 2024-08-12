@@ -240,18 +240,13 @@ public class DataImportProfilesImpl implements DataImportProfiles {
                                                       Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     vertxContext.runOnContext(v -> {
       try {
-        if ("6eefa4c6-bbf7-4845-ad82-de7fc5abd0e3".equals(id) || Arrays.asList(JOB_PROFILES).contains(id)) {
-          logger.warn("deleteDataImportProfilesJobProfilesById:: Can`t delete default OCLC Job Profile with id {}", id);
-          asyncResultHandler.handle(Future.succeededFuture(ExceptionHelper.mapExceptionToResponse(new BadRequestException("Can`t delete default OCLC Job Profile with"))));
-        } else {
-          OkapiConnectionParams params = new OkapiConnectionParams(okapiHeaders);
-          jobProfileService.hardDeleteProfile(id, params.getTenantId())
-            .map(DeleteDataImportProfilesJobProfilesByIdResponse.respond204WithTextPlain(
-              format("Job Profile with id '%s' was successfully deleted", id)))
-            .map(Response.class::cast)
-            .otherwise(ExceptionHelper::mapExceptionToResponse)
-            .onComplete(asyncResultHandler);
-        }
+        OkapiConnectionParams params = new OkapiConnectionParams(okapiHeaders);
+        jobProfileService.hardDeleteProfile(id, params.getTenantId())
+          .map(DeleteDataImportProfilesJobProfilesByIdResponse.respond204WithTextPlain(
+            format("Job Profile with id '%s' was successfully deleted", id)))
+          .map(Response.class::cast)
+          .otherwise(ExceptionHelper::mapExceptionToResponse)
+          .onComplete(asyncResultHandler);
       } catch (Exception e) {
         logger.warn("deleteDataImportProfilesJobProfilesById:: Failed to delete Job Profile with id {}", id, e);
         asyncResultHandler.handle(Future.succeededFuture(ExceptionHelper.mapExceptionToResponse(e)));
@@ -432,18 +427,13 @@ public class DataImportProfilesImpl implements DataImportProfiles {
   public void deleteDataImportProfilesMappingProfilesById(String id, Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     vertxContext.runOnContext(v -> {
       try {
-        if (canDeleteOrUpdateProfile(id, MAPPING_PROFILES)) {
-          logger.warn("deleteDataImportProfilesMappingProfilesById:: Can`t delete default OCLC Mapping Profile with id {}", id);
-          asyncResultHandler.handle(Future.succeededFuture(ExceptionHelper.mapExceptionToResponse(new BadRequestException("Can`t delete default OCLC Mapping Profile"))));
-        } else {
-          OkapiConnectionParams params = new OkapiConnectionParams(okapiHeaders);
-          mappingProfileService.hardDeleteProfile(id, params.getTenantId())
-            .map(DeleteDataImportProfilesMappingProfilesByIdResponse.respond204WithTextPlain(
-              format("Mapping Profile with id '%s' was successfully deleted", id)))
-            .map(Response.class::cast)
-            .otherwise(ExceptionHelper::mapExceptionToResponse)
-            .onComplete(asyncResultHandler);
-        }
+        OkapiConnectionParams params = new OkapiConnectionParams(okapiHeaders);
+        mappingProfileService.hardDeleteProfile(id, params.getTenantId())
+          .map(DeleteDataImportProfilesMappingProfilesByIdResponse.respond204WithTextPlain(
+            format("Mapping Profile with id '%s' was successfully deleted", id)))
+          .map(Response.class::cast)
+          .otherwise(ExceptionHelper::mapExceptionToResponse)
+          .onComplete(asyncResultHandler);
       } catch (Exception e) {
         logger.warn("deleteDataImportProfilesMappingProfilesById:: Failed to delete Mapping Profile with id {}", id, e);
         asyncResultHandler.handle(Future.succeededFuture(ExceptionHelper.mapExceptionToResponse(e)));
@@ -474,18 +464,14 @@ public class DataImportProfilesImpl implements DataImportProfiles {
                                                         Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     vertxContext.runOnContext(v -> {
       try {
-        if (canDeleteOrUpdateProfile(id, MATCH_PROFILES)) {
-          logger.warn("deleteDataImportProfilesMatchProfilesById:: Can`t delete default OCLC Match Profile with id {}", id);
-          asyncResultHandler.handle(Future.succeededFuture(ExceptionHelper.mapExceptionToResponse(new BadRequestException("Can`t delete default OCLC Match Profile"))));
-        } else {
-          OkapiConnectionParams params = new OkapiConnectionParams(okapiHeaders);
-          matchProfileService.hardDeleteProfile(id, params.getTenantId())
-            .map(DeleteDataImportProfilesMatchProfilesByIdResponse.respond204WithTextPlain(
-              format("Match Profile with id '%s' was successfully deleted", id)))
-            .map(Response.class::cast)
-            .otherwise(ExceptionHelper::mapExceptionToResponse)
-            .onComplete(asyncResultHandler);
-        }
+        OkapiConnectionParams params = new OkapiConnectionParams(okapiHeaders);
+        matchProfileService.hardDeleteProfile(id, params.getTenantId())
+          .map(DeleteDataImportProfilesMatchProfilesByIdResponse.respond204WithTextPlain(
+            format("Match Profile with id '%s' was successfully deleted", id)))
+          .map(Response.class::cast)
+          .otherwise(ExceptionHelper::mapExceptionToResponse)
+          .onComplete(asyncResultHandler);
+
       } catch (Exception e) {
         logger.warn("deleteDataImportProfilesMatchProfilesById:: Failed to delete Match Profile with id {}", id, e);
         asyncResultHandler.handle(Future.succeededFuture(ExceptionHelper.mapExceptionToResponse(e)));
@@ -795,17 +781,12 @@ public class DataImportProfilesImpl implements DataImportProfiles {
                                                          Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     vertxContext.runOnContext(v -> {
       try {
-        if (canDeleteOrUpdateProfile(id, ACTION_PROFILES)) {
-          logger.warn("deleteDataImportProfilesActionProfilesById:: Can`t delete default OCLC Action Profile with id {}", id);
-          asyncResultHandler.handle(Future.succeededFuture(ExceptionHelper.mapExceptionToResponse(new BadRequestException("Can`t delete default OCLC Action Profile"))));
-        } else {
-          actionProfileService.hardDeleteProfile(id, tenantId)
-            .map(DeleteDataImportProfilesActionProfilesByIdResponse.respond204WithTextPlain(
-              format("Action Profile with id '%s' was successfully deleted", id)))
-            .map(Response.class::cast)
-            .otherwise(ExceptionHelper::mapExceptionToResponse)
-            .onComplete(asyncResultHandler);
-        }
+        actionProfileService.hardDeleteProfile(id, tenantId)
+          .map(DeleteDataImportProfilesActionProfilesByIdResponse.respond204WithTextPlain(
+            format("Action Profile with id '%s' was successfully deleted", id)))
+          .map(Response.class::cast)
+          .otherwise(ExceptionHelper::mapExceptionToResponse)
+          .onComplete(asyncResultHandler);
       } catch (Exception e) {
         logger.warn("deleteDataImportProfilesActionProfilesById:: Failed to delete Action Profile with id {}", id, e);
         asyncResultHandler.handle(Future.succeededFuture(ExceptionHelper.mapExceptionToResponse(e)));

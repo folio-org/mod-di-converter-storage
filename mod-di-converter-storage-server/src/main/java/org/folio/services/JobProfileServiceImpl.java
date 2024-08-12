@@ -28,6 +28,7 @@ import org.springframework.stereotype.Component;
 
 import javax.ws.rs.NotFoundException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.LinkedList;
@@ -48,7 +49,8 @@ public class JobProfileServiceImpl extends AbstractProfileService<JobProfile, Jo
   private static final String MODIFY_ACTION_CANNOT_BE_USED_AS_A_STANDALONE_ACTION = "Modify action cannot be used as a standalone action";
   private static final String MODIFY_ACTION_CANNOT_BE_USED_RIGHT_AFTER_THE_MATCH = "Modify action cannot be used right after a Match";
   private static final String LINKED_MATCH_PROFILES_WERE_NOT_FOUND = "Linked MatchProfiles with ids %s were not found";
-  private static final String[] DEFAULT_JOB_PROFILES = {
+  private static final String DEFAULT_CREATE_SRS_MARC_AUTHORITY_JOB_PROFILE_ID = "6eefa4c6-bbf7-4845-ad82-de7fc5abd0e3";
+  private static final List<String> DEFAULT_JOB_PROFILES = Arrays.asList(
     "d0ebb7b0-2f0f-11eb-adc1-0242ac120002", //OCLC_CREATE_INSTANCE_JOB_PROFILE_ID,
     "91f9b8d6-d80e-4727-9783-73fb53e3c786", //OCLC_UPDATE_INSTANCE_JOB_PROFILE_ID,
     "fa0262c7-5816-48d0-b9b3-7b7a862a5bc7", //DEFAULT_CREATE_DERIVE_HOLDINGS_JOB_PROFILE_ID
@@ -59,7 +61,7 @@ public class JobProfileServiceImpl extends AbstractProfileService<JobProfile, Jo
     "6cb347c6-c0b0-4363-89fc-32cedede87ba", //DEFAULT_QM_HOLDINGS_UPDATE_JOB_PROFILE_ID
     "c7fcbc40-c4c0-411d-b569-1fc6bc142a92",
     "6eefa4c6-bbf7-4845-ad82-de7fc4abd0e3"//DEFAULT_QM_AUTHORITY_CREATE_JOB_PROFILE_ID
-  };
+  );
   @Autowired
   private ProfileService<ActionProfile, ActionProfileCollection, ActionProfileUpdateDto> actionProfileService;
   @Autowired
@@ -157,7 +159,7 @@ public class JobProfileServiceImpl extends AbstractProfileService<JobProfile, Jo
   }
 
   @Override
-  protected String[] getDefaultProfiles() {
+  protected List<String> getDefaultProfiles() {
     return DEFAULT_JOB_PROFILES;
   }
 
@@ -169,6 +171,11 @@ public class JobProfileServiceImpl extends AbstractProfileService<JobProfile, Jo
       validateJobProfileLinkedActionProfiles(profileDto, tenantId),
       validateJobProfileLinkedMatchProfile(profileDto, tenantId)
     );
+  }
+
+  @Override
+  protected boolean canDeleteProfile(String profileId) {
+    return !DEFAULT_CREATE_SRS_MARC_AUTHORITY_JOB_PROFILE_ID.equals(profileId) && super.canDeleteProfile(profileId);
   }
 
   private Future<Errors> validateJobProfileAssociations(JobProfileUpdateDto entity, String tenantId) {
@@ -220,7 +227,7 @@ public class JobProfileServiceImpl extends AbstractProfileService<JobProfile, Jo
     return profileAssociations.stream()
       .filter(profileAssociation -> profileAssociation.getDetailProfileType() != ProfileType.MAPPING_PROFILE &&
         profileAssociation.getDetailProfileType() != ProfileType.JOB_PROFILE)
-      .collect(Collectors.toList());
+      .toList();
   }
 
   private List<ProfileAssociation> removeDeletedProfileAssociations(List<ProfileAssociation> profileAssociations,
@@ -255,7 +262,7 @@ public class JobProfileServiceImpl extends AbstractProfileService<JobProfile, Jo
     var actionProfileIds = actionProfileAssociations.stream().map(ProfileAssociation::getDetailProfileId).toList();
     var getProfileFutures = actionProfileIds.stream()
       .map(id -> actionProfileService.getProfileById(id, false, tenantId))
-      .collect(Collectors.toList());
+      .toList();
 
     return GenericCompositeFuture.all(getProfileFutures)
       .compose(actionProfiles -> {
@@ -347,7 +354,7 @@ public class JobProfileServiceImpl extends AbstractProfileService<JobProfile, Jo
 
     var futures = matchProfileIds.stream()
       .map(id -> matchProfileService.getProfileById(id, false, tenantId))
-      .collect(Collectors.toList());
+      .toList();
 
     return GenericCompositeFuture.all(futures)
       .compose(matchProfiles -> {

@@ -239,9 +239,9 @@ public abstract class AbstractProfileService<T, S, D> implements ProfileService<
   @Override
   public Future<T> updateProfile(D profileDto, OkapiConnectionParams params) {
     String profileId = getProfileId(getProfile(profileDto));
-    return isProfileDtoValidForUpdate(profileId, profileDto, canDeleteOrUpdateProfile(profileId, getDefaultProfiles()), params.getTenantId())
+    return isProfileDtoValidForUpdate(profileId, profileDto, getDefaultProfiles().contains(profileId), params.getTenantId())
       .compose(isDtoValidForUpdate -> {
-        if (!isDtoValidForUpdate) {
+        if (Boolean.FALSE.equals(isDtoValidForUpdate)) {
           String errorMessage = String.format("Can`t update default %s with id %s", getProfileContentType(), profileId);
           LOGGER.warn("updateProfile:: {}", errorMessage);
           return Future.failedFuture(new BadRequestException(errorMessage));
@@ -258,6 +258,12 @@ public abstract class AbstractProfileService<T, S, D> implements ProfileService<
 
   @Override
   public Future<Boolean> hardDeleteProfile(String id, String tenantId) {
+    if (!canDeleteProfile(id)) {
+      String errorMessage = String.format("Can`t delete default %s with id %s", getProfileContentType(), id);
+      LOGGER.warn("hardDeleteProfile:: {}", errorMessage);
+      return Future.failedFuture(new BadRequestException(errorMessage));
+    }
+
     return profileDao.isProfileAssociatedAsDetail(id, tenantId)
       .compose(isAssociated -> isAssociated
         ? Future.failedFuture(new ConflictException(String.format(DELETE_PROFILE_ERROR_MESSAGE, id)))
@@ -373,7 +379,7 @@ public abstract class AbstractProfileService<T, S, D> implements ProfileService<
 
   protected abstract T getProfile(D dto);
 
-  protected abstract String[]  getDefaultProfiles();
+  protected abstract List<String> getDefaultProfiles();
 
   /**
    * Load all related child profiles for existing profile
@@ -458,7 +464,7 @@ public abstract class AbstractProfileService<T, S, D> implements ProfileService<
       .stream()
       .map(JsonObject::mapFrom)
       .map(json -> json.mapTo(ProfileSnapshotWrapper.class))
-      .collect(Collectors.toList())));
+      .toList()));
     return profileSnapshotWrappers;
   }
 
@@ -549,7 +555,7 @@ public abstract class AbstractProfileService<T, S, D> implements ProfileService<
   @SafeVarargs
   protected final Future<Errors> composeFutureErrors(Future<Errors>... errorsFuture) {
     return CompositeFutureImpl.all(errorsFuture).map(compositeFuture -> compositeFuture.list().stream()
-      .map(object -> (Errors) object)
+      .map(Errors.class::cast)
       .reduce(new Errors().withTotalRecords(0), (accumulator, errors) -> addAll(accumulator, errors.getErrors())
       ));
   }
@@ -560,7 +566,7 @@ public abstract class AbstractProfileService<T, S, D> implements ProfileService<
     return errors;
   }
 
-  private boolean canDeleteOrUpdateProfile(String id, String... uids) {
-    return Arrays.asList(uids).contains(id);
+  protected boolean canDeleteProfile(String profileId) {
+    return !getDefaultProfiles().contains(profileId);
   }
 }
