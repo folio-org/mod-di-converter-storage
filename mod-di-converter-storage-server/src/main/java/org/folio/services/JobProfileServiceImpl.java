@@ -227,7 +227,7 @@ public class JobProfileServiceImpl extends AbstractProfileService<JobProfile, Jo
     return profileAssociations.stream()
       .filter(profileAssociation -> profileAssociation.getDetailProfileType() != ProfileType.MAPPING_PROFILE &&
         profileAssociation.getDetailProfileType() != ProfileType.JOB_PROFILE)
-      .toList();
+      .collect(Collectors.toList());
   }
 
   private List<ProfileAssociation> removeDeletedProfileAssociations(List<ProfileAssociation> profileAssociations,

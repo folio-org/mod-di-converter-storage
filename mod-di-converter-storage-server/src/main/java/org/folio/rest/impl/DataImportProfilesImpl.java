@@ -260,20 +260,11 @@ public class DataImportProfilesImpl implements DataImportProfiles {
     vertxContext.runOnContext(v -> {
       try {
         entity.getProfile().setMetadata(getMetadata(okapiHeaders));
-        validateProfile(OperationType.CREATE, entity.getProfile(), matchProfileService, tenantId).onComplete(errors -> {
-          if (errors.failed()) {
-            logger.warn(format(PROFILE_VALIDATE_ERROR_MESSAGE, entity.getClass().getSimpleName()), errors.cause());
-            asyncResultHandler.handle(Future.succeededFuture(ExceptionHelper.mapExceptionToResponse(errors.cause())));
-          } else if (errors.result().getTotalRecords() > 0) {
-            asyncResultHandler.handle(Future.succeededFuture(PostDataImportProfilesMatchProfilesResponse.respond422WithApplicationJson(errors.result())));
-          } else {
-            matchProfileService.saveProfile(entity, new OkapiConnectionParams(okapiHeaders))
-              .map(profile -> (Response) PostDataImportProfilesMatchProfilesResponse
-                .respond201WithApplicationJson(entity.withProfile(profile).withId(profile.getId()), PostDataImportProfilesMatchProfilesResponse.headersFor201()))
-              .otherwise(ExceptionHelper::mapExceptionToResponse)
-              .onComplete(asyncResultHandler);
-          }
-        });
+        matchProfileService.saveProfile(entity, new OkapiConnectionParams(okapiHeaders))
+          .map(profile -> (Response) PostDataImportProfilesMatchProfilesResponse
+            .respond201WithApplicationJson(entity.withProfile(profile).withId(profile.getId()), PostDataImportProfilesMatchProfilesResponse.headersFor201()))
+          .otherwise(ExceptionHelper::mapExceptionToResponse)
+          .onComplete(asyncResultHandler);
       } catch (Exception e) {
         logger.warn("postDataImportProfilesMatchProfiles:: Failed to create Match Profile", e);
         asyncResultHandler.handle(Future.succeededFuture(ExceptionHelper.mapExceptionToResponse(e)));
@@ -305,21 +296,13 @@ public class DataImportProfilesImpl implements DataImportProfiles {
                                                      Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     vertxContext.runOnContext(v -> {
       try {
-        matchProfileService.isProfileDtoValidForUpdate(id, entity, canDeleteOrUpdateProfile(id, MATCH_PROFILES), tenantId).compose(isDtoValidForUpdate -> {
-          if(isDtoValidForUpdate) {
-            entity.getProfile().setMetadata(getMetadata(okapiHeaders));
-            return validateProfile(OperationType.UPDATE, entity.getProfile(), matchProfileService, tenantId).compose(errors -> {
-              entity.getProfile().setId(id);
-              return errors.getTotalRecords() > 0 ?
-                Future.succeededFuture(PutDataImportProfilesMatchProfilesByIdResponse.respond422WithApplicationJson(errors)) :
-                matchProfileService.updateProfile(entity, new OkapiConnectionParams(okapiHeaders))
-                  .map(PutDataImportProfilesMatchProfilesByIdResponse::respond200WithApplicationJson);
-            });
-          } else {
-            logger.warn("putDataImportProfilesMatchProfilesById:: Can`t update default OCLC Match Profile with id {}", id);
-            return Future.succeededFuture(ExceptionHelper.mapExceptionToResponse(new BadRequestException(String.format("Can`t update default OCLC Match Profile with id %s", id))));
-          }
-        }).otherwise(ExceptionHelper::mapExceptionToResponse).onComplete(asyncResultHandler);
+        entity.getProfile().setMetadata(getMetadata(okapiHeaders));
+        entity.getProfile().setId(id);
+        matchProfileService.updateProfile(entity, new OkapiConnectionParams(okapiHeaders))
+          .map(PutDataImportProfilesMatchProfilesByIdResponse::respond200WithApplicationJson)
+          .map(Response.class::cast)
+          .otherwise(ExceptionHelper::mapExceptionToResponse)
+          .onComplete(asyncResultHandler);
       } catch (Exception e) {
         logger.warn("putDataImportProfilesMatchProfilesById:: Failed to update Match Profile with id {}", id, e);
         asyncResultHandler.handle(Future.succeededFuture(ExceptionHelper.mapExceptionToResponse(e)));
