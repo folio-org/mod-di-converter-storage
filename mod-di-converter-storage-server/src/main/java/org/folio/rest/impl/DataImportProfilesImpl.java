@@ -357,7 +357,7 @@ public class DataImportProfilesImpl implements DataImportProfiles {
                                                    Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     vertxContext.runOnContext(v -> {
       try {
-
+        entity.getProfile().setMetadata(getMetadata(okapiHeaders));
         actionProfileService.saveProfile(entity, new OkapiConnectionParams(okapiHeaders))
           .map(profile -> (Response) PostDataImportProfilesActionProfilesResponse
             .respond201WithApplicationJson(entity.withProfile(profile).withId(profile.getId()), PostDataImportProfilesActionProfilesResponse.headersFor201()))
