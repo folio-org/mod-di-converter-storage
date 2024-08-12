@@ -1,22 +1,46 @@
 package org.folio.services;
 
 import io.vertx.core.Future;
+import io.vertx.core.Promise;
+import io.vertx.core.json.jackson.DatabindCodec;
+import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+import org.folio.okapi.common.GenericCompositeFuture;
 import org.folio.rest.impl.util.OkapiConnectionParams;
 import org.folio.rest.jaxrs.model.ActionProfile;
 import org.folio.rest.jaxrs.model.ActionProfileCollection;
 import org.folio.rest.jaxrs.model.ActionProfileUpdateDto;
+import org.folio.rest.jaxrs.model.Error;
+import org.folio.rest.jaxrs.model.Errors;
+import org.folio.rest.jaxrs.model.MappingProfile;
+import org.folio.rest.jaxrs.model.MappingProfileCollection;
+import org.folio.rest.jaxrs.model.MappingProfileUpdateDto;
+import org.folio.rest.jaxrs.model.OperationType;
 import org.folio.rest.jaxrs.model.ProfileAssociation;
 import org.folio.rest.jaxrs.model.ProfileSnapshotWrapper;
 import org.folio.rest.jaxrs.model.ProfileType;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
+import javax.ws.rs.NotFoundException;
 import java.util.Arrays;
+import java.util.LinkedList;
 import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Component
 public class ActionProfileServiceImpl extends AbstractProfileService<ActionProfile, ActionProfileCollection, ActionProfileUpdateDto> {
+  private static final Logger LOGGER = LogManager.getLogger();
+  private static final String INVALID_ACTION_PROFILE_ACTION_TYPE = "Can't create ActionProfile for MARC Bib record type with Create action";
+  private static final String INVALID_RECORD_TYPE_LINKED_MAPPING_PROFILE_TO_ACTION_PROFILE = "Mapping profile '%s' can not be linked to this Action profile. ExistingRecordType and FolioRecord types are different";
+  private static final String INVALID_ACTION_PROFILE_NEW_RECORD_TYPE_LINKED_TO_MAPPING_PROFILE = "Can not update ActionProfile recordType and linked MappingProfile recordType are different";
+
+  @Autowired
+  private ProfileService<MappingProfile, MappingProfileCollection, MappingProfileUpdateDto> mappingProfileService;
   private static final List<String> DEFAULT_ACTION_PROFILES = Arrays.asList(
     "d0ebba8a-2f0f-11eb-adc1-0242ac120002", //OCLC_CREATE_INSTANCE_ACTION_PROFILE_ID
     "cddff0e1-233c-47ba-8be5-553c632709d9", //OCLC_UPDATE_INSTANCE_ACTION_PROFILE_ID
@@ -129,10 +153,83 @@ public class ActionProfileServiceImpl extends AbstractProfileService<ActionProfi
     return DEFAULT_ACTION_PROFILES;
   }
 
+  @Override
+  protected Future<Errors> validateProfile(OperationType operationType, ActionProfileUpdateDto profileDto, String tenantId) {
+    return composeFutureErrors(
+      validateActionProfile(operationType, profileDto, tenantId),
+      validateActionProfileAddedRelationsFolioRecord(profileDto, tenantId),
+      operationType == OperationType.UPDATE ? validateActionProfileChildProfilesFolioRecord(profileDto, tenantId) : Future.succeededFuture(new Errors())
+    );
+  }
+
   private void setDefaults(ActionProfile profile) {
     var bibInstanceProfile = profile.getFolioRecord().equals(ActionProfile.FolioRecord.INSTANCE)
       || profile.getFolioRecord().equals(ActionProfile.FolioRecord.MARC_BIBLIOGRAPHIC);
     profile.setRemove9Subfields(bibInstanceProfile);
   }
 
+  private Future<Errors> validateActionProfile(OperationType operationType, ActionProfileUpdateDto actionProfileUpdateDto, String tenantId) {
+    ActionProfile actionProfile = actionProfileUpdateDto.getProfile();
+    return super.validateProfile(operationType, actionProfileUpdateDto, tenantId)
+      .map(errors -> {
+        if (ActionProfile.FolioRecord.MARC_BIBLIOGRAPHIC == actionProfile.getFolioRecord() && ActionProfile.Action.CREATE == actionProfile.getAction()) {
+          LOGGER.warn("validateActionProfile:: {}", INVALID_ACTION_PROFILE_ACTION_TYPE);
+          errors.withTotalRecords(errors.getTotalRecords() + 1).getErrors().add(new Error().withMessage(INVALID_ACTION_PROFILE_ACTION_TYPE));
+        }
+        return errors;
+      });
+  }
+
+  private Future<Errors> validateActionProfileAddedRelationsFolioRecord(ActionProfileUpdateDto actionProfileUpdateDto, String tenantId) {
+    if (CollectionUtils.isEmpty(actionProfileUpdateDto.getAddedRelations())) {
+      return Future.succeededFuture(new Errors().withTotalRecords(0));
+    }
+
+    var errors = new LinkedList<Error>();
+    Promise<Errors> promise = Promise.promise();
+
+    var futures = actionProfileUpdateDto
+      .getAddedRelations()
+      .stream()
+      .filter(profileAssociation -> profileAssociation.getDetailProfileType() == ProfileType.MAPPING_PROFILE)
+      .map(profileAssociation -> mappingProfileService.getProfileById(profileAssociation.getDetailProfileId(), false, tenantId))
+      .map(futureMappingProfile -> futureMappingProfile.onSuccess(optionalMappingProfile ->
+        optionalMappingProfile.ifPresent(mappingProfile -> validateAssociations(actionProfileUpdateDto.getProfile(), mappingProfile, errors,
+          String.format(INVALID_RECORD_TYPE_LINKED_MAPPING_PROFILE_TO_ACTION_PROFILE, mappingProfile.getName())))
+      ))
+      .collect(Collectors.toList());
+    GenericCompositeFuture.all(futures)
+      .onSuccess(handler -> promise.complete(new Errors().withErrors(errors)))
+      .onFailure(promise::fail);
+
+    return promise.future();
+  }
+
+  private Future<Errors> validateActionProfileChildProfilesFolioRecord(ActionProfileUpdateDto actionProfileUpdateDto, String tenantId) {
+    String profileId = actionProfileUpdateDto.getProfile().getId();
+    var errors = new LinkedList<Error>();
+    var deletedRelations = actionProfileUpdateDto.getDeletedRelations();
+    Promise<Errors> promise = Promise.promise();
+
+    getProfileById(profileId, true, tenantId)
+      .onSuccess(optionalActionProfile ->
+        optionalActionProfile.ifPresentOrElse(actionProfile -> {
+            var existMappingProfiles = CollectionUtils.isEmpty(deletedRelations) ? actionProfile.getChildProfiles() :
+              actionProfile.getChildProfiles().stream()
+                .filter(profileSnapshotWrapper -> profileSnapshotWrapper.getContentType() == ProfileType.MAPPING_PROFILE)
+                .filter(profileSnapshotWrapper -> deletedRelations.stream()
+                  .noneMatch(rel -> Objects.equals(rel.getDetailProfileId(), profileSnapshotWrapper.getProfileId()))
+                ).toList();
+
+            existMappingProfiles.forEach(mappingWrapper -> {
+              var mappingProfile = DatabindCodec.mapper().convertValue(mappingWrapper.getContent(), MappingProfile.class);
+              validateAssociations(actionProfileUpdateDto.getProfile(), mappingProfile, errors, INVALID_ACTION_PROFILE_NEW_RECORD_TYPE_LINKED_TO_MAPPING_PROFILE);
+            });
+            promise.complete(new Errors().withErrors(errors));
+          }, () -> promise.fail(new NotFoundException(String.format("Action profile with id '%s' was not found", profileId)))
+        )
+      ).onFailure(promise::fail);
+
+    return promise.future();
+  }
 }

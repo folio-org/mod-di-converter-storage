@@ -53,7 +53,6 @@ import static org.folio.rest.jaxrs.model.ProfileType.MAPPING_PROFILE;
  * @param <S> type of the collection of T entities
  */
 public abstract class AbstractProfileService<T, S, D> implements ProfileService<T, S, D> {
-
   private static final Logger LOGGER = LogManager.getLogger();
   private static final String GET_USER_URL = "/users?query=id==";
   private static final String DELETE_PROFILE_ERROR_MESSAGE = "Can not delete profile by id '%s' cause profile associated with other profiles";

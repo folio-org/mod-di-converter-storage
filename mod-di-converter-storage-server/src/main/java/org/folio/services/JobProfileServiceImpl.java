@@ -49,7 +49,7 @@ public class JobProfileServiceImpl extends AbstractProfileService<JobProfile, Jo
   private static final String MODIFY_ACTION_CANNOT_BE_USED_AS_A_STANDALONE_ACTION = "Modify action cannot be used as a standalone action";
   private static final String MODIFY_ACTION_CANNOT_BE_USED_RIGHT_AFTER_THE_MATCH = "Modify action cannot be used right after a Match";
   private static final String LINKED_MATCH_PROFILES_WERE_NOT_FOUND = "Linked MatchProfiles with ids %s were not found";
-  private static final String DEFAULT_CREATE_SRS_MARC_AUTHORITY_JOB_PROFILE_ID = "6eefa4c6-bbf7-4845-ad82-de7fc5abd0e3";
+  private static final String DEFAULT_CREATE_SRS_MARC_AUTHORITY_JOB_PROFILE_ID = "6eefa4c6-bbf7-4845-ad82-de7fc5abd0e3"; //NOSONAR
   private static final List<String> DEFAULT_JOB_PROFILES = Arrays.asList(
     "d0ebb7b0-2f0f-11eb-adc1-0242ac120002", //OCLC_CREATE_INSTANCE_JOB_PROFILE_ID,
     "91f9b8d6-d80e-4727-9783-73fb53e3c786", //OCLC_UPDATE_INSTANCE_JOB_PROFILE_ID,
