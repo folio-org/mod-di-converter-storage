@@ -22,8 +22,21 @@ import static org.folio.rest.jaxrs.model.ProfileType.ACTION_PROFILE;
 
 @Component
 public class MappingProfileServiceImpl extends AbstractProfileService<MappingProfile, MappingProfileCollection, MappingProfileUpdateDto> {
-
   private static final Logger LOGGER = LogManager.getLogger();
+
+  private static final String[] DEFAULT_MAPPING_PROFILES = {
+    "d0ebbc2e-2f0f-11eb-adc1-0242ac120002", //OCLC_CREATE_MAPPING_PROFILE_ID
+    "862000b9-84ea-4cae-a223-5fc0552f2b42", //OCLC_UPDATE_MAPPING_PROFILE_ID
+    "f90864ef-8030-480f-a43f-8cdd21233252", //OCLC_UPDATE_MARC_BIB_MAPPING_PROFILE_ID
+    "991c0300-44a6-47e3-8ea2-b01bb56a38cc", //DEFAULT_CREATE_DERIVE_INSTANCE_MAPPING_PROFILE_ID
+    "e0fbaad5-10c0-40d5-9228-498b351dbbaa", //DEFAULT_CREATE_DERIVE_HOLDINGS_MAPPING_PROFILE_ID
+    "13cf7adf-c7a7-4c2e-838f-14d0ac36ec0a", //DEFAULT_CREATE_HOLDINGS_MAPPING_PROFILE_ID
+    "6a0ec1de-68eb-4833-bdbf-0741db25c314", //DEFAULT_CREATE_AUTHORITIES_MAPPING_PROFILE_ID
+    "6a0ec1de-68eb-4833-bdbf-0741db85c314", //DEFAULT_CREATE_AUTHORITY_MAPPING_PROFILE_ID
+    "39b265e1-c963-4e5f-859d-6e8c327a265c", //DEFAULT_QM_MARC_BIB_UPDATE_MAPPING_PROFILE_ID
+    "b8a9ca7d-4a33-44d3-86e1-f7c6cb7b265f", //DEFAULT_QM_HOLDINGS_UPDATE_MAPPING_PROFILE_ID
+    "041f8ff9-9d17-4436-b305-1033e0879501" //DEFAULT_QM_AUTHORITY_UPDATE_MAPPING_PROFILE_ID
+  };
 
   @Override
   public Future<MappingProfile> saveProfile(MappingProfileUpdateDto profileDto, OkapiConnectionParams params) {
@@ -45,9 +58,9 @@ public class MappingProfileServiceImpl extends AbstractProfileService<MappingPro
   }
 
   @Override
-  Future<MappingProfile> setUserInfoForProfile(MappingProfileUpdateDto profile, OkapiConnectionParams params) {
-    return lookupUser(profile.getProfile().getMetadata().getUpdatedByUserId(), params)
-      .compose(userInfo -> Future.succeededFuture(profile.getProfile().withUserInfo(userInfo)));
+  Future<MappingProfile> setUserInfoForProfile(MappingProfile profile, OkapiConnectionParams params) {
+    return lookupUser(profile.getMetadata().getUpdatedByUserId(), params)
+      .compose(userInfo -> Future.succeededFuture(profile.withUserInfo(userInfo)));
   }
 
   @Override
@@ -116,6 +129,11 @@ public class MappingProfileServiceImpl extends AbstractProfileService<MappingPro
   @Override
   protected MappingProfile getProfile(MappingProfileUpdateDto dto) {
     return dto.getProfile();
+  }
+
+  @Override
+  protected String[] getDefaultProfiles() {
+    return DEFAULT_MAPPING_PROFILES;
   }
 
   private Future<Boolean> deleteExistingActionToMappingAssociations(MappingProfileUpdateDto profileDto, String tenantId) {

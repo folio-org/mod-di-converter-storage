@@ -44,7 +44,7 @@ public interface ProfileService<T, S, D> {
    * @param params  {@link OkapiConnectionParams}
    * @return future with saved entity
    */
-  Future<T> saveProfile(D profile, OkapiConnectionParams params);
+  Future<T> saveProfile(D profileDto, OkapiConnectionParams params);
 
   /**
    * Updates D with given id
@@ -53,7 +53,7 @@ public interface ProfileService<T, S, D> {
    * @param params  {@link OkapiConnectionParams}
    * @return future with updated entity
    */
-  Future<T> updateProfile(D profile, OkapiConnectionParams params);
+  Future<T> updateProfile(D profileDto, OkapiConnectionParams params);
 
   /**
    * Search in database profile with the same name which contains in specified profile
