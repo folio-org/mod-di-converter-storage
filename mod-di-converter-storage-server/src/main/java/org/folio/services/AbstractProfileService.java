@@ -13,9 +13,12 @@ import org.folio.dao.association.ProfileWrapperDao;
 import org.folio.okapi.common.GenericCompositeFuture;
 import org.folio.rest.impl.util.OkapiConnectionParams;
 import org.folio.rest.impl.util.RestUtil;
+import org.folio.rest.jaxrs.model.ActionProfile;
 import org.folio.rest.jaxrs.model.EntityTypeCollection;
 import org.folio.rest.jaxrs.model.Error;
 import org.folio.rest.jaxrs.model.Errors;
+import org.folio.rest.jaxrs.model.MappingDetail;
+import org.folio.rest.jaxrs.model.MappingProfile;
 import org.folio.rest.jaxrs.model.OperationType;
 import org.folio.rest.jaxrs.model.ProfileAssociation;
 import org.folio.rest.jaxrs.model.ProfileSnapshotWrapper;
@@ -58,6 +61,9 @@ public abstract class AbstractProfileService<T, S, D> implements ProfileService<
   private static final String DUPLICATE_PROFILE_ID_ERROR_CODE = "%s with id '%s' already exists";
   private static final String NOT_EMPTY_RELATED_PROFILE_ERROR_CODE = "%s read-only '%s' field should be empty";
   private static final String PROFILE_VALIDATE_ERROR_MESSAGE = "Failed to validate %s";
+  private static final String INVALID_ACTION_TYPE_LINKED_ACTION_PROFILE_TO_MAPPING_PROFILE = "Unable to complete requested change. " +
+    "MARC Update Action profiles can only be linked with MARC Update Mapping profiles and MARC Modify Action profiles can only be linked with MARC Modify Mapping profiles. " +
+    "Please ensure your Action and Mapping profiles are of like types and try again.";
   private static final Map<String, String> ERROR_CODES_TYPES_RELATION = Map.of(
     "mappingProfile", "The field mapping profile",
     "jobProfile", "Job profile",
@@ -550,6 +556,25 @@ public abstract class AbstractProfileService<T, S, D> implements ProfileService<
       validateConditions.put(DUPLICATE_PROFILE_ID_ERROR_CODE, isProfileExistByProfileId(profile, tenantId));
     }
     return validateConditions;
+  }
+
+  protected void validateAssociations(ActionProfile actionProfile, MappingProfile mappingProfile, List<Error> errors, String errMsg) {
+    var mappingRecordType = mappingProfile.getExistingRecordType().value();
+    var actionRecordType = actionProfile.getFolioRecord().value();
+    if (!actionRecordType.equals(mappingRecordType)) {
+      LOGGER.info("validateAssociations:: Can not create or update profile. MappingProfile with ID:{} FolioRecord:{}, linked ActionProfile with ID:{} FolioRecord:{}",
+        mappingProfile.getId(), mappingRecordType, actionProfile.getId(), actionRecordType);
+      errors.add(new Error().withMessage(errMsg));
+      return;
+    }
+
+    Optional.ofNullable(mappingProfile.getMappingDetails())
+      .map(MappingDetail::getMarcMappingOption)
+      .filter(option -> !option.value().equals(actionProfile.getAction().value()))
+      .ifPresent(option -> {
+        LOGGER.info("validateAssociations:: Can not create or update profile. ActionProfile Action:{}, linked MappingProfile Option:{}", actionProfile.getAction().value(), option);
+        errors.add(new Error().withMessage(INVALID_ACTION_TYPE_LINKED_ACTION_PROFILE_TO_MAPPING_PROFILE));
+      });
   }
 
   @SafeVarargs
