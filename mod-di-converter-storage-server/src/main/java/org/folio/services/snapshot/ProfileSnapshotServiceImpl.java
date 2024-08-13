@@ -8,6 +8,7 @@ import io.vertx.core.Context;
 import io.vertx.core.Future;
 import io.vertx.core.Promise;
 import io.vertx.core.Vertx;
+import io.vertx.pgclient.PgException;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -61,6 +62,11 @@ public class ProfileSnapshotServiceImpl implements ProfileSnapshotService {
   private static final Logger LOGGER = LogManager.getLogger();
   private static final List<ProfileType> IMPORT_PROFILES_ORDER = List.of(MAPPING_PROFILE, ACTION_PROFILE, MATCH_PROFILE, JOB_PROFILE);
   public static final String PROFILE_SNAPSHOT_INVALID_TYPE = "Cannot import profile snapshot of %s required type is %s";
+  public static final String VIOLATE_CONSTRAINT_SQL_STATE = "23505";
+  public static final String MAPPING_PROFILES_PKEY = "mapping_profiles_pkey";
+  public static final String ACTION_PROFILES_PKEY = "action_profiles_pkey";
+  public static final String MATCH_PROFILES_PKEY = "match_profiles_pkey";
+  public static final String JOB_PROFILES_PKEY = "job_profiles_pkey";
   private ProfileService<JobProfile, JobProfileCollection, JobProfileUpdateDto> jobProfileService;
   private ProfileService<MatchProfile, MatchProfileCollection, MatchProfileUpdateDto> matchProfileService;
   private ProfileService<ActionProfile, ActionProfileCollection, ActionProfileUpdateDto> actionProfileService;
@@ -81,27 +87,19 @@ public class ProfileSnapshotServiceImpl implements ProfileSnapshotService {
   {
     profileTypeToSaveFunction = new HashMap<>();
 
-    profileTypeToSaveFunction.put(MAPPING_PROFILE, (snapshot, okapiParams) ->
-      mappingProfileService.saveProfile(new MappingProfileUpdateDto()
-          .withProfile((MappingProfile) snapshot.getContent()), okapiParams)
-        .map(p -> p));
+    profileTypeToSaveFunction.put(MAPPING_PROFILE, (snapshot, okapiParams) -> saveProfile(okapiParams, new MappingProfileUpdateDto()
+      .withProfile((MappingProfile) snapshot.getContent()), mappingProfileService, MAPPING_PROFILES_PKEY).map(p -> p));
 
-    profileTypeToSaveFunction.put(ACTION_PROFILE, (snapshot, okapiParams) ->
-      actionProfileService.saveProfile(new ActionProfileUpdateDto()
-          .withProfile((ActionProfile) snapshot.getContent())
-          .withAddedRelations(formAddedRelations(snapshot, ACTION_PROFILE)), okapiParams)
-        .map(p -> p));
+    profileTypeToSaveFunction.put(ACTION_PROFILE, (snapshot, okapiParams) -> saveProfile(okapiParams, new ActionProfileUpdateDto()
+      .withProfile((ActionProfile) snapshot.getContent())
+      .withAddedRelations(formAddedRelations(snapshot, ACTION_PROFILE)), actionProfileService, ACTION_PROFILES_PKEY).map(p -> p));
 
-    profileTypeToSaveFunction.put(MATCH_PROFILE, (snapshot, okapiParams) ->
-      matchProfileService.saveProfile(new MatchProfileUpdateDto()
-          .withProfile((MatchProfile) snapshot.getContent()), okapiParams)
-        .map(p -> p));
+    profileTypeToSaveFunction.put(MATCH_PROFILE, (snapshot, okapiParams) -> saveProfile(okapiParams, new MatchProfileUpdateDto()
+      .withProfile((MatchProfile) snapshot.getContent()), matchProfileService, MATCH_PROFILES_PKEY).map(p -> p));
 
-    profileTypeToSaveFunction.put(JOB_PROFILE, (snapshot, okapiParams) ->
-      jobProfileService.saveProfile(new JobProfileUpdateDto()
-          .withProfile((JobProfile) snapshot.getContent())
-          .withAddedRelations(formAddedRelations(snapshot, JOB_PROFILE)), okapiParams)
-        .map(p -> p));
+    profileTypeToSaveFunction.put(JOB_PROFILE, (snapshot, okapiParams) -> saveProfile(okapiParams, new JobProfileUpdateDto()
+      .withProfile((JobProfile) snapshot.getContent())
+      .withAddedRelations(formAddedRelations(snapshot, JOB_PROFILE)), jobProfileService, JOB_PROFILES_PKEY).map(p -> p));
   }
 
   public ProfileSnapshotServiceImpl(@Autowired ProfileSnapshotDao profileSnapshotDao,
@@ -177,14 +175,14 @@ public class ProfileSnapshotServiceImpl implements ProfileSnapshotService {
 
     convertProfileSnapshotWrapperContent(profileSnapshot);
 
-    HashMap<ProfileType, List<ProfileSnapshotWrapper>> profileTypeToSnapshots = getProfileTypeToSnapshot(profileSnapshot);
-    List<ProfileType> profileTypeInSaveOrder = profileTypeToSnapshots.keySet().stream()
+    var profileTypeToSnapshots = getProfileTypeToSnapshot(profileSnapshot);
+    var profileTypesInSaveOrder = profileTypeToSnapshots.keySet().stream()
       .sorted(Comparator.comparingInt(IMPORT_PROFILES_ORDER::indexOf))
       .toList();
 
     Future<List<Object>> saveFuture = Future.succeededFuture();
-    for (ProfileType profileType : profileTypeInSaveOrder) {
-      saveFuture = saveFuture.compose(v -> saveProfiles(profileTypeToSnapshots.get(profileType), profileType, okapiParams));
+    for (ProfileType profileType : profileTypesInSaveOrder) {
+      saveFuture = saveFuture.compose(v -> processProfilesSaving(profileTypeToSnapshots.get(profileType), profileType, okapiParams));
     }
     return saveFuture.map(profileSnapshot);
   }
@@ -194,7 +192,7 @@ public class ProfileSnapshotServiceImpl implements ProfileSnapshotService {
     return profileSnapshotDao.getSnapshotAssociations(profileId, profileType, jobProfileId, tenantId);
   }
 
-  private Future<List<Object>> saveProfiles(List<ProfileSnapshotWrapper> profileSnapshots, ProfileType profileType, OkapiConnectionParams okapiParams) {
+  private Future<List<Object>> processProfilesSaving(List<ProfileSnapshotWrapper> profileSnapshots, ProfileType profileType, OkapiConnectionParams okapiParams) {
     List<Future<Object>> futures = new ArrayList<>();
     var saveProfileFunction = profileTypeToSaveFunction.get(profileType);
 
@@ -350,5 +348,20 @@ public class ProfileSnapshotServiceImpl implements ProfileSnapshotService {
           case MAPPING_PROFILE -> (T) mapper.convertValue(content, MappingProfile.class);
           default -> throw new IllegalStateException("Can not find profile by snapshot content type: " + contentType);
       };
+  }
+
+  private <T, S, D> Future<T> saveProfile(OkapiConnectionParams okapiParams, D profileUpdateDto,
+                                          ProfileService<T, S, D> profileService, String profileConstraint) {
+    return profileService.saveProfile(profileUpdateDto, okapiParams)
+      .recover(throwable -> recoverSaveProfileIfNeeded(okapiParams, throwable, profileUpdateDto, profileService, profileConstraint));
+  }
+
+  private <T, S, D> Future<T> recoverSaveProfileIfNeeded(OkapiConnectionParams okapiParams, Throwable throwable, D profileUpdateDto,
+                                                         ProfileService<T, S, D> profileService, String profileConstraint) {
+    if (throwable instanceof PgException pgException
+      && pgException.getSqlState().equals(VIOLATE_CONSTRAINT_SQL_STATE) && pgException.getConstraint().equals(profileConstraint)) {
+      return profileService.updateProfile(profileUpdateDto, okapiParams);
+    }
+    return Future.failedFuture(throwable);
   }
 }
