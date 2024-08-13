@@ -560,7 +560,7 @@ public abstract class AbstractProfileService<T, S, D> implements ProfileService<
     var mappingRecordType = mappingProfile.getExistingRecordType().value();
     var actionRecordType = actionProfile.getFolioRecord().value();
     if (!actionRecordType.equals(mappingRecordType)) {
-      LOGGER.info("validateAssociations:: Can not create or update profile. MappingProfile with ID:{} FolioRecord:{}, linked ActionProfile with ID:{} FolioRecord:{}",
+      LOGGER.warn("validateAssociations:: Can not create or update profile. MappingProfile with ID:{} FolioRecord:{}, linked ActionProfile with ID:{} FolioRecord:{}",
         mappingProfile.getId(), mappingRecordType, actionProfile.getId(), actionRecordType);
       errors.add(new Error().withMessage(errMsg));
       return;
@@ -570,7 +570,7 @@ public abstract class AbstractProfileService<T, S, D> implements ProfileService<
       .map(MappingDetail::getMarcMappingOption)
       .filter(option -> !option.value().equals(actionProfile.getAction().value()))
       .ifPresent(option -> {
-        LOGGER.info("validateAssociations:: Can not create or update profile. ActionProfile Action:{}, linked MappingProfile Option:{}", actionProfile.getAction().value(), option);
+        LOGGER.warn("validateAssociations:: Can not create or update profile. ActionProfile Action:{}, linked MappingProfile Option:{}", actionProfile.getAction().value(), option);
         errors.add(new Error().withMessage(INVALID_ACTION_TYPE_LINKED_ACTION_PROFILE_TO_MAPPING_PROFILE));
       });
   }
