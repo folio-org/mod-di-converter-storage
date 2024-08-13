@@ -30,7 +30,6 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
-import java.util.stream.Collectors;
 
 @Component
 public class ActionProfileServiceImpl extends AbstractProfileService<ActionProfile, ActionProfileCollection, ActionProfileUpdateDto> {
@@ -38,9 +37,6 @@ public class ActionProfileServiceImpl extends AbstractProfileService<ActionProfi
   private static final String INVALID_ACTION_PROFILE_ACTION_TYPE = "Can't create ActionProfile for MARC Bib record type with Create action";
   private static final String INVALID_RECORD_TYPE_LINKED_MAPPING_PROFILE_TO_ACTION_PROFILE = "Mapping profile '%s' can not be linked to this Action profile. ExistingRecordType and FolioRecord types are different";
   private static final String INVALID_ACTION_PROFILE_NEW_RECORD_TYPE_LINKED_TO_MAPPING_PROFILE = "Can not update ActionProfile recordType and linked MappingProfile recordType are different";
-
-  @Autowired
-  private ProfileService<MappingProfile, MappingProfileCollection, MappingProfileUpdateDto> mappingProfileService;
   private static final List<String> DEFAULT_ACTION_PROFILES = Arrays.asList(
     "d0ebba8a-2f0f-11eb-adc1-0242ac120002", //OCLC_CREATE_INSTANCE_ACTION_PROFILE_ID
     "cddff0e1-233c-47ba-8be5-553c632709d9", //OCLC_UPDATE_INSTANCE_ACTION_PROFILE_ID
@@ -55,6 +51,9 @@ public class ActionProfileServiceImpl extends AbstractProfileService<ActionProfi
     "7e24a466-349b-451d-a18e-38fb21d71b38", //DEFAULT_QM_HOLDINGS_UPDATE_ACTION_PROFILE_ID
     "f0f788c8-2e65-4e3a-9247-e9444eeb7d70" //DEFAULT_QM_AUTHORITY_UPDATE_ACTION_PROFILE_ID
   );
+
+  @Autowired
+  private ProfileService<MappingProfile, MappingProfileCollection, MappingProfileUpdateDto> mappingProfileService;
 
   @Override
   public Future<ActionProfile> saveProfile(ActionProfileUpdateDto profileDto, OkapiConnectionParams params) {
@@ -197,7 +196,7 @@ public class ActionProfileServiceImpl extends AbstractProfileService<ActionProfi
         optionalMappingProfile.ifPresent(mappingProfile -> validateAssociations(actionProfileUpdateDto.getProfile(), mappingProfile, errors,
           String.format(INVALID_RECORD_TYPE_LINKED_MAPPING_PROFILE_TO_ACTION_PROFILE, mappingProfile.getName())))
       ))
-      .collect(Collectors.toList());
+      .toList();
     GenericCompositeFuture.all(futures)
       .onSuccess(handler -> promise.complete(new Errors().withErrors(errors)))
       .onFailure(promise::fail);

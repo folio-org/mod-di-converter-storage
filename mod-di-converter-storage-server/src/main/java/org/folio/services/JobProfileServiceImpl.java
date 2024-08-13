@@ -62,6 +62,7 @@ public class JobProfileServiceImpl extends AbstractProfileService<JobProfile, Jo
     "c7fcbc40-c4c0-411d-b569-1fc6bc142a92",
     "6eefa4c6-bbf7-4845-ad82-de7fc4abd0e3"//DEFAULT_QM_AUTHORITY_CREATE_JOB_PROFILE_ID
   );
+
   @Autowired
   private ProfileService<ActionProfile, ActionProfileCollection, ActionProfileUpdateDto> actionProfileService;
   @Autowired

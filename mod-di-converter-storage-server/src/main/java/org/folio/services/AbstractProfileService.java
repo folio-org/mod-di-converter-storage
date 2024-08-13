@@ -299,8 +299,7 @@ public abstract class AbstractProfileService<T, S, D> implements ProfileService<
    * @param tenantId         - Tenant id from request
    * @return - boolean value. True if in the profile DTO has been changed only Tags
    */
-  @Override
-  public Future<Boolean> isProfileDtoValidForUpdate(String id, D profile, boolean isDefaultProfile, String tenantId) {
+  private Future<Boolean> isProfileDtoValidForUpdate(String id, D profile, boolean isDefaultProfile, String tenantId) {
     return isDefaultProfile ? getProfileById(id, false, tenantId).map(profileOptional ->
       profileOptional.map(fetchedProfile -> Stream.of(getProfile(profile), fetchedProfile).map(JsonObject::mapFrom)
         .peek(jsonObject -> {

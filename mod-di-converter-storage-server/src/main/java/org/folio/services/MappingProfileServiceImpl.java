@@ -14,7 +14,6 @@ import org.folio.rest.jaxrs.model.ActionProfileCollection;
 import org.folio.rest.jaxrs.model.ActionProfileUpdateDto;
 import org.folio.rest.jaxrs.model.Error;
 import org.folio.rest.jaxrs.model.Errors;
-import org.folio.rest.jaxrs.model.JobProfileUpdateDto;
 import org.folio.rest.jaxrs.model.MappingProfile;
 import org.folio.rest.jaxrs.model.MappingProfileCollection;
 import org.folio.rest.jaxrs.model.MappingProfileUpdateDto;
@@ -198,7 +197,7 @@ public class MappingProfileServiceImpl extends AbstractProfileService<MappingPro
         optionalActionProfile.ifPresent(actionProfile -> validateAssociations(actionProfile, mappingProfileUpdateDto.getProfile(), errors,
           String.format(INVALID_RECORD_TYPE_LINKED_ACTION_PROFILE_TO_MAPPING_PROFILE, actionProfile.getName())))
       ))
-      .collect(Collectors.toList());
+      .toList();
     GenericCompositeFuture.all(futures)
       .onSuccess(handler -> promise.complete(new Errors().withErrors(errors)))
       .onFailure(promise::fail);
