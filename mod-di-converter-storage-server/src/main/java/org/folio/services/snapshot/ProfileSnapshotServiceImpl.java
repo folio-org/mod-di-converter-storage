@@ -8,7 +8,6 @@ import io.vertx.core.Context;
 import io.vertx.core.Future;
 import io.vertx.core.Promise;
 import io.vertx.core.Vertx;
-import io.vertx.pgclient.PgException;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -62,10 +61,6 @@ public class ProfileSnapshotServiceImpl implements ProfileSnapshotService {
   private static final Logger LOGGER = LogManager.getLogger();
   private static final List<ProfileType> IMPORT_PROFILES_ORDER = List.of(MAPPING_PROFILE, ACTION_PROFILE, MATCH_PROFILE, JOB_PROFILE);
   public static final String PROFILE_SNAPSHOT_INVALID_TYPE = "Cannot import profile snapshot of %s required type is %s";
-  private ProfileService<JobProfile, JobProfileCollection, JobProfileUpdateDto> jobProfileService;
-  private ProfileService<MatchProfile, MatchProfileCollection, MatchProfileUpdateDto> matchProfileService;
-  private ProfileService<ActionProfile, ActionProfileCollection, ActionProfileUpdateDto> actionProfileService;
-  private ProfileService<MappingProfile, MappingProfileCollection, MappingProfileUpdateDto> mappingProfileService;
   private final EnumMap<ProfileType, BiFunction<ProfileSnapshotWrapper, OkapiConnectionParams, Future<Object>>> profileTypeToSaveFunction;
   private final ProfileSnapshotDao profileSnapshotDao;
   private final Cache<String, ProfileSnapshotWrapper> profileSnapshotWrapperCache;
@@ -85,10 +80,6 @@ public class ProfileSnapshotServiceImpl implements ProfileSnapshotService {
                                     @Autowired ProfileService<ActionProfile, ActionProfileCollection, ActionProfileUpdateDto> actionProfileService,
                                     @Autowired ProfileService<MappingProfile, MappingProfileCollection, MappingProfileUpdateDto> mappingProfileService) {
     this.profileSnapshotDao = profileSnapshotDao;
-    this.jobProfileService = jobProfileService;
-    this.matchProfileService = matchProfileService;
-    this.actionProfileService = actionProfileService;
-    this.mappingProfileService = mappingProfileService;
     this.profileSnapshotWrapperCache = Caffeine.newBuilder()
       .maximumSize(20)
       .executor(cacheExecutor)
