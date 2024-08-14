@@ -5,7 +5,7 @@
   "contentType" : "JOB_PROFILE",
   "content" : {
     "id" : "#(jobProfileId)",
-    "name" : "Test modify marc bib",
+    "name" : "Test modify marc bib #(uuid)",
     "description" : "",
     "dataType" : "MARC",
     "userInfo" : {
@@ -31,7 +31,7 @@
     "contentType" : "ACTION_PROFILE",
     "content" : {
       "id" : "#(actionProfileId)",
-      "name" : "Test modify marc bib",
+      "name" : "Test modify marc bib #(uuid)",
       "description" : "",
       "action" : "MODIFY",
       "folioRecord" : "MARC_BIBLIOGRAPHIC",
@@ -59,7 +59,7 @@
       "contentType" : "MAPPING_PROFILE",
       "content" : {
         "id" : "#(mappingProfileId)",
-        "name" : "Test modify marc bib",
+        "name" : "Test modify marc bib #(uuid)",
         "description" : "",
         "incomingRecordType" : "MARC_BIBLIOGRAPHIC",
         "existingRecordType" : "MARC_BIBLIOGRAPHIC",

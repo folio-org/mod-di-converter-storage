@@ -638,7 +638,8 @@ public class JobProfileSnapshotTest extends AbstractRestVerticleTest {
       .replace("#(jobProfileId)", jobProfileId)
       .replace("#(matchProfileId)", matchProfileId)
       .replace("#(actionProfileId)", actionProfileId)
-      .replace("#(mappingProfileId)", mappingProfileId));
+      .replace("#(mappingProfileId)", mappingProfileId)
+      .replace("#(uuid)", UUID.randomUUID().toString()));
   }
 
   private void removeWrapperId(JsonObject importWrapper) {

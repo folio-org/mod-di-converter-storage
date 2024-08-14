@@ -5,7 +5,7 @@
   "contentType" : "JOB_PROFILE",
   "content" : {
     "id" : "#(jobProfileId)",
-    "name" : "Test create Instance",
+    "name" : "Test create Instance #(uuid)",
     "description" : "",
     "dataType" : "MARC",
     "userInfo" : {
@@ -31,7 +31,7 @@
     "contentType" : "MATCH_PROFILE",
     "content" : {
       "id" : "#(matchProfileId)",
-      "name" : "Test match instance",
+      "name" : "Test match instance #(uuid)",
       "description" : "",
       "incomingRecordType" : "MARC_BIBLIOGRAPHIC",
       "existingRecordType" : "INSTANCE",
@@ -87,7 +87,7 @@
       "reactTo" : "NON_MATCH",
       "content" : {
         "id" : "#(actionProfileId)",
-        "name" : "Test create Instance",
+        "name" : "Test create Instance #(uuid)",
         "description" : "",
         "action" : "CREATE",
         "folioRecord" : "INSTANCE",
@@ -115,7 +115,7 @@
         "contentType" : "MAPPING_PROFILE",
         "content" : {
           "id" : "#(mappingProfileId)",
-          "name" : "Test create instance",
+          "name" : "Test create instance #(uuid)",
           "description" : "",
           "incomingRecordType" : "MARC_BIBLIOGRAPHIC",
           "existingRecordType" : "INSTANCE",
