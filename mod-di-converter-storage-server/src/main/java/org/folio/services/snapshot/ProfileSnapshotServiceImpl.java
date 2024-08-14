@@ -39,7 +39,7 @@ import jakarta.validation.constraints.NotNull;
 import javax.ws.rs.BadRequestException;
 import java.util.ArrayList;
 import java.util.Comparator;
-import java.util.HashMap;
+import java.util.EnumMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
@@ -71,7 +71,7 @@ public class ProfileSnapshotServiceImpl implements ProfileSnapshotService {
   private ProfileService<MatchProfile, MatchProfileCollection, MatchProfileUpdateDto> matchProfileService;
   private ProfileService<ActionProfile, ActionProfileCollection, ActionProfileUpdateDto> actionProfileService;
   private ProfileService<MappingProfile, MappingProfileCollection, MappingProfileUpdateDto> mappingProfileService;
-  private final HashMap<ProfileType, BiFunction<ProfileSnapshotWrapper, OkapiConnectionParams, Future<Object>>> profileTypeToSaveFunction;
+  private final EnumMap<ProfileType, BiFunction<ProfileSnapshotWrapper, OkapiConnectionParams, Future<Object>>> profileTypeToSaveFunction;
   private final ProfileSnapshotDao profileSnapshotDao;
   private final Cache<String, ProfileSnapshotWrapper> profileSnapshotWrapperCache;
   private final Executor cacheExecutor = runnable -> {
@@ -83,24 +83,6 @@ public class ProfileSnapshotServiceImpl implements ProfileSnapshotService {
       ForkJoinPool.commonPool().execute(runnable);
     }
   };
-
-  {
-    profileTypeToSaveFunction = new HashMap<>();
-
-    profileTypeToSaveFunction.put(MAPPING_PROFILE, (snapshot, okapiParams) -> saveProfile(okapiParams, new MappingProfileUpdateDto()
-      .withProfile((MappingProfile) snapshot.getContent()), mappingProfileService, MAPPING_PROFILES_PKEY).map(p -> p));
-
-    profileTypeToSaveFunction.put(ACTION_PROFILE, (snapshot, okapiParams) -> saveProfile(okapiParams, new ActionProfileUpdateDto()
-      .withProfile((ActionProfile) snapshot.getContent())
-      .withAddedRelations(formAddedRelations(snapshot, ACTION_PROFILE)), actionProfileService, ACTION_PROFILES_PKEY).map(p -> p));
-
-    profileTypeToSaveFunction.put(MATCH_PROFILE, (snapshot, okapiParams) -> saveProfile(okapiParams, new MatchProfileUpdateDto()
-      .withProfile((MatchProfile) snapshot.getContent()), matchProfileService, MATCH_PROFILES_PKEY).map(p -> p));
-
-    profileTypeToSaveFunction.put(JOB_PROFILE, (snapshot, okapiParams) -> saveProfile(okapiParams, new JobProfileUpdateDto()
-      .withProfile((JobProfile) snapshot.getContent())
-      .withAddedRelations(formAddedRelations(snapshot, JOB_PROFILE)), jobProfileService, JOB_PROFILES_PKEY).map(p -> p));
-  }
 
   public ProfileSnapshotServiceImpl(@Autowired ProfileSnapshotDao profileSnapshotDao,
                                     @Autowired ProfileService<JobProfile, JobProfileCollection, JobProfileUpdateDto> jobProfileService,
@@ -116,6 +98,22 @@ public class ProfileSnapshotServiceImpl implements ProfileSnapshotService {
       .maximumSize(20)
       .executor(cacheExecutor)
       .build();
+
+    profileTypeToSaveFunction = new EnumMap<>(ProfileType.class);
+
+    profileTypeToSaveFunction.put(MAPPING_PROFILE, (snapshot, okapiParams) -> saveProfile(okapiParams, new MappingProfileUpdateDto()
+      .withProfile((MappingProfile) snapshot.getContent()), mappingProfileService, MAPPING_PROFILES_PKEY).map(p -> p));
+
+    profileTypeToSaveFunction.put(ACTION_PROFILE, (snapshot, okapiParams) -> saveProfile(okapiParams, new ActionProfileUpdateDto()
+      .withProfile((ActionProfile) snapshot.getContent())
+      .withAddedRelations(formAddedRelations(snapshot, ACTION_PROFILE)), actionProfileService, ACTION_PROFILES_PKEY).map(p -> p));
+
+    profileTypeToSaveFunction.put(MATCH_PROFILE, (snapshot, okapiParams) -> saveProfile(okapiParams, new MatchProfileUpdateDto()
+      .withProfile((MatchProfile) snapshot.getContent()), matchProfileService, MATCH_PROFILES_PKEY).map(p -> p));
+
+    profileTypeToSaveFunction.put(JOB_PROFILE, (snapshot, okapiParams) -> saveProfile(okapiParams, new JobProfileUpdateDto()
+      .withProfile((JobProfile) snapshot.getContent())
+      .withAddedRelations(formAddedRelations(snapshot, JOB_PROFILE)), jobProfileService, JOB_PROFILES_PKEY).map(p -> p));
   }
 
   @Override
@@ -184,7 +182,8 @@ public class ProfileSnapshotServiceImpl implements ProfileSnapshotService {
     for (ProfileType profileType : profileTypesInSaveOrder) {
       saveFuture = saveFuture.compose(v -> processProfilesSaving(profileTypeToSnapshots.get(profileType), profileType, okapiParams));
     }
-    return saveFuture.map(profileSnapshot);
+    return saveFuture
+      .compose(v -> constructSnapshot(profileSnapshot.getProfileId(), JOB_PROFILE, profileSnapshot.getProfileId(), okapiParams.getTenantId()));
   }
 
   @Override
@@ -201,13 +200,13 @@ public class ProfileSnapshotServiceImpl implements ProfileSnapshotService {
     return GenericCompositeFuture.all(futures).map(CompositeFuture::list);
   }
 
-  private HashMap<ProfileType, List<ProfileSnapshotWrapper>>  getProfileTypeToSnapshot(ProfileSnapshotWrapper snapshot) {
-    HashMap<ProfileType, List<ProfileSnapshotWrapper>> profileTypeToSnapshots = new HashMap<>();
+  private EnumMap<ProfileType, List<ProfileSnapshotWrapper>>  getProfileTypeToSnapshot(ProfileSnapshotWrapper snapshot) {
+    EnumMap<ProfileType, List<ProfileSnapshotWrapper>> profileTypeToSnapshots = new EnumMap<>(ProfileType.class);
     addSnapshotsToMap(snapshot, profileTypeToSnapshots);
     return profileTypeToSnapshots;
   }
 
-  private void addSnapshotsToMap(ProfileSnapshotWrapper snapshot, HashMap<ProfileType, List<ProfileSnapshotWrapper>> profileTypeToSnapshots) {
+  private void addSnapshotsToMap(ProfileSnapshotWrapper snapshot, EnumMap<ProfileType, List<ProfileSnapshotWrapper>> profileTypeToSnapshots) {
     List<ProfileSnapshotWrapper> snapshots = profileTypeToSnapshots.computeIfAbsent(snapshot.getContentType(), k -> new ArrayList<>());
 
     if (snapshots.stream().noneMatch(s -> s.getId().equals(snapshot.getId()))) {

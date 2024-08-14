@@ -7,7 +7,6 @@ import io.vertx.core.Handler;
 import io.vertx.core.Promise;
 import io.vertx.core.Vertx;
 import io.vertx.core.impl.future.CompositeFutureImpl;
-import io.vertx.core.json.JsonObject;
 
 import io.vertx.core.json.jackson.DatabindCodec;
 import org.apache.commons.collections4.CollectionUtils;
@@ -33,7 +32,6 @@ import org.folio.rest.jaxrs.model.MappingDetail;
 import org.folio.rest.jaxrs.model.MatchProfile;
 import org.folio.rest.jaxrs.model.MatchProfileCollection;
 import org.folio.rest.jaxrs.model.MatchProfileUpdateDto;
-import org.folio.rest.jaxrs.model.Metadata;
 import org.folio.rest.jaxrs.model.ProfileSnapshotWrapper;
 import org.folio.rest.jaxrs.model.ProfileType;
 import org.folio.rest.jaxrs.model.OperationType;
@@ -49,14 +47,11 @@ import org.springframework.beans.factory.annotation.Autowired;
 import javax.ws.rs.BadRequestException;
 import javax.ws.rs.NotFoundException;
 import javax.ws.rs.core.Response;
-import java.nio.charset.StandardCharsets;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.Optional;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Base64;
-import java.util.Date;
 import java.util.LinkedHashMap;
 import java.util.LinkedList;
 import java.util.List;
@@ -65,8 +60,6 @@ import java.util.Objects;
 import java.util.stream.Collectors;
 
 import static java.lang.String.format;
-import static org.folio.rest.RestVerticle.OKAPI_HEADER_TOKEN;
-import static org.folio.rest.RestVerticle.OKAPI_USERID_HEADER;
 import static org.folio.rest.jaxrs.model.ProfileType.ACTION_PROFILE;
 import static org.folio.rest.jaxrs.model.ProfileType.MATCH_PROFILE;
 
@@ -862,8 +855,7 @@ public class DataImportProfilesImpl implements DataImportProfiles {
     vertxContext.runOnContext(v -> {
       try {
         profileSnapshotService.importSnapshot(profileSnapshot, tenantId, new OkapiConnectionParams(okapiHeaders))
-          .map((Response) PostDataImportProfilesProfileSnapshotsResponse
-            .respond201WithApplicationJson(profileSnapshot))
+          .map(snapshot -> (Response) PostDataImportProfilesProfileSnapshotsResponse.respond201WithApplicationJson(snapshot))
           .otherwise(ExceptionHelper::mapExceptionToResponse)
           .onComplete(asyncResultHandler);
       } catch (Exception e) {

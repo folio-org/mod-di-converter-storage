@@ -384,13 +384,19 @@ public class JobProfileSnapshotTest extends AbstractRestVerticleTest {
       jobProfileId, matchProfileId, actionProfileId, mappingProfileId);
 
     Async async = testContext.async();
-    RestAssured.given()
+    JsonObject postProfileSnapshotWrapper = new JsonObject(RestAssured.given()
       .spec(spec)
       .when()
       .body(importWrapper.encode())
       .post(PROFILE_SNAPSHOT_PATH)
       .then()
-      .statusCode(HttpStatus.SC_CREATED);
+      .statusCode(HttpStatus.SC_CREATED)
+      .extract().body().asPrettyString());
+
+    removeWrapperId(importWrapper);
+    removeWrapperId(postProfileSnapshotWrapper);
+
+    Assert.assertNotEquals(postProfileSnapshotWrapper, importWrapper);
 
     JsonObject resultSnapshotWrapper = new JsonObject(RestAssured.given()
       .spec(spec)
@@ -401,6 +407,10 @@ public class JobProfileSnapshotTest extends AbstractRestVerticleTest {
       .then()
       .statusCode(HttpStatus.SC_OK)
       .extract().body().asPrettyString());
+
+    removeWrapperId(resultSnapshotWrapper);
+
+    Assert.assertEquals(postProfileSnapshotWrapper, resultSnapshotWrapper);
 
     prepareProfileSnapshotToCompare(importWrapper);
     prepareProfileSnapshotToCompare(resultSnapshotWrapper);
@@ -531,6 +541,29 @@ public class JobProfileSnapshotTest extends AbstractRestVerticleTest {
   }
 
   @Test
+  public void shouldValidateProfileSnapshotDuringImport(TestContext testContext) throws IOException {
+    String mappingProfileId = UUID.randomUUID().toString();
+    String jobProfileId = UUID.randomUUID().toString();
+    String matchProfileId = UUID.randomUUID().toString();
+    String actionProfileId = UUID.randomUUID().toString();
+
+    JsonObject importWrapper = constructProfileWrapper(PROFILE_SNAPSHOT_FILE_PATH + "invalidProfileSnapshot.json",
+      jobProfileId, matchProfileId, actionProfileId, mappingProfileId);
+
+    Async async = testContext.async();
+    RestAssured.given()
+      .spec(spec)
+      .when()
+      .body(importWrapper.encode())
+      .post(PROFILE_SNAPSHOT_PATH)
+      .then()
+      .statusCode(HttpStatus.SC_UNPROCESSABLE_ENTITY)
+      .body("errors[0].message", is("Modify action cannot be used as a standalone action"));
+
+    async.complete();
+  }
+
+  @Test
   public void shouldReturnSnapshotWrapperForJobProfileWithoutMatchProfileChildWrappersWhenJobProfileIdParamIsMissed(TestContext testContext) {
     Async async = testContext.async();
     ProfileSnapshotWrapper jobProfileSnapshot = RestAssured.given()
@@ -606,6 +639,17 @@ public class JobProfileSnapshotTest extends AbstractRestVerticleTest {
       .replace("#(matchProfileId)", matchProfileId)
       .replace("#(actionProfileId)", actionProfileId)
       .replace("#(mappingProfileId)", mappingProfileId));
+  }
+
+  private void removeWrapperId(JsonObject importWrapper) {
+    importWrapper.remove("id");
+
+    JsonArray childSnapshotWrapper = importWrapper.getJsonArray("childSnapshotWrappers");
+    if (!childSnapshotWrapper.isEmpty()) {
+      for (Object object : childSnapshotWrapper) {
+        removeWrapperId((JsonObject) object);
+      }
+    }
   }
 
   private void prepareProfileSnapshotToCompare(JsonObject importWrapper) {

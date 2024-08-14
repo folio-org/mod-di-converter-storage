@@ -32,7 +32,6 @@ import java.util.Arrays;
 import java.util.Base64;
 import java.util.Date;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -470,7 +469,7 @@ public abstract class AbstractProfileService<T, S, D> implements ProfileService<
     return promise.future();
   }
 
-  Metadata getMetadata(MultiMap okapiHeaders) {
+  protected Metadata getMetadata(MultiMap okapiHeaders) {
     String userId = okapiHeaders.get(OKAPI_USERID_HEADER);
     String token = okapiHeaders.get(OKAPI_HEADER_TOKEN);
     if (userId == null && token != null) {
@@ -484,7 +483,7 @@ public abstract class AbstractProfileService<T, S, D> implements ProfileService<
     return md;
   }
 
-  String userIdFromToken(String token) {
+  private String userIdFromToken(String token) {
     try {
       String[] split = token.split("\\.");
       String json = getJson(split[1]);
@@ -496,7 +495,7 @@ public abstract class AbstractProfileService<T, S, D> implements ProfileService<
     }
   }
 
-  String getJson(String strEncoded) {
+  private String getJson(String strEncoded) {
     byte[] decodedBytes = Base64.getDecoder().decode(strEncoded);
     return new String(decodedBytes, StandardCharsets.UTF_8);
   }
