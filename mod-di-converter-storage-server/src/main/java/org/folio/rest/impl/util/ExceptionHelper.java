@@ -3,8 +3,10 @@ package org.folio.rest.impl.util;
 import io.vertx.core.Promise;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.folio.HttpStatus;
 import org.folio.rest.tools.utils.ValidationHelper;
 import org.folio.services.exception.ConflictException;
+import org.folio.services.exception.UnprocessableEntityException;
 
 import javax.ws.rs.BadRequestException;
 import javax.ws.rs.NotFoundException;
@@ -24,6 +26,12 @@ public final class ExceptionHelper {
   }
 
   public static Response mapExceptionToResponse(Throwable throwable) {
+    if (throwable instanceof UnprocessableEntityException unprocessableEntity) {
+      return Response.status(HttpStatus.HTTP_UNPROCESSABLE_ENTITY.toInt())
+        .type(MediaType.APPLICATION_JSON_TYPE)
+        .entity(unprocessableEntity.getErrors())
+        .build();
+    }
     if (throwable instanceof BadRequestException) {
       return Response.status(BAD_REQUEST.getStatusCode())
         .type(MediaType.TEXT_PLAIN)

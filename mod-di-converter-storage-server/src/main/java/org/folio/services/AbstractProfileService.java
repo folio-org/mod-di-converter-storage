@@ -3,6 +3,7 @@ package org.folio.services;
 import io.vertx.core.Future;
 import io.vertx.core.Promise;
 import io.vertx.core.http.HttpMethod;
+import io.vertx.core.impl.future.CompositeFutureImpl;
 import io.vertx.core.json.JsonObject;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
@@ -12,7 +13,13 @@ import org.folio.dao.association.ProfileWrapperDao;
 import org.folio.okapi.common.GenericCompositeFuture;
 import org.folio.rest.impl.util.OkapiConnectionParams;
 import org.folio.rest.impl.util.RestUtil;
+import org.folio.rest.jaxrs.model.ActionProfile;
 import org.folio.rest.jaxrs.model.EntityTypeCollection;
+import org.folio.rest.jaxrs.model.Error;
+import org.folio.rest.jaxrs.model.Errors;
+import org.folio.rest.jaxrs.model.MappingDetail;
+import org.folio.rest.jaxrs.model.MappingProfile;
+import org.folio.rest.jaxrs.model.OperationType;
 import org.folio.rest.jaxrs.model.ProfileAssociation;
 import org.folio.rest.jaxrs.model.ProfileSnapshotWrapper;
 import org.folio.rest.jaxrs.model.ProfileType;
@@ -20,13 +27,17 @@ import org.folio.rest.jaxrs.model.UserInfo;
 import org.folio.services.association.CommonProfileAssociationService;
 import org.folio.services.association.ProfileAssociationService;
 import org.folio.services.exception.ConflictException;
+import org.folio.services.exception.UnprocessableEntityException;
 import org.folio.services.util.EntityTypes;
 import org.springframework.beans.factory.annotation.Autowired;
 
+import javax.ws.rs.BadRequestException;
 import javax.ws.rs.NotFoundException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -42,10 +53,22 @@ import static org.folio.rest.jaxrs.model.ProfileType.MAPPING_PROFILE;
  * @param <S> type of the collection of T entities
  */
 public abstract class AbstractProfileService<T, S, D> implements ProfileService<T, S, D> {
-
   private static final Logger LOGGER = LogManager.getLogger();
   private static final String GET_USER_URL = "/users?query=id==";
   private static final String DELETE_PROFILE_ERROR_MESSAGE = "Can not delete profile by id '%s' cause profile associated with other profiles";
+  private static final String DUPLICATE_PROFILE_ERROR_CODE = "%s '%s' already exists";
+  private static final String DUPLICATE_PROFILE_ID_ERROR_CODE = "%s with id '%s' already exists";
+  private static final String NOT_EMPTY_RELATED_PROFILE_ERROR_CODE = "%s read-only '%s' field should be empty";
+  private static final String PROFILE_VALIDATE_ERROR_MESSAGE = "Failed to validate %s";
+  private static final String INVALID_ACTION_TYPE_LINKED_ACTION_PROFILE_TO_MAPPING_PROFILE = "Unable to complete requested change. " +
+    "MARC Update Action profiles can only be linked with MARC Update Mapping profiles and MARC Modify Action profiles can only be linked with MARC Modify Mapping profiles. " +
+    "Please ensure your Action and Mapping profiles are of like types and try again.";
+  private static final Map<String, String> ERROR_CODES_TYPES_RELATION = Map.of(
+    "mappingProfile", "The field mapping profile",
+    "jobProfile", "Job profile",
+    "matchProfile", "Match profile",
+    "actionProfile", "Action profile"
+  );
 
   @Autowired
   protected ProfileAssociationService profileAssociationService;
@@ -93,12 +116,13 @@ public abstract class AbstractProfileService<T, S, D> implements ProfileService<
   }
 
   @Override
-  public Future<T> saveProfile(D profile, OkapiConnectionParams params) {
-    return setUserInfoForProfile(profile, params)
+  public Future<T> saveProfile(D profileDto, OkapiConnectionParams params) {
+    return processValidation(OperationType.CREATE, profileDto, params.getTenantId())
+      .compose(profile -> setUserInfoForProfile(profile, params))
       .compose(profileWithInfo -> profileDao.saveProfile(setProfileId(profileWithInfo), params.getTenantId())
-        .map(prepareAssociations((profile)))
-        .compose(ar -> deleteRelatedAssociations(getProfileAssociationToDelete(profile), params.getTenantId()))
-        .compose(ar -> saveRelatedAssociations(getProfileAssociationToAdd(profile), params.getTenantId()))
+        .map(prepareAssociations((profileDto)))
+        .compose(ar -> deleteRelatedAssociations(getProfileAssociationToDelete(profileDto), params.getTenantId()))
+        .compose(ar -> saveRelatedAssociations(getProfileAssociationToAdd(profileDto), params.getTenantId()))
         .map(profileWithInfo));
   }
 
@@ -218,17 +242,33 @@ public abstract class AbstractProfileService<T, S, D> implements ProfileService<
   }
 
   @Override
-  public Future<T> updateProfile(D profile, OkapiConnectionParams params) {
-    return setUserInfoForProfile(profile, params)
+  public Future<T> updateProfile(D profileDto, OkapiConnectionParams params) {
+    String profileId = getProfileId(getProfile(profileDto));
+    return isProfileDtoValidForUpdate(profileId, profileDto, getDefaultProfiles().contains(profileId), params.getTenantId())
+      .compose(isDtoValidForUpdate -> {
+        if (Boolean.FALSE.equals(isDtoValidForUpdate)) {
+          String errorMessage = String.format("Can`t update default %s with id %s", getProfileContentType(), profileId);
+          LOGGER.warn("updateProfile:: {}", errorMessage);
+          return Future.failedFuture(new BadRequestException(errorMessage));
+        }
+        return processValidation(OperationType.UPDATE, profileDto, params.getTenantId());
+      })
+      .compose(profile -> setUserInfoForProfile(profile, params))
       .compose(profileWithInfo -> profileDao.updateProfile(profileWithInfo, params.getTenantId()))
-      .map(prepareAssociations((profile)))
-      .compose(ar -> deleteRelatedAssociations(getProfileAssociationToDelete(profile), params.getTenantId()))
-      .compose(ar -> saveRelatedAssociations(getProfileAssociationToAdd(profile), params.getTenantId()))
-      .map(getProfile(profile));
+      .map(prepareAssociations((profileDto)))
+      .compose(ar -> deleteRelatedAssociations(getProfileAssociationToDelete(profileDto), params.getTenantId()))
+      .compose(ar -> saveRelatedAssociations(getProfileAssociationToAdd(profileDto), params.getTenantId()))
+      .map(getProfile(profileDto));
   }
 
   @Override
   public Future<Boolean> hardDeleteProfile(String id, String tenantId) {
+    if (!canDeleteProfile(id)) {
+      String errorMessage = String.format("Can`t delete default %s with id %s", getProfileContentType(), id);
+      LOGGER.warn("hardDeleteProfile:: {}", errorMessage);
+      return Future.failedFuture(new BadRequestException(errorMessage));
+    }
+
     return profileDao.isProfileAssociatedAsDetail(id, tenantId)
       .compose(isAssociated -> isAssociated
         ? Future.failedFuture(new ConflictException(String.format(DELETE_PROFILE_ERROR_MESSAGE, id)))
@@ -250,8 +290,16 @@ public abstract class AbstractProfileService<T, S, D> implements ProfileService<
       Future.succeededFuture(false) : getProfileById(profileId, false, tenantId).map(Optional::isPresent);
   }
 
-  @Override
-  public Future<Boolean> isProfileDtoValidForUpdate(String id, D profile, boolean isDefaultProfile, String tenantId) {
+  /**
+   * Check profile to access another fields except tags
+   *
+   * @param id               - Profile id
+   * @param profile          - D DTO
+   * @param isDefaultProfile - True if the profile lists as default
+   * @param tenantId         - Tenant id from request
+   * @return - boolean value. True if in the profile DTO has been changed only Tags
+   */
+  private Future<Boolean> isProfileDtoValidForUpdate(String id, D profile, boolean isDefaultProfile, String tenantId) {
     return isDefaultProfile ? getProfileById(id, false, tenantId).map(profileOptional ->
       profileOptional.map(fetchedProfile -> Stream.of(getProfile(profile), fetchedProfile).map(JsonObject::mapFrom)
         .peek(jsonObject -> {
@@ -292,7 +340,7 @@ public abstract class AbstractProfileService<T, S, D> implements ProfileService<
    * @param params  {@link OkapiConnectionParams}
    * @return Profile with filled userInfo field
    */
-  abstract Future<T> setUserInfoForProfile(D profile, OkapiConnectionParams params);
+  abstract Future<T> setUserInfoForProfile(T profile, OkapiConnectionParams params);
 
   /**
    * Returns name of specified profile
@@ -334,6 +382,8 @@ public abstract class AbstractProfileService<T, S, D> implements ProfileService<
   protected abstract List<ProfileAssociation> getProfileAssociationToDelete(D dto);
 
   protected abstract T getProfile(D dto);
+
+  protected abstract List<String> getDefaultProfiles();
 
   /**
    * Load all related child profiles for existing profile
@@ -418,7 +468,7 @@ public abstract class AbstractProfileService<T, S, D> implements ProfileService<
       .stream()
       .map(JsonObject::mapFrom)
       .map(json -> json.mapTo(ProfileSnapshotWrapper.class))
-      .collect(Collectors.toList())));
+      .toList()));
     return profileSnapshotWrappers;
   }
 
@@ -460,5 +510,86 @@ public abstract class AbstractProfileService<T, S, D> implements ProfileService<
         }
       });
     return promise.future();
+  }
+
+  private Future<T> processValidation(OperationType operationType, D profileDto, String tenantId) {
+    return validateProfile(operationType, profileDto, tenantId)
+      .onFailure(th -> LOGGER.warn(PROFILE_VALIDATE_ERROR_MESSAGE, th.getCause()))
+      .compose(errors -> {
+        if (errors.getTotalRecords() > 0) {
+          return Future.failedFuture(new UnprocessableEntityException(errors));
+        }
+        return Future.succeededFuture(getProfile(profileDto));
+      });
+  }
+
+  protected Future<Errors> validateProfile(OperationType operationType, D profileDto, String tenantId) {
+    T profile = getProfile(profileDto);
+    Promise<Errors> promise = Promise.promise();
+    String profileTypeName = StringUtils.uncapitalize(profile.getClass().getSimpleName());
+    Map<String, Future<Boolean>> validateConditions = getValidateConditions(operationType, profile, tenantId);
+    List<String> errorCodes = new ArrayList<>(validateConditions.keySet());
+    List<Future<Boolean>> futures = new ArrayList<>(validateConditions.values());
+    GenericCompositeFuture.all(futures).onComplete(ar -> {
+      if (ar.succeeded()) {
+        List<Error> errors = new ArrayList<>(errorCodes).stream()
+          .filter(errorCode -> ar.result().resultAt(errorCodes.indexOf(errorCode)))
+          .map(errorCode -> new Error().withMessage(format(errorCode,
+            ERROR_CODES_TYPES_RELATION.get(profileTypeName), getProfileName(profile))))
+          .collect(Collectors.toList());
+        promise.complete(new Errors().withErrors(errors).withTotalRecords(errors.size()));
+      } else {
+        promise.fail(ar.cause());
+      }
+    });
+    return promise.future();
+  }
+
+  private Map<String, Future<Boolean>> getValidateConditions(OperationType operationType, T profile, String tenantId) {
+    Map<String, Future<Boolean>> validateConditions = new LinkedHashMap<>();
+    validateConditions.put(DUPLICATE_PROFILE_ERROR_CODE, isProfileExistByProfileName(profile, tenantId));
+    validateConditions.put(String.format(NOT_EMPTY_RELATED_PROFILE_ERROR_CODE, "%s", "child"), isProfileContainsChildProfiles(profile));
+    validateConditions.put(String.format(NOT_EMPTY_RELATED_PROFILE_ERROR_CODE, "%s", "parent"), isProfileContainsParentProfiles(profile));
+    if (operationType == OperationType.CREATE) {
+      validateConditions.put(DUPLICATE_PROFILE_ID_ERROR_CODE, isProfileExistByProfileId(profile, tenantId));
+    }
+    return validateConditions;
+  }
+
+  protected void validateAssociations(ActionProfile actionProfile, MappingProfile mappingProfile, List<Error> errors, String errMsg) {
+    var mappingRecordType = mappingProfile.getExistingRecordType().value();
+    var actionRecordType = actionProfile.getFolioRecord().value();
+    if (!actionRecordType.equals(mappingRecordType)) {
+      LOGGER.warn("validateAssociations:: Can not create or update profile. MappingProfile with ID:{} FolioRecord:{}, linked ActionProfile with ID:{} FolioRecord:{}",
+        mappingProfile.getId(), mappingRecordType, actionProfile.getId(), actionRecordType);
+      errors.add(new Error().withMessage(errMsg));
+      return;
+    }
+
+    Optional.ofNullable(mappingProfile.getMappingDetails())
+      .map(MappingDetail::getMarcMappingOption)
+      .filter(option -> !option.value().equals(actionProfile.getAction().value()))
+      .ifPresent(option -> {
+        LOGGER.warn("validateAssociations:: Can not create or update profile. ActionProfile Action:{}, linked MappingProfile Option:{}", actionProfile.getAction().value(), option);
+        errors.add(new Error().withMessage(INVALID_ACTION_TYPE_LINKED_ACTION_PROFILE_TO_MAPPING_PROFILE));
+      });
+  }
+
+  @SafeVarargs
+  protected final Future<Errors> composeFutureErrors(Future<Errors>... errorsFuture) {
+    return CompositeFutureImpl.all(errorsFuture).map(compositeFuture -> compositeFuture.list().stream()
+      .map(Errors.class::cast)
+      .reduce(new Errors().withTotalRecords(0), (accumulator, errors) -> addAll(accumulator, errors.getErrors())
+      ));
+  }
+
+  private Errors addAll(Errors errors, List<Error> otherErrors) {
+    errors.withTotalRecords(errors.getTotalRecords() + otherErrors.size())
+      .getErrors().addAll(otherErrors);
+    return errors;
+  }
+
+  protected boolean canDeleteProfile(String profileId) {
+    return !getDefaultProfiles().contains(profileId);
   }
 }

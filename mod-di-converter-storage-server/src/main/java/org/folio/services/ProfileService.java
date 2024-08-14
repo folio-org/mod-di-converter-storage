@@ -40,20 +40,20 @@ public interface ProfileService<T, S, D> {
   /**
    * Saves T entity
    *
-   * @param profile Profile to save
+   * @param profileDto Profile DTO to save
    * @param params  {@link OkapiConnectionParams}
    * @return future with saved entity
    */
-  Future<T> saveProfile(D profile, OkapiConnectionParams params);
+  Future<T> saveProfile(D profileDto, OkapiConnectionParams params);
 
   /**
    * Updates D with given id
    *
-   * @param profile Profile to update
+   * @param profileDto Profile DTO to update
    * @param params  {@link OkapiConnectionParams}
    * @return future with updated entity
    */
-  Future<T> updateProfile(D profile, OkapiConnectionParams params);
+  Future<T> updateProfile(D profileDto, OkapiConnectionParams params);
 
   /**
    * Search in database profile with the same name which contains in specified profile
@@ -72,17 +72,6 @@ public interface ProfileService<T, S, D> {
    * @return - boolean value. True if job profile with the same id already exist
    */
   Future<Boolean> isProfileExistByProfileId(T profile, String tenantId);
-
-  /**
-   * Check profile to access another fields except tags
-   *
-   * @param id               - Profile id
-   * @param profile          - D DTO
-   * @param isDefaultProfile - True if the profile lists as default
-   * @param tenantId         - Tenant id from request
-   * @return - boolean value. True if in the profile DTO has been changed only Tags
-   */
-  Future<Boolean> isProfileDtoValidForUpdate(String id, D profile, boolean isDefaultProfile, String tenantId);
 
   /**
    * Hard deletes profile by its id
