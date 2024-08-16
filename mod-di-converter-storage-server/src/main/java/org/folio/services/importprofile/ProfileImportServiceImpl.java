@@ -80,7 +80,11 @@ public class ProfileImportServiceImpl implements ProfileImportService {
     }
     LOGGER.info("importProfile:: Started import for Job Profile with id {}", profileSnapshot.getProfileId());
 
-    convertProfileSnapshotWrapperContent(profileSnapshot);
+    try {
+      convertProfileSnapshotWrapperContent(profileSnapshot);
+    } catch (Exception e) {
+      return Future.failedFuture(new BadRequestException(String.format("Cannot map profile content, error: %s", e.getMessage())));
+    }
 
     var profileTypeToSnapshots = getProfileTypeToSnapshot(profileSnapshot);
     var profileTypesInSaveOrder = profileTypeToSnapshots.keySet().stream()

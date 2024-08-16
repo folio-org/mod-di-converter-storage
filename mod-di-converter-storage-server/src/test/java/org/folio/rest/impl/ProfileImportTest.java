@@ -25,6 +25,7 @@ import java.util.UUID;
 import static org.folio.rest.jaxrs.model.ProfileType.ACTION_PROFILE;
 import static org.folio.rest.jaxrs.model.ProfileType.JOB_PROFILE;
 import static org.hamcrest.Matchers.is;
+import static org.hamcrest.Matchers.startsWith;
 
 @RunWith(VertxUnitRunner.class)
 public class ProfileImportTest extends AbstractRestVerticleTest {
@@ -211,7 +212,7 @@ public class ProfileImportTest extends AbstractRestVerticleTest {
     String matchProfileId = UUID.randomUUID().toString();
     String actionProfileId = UUID.randomUUID().toString();
 
-    JsonObject importWrapper = constructProfileWrapper(PROFILE_SNAPSHOT_FILE_PATH + "invalidProfileSnapshot.json",
+    JsonObject importWrapper = constructProfileWrapper(PROFILE_SNAPSHOT_FILE_PATH + "invalidProfileSnapshotAssociation.json",
       jobProfileId, matchProfileId, actionProfileId, mappingProfileId);
 
     Async async = testContext.async();
@@ -223,6 +224,29 @@ public class ProfileImportTest extends AbstractRestVerticleTest {
       .then()
       .statusCode(HttpStatus.SC_UNPROCESSABLE_ENTITY)
       .body("errors[0].message", is("Modify action cannot be used as a standalone action"));
+
+    async.complete();
+  }
+
+  @Test
+  public void shouldReturnErrorMessageIfInvalidProfileContent(TestContext testContext) throws IOException {
+    String mappingProfileId = UUID.randomUUID().toString();
+    String jobProfileId = UUID.randomUUID().toString();
+    String matchProfileId = UUID.randomUUID().toString();
+    String actionProfileId = UUID.randomUUID().toString();
+
+    JsonObject importWrapper = constructProfileWrapper(PROFILE_SNAPSHOT_FILE_PATH + "invalidProfileSnapshotContent.json",
+      jobProfileId, matchProfileId, actionProfileId, mappingProfileId);
+
+    Async async = testContext.async();
+    RestAssured.given()
+      .spec(spec)
+      .when()
+      .body(importWrapper.encode())
+      .post(PROFILE_SNAPSHOT_PATH)
+      .then()
+      .statusCode(HttpStatus.SC_BAD_REQUEST)
+      .body(startsWith("Cannot map profile content, error: "));
 
     async.complete();
   }
