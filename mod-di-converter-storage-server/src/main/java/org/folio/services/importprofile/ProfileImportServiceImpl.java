@@ -74,9 +74,11 @@ public class ProfileImportServiceImpl implements ProfileImportService {
   @Override
   public Future<ProfileSnapshotWrapper> importProfile(ProfileSnapshotWrapper profileSnapshot, String tenantId, OkapiConnectionParams okapiParams) {
     if (profileSnapshot.getContentType() != JOB_PROFILE) {
-      return Future.failedFuture(new BadRequestException(String.format(PROFILE_SNAPSHOT_INVALID_TYPE,
-        profileSnapshot.getContentType(), JOB_PROFILE)));
+      String errorMessage = String.format(PROFILE_SNAPSHOT_INVALID_TYPE, profileSnapshot.getContentType(), JOB_PROFILE);
+      LOGGER.warn("importProfile:: {}", errorMessage);
+      return Future.failedFuture(new BadRequestException(errorMessage));
     }
+    LOGGER.info("importProfile:: Started import for Job Profile with id {}", profileSnapshot.getProfileId());
 
     convertProfileSnapshotWrapperContent(profileSnapshot);
 
@@ -152,6 +154,7 @@ public class ProfileImportServiceImpl implements ProfileImportService {
     return profileService.getProfileById(profileId, false, okapiParams.getTenantId())
       .compose(optionalProfile -> {
         if (optionalProfile.isPresent()) {
+          LOGGER.debug("saveProfile:: Overlay profile with id {} during import", profileId);
           return profileService.updateProfile(profileUpdateDto, okapiParams);
         }
         return profileService.saveProfile(profileUpdateDto, okapiParams);
