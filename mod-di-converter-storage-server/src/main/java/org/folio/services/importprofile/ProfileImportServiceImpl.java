@@ -56,19 +56,19 @@ public class ProfileImportServiceImpl implements ProfileImportService {
 
     profileTypeToSaveFunction = new EnumMap<>(ProfileType.class);
 
-    profileTypeToSaveFunction.put(MAPPING_PROFILE, (snapshot, okapiParams) -> saveProfile(okapiParams, new MappingProfileUpdateDto()
-      .withProfile((MappingProfile) snapshot.getContent()), mappingProfileService, ((MappingProfile) snapshot.getContent()).getId()).map(p -> p));
+    profileTypeToSaveFunction.put(MAPPING_PROFILE, (snapshot, okapiParams) -> mappingProfileService.saveProfile(new MappingProfileUpdateDto()
+      .withProfile((MappingProfile) snapshot.getContent()), okapiParams).map(p -> p));
 
-    profileTypeToSaveFunction.put(ACTION_PROFILE, (snapshot, okapiParams) -> saveProfile(okapiParams, new ActionProfileUpdateDto()
+    profileTypeToSaveFunction.put(ACTION_PROFILE, (snapshot, okapiParams) -> actionProfileService.saveProfile(new ActionProfileUpdateDto()
       .withProfile((ActionProfile) snapshot.getContent())
-      .withAddedRelations(formAddedRelations(snapshot, ACTION_PROFILE)), actionProfileService, ((ActionProfile) snapshot.getContent()).getId()).map(p -> p));
+      .withAddedRelations(formAddedRelations(snapshot, ACTION_PROFILE)), okapiParams).map(p -> p));
 
-    profileTypeToSaveFunction.put(MATCH_PROFILE, (snapshot, okapiParams) -> saveProfile(okapiParams, new MatchProfileUpdateDto()
-      .withProfile((MatchProfile) snapshot.getContent()), matchProfileService, ((MatchProfile) snapshot.getContent()).getId()).map(p -> p));
+    profileTypeToSaveFunction.put(MATCH_PROFILE, (snapshot, okapiParams) -> matchProfileService.saveProfile(new MatchProfileUpdateDto()
+      .withProfile((MatchProfile) snapshot.getContent()), okapiParams).map(p -> p));
 
-    profileTypeToSaveFunction.put(JOB_PROFILE, (snapshot, okapiParams) -> saveProfile(okapiParams, new JobProfileUpdateDto()
+    profileTypeToSaveFunction.put(JOB_PROFILE, (snapshot, okapiParams) -> jobProfileService.saveProfile(new JobProfileUpdateDto()
       .withProfile((JobProfile) snapshot.getContent())
-      .withAddedRelations(formAddedRelations(snapshot, JOB_PROFILE)), jobProfileService, ((JobProfile) snapshot.getContent()).getId()).map(p -> p));
+      .withAddedRelations(formAddedRelations(snapshot, JOB_PROFILE)), okapiParams).map(p -> p));
   }
 
   @Override

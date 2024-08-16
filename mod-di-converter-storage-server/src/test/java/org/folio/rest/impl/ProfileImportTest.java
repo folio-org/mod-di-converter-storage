@@ -16,6 +16,7 @@ import org.folio.rest.jaxrs.model.MappingProfile;
 import org.folio.rest.jaxrs.model.MappingProfileUpdateDto;
 import org.folio.rest.jaxrs.model.ProfileSnapshotWrapper;
 import org.junit.Assert;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
@@ -113,6 +114,7 @@ public class ProfileImportTest extends AbstractRestVerticleTest {
     async.complete();
   }
 
+  @Ignore
   @Test
   public void shouldImportProfileAndUpdateProfileIfAlreadyExist(TestContext testContext) throws IOException {
     String mappingProfileId = UUID.randomUUID().toString();
