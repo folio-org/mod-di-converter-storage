@@ -6,24 +6,15 @@ import io.vertx.ext.unit.TestContext;
 import org.folio.dao.snapshot.ProfileSnapshotDao;
 import org.folio.dao.snapshot.ProfileSnapshotDaoImpl;
 import org.folio.rest.jaxrs.model.ActionProfile;
-import org.folio.rest.jaxrs.model.ActionProfileCollection;
-import org.folio.rest.jaxrs.model.ActionProfileUpdateDto;
 import org.folio.rest.jaxrs.model.JobProfile;
-import org.folio.rest.jaxrs.model.JobProfileCollection;
-import org.folio.rest.jaxrs.model.JobProfileUpdateDto;
 import org.folio.rest.jaxrs.model.MappingProfile;
-import org.folio.rest.jaxrs.model.MappingProfileCollection;
-import org.folio.rest.jaxrs.model.MappingProfileUpdateDto;
 import org.folio.rest.jaxrs.model.MatchProfile;
-import org.folio.rest.jaxrs.model.MatchProfileCollection;
-import org.folio.rest.jaxrs.model.MatchProfileUpdateDto;
 import org.folio.rest.jaxrs.model.ProfileAssociation;
 import org.folio.rest.jaxrs.model.ProfileSnapshotWrapper;
 import org.folio.rest.jaxrs.model.ProfileType;
 import org.folio.rest.jaxrs.model.ReactToType;
 import org.folio.rest.persist.Criteria.Criterion;
 import org.folio.rest.persist.PostgresClient;
-import org.folio.services.ProfileService;
 import org.folio.services.snapshot.ProfileSnapshotService;
 import org.folio.services.snapshot.ProfileSnapshotServiceImpl;
 import org.folio.unit.AbstractUnitTest;
@@ -52,14 +43,6 @@ public class ProfileSnapshotServiceTest extends AbstractUnitTest {
   private ProfileSnapshotDao dao;
   @Autowired
   private ProfileSnapshotService service;
-  @Autowired
-  private ProfileService<JobProfile, JobProfileCollection, JobProfileUpdateDto> jobProfileService;
-  @Autowired
-  private ProfileService<MatchProfile, MatchProfileCollection, MatchProfileUpdateDto> matchProfileService;
-  @Autowired
-  private ProfileService<ActionProfile, ActionProfileCollection, ActionProfileUpdateDto> actionProfileService;
-  @Autowired
-  private ProfileService<MappingProfile, MappingProfileCollection, MappingProfileUpdateDto> mappingProfileService;
 
   private JobProfile jobProfile = new JobProfile().withId(UUID.randomUUID().toString());
   private ProfileAssociation jobProfileSnapshotAssociation = new ProfileAssociation();
@@ -187,7 +170,7 @@ public class ProfileSnapshotServiceTest extends AbstractUnitTest {
     Async async = context.async();
     // given
     ProfileSnapshotDao mockDao = Mockito.mock(ProfileSnapshotDaoImpl.class);
-    ProfileSnapshotService profileSnapshotService = new ProfileSnapshotServiceImpl(dao, jobProfileService, matchProfileService, actionProfileService, mappingProfileService);
+    ProfileSnapshotService profileSnapshotService = new ProfileSnapshotServiceImpl(dao);
 
     String jobProfileId = UUID.randomUUID().toString();
     Mockito.when(mockDao.getSnapshotAssociations(jobProfileId, JOB_PROFILE, jobProfileId, TENANT_ID)).thenReturn(Future.succeededFuture(new ArrayList<>()));
@@ -205,7 +188,7 @@ public class ProfileSnapshotServiceTest extends AbstractUnitTest {
     Async async = testContext.async();
     // given
     ProfileSnapshotDao mockDao = Mockito.mock(ProfileSnapshotDaoImpl.class);
-    ProfileSnapshotService profileSnapshotService = new ProfileSnapshotServiceImpl(mockDao, jobProfileService, matchProfileService, actionProfileService, mappingProfileService);
+    ProfileSnapshotService profileSnapshotService = new ProfileSnapshotServiceImpl(mockDao);
 
     Mockito.when(mockDao.getSnapshotAssociations(jobProfile.getId(), JOB_PROFILE, jobProfile.getId(), TENANT_ID)).thenReturn(Future.succeededFuture(associations));
     Mockito.when(mockDao.save(ArgumentMatchers.any(), ArgumentMatchers.anyString())).thenReturn(Future.succeededFuture(jobProfile.getId()));
@@ -242,7 +225,7 @@ public class ProfileSnapshotServiceTest extends AbstractUnitTest {
     Async async = testContext.async();
     // given
     ProfileSnapshotDao mockDao = Mockito.mock(ProfileSnapshotDaoImpl.class);
-    ProfileSnapshotService profileSnapshotService = new ProfileSnapshotServiceImpl(mockDao, jobProfileService, matchProfileService, actionProfileService, mappingProfileService);
+    ProfileSnapshotService profileSnapshotService = new ProfileSnapshotServiceImpl(mockDao);
 
     Mockito.when(mockDao.getSnapshotAssociations(jobProfile.getId(), JOB_PROFILE, jobProfile.getId(), TENANT_ID)).thenReturn(Future.succeededFuture(getAssociationsWithDuplicates()));
 
@@ -309,7 +292,7 @@ public class ProfileSnapshotServiceTest extends AbstractUnitTest {
     Async async = testContext.async();
     // given
     ProfileSnapshotDao mockDao = Mockito.mock(ProfileSnapshotDaoImpl.class);
-    ProfileSnapshotService profileSnapshotService = new ProfileSnapshotServiceImpl(mockDao, jobProfileService, matchProfileService, actionProfileService, mappingProfileService);
+    ProfileSnapshotService profileSnapshotService = new ProfileSnapshotServiceImpl(mockDao);
 
     Mockito.when(mockDao.getSnapshotAssociations(jobProfile.getId(), JOB_PROFILE, jobProfile.getId(), TENANT_ID)).thenReturn(Future.succeededFuture(associations));
 
@@ -345,7 +328,7 @@ public class ProfileSnapshotServiceTest extends AbstractUnitTest {
     Async async = testContext.async();
     // given
     ProfileSnapshotDao mockDao = Mockito.mock(ProfileSnapshotDaoImpl.class);
-    ProfileSnapshotService profileSnapshotService = new ProfileSnapshotServiceImpl(mockDao, jobProfileService, matchProfileService, actionProfileService, mappingProfileService);
+    ProfileSnapshotService profileSnapshotService = new ProfileSnapshotServiceImpl(mockDao);
 
     Mockito.when(mockDao.getSnapshotAssociations(jobProfile.getId(), JOB_PROFILE, jobProfile.getId(), TENANT_ID)).thenReturn(Future.succeededFuture(associations));
 

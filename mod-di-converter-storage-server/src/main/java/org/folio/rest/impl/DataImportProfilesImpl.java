@@ -29,6 +29,7 @@ import org.folio.rest.jaxrs.resource.DataImportProfiles;
 import org.folio.rest.tools.utils.TenantTool;
 import org.folio.services.ProfileService;
 import org.folio.services.association.ProfileAssociationService;
+import org.folio.services.importprofile.ProfileImportService;
 import org.folio.services.snapshot.ProfileSnapshotService;
 import org.folio.spring.SpringContextUtil;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -59,6 +60,8 @@ public class DataImportProfilesImpl implements DataImportProfiles {
   private ProfileAssociationService profileAssociationService;
   @Autowired
   private ProfileSnapshotService profileSnapshotService;
+  @Autowired
+  private ProfileImportService profileImportService;
 
   private String tenantId;
 
@@ -648,7 +651,7 @@ public class DataImportProfilesImpl implements DataImportProfiles {
   public void postDataImportProfilesProfileSnapshots(ProfileSnapshotWrapper profileSnapshot, Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     vertxContext.runOnContext(v -> {
       try {
-        profileSnapshotService.importSnapshot(profileSnapshot, tenantId, new OkapiConnectionParams(okapiHeaders))
+        profileImportService.importProfile(profileSnapshot, tenantId, new OkapiConnectionParams(okapiHeaders))
           .map(snapshot -> (Response) PostDataImportProfilesProfileSnapshotsResponse.respond201WithApplicationJson(snapshot))
           .otherwise(ExceptionHelper::mapExceptionToResponse)
           .onComplete(asyncResultHandler);
