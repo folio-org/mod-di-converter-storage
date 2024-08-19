@@ -39,6 +39,7 @@ import static org.folio.rest.jaxrs.model.ProfileType.ACTION_PROFILE;
 
 @Component
 public class MappingProfileServiceImpl extends AbstractProfileService<MappingProfile, MappingProfileCollection, MappingProfileUpdateDto> {
+
   private static final Logger LOGGER = LogManager.getLogger();
   private static final String INVALID_RECORD_TYPE_LINKED_ACTION_PROFILE_TO_MAPPING_PROFILE = "Action profile '%s' can not be linked to this Mapping profile. FolioRecord and ExistingRecordType types are different";
   private static final String INVALID_REPEATABLE_FIELD_ACTION_FOR_EMPTY_SUBFIELDS_MESSAGE = "Invalid repeatableFieldAction for empty subfields: %s";
@@ -81,6 +82,7 @@ public class MappingProfileServiceImpl extends AbstractProfileService<MappingPro
 
   @Override
   Future<MappingProfile> setUserInfoForProfile(MappingProfile profile, OkapiConnectionParams params) {
+    profile.setMetadata(getMetadata(params.getHeaders()));
     return lookupUser(profile.getMetadata().getUpdatedByUserId(), params)
       .compose(userInfo -> Future.succeededFuture(profile.withUserInfo(userInfo)));
   }

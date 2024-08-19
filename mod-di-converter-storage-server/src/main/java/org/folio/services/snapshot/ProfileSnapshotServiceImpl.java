@@ -22,6 +22,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import jakarta.validation.constraints.NotNull;
+
 import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
@@ -37,7 +38,6 @@ import static org.folio.rest.jaxrs.model.ProfileType.JOB_PROFILE;
  */
 @Service
 public class ProfileSnapshotServiceImpl implements ProfileSnapshotService {
-
   private static final Logger LOGGER = LogManager.getLogger();
   private final ProfileSnapshotDao profileSnapshotDao;
   private final Cache<String, ProfileSnapshotWrapper> profileSnapshotWrapperCache;
@@ -65,8 +65,7 @@ public class ProfileSnapshotServiceImpl implements ProfileSnapshotService {
     ProfileSnapshotWrapper profileSnapshotWrapper = profileSnapshotWrapperCache.getIfPresent(cacheKey);
     if (profileSnapshotWrapper == null) {
       return profileSnapshotDao.getById(id, tenantId)
-        .map(optionalWrapper ->
-          optionalWrapper.map(this::convertProfileSnapshotWrapperContent))
+        .map(optionalWrapper -> optionalWrapper.map(ProfileSnapshotServiceImpl::convertProfileSnapshotWrapperContent))
         .onSuccess(wrapper -> {
           if (wrapper.isEmpty()) {
             return;
@@ -189,7 +188,7 @@ public class ProfileSnapshotServiceImpl implements ProfileSnapshotService {
    * @param wrapper the given ProfileSnapshotWrapper
    * @return ProfileSnapshotWrapper with converted 'content' field
    */
-  private ProfileSnapshotWrapper convertProfileSnapshotWrapperContent(@NotNull ProfileSnapshotWrapper wrapper) {
+  public static ProfileSnapshotWrapper convertProfileSnapshotWrapperContent(@NotNull ProfileSnapshotWrapper wrapper) {
     wrapper.setContent(convertContentByType(wrapper.getContent(), wrapper.getContentType()));
     for (ProfileSnapshotWrapper child : wrapper.getChildSnapshotWrappers()) {
       convertProfileSnapshotWrapperContent(child);
@@ -205,7 +204,7 @@ public class ProfileSnapshotServiceImpl implements ProfileSnapshotService {
    * @param <T>         concrete class of the Profile
    * @return concrete class of the Profile
    */
-  private <T> T convertContentByType(Object content, ProfileType contentType) {
+  private static  <T> T convertContentByType(Object content, ProfileType contentType) {
     ObjectMapper mapper = new ObjectMapper();
       return switch (contentType) {
           case JOB_PROFILE -> (T) mapper.convertValue(content, JobProfile.class);

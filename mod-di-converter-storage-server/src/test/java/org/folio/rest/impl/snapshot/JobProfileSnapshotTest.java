@@ -48,7 +48,6 @@ import static org.folio.rest.jaxrs.model.ProfileType.MATCH_PROFILE;
 
 @RunWith(VertxUnitRunner.class)
 public class JobProfileSnapshotTest extends AbstractRestVerticleTest {
-
   private static final String JOB_PROFILE_SNAPSHOT_PATH = "/data-import-profiles/jobProfileSnapshots";
   public static final String PROFILE_SNAPSHOT_PATH = "/data-import-profiles/profileSnapshots";
   private static final String JOB_PROFILES_PATH = "/data-import-profiles/jobProfiles";

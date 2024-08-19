@@ -1,0 +1,105 @@
+{
+  "id" : "b81ce4dd-6e01-4e21-ada5-8103988dde55",
+  "profileId" : "#(jobProfileId)",
+  "profileWrapperId" : "c392e4e5-1b8f-460f-98db-0b939ecf7aae",
+  "contentType" : "JOB_PROFILE",
+  "content" : {
+    "id" : "#(jobProfileId)",
+    "name" : "Test modify marc bib #(uuid)",
+    "description" : "",
+    "dataType" : "MARC",
+    "userInfo" : {
+      "firstName" : "DIKU",
+      "lastName" : "ADMINISTRATOR",
+      "userName" : "diku_admin"
+    },
+    "parentProfiles" : [ ],
+    "childProfiles" : [ ],
+    "hidden" : false,
+    "metadata" : {
+      "createdDate" : "2024-08-13T20:05:57.550+00:00",
+      "createdByUserId" : "455eb13e-679b-599d-9a41-4a7712432bc3",
+      "updatedDate" : "2024-08-13T20:05:57.550+00:00",
+      "updatedByUserId" : "455eb13e-679b-599d-9a41-4a7712432bc3"
+    }
+  },
+  "order" : 0,
+  "childSnapshotWrappers" : [ {
+    "id" : "f36b0cb0-debf-44f5-a3c7-5083c1968052",
+    "profileId" : "#(actionProfileId)",
+    "profileWrapperId" : "bda62c5d-d5f9-4299-8dd9-4c3cc40eb62a",
+    "contentType" : "ACTION_PROFILE",
+    "content" : {
+      "id" : "#(actionProfileId)",
+      "name" : "Test modify marc bib #(uuid)",
+      "description" : "",
+      "action" : "MODIFY",
+      "folioRecord" : "MARC_BIBLIOGRAPHIC",
+      "userInfo" : {
+        "firstName" : "DIKU",
+        "lastName" : "ADMINISTRATOR",
+        "userName" : "diku_admin"
+      },
+      "parentProfiles" : [ ],
+      "childProfiles" : [ ],
+      "hidden" : false,
+      "remove9Subfields" : true,
+      "metadata" : {
+        "createdDate" : "2024-08-13T20:05:09.178+00:00",
+        "createdByUserId" : "455eb13e-679b-599d-9a41-4a7712432bc3",
+        "updatedDate" : "2024-08-13T20:05:09.178+00:00",
+        "updatedByUserId" : "455eb13e-679b-599d-9a41-4a7712432bc3"
+      }
+    },
+    "order" : 0,
+    "childSnapshotWrappers" : [ {
+      "id" : "0cbf7416-c3eb-4259-9ea2-63b98cf2fe06",
+      "profileId" : "#(mappingProfileId)",
+      "profileWrapperId" : "09c2f0ed-cc9a-4330-a903-e2559545c589",
+      "contentType" : "MAPPING_PROFILE",
+      "content" : {
+        "id" : "#(mappingProfileId)",
+        "name" : "Test modify marc bib #(uuid)",
+        "description" : "",
+        "incomingRecordType" : "MARC_BIBLIOGRAPHIC",
+        "existingRecordType" : "MARC_BIBLIOGRAPHIC",
+        "userInfo" : {
+          "firstName" : "DIKU",
+          "lastName" : "ADMINISTRATOR",
+          "userName" : "diku_admin"
+        },
+        "marcFieldProtectionSettings" : [ ],
+        "parentProfiles" : [ ],
+        "childProfiles" : [ ],
+        "mappingDetails" : {
+          "name" : "marcBib",
+          "recordType" : "MARC_BIBLIOGRAPHIC",
+          "mappingFields" : [ ],
+          "marcMappingDetails" : [ {
+            "order" : 0,
+            "action" : "ADD",
+            "field" : {
+              "field" : "777",
+              "subfields" : [ {
+                "subfield" : "a",
+                "data" : {
+                  "text" : "TEST"
+                }
+              } ]
+            }
+          } ],
+          "marcMappingOption" : "MODIFY"
+        },
+        "hidden" : false,
+        "metadata" : {
+          "createdDate" : "2024-08-14T10:05:51.050+00:00",
+          "createdByUserId" : "06a280e7-f7ef-5bc0-86a2-87aac14581b5",
+          "updatedDate" : "2024-08-14T10:05:51.050+00:00",
+          "updatedByUserId" : "06a280e7-f7ef-5bc0-86a2-87aac14581b5"
+        }
+      },
+      "order" : 0,
+      "childSnapshotWrappers" : [ ]
+    } ]
+  } ]
+}
