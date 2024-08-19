@@ -192,7 +192,7 @@ public class ProfileImportTest extends AbstractRestVerticleTest {
   }
 
   @Test
-  public void shouldNotImportProfileSnapshotOfNotJobProfile(TestContext testContext) {
+  public void shouldNotImportProfileSnapshotIfNotJobProfileType(TestContext testContext) {
     ProfileSnapshotWrapper profileSnapshotWrapper = new ProfileSnapshotWrapper().withContentType(ACTION_PROFILE).withContent(new ActionProfile());
     Async async = testContext.async();
     RestAssured.given()
