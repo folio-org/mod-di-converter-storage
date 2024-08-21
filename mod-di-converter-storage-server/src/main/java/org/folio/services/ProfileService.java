@@ -3,7 +3,9 @@ package org.folio.services;
 import io.vertx.core.Future;
 import org.folio.rest.impl.util.OkapiConnectionParams;
 import org.folio.rest.jaxrs.model.EntityTypeCollection;
+import org.folio.rest.jaxrs.model.ProfileAssociation;
 
+import java.util.List;
 import java.util.Optional;
 
 /**
@@ -96,6 +98,14 @@ public interface ProfileService<T, S, D> {
    * @return - profile name
    */
   String getProfileName(T profile);
+
+  /**
+   * Set deleted relations to specified profile update dto
+   *
+   * @param profileUpdateDto - profile update dto entity
+   * @return - profile update dto
+   */
+  D withDeletedRelations(D profileUpdateDto, List<ProfileAssociation> profileAssociations);
 
   /**
    * Checks is profile contains child profiles

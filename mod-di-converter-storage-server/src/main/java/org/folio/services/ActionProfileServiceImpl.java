@@ -86,6 +86,11 @@ public class ActionProfileServiceImpl extends AbstractProfileService<ActionProfi
   }
 
   @Override
+  public ActionProfileUpdateDto withDeletedRelations(ActionProfileUpdateDto profileUpdateDto, List<ProfileAssociation> profileAssociations) {
+    return profileUpdateDto.withDeletedRelations(profileAssociations);
+  }
+
+  @Override
   protected String getProfileId(ActionProfile profile) {
     return profile.getId();
   }

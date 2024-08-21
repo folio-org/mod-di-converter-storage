@@ -58,19 +58,31 @@ public class ProfileImportServiceImpl implements ProfileImportService {
     profileSaveHandlers = new EnumMap<>(ProfileType.class);
 
     // Initialization of functions that create profiles depending on profile type
-    profileSaveHandlers.put(MAPPING_PROFILE, (snapshot, okapiParams) -> mappingProfileService.saveProfile(new MappingProfileUpdateDto()
-      .withProfile((MappingProfile) snapshot.getContent()), okapiParams).map(p -> p));
+    profileSaveHandlers.put(MAPPING_PROFILE, (snapshot, okapiParams) -> {
+      MappingProfile mappingProfile = ((MappingProfile) snapshot.getContent());
+      return saveProfile(okapiParams, new MappingProfileUpdateDto()
+          .withProfile(mappingProfile), mappingProfileService, mappingProfile.getId(), MAPPING_PROFILE).map(p -> p);
+    });
 
-    profileSaveHandlers.put(ACTION_PROFILE, (snapshot, okapiParams) -> actionProfileService.saveProfile(new ActionProfileUpdateDto()
-      .withProfile((ActionProfile) snapshot.getContent())
-      .withAddedRelations(formAddedRelations(snapshot, ACTION_PROFILE)), okapiParams).map(p -> p));
+    profileSaveHandlers.put(ACTION_PROFILE, (snapshot, okapiParams) -> {
+      ActionProfile actionProfile = ((ActionProfile) snapshot.getContent());
+      return saveProfile(okapiParams, new ActionProfileUpdateDto()
+          .withProfile(actionProfile)
+          .withAddedRelations(formAddedRelations(snapshot, ACTION_PROFILE)), actionProfileService, actionProfile.getId(), ACTION_PROFILE).map(p -> p);
+    });
 
-    profileSaveHandlers.put(MATCH_PROFILE, (snapshot, okapiParams) -> matchProfileService.saveProfile(new MatchProfileUpdateDto()
-      .withProfile((MatchProfile) snapshot.getContent()), okapiParams).map(p -> p));
+    profileSaveHandlers.put(MATCH_PROFILE, (snapshot, okapiParams) -> {
+      MatchProfile matchProfile = ((MatchProfile) snapshot.getContent());
+      return saveProfile(okapiParams, new MatchProfileUpdateDto()
+        .withProfile(matchProfile), matchProfileService, matchProfile.getId(), MATCH_PROFILE).map(p -> p);
+    });
 
-    profileSaveHandlers.put(JOB_PROFILE, (snapshot, okapiParams) -> jobProfileService.saveProfile(new JobProfileUpdateDto()
-      .withProfile((JobProfile) snapshot.getContent())
-      .withAddedRelations(formAddedRelations(snapshot, JOB_PROFILE)), okapiParams).map(p -> p));
+    profileSaveHandlers.put(JOB_PROFILE, (snapshot, okapiParams) -> {
+      JobProfile jobProfile = ((JobProfile) snapshot.getContent());
+      return saveProfile(okapiParams, new JobProfileUpdateDto()
+        .withProfile(jobProfile)
+        .withAddedRelations(formAddedRelations(snapshot, JOB_PROFILE)), jobProfileService, jobProfile.getId(), JOB_PROFILE).map(p -> p);
+    });
   }
 
   @Override
@@ -163,14 +175,29 @@ public class ProfileImportServiceImpl implements ProfileImportService {
   }
 
   private <T, S, D> Future<T> saveProfile(OkapiConnectionParams okapiParams, D profileUpdateDto,
-                                          ProfileService<T, S, D> profileService, String profileId) {
+                                          ProfileService<T, S, D> profileService, String profileId, ProfileType profileType) {
     return profileService.getProfileById(profileId, false, okapiParams.getTenantId())
       .compose(optionalProfile -> {
         if (optionalProfile.isPresent()) {
           LOGGER.debug("saveProfile:: Overlay profile with id {} during import", profileId);
-          return profileService.updateProfile(profileUpdateDto, okapiParams);
+          return formDeletedRelationsIfNeeded(profileUpdateDto, profileId, profileType, profileService, okapiParams)
+                 .compose(p -> profileService.updateProfile(profileUpdateDto, okapiParams));
         }
         return profileService.saveProfile(profileUpdateDto, okapiParams);
       });
+  }
+
+  private <T, S, D> Future<D> formDeletedRelationsIfNeeded(D profileUpdateDto,String profileId, ProfileType profileType,
+                                                           ProfileService<T, S, D> profileService, OkapiConnectionParams okapiParams) {
+    if (profileType != JOB_PROFILE && profileType != ACTION_PROFILE) {
+      return Future.succeededFuture(profileUpdateDto);
+    }
+    return profileSnapshotService.getSnapshotAssociations(profileId, profileType, null, okapiParams.getTenantId())
+      .map(existingAssociations -> {
+        List<ProfileAssociation> associations = existingAssociations.stream()
+          .filter(profileAssociation -> profileAssociation.getMasterProfileType() != null).toList();
+
+        return profileService.withDeletedRelations(profileUpdateDto, associations);
+    });
   }
 }

@@ -11,20 +11,23 @@ import io.vertx.ext.unit.junit.VertxUnitRunner;
 import org.apache.http.HttpStatus;
 import org.folio.TestUtil;
 import org.folio.rest.jaxrs.model.ActionProfile;
+import org.folio.rest.jaxrs.model.ActionProfileUpdateDto;
 import org.folio.rest.jaxrs.model.EntityType;
 import org.folio.rest.jaxrs.model.MappingProfile;
 import org.folio.rest.jaxrs.model.MappingProfileUpdateDto;
+import org.folio.rest.jaxrs.model.ProfileAssociation;
 import org.folio.rest.jaxrs.model.ProfileSnapshotWrapper;
 import org.junit.Assert;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
 import java.io.IOException;
+import java.util.List;
 import java.util.UUID;
 
 import static org.folio.rest.jaxrs.model.ProfileType.ACTION_PROFILE;
 import static org.folio.rest.jaxrs.model.ProfileType.JOB_PROFILE;
+import static org.folio.rest.jaxrs.model.ProfileType.MAPPING_PROFILE;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.startsWith;
 
@@ -114,7 +117,6 @@ public class ProfileImportTest extends AbstractRestVerticleTest {
     async.complete();
   }
 
-  @Ignore
   @Test
   public void shouldImportProfileAndUpdateProfileIfAlreadyExist(TestContext testContext) throws IOException {
     String mappingProfileId = UUID.randomUUID().toString();
@@ -123,12 +125,25 @@ public class ProfileImportTest extends AbstractRestVerticleTest {
     String actionProfileId = UUID.randomUUID().toString();
 
     MappingProfileUpdateDto existingMappingProfile = new MappingProfileUpdateDto()
-      .withProfile(new MappingProfile().withId(mappingProfileId)
+      .withProfile(new MappingProfile().withId(UUID.randomUUID().toString())
         .withName("testMappingProfile2").withDescription("test-description")
         .withIncomingRecordType(EntityType.MARC_BIBLIOGRAPHIC)
-        .withExistingRecordType(EntityType.MARC_BIBLIOGRAPHIC));
+        .withExistingRecordType(EntityType.INSTANCE));
 
     existingMappingProfile = postProfile(testContext, existingMappingProfile, MAPPING_PROFILES_PATH).body().as(MappingProfileUpdateDto.class);
+
+    ActionProfileUpdateDto existingActionProfile = new ActionProfileUpdateDto()
+      .withProfile(new ActionProfile().withId(actionProfileId)
+        .withName("testActionProfile2").withDescription("test-description")
+        .withAction(ActionProfile.Action.CREATE)
+        .withFolioRecord(ActionProfile.FolioRecord.INSTANCE))
+      .withAddedRelations(List.of(new ProfileAssociation()
+        .withMasterProfileId(actionProfileId)
+        .withMasterProfileType(ACTION_PROFILE)
+        .withDetailProfileId(existingMappingProfile.getId())
+        .withDetailProfileType(MAPPING_PROFILE)));
+
+    existingActionProfile = postProfile(testContext, existingActionProfile, ACTION_PROFILES_PATH).body().as(ActionProfileUpdateDto.class);
 
     JsonObject importWrapper = constructProfileWrapper(PROFILE_SNAPSHOT_FILE_PATH + "profileSnapshot.json",
       jobProfileId, matchProfileId, actionProfileId, mappingProfileId);
@@ -157,15 +172,22 @@ public class ProfileImportTest extends AbstractRestVerticleTest {
 
     Assert.assertEquals(importWrapper, resultSnapshotWrapper);
 
-    MappingProfile overlayMappingProfile = RestAssured.given()
+    ActionProfile overlayActionProfile = RestAssured.given()
+      .spec(spec)
+      .when()
+      .get(ACTION_PROFILES_PATH + "/" + actionProfileId)
+      .then()
+      .statusCode(HttpStatus.SC_OK)
+      .extract().body().as(ActionProfile.class);
+
+    Assert.assertNotEquals(overlayActionProfile.getMetadata().getUpdatedDate(), existingActionProfile.getProfile().getMetadata().getUpdatedDate());
+
+    RestAssured.given()
       .spec(spec)
       .when()
       .get(MAPPING_PROFILES_PATH + "/" + mappingProfileId)
       .then()
-      .statusCode(HttpStatus.SC_OK)
-      .extract().body().as(MappingProfile.class);
-
-    Assert.assertNotEquals(overlayMappingProfile.getMetadata().getUpdatedDate(), existingMappingProfile.getProfile().getMetadata().getUpdatedDate());
+      .statusCode(HttpStatus.SC_OK);
 
     RestAssured.given()
       .spec(spec)

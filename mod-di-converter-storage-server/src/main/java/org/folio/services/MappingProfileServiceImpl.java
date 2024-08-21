@@ -93,6 +93,11 @@ public class MappingProfileServiceImpl extends AbstractProfileService<MappingPro
   }
 
   @Override
+  public MappingProfileUpdateDto withDeletedRelations(MappingProfileUpdateDto profileUpdateDto, List<ProfileAssociation> profileAssociations) {
+    return profileUpdateDto.withDeletedRelations(profileAssociations);
+  }
+
+  @Override
   protected String getProfileId(MappingProfile profile) {
     return profile.getId();
   }

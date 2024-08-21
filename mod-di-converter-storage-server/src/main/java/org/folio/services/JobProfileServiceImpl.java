@@ -90,6 +90,11 @@ public class JobProfileServiceImpl extends AbstractProfileService<JobProfile, Jo
   }
 
   @Override
+  public JobProfileUpdateDto withDeletedRelations(JobProfileUpdateDto profileUpdateDto, List<ProfileAssociation> profileAssociations) {
+    return profileUpdateDto.withDeletedRelations(profileAssociations);
+  }
+
+  @Override
   protected String getProfileId(JobProfile profile) {
     return profile.getId();
   }
