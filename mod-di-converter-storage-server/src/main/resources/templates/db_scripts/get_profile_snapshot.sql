@@ -19,7 +19,7 @@ RETURNS TABLE(snapshot json)
                 0 AS detail_order,
                 json_agg(profile.jsonb) detail,
                 null AS react_to
-              FROM %s AS profile LEFT JOIN profile_wrappers pw ON pw.%s_id = profile.id
+              FROM %s AS profile LEFT JOIN profile_wrappers pw ON pw.%s_id = profile.id AND ''%s'' != ''MATCH_PROFILE''
               WHERE profile.id = ''%s''
               GROUP BY profile.id, pw.id
                 UNION ALL
@@ -38,6 +38,6 @@ RETURNS TABLE(snapshot json)
                 AND CASE WHEN associations_view.master_type = ''MATCH_PROFILE'' AND ''%s'' != ''null'' THEN associations_view.job_profile_id = NULLIF(''%s'',''null'')::uuid
                          ELSE associations_view.job_profile_id IS NULL END)
           SELECT row_to_json(row) FROM recursive_snapshot row ORDER BY row.detail_order ASC',
-          profile_type, profile_table, profile_type, profileId, jobProfileId, jobProfileId);
+          profile_type, profile_table, profile_type, profile_type, profileId, jobProfileId, jobProfileId);
     END $$
 language plpgsql;
