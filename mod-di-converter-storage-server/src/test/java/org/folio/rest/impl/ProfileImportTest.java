@@ -13,6 +13,8 @@ import org.folio.TestUtil;
 import org.folio.rest.jaxrs.model.ActionProfile;
 import org.folio.rest.jaxrs.model.ActionProfileUpdateDto;
 import org.folio.rest.jaxrs.model.EntityType;
+import org.folio.rest.jaxrs.model.JobProfile;
+import org.folio.rest.jaxrs.model.JobProfileUpdateDto;
 import org.folio.rest.jaxrs.model.MappingProfile;
 import org.folio.rest.jaxrs.model.MappingProfileUpdateDto;
 import org.folio.rest.jaxrs.model.ProfileAssociation;
@@ -118,7 +120,7 @@ public class ProfileImportTest extends AbstractRestVerticleTest {
   }
 
   @Test
-  public void shouldImportProfileAndUpdateProfileIfAlreadyExist(TestContext testContext) throws IOException {
+  public void shouldImportProfileAndUpdateActionProfileIfAlreadyExist(TestContext testContext) throws IOException {
     String mappingProfileId = UUID.randomUUID().toString();
     String jobProfileId = UUID.randomUUID().toString();
     String matchProfileId = UUID.randomUUID().toString();
@@ -207,6 +209,113 @@ public class ProfileImportTest extends AbstractRestVerticleTest {
       .spec(spec)
       .when()
       .get(JOB_PROFILES_PATH + "/" + jobProfileId)
+      .then()
+      .statusCode(HttpStatus.SC_OK);
+
+    async.complete();
+  }
+
+  @Test
+  public void shouldImportProfileAndUpdateJobProfileIfAlreadyExist(TestContext testContext) throws IOException {
+    String mappingProfileId = UUID.randomUUID().toString();
+    String jobProfileId = UUID.randomUUID().toString();
+    String matchProfileId = UUID.randomUUID().toString();
+    String actionProfileId = UUID.randomUUID().toString();
+
+    MappingProfileUpdateDto existingMappingProfile = new MappingProfileUpdateDto()
+      .withProfile(new MappingProfile().withId(mappingProfileId)
+        .withName("testMappingProfile3").withDescription("test-description")
+        .withIncomingRecordType(EntityType.MARC_BIBLIOGRAPHIC)
+        .withExistingRecordType(EntityType.INSTANCE));
+
+    existingMappingProfile = postProfile(testContext, existingMappingProfile, MAPPING_PROFILES_PATH).body().as(MappingProfileUpdateDto.class);
+
+    ActionProfileUpdateDto existingActionProfile = new ActionProfileUpdateDto()
+      .withProfile(new ActionProfile().withId(actionProfileId)
+        .withName("testActionProfile3").withDescription("test-description")
+        .withAction(ActionProfile.Action.CREATE)
+        .withFolioRecord(ActionProfile.FolioRecord.INSTANCE))
+      .withAddedRelations(List.of(new ProfileAssociation()
+        .withMasterProfileId(actionProfileId)
+        .withMasterProfileType(ACTION_PROFILE)
+        .withDetailProfileId(mappingProfileId)
+        .withDetailProfileType(MAPPING_PROFILE)));
+
+    existingActionProfile = postProfile(testContext, existingActionProfile, ACTION_PROFILES_PATH).body().as(ActionProfileUpdateDto.class);
+
+    JobProfileUpdateDto existingJobProfile = new JobProfileUpdateDto()
+      .withProfile(new JobProfile().withId(jobProfileId)
+        .withName("testJobProfile3").withDescription("test-description")
+        .withDataType(JobProfile.DataType.MARC))
+      .withAddedRelations(List.of(new ProfileAssociation()
+        .withMasterProfileId(jobProfileId)
+        .withMasterProfileType(JOB_PROFILE)
+        .withDetailProfileId(actionProfileId)
+        .withDetailProfileType(ACTION_PROFILE)));
+
+    existingJobProfile = postProfile(testContext, existingJobProfile, JOB_PROFILES_PATH).body().as(JobProfileUpdateDto.class);
+
+    JsonObject importWrapper = constructProfileWrapper(PROFILE_SNAPSHOT_FILE_PATH + "profileSnapshot.json",
+      jobProfileId, matchProfileId, actionProfileId, mappingProfileId);
+
+    Async async = testContext.async();
+    RestAssured.given()
+      .spec(spec)
+      .when()
+      .body(importWrapper.encode())
+      .post(PROFILE_SNAPSHOT_PATH)
+      .then()
+      .statusCode(HttpStatus.SC_CREATED);
+
+    JsonObject resultSnapshotWrapper = new JsonObject(RestAssured.given()
+      .spec(spec)
+      .when()
+      .queryParam(PROFILE_TYPE_PARAM, JOB_PROFILE.value())
+      .queryParam(JOB_PROFILE_ID_PARAM, jobProfileId)
+      .get(PROFILE_SNAPSHOT_PATH + "/" + jobProfileId)
+      .then()
+      .statusCode(HttpStatus.SC_OK)
+      .extract().body().asPrettyString());
+
+    prepareProfileSnapshotToCompare(importWrapper);
+    prepareProfileSnapshotToCompare(resultSnapshotWrapper);
+
+    Assert.assertEquals(importWrapper, resultSnapshotWrapper);
+
+    MappingProfile overlayMappingProfile = RestAssured.given()
+      .spec(spec)
+      .when()
+      .get(MAPPING_PROFILES_PATH + "/" + mappingProfileId)
+      .then()
+      .statusCode(HttpStatus.SC_OK)
+      .extract().body().as(MappingProfile.class);
+
+    Assert.assertNotEquals(overlayMappingProfile.getMetadata().getUpdatedDate(), existingMappingProfile.getProfile().getMetadata().getUpdatedDate());
+
+    ActionProfile overlayActionProfile = RestAssured.given()
+      .spec(spec)
+      .when()
+      .get(ACTION_PROFILES_PATH + "/" + actionProfileId)
+      .then()
+      .statusCode(HttpStatus.SC_OK)
+      .extract().body().as(ActionProfile.class);
+
+    Assert.assertNotEquals(overlayActionProfile.getMetadata().getUpdatedDate(), existingActionProfile.getProfile().getMetadata().getUpdatedDate());
+
+    JobProfile overlayJobProfile = RestAssured.given()
+      .spec(spec)
+      .when()
+      .get(JOB_PROFILES_PATH + "/" + jobProfileId)
+      .then()
+      .statusCode(HttpStatus.SC_OK)
+      .extract().body().as(JobProfile.class);
+
+    Assert.assertNotEquals(overlayJobProfile.getMetadata().getUpdatedDate(), existingJobProfile.getProfile().getMetadata().getUpdatedDate());
+
+    RestAssured.given()
+      .spec(spec)
+      .when()
+      .get(MATCH_PROFILES_PATH + "/" + matchProfileId)
       .then()
       .statusCode(HttpStatus.SC_OK);
 

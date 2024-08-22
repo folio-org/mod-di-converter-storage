@@ -46,6 +46,11 @@ public class MatchProfileServiceImpl extends AbstractProfileService<MatchProfile
   }
 
   @Override
+  public List<ProfileAssociation> getAddedRelations(MatchProfileUpdateDto profileUpdateDto) {
+    return profileUpdateDto.getAddedRelations();
+  }
+
+  @Override
   public MatchProfileUpdateDto withDeletedRelations(MatchProfileUpdateDto profileUpdateDto, List<ProfileAssociation> profileAssociations) {
     return profileUpdateDto.withDeletedRelations(profileAssociations);
   }

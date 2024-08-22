@@ -180,24 +180,33 @@ public class ProfileImportServiceImpl implements ProfileImportService {
       .compose(optionalProfile -> {
         if (optionalProfile.isPresent()) {
           LOGGER.debug("saveProfile:: Overlay profile with id {} during import", profileId);
-          return formDeletedRelationsIfNeeded(profileUpdateDto, profileId, profileType, profileService, okapiParams)
+          return overlayRelationsIfNeeded(profileUpdateDto, profileId, profileType, profileService, okapiParams)
                  .compose(p -> profileService.updateProfile(profileUpdateDto, okapiParams));
         }
         return profileService.saveProfile(profileUpdateDto, okapiParams);
       });
   }
 
-  private <T, S, D> Future<D> formDeletedRelationsIfNeeded(D profileUpdateDto,String profileId, ProfileType profileType,
-                                                           ProfileService<T, S, D> profileService, OkapiConnectionParams okapiParams) {
+  private <T, S, D> Future<D> overlayRelationsIfNeeded(D profileUpdateDto, String profileId, ProfileType profileType,
+                                                       ProfileService<T, S, D> profileService, OkapiConnectionParams okapiParams) {
     if (profileType != JOB_PROFILE && profileType != ACTION_PROFILE) {
       return Future.succeededFuture(profileUpdateDto);
     }
-    return profileSnapshotService.getSnapshotAssociations(profileId, profileType, null, okapiParams.getTenantId())
-      .map(existingAssociations -> {
-        List<ProfileAssociation> associations = existingAssociations.stream()
-          .filter(profileAssociation -> profileAssociation.getMasterProfileType() != null).toList();
+    return profileSnapshotService.getSnapshotAssociations(profileId, profileType, profileType == JOB_PROFILE ? profileId : null, okapiParams.getTenantId())
+      .map(associationsToDelete -> {
+        ProfileAssociation rootAssociation = associationsToDelete.stream().filter(profileAssociation -> profileAssociation.getMasterProfileType() == null)
+          .findFirst().orElseThrow();
 
-        return profileService.withDeletedRelations(profileUpdateDto, associations);
+        associationsToDelete.remove(rootAssociation);
+        if (profileType == JOB_PROFILE) {
+          associationsToDelete = associationsToDelete.stream().filter(association -> association.getDetailProfileType() != MAPPING_PROFILE).toList();
+        }
+
+        profileService.getAddedRelations(profileUpdateDto).stream()
+          .filter(a -> a.getMasterProfileType().equals(profileType))
+          .forEach(a -> a.setMasterWrapperId(rootAssociation.getDetailWrapperId()));
+
+        return profileService.withDeletedRelations(profileUpdateDto, associationsToDelete);
     });
   }
 }

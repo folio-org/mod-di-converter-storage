@@ -100,6 +100,14 @@ public interface ProfileService<T, S, D> {
   String getProfileName(T profile);
 
   /**
+   * Returns added relations to specified profile update dto
+   *
+   * @param profileUpdateDto - profile update dto entity
+   * @return - profile update dto
+   */
+  List<ProfileAssociation> getAddedRelations(D profileUpdateDto);
+
+  /**
    * Set deleted relations to specified profile update dto
    *
    * @param profileUpdateDto - profile update dto entity
