@@ -265,7 +265,7 @@ public class JobProfileSnapshotTest extends AbstractRestVerticleTest {
       .statusCode(HttpStatus.SC_OK)
       .extract().body().as(ProfileSnapshotWrapper.class);
 
-    Assert.assertEquals(0, actionProfileSnapshot.getChildSnapshotWrappers().size());
+    Assert.assertEquals(1, actionProfileSnapshot.getChildSnapshotWrappers().size());
     async.complete();
   }
 
