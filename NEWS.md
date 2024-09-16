@@ -1,3 +1,6 @@
+## 2024-xx-xx v2.2.3
+* [MODDICONV-391](https://issues.folio.org/browse/MODDICONV-391) Create migration script for Order mapping profiles
+
 ## 2024-04-22 v2.2.1
 * [MODDICONV-379](https://folio-org.atlassian.net/browse/MODDICONV-379) Fix profile for ECS Sharing of instances
 

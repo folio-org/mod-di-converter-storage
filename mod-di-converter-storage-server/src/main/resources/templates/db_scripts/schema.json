@@ -424,6 +424,11 @@
       "run": "after",
       "snippetPath": "manipulate_ecs_profile_wrappers.sql",
       "fromModuleVersion": "mod-di-converter-storage-2.2.1"
+    },
+    {
+      "run": "after",
+      "snippetPath": "data-migration/add_donor_organizations_ids_mapping.sql",
+      "fromModuleVersion": "mod-di-converter-storage-2.2.3"
     }
   ]
 }
