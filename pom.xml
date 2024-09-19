@@ -30,7 +30,7 @@
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <sonar.exclusions>**/ModTenantAPI.java</sonar.exclusions>
     <testcontainers.version>1.19.7</testcontainers.version>
-    <spring.version>5.3.32</spring.version>
+    <spring.version>6.1.13</spring.version>
   </properties>
 
   <dependencyManagement>
