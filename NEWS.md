@@ -2,6 +2,7 @@
 * [MODDICONV-312](https://folio-org.atlassian.net/browse/MODDICONV-312) Create general associations table
 * [MODDICONV-373](https://folio-org.atlassian.net/browse/MODDICONV-373) Disallow create/update of a job profile without actions
 * [MODDICONV-391](https://issues.folio.org/browse/MODDICONV-391) Create migration script for Order mapping profiles
+* [MODDICONV-393](https://folio-org.atlassian.net/browse/MODDICONV-393) Fix inconsistencies in permission namings
 
 ## 2024-03-20 2.2.0
 * [MODDICORE-398](https://folio-org.atlassian.net/browse/MODDICORE-398) Upgrade mod-di-converter-storage to RMB 35.2.0, Vert.x 4.5.4
