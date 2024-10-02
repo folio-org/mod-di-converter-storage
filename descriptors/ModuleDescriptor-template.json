@@ -5,7 +5,7 @@
   "provides": [
     {
       "id": "data-import-converter-storage",
-      "version": "1.4",
+      "version": "1.5",
       "handlers": [
         {
           "methods": [
@@ -323,7 +323,7 @@
     },
     {
       "id": "converter-storage-forms-configs",
-      "version": "1.1",
+      "version": "1.2",
       "handlers": [
         {
           "methods": [
@@ -374,7 +374,7 @@
     },
     {
       "id": "field-protection-settings",
-      "version": "1.1",
+      "version": "1.2",
       "handlers": [
         {
           "methods": [
