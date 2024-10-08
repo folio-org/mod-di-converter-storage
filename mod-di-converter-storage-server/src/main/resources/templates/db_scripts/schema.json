@@ -469,6 +469,11 @@
       "run": "after",
       "snippetPath": "data-migration/add_donor_organizations_ids_mapping.sql",
       "fromModuleVersion": "mod-di-converter-storage-2.3.0"
+    },
+    {
+      "run": "after",
+      "snippetPath": "data-migration/remove_accepted_values_instance_orders.sql",
+      "fromModuleVersion": "mod-di-converter-storage-2.3.0"
     }
   ]
 }
