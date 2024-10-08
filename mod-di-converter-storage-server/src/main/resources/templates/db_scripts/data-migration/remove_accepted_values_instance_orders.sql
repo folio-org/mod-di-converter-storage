@@ -21,7 +21,7 @@ $$;
 
 -- Remove 'acceptedValues' property from 'INSTANCE', 'HOLDINGS', 'ITEM' and 'ORDER' mapping profile
 UPDATE ${myuniversity}_${mymodule}.mapping_profiles
-SET jsonb = remove_key_recursive(jsonb, 'acceptedValues')
+SET jsonb = jsonb_set(jsonb, '{mappingDetails}', remove_key_recursive(jsonb -> 'mappingDetails', 'acceptedValues'))
 WHERE jsonb -> 'mappingDetails' ->> 'recordType' IN ('INSTANCE', 'HOLDINGS', 'ITEM', 'ORDER');
 
 -- Delete function
