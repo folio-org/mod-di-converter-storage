@@ -31,6 +31,7 @@
     <sonar.exclusions>**/ModTenantAPI.java</sonar.exclusions>
     <testcontainers.version>1.19.7</testcontainers.version>
     <spring.version>6.1.13</spring.version>
+    <folio-module-descriptor-validator.version>1.0.0</folio-module-descriptor-validator.version>
   </properties>
 
   <dependencyManagement>
@@ -68,6 +69,19 @@
     </resources>
 
     <plugins>
+      <plugin>
+        <groupId>org.folio</groupId>
+        <artifactId>folio-module-descriptor-validator</artifactId>
+        <version>${folio-module-descriptor-validator.version}</version>
+        <inherited>false</inherited>
+        <executions>
+          <execution>
+            <goals>
+              <goal>validate</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-compiler-plugin</artifactId>

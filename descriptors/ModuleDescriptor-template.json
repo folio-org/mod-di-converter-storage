@@ -5,7 +5,7 @@
   "provides": [
     {
       "id": "data-import-converter-storage",
-      "version": "1.4",
+      "version": "1.5",
       "handlers": [
         {
           "methods": [
@@ -13,7 +13,7 @@
           ],
           "pathPattern": "/data-import-profiles/jobProfiles",
           "permissionsRequired": [
-            "converter-storage.jobprofile.get"
+            "converter-storage.jobprofile.collection.get"
           ]
         },
         {
@@ -34,7 +34,7 @@
           ],
           "pathPattern": "/data-import-profiles/jobProfiles/{id}",
           "permissionsRequired": [
-            "converter-storage.jobprofile.get"
+            "converter-storage.jobprofile.item.get"
           ]
         },
         {
@@ -64,7 +64,7 @@
           ],
           "pathPattern": "/data-import-profiles/matchProfiles",
           "permissionsRequired": [
-            "converter-storage.matchprofile.get"
+            "converter-storage.matchprofile.collection.get"
           ]
         },
         {
@@ -85,7 +85,7 @@
           ],
           "pathPattern": "/data-import-profiles/matchProfiles/{id}",
           "permissionsRequired": [
-            "converter-storage.matchprofile.get"
+            "converter-storage.matchprofile.item.get"
           ]
         },
         {
@@ -115,7 +115,7 @@
           ],
           "pathPattern": "/data-import-profiles/actionProfiles",
           "permissionsRequired": [
-            "converter-storage.actionprofile.get"
+            "converter-storage.actionprofile.collection.get"
           ]
         },
         {
@@ -136,7 +136,7 @@
           ],
           "pathPattern": "/data-import-profiles/actionProfiles/{id}",
           "permissionsRequired": [
-            "converter-storage.actionprofile.get"
+            "converter-storage.actionprofile.item.get"
           ]
         },
         {
@@ -166,7 +166,7 @@
           ],
           "pathPattern": "/data-import-profiles/mappingProfiles",
           "permissionsRequired": [
-            "converter-storage.mappingprofile.get"
+            "converter-storage.mappingprofile.collection.get"
           ]
         },
         {
@@ -187,7 +187,7 @@
           ],
           "pathPattern": "/data-import-profiles/mappingProfiles/{id}",
           "permissionsRequired": [
-            "converter-storage.mappingprofile.get"
+            "converter-storage.mappingprofile.item.get"
           ]
         },
         {
@@ -217,7 +217,7 @@
           ],
           "pathPattern": "/data-import-profiles/profileAssociations",
           "permissionsRequired": [
-            "converter-storage.profileassociation.get"
+            "converter-storage.profileassociations.collection.get"
           ]
         },
         {
@@ -235,7 +235,7 @@
           ],
           "pathPattern": "/data-import-profiles/profileAssociations/{id}",
           "permissionsRequired": [
-            "converter-storage.profileassociation.get"
+            "converter-storage.profileassociations.item.get"
           ]
         },
         {
@@ -262,7 +262,7 @@
           ],
           "pathPattern": "/data-import-profiles/profileAssociations/{masterId}/details",
           "permissionsRequired": [
-            "converter-storage.profileassociation.get"
+            "converter-storage.profileassociations.details.item.get"
           ]
         },
         {
@@ -271,7 +271,7 @@
           ],
           "pathPattern": "/data-import-profiles/profileAssociations/{detailId}/masters",
           "permissionsRequired": [
-            "converter-storage.profileassociation.get"
+            "converter-storage.profileassociations.masters.item.get"
           ]
         },
         {
@@ -323,7 +323,7 @@
     },
     {
       "id": "converter-storage-forms-configs",
-      "version": "1.1",
+      "version": "1.2",
       "handlers": [
         {
           "methods": [
@@ -331,7 +331,7 @@
           ],
           "pathPattern": "/converter-storage/forms/configs",
           "permissionsRequired": [
-            "converter-storage.forms-configs.get"
+            "converter-storage.forms-configs.item.get"
           ]
         },
         {
@@ -349,7 +349,7 @@
           ],
           "pathPattern": "/converter-storage/forms/configs/{formName}",
           "permissionsRequired": [
-            "converter-storage.forms-configs.get"
+            "converter-storage.forms-configs.collection.get"
           ]
         },
         {
@@ -374,7 +374,7 @@
     },
     {
       "id": "field-protection-settings",
-      "version": "1.1",
+      "version": "1.2",
       "handlers": [
         {
           "methods": [
@@ -382,7 +382,7 @@
           ],
           "pathPattern": "/field-protection-settings/marc",
           "permissionsRequired": [
-            "converter-storage.field-protection-settings.get"
+            "converter-storage.field-protection-settings.collection.get"
           ]
         },
         {
@@ -400,7 +400,7 @@
           ],
           "pathPattern": "/field-protection-settings/marc/{id}",
           "permissionsRequired": [
-            "converter-storage.field-protection-settings.get"
+            "converter-storage.field-protection-settings.item.get"
           ]
         },
         {
@@ -446,9 +446,16 @@
   ],
   "permissionSets": [
     {
-      "permissionName": "converter-storage.jobprofile.get",
-      "displayName": "Data Import Converter Storage - get Job Profile(s)",
-      "description": "Get Job Profile(s)"
+      "permissionName": "converter-storage.jobprofile.item.get",
+      "displayName": "Data Import Converter Storage - get Job Profile",
+      "description": "Get Job Profile",
+      "replaces": ["converter-storage.jobprofile.get"]
+    },
+    {
+      "permissionName": "converter-storage.jobprofile.collection.get",
+      "displayName": "Data Import Converter Storage - get Job Profiles",
+      "description": "Get Job Profiles",
+      "replaces": ["converter-storage.jobprofile.get"]
     },
     {
       "permissionName": "converter-storage.jobprofile.post",
@@ -466,9 +473,16 @@
       "description": "Delete Job Profile"
     },
     {
-      "permissionName": "converter-storage.matchprofile.get",
-      "displayName": "Data Import Converter Storage - get Match Profile(s)",
-      "description": "Get Match Profile(s)"
+      "permissionName": "converter-storage.matchprofile.item.get",
+      "displayName": "Data Import Converter Storage - get Match Profile",
+      "description": "Get Match Profile",
+      "replaces": ["converter-storage.matchprofile.get"]
+    },
+    {
+      "permissionName": "converter-storage.matchprofile.collection.get",
+      "displayName": "Data Import Converter Storage - get Match Profiles",
+      "description": "Get Match Profiles",
+      "replaces": ["converter-storage.matchprofile.get"]
     },
     {
       "permissionName": "converter-storage.matchprofile.post",
@@ -486,9 +500,16 @@
       "description": "Delete Match Profile"
     },
     {
-      "permissionName": "converter-storage.actionprofile.get",
-      "displayName": "Data Import Converter Storage - get Action Profile(s)",
-      "description": "Get Action Profile(s)"
+      "permissionName": "converter-storage.actionprofile.item.get",
+      "displayName": "Data Import Converter Storage - get Action Profile",
+      "description": "Get Action Profile",
+      "replaces": ["converter-storage.actionprofile.get"]
+    },
+    {
+      "permissionName": "converter-storage.actionprofile.collection.get",
+      "displayName": "Data Import Converter Storage - get Action Profiles",
+      "description": "Get Action Profiles",
+      "replaces": ["converter-storage.actionprofile.get"]
     },
     {
       "permissionName": "converter-storage.actionprofile.post",
@@ -506,9 +527,16 @@
       "description": "Delete Action Profile"
     },
     {
-      "permissionName": "converter-storage.mappingprofile.get",
-      "displayName": "Data Import Converter Storage - get Mapping Profile(s)",
-      "description": "Get Mapping Profile(s)"
+      "permissionName": "converter-storage.mappingprofile.item.get",
+      "displayName": "Data Import Converter Storage - get Mapping Profile(",
+      "description": "Get Mapping Profile",
+      "replaces": ["converter-storage.mappingprofile.get"]
+    },
+    {
+      "permissionName": "converter-storage.mappingprofile.collection.get",
+      "displayName": "Data Import Converter Storage - get Mapping Profiles",
+      "description": "Get Mapping Profiles",
+      "replaces": ["converter-storage.mappingprofile.get"]
     },
     {
       "permissionName": "converter-storage.mappingprofile.post",
@@ -536,9 +564,28 @@
       "description": "Post Profile Association"
     },
     {
-      "permissionName": "converter-storage.profileassociation.get",
-      "displayName": "Data Import Converter Storage - get Profile Association(s)",
-      "description": "Get Profile Association(s)"
+      "permissionName": "converter-storage.profileassociations.item.get",
+      "displayName": "Data Import Converter Storage - get Profile Association",
+      "description": "Get Profile Association",
+      "replaces": ["converter-storage.profileassociation.get"]
+    },
+    {
+      "permissionName": "converter-storage.profileassociations.collection.get",
+      "displayName": "Data Import Converter Storage - get Profile Associations",
+      "description": "Get Profile Associations",
+      "replaces": ["converter-storage.profileassociation.get"]
+    },
+    {
+      "permissionName": "converter-storage.profileassociations.details.item.get",
+      "displayName": "Data Import Converter Storage - get Details Profiles by Master Profile id",
+      "description": "Get Details Profile",
+      "replaces": ["converter-storage.profileassociation.get"]
+    },
+    {
+      "permissionName": "converter-storage.profileassociations.masters.item.get",
+      "displayName": "Data Import Converter Storage - get Masters Profiles by Detail Profile id",
+      "description": "Get Masters Profile",
+      "replaces": ["converter-storage.profileassociation.get"]
     },
     {
       "permissionName": "converter-storage.profileassociation.put",
@@ -571,9 +618,16 @@
       "description": "Post Profile Snapshot"
     },
     {
-      "permissionName": "converter-storage.forms-configs.get",
+      "permissionName": "converter-storage.forms-configs.item.get",
       "displayName": "Data Import Converter Storage - get Form Config",
-      "description": "Get Form Config"
+      "description": "Get Form Config",
+      "replaces": ["converter-storage.forms-configs.get"]
+    },
+    {
+      "permissionName": "converter-storage.forms-configs.collection.get",
+      "displayName": "Data Import Converter Storage - get Form Configs",
+      "description": "Get Form Configs",
+      "replaces": ["converter-storage.forms-configs.get"]
     },
     {
       "permissionName": "converter-storage.forms-configs.post",
@@ -591,9 +645,16 @@
       "description": "Delete Form Config"
     },
     {
-      "permissionName": "converter-storage.field-protection-settings.get",
+      "permissionName": "converter-storage.field-protection-settings.item.get",
       "displayName": "Data Import Converter Storage - get field protection settings",
-      "description": "Get Field Protection Settings"
+      "description": "Get Field Protection Settings",
+      "replaces": ["converter-storage.field-protection-settings.get"]
+    },
+    {
+      "permissionName": "converter-storage.field-protection-settings.collection.get",
+      "displayName": "Data Import Converter Storage - get field protection settings collection",
+      "description": "Get Field Protection Settings collection",
+      "replaces": ["converter-storage.field-protection-settings.get"]
     },
     {
       "permissionName": "converter-storage.field-protection-settings.post",
@@ -615,24 +676,31 @@
       "displayName": "Data Import Converter Storage - all permissions",
       "description": "Entire set of permissions needed to manage Profiles",
       "subPermissions": [
-        "converter-storage.jobprofile.get",
+        "converter-storage.jobprofile.item.get",
+        "converter-storage.jobprofile.collection.get",
         "converter-storage.jobprofile.post",
         "converter-storage.jobprofile.put",
         "converter-storage.jobprofile.delete",
-        "converter-storage.matchprofile.get",
+        "converter-storage.matchprofile.item.get",
+        "converter-storage.matchprofile.collection.get",
         "converter-storage.matchprofile.post",
         "converter-storage.matchprofile.put",
         "converter-storage.matchprofile.delete",
-        "converter-storage.actionprofile.get",
+        "converter-storage.actionprofile.item.get",
+        "converter-storage.actionprofile.collection.get",
         "converter-storage.actionprofile.post",
         "converter-storage.actionprofile.put",
         "converter-storage.actionprofile.delete",
-        "converter-storage.mappingprofile.get",
+        "converter-storage.mappingprofile.item.get",
+        "converter-storage.mappingprofile.collection.get",
         "converter-storage.mappingprofile.post",
         "converter-storage.mappingprofile.put",
         "converter-storage.mappingprofile.delete",
         "converter-storage.profileassociation.post",
-        "converter-storage.profileassociation.get",
+        "converter-storage.profileassociations.item.get",
+        "converter-storage.profileassociations.collection.get",
+        "converter-storage.profileassociations.details.item.get",
+        "converter-storage.profileassociations.masters.item.get",
         "converter-storage.profileassociation.put",
         "converter-storage.profileassociation.delete",
         "converter-storage.jobprofilesnapshots.get",
@@ -640,11 +708,13 @@
         "converter-storage.entitytypes.get",
         "converter-storage.profileSnapshots.get",
         "converter-storage.profileSnapshots.post",
-        "converter-storage.forms-configs.get",
+        "converter-storage.forms-configs.item.get",
+        "converter-storage.forms-configs.collection.get",
         "converter-storage.forms-configs.post",
         "converter-storage.forms-configs.put",
         "converter-storage.forms-configs.delete",
-        "converter-storage.field-protection-settings.get",
+        "converter-storage.field-protection-settings.item.get",
+        "converter-storage.field-protection-settings.collection.get",
         "converter-storage.field-protection-settings.post",
         "converter-storage.field-protection-settings.put",
         "converter-storage.field-protection-settings.delete"
