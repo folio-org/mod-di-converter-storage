@@ -6,6 +6,7 @@
 * [MODDICONV-393](https://folio-org.atlassian.net/browse/MODDICONV-393) Fix inconsistencies in permission namings
 * [MODDICONV-396](https://folio-org.atlassian.net/browse/MODDICONV-396) Remove accepted values from Instance, Holdings, Items and Orders mapping profiles
 * [MODDICONV-403](https://folio-org.atlassian.net/browse/MODDICONV-403) mod-di-converter-storage Ramsons 2024 R2 - RMB v35.3.x update
+* [MODDICONV-394](https://folio-org.atlassian.net/browse/MODDICONV-394) Disallow usage of Update MARC Bib next to Update Instance actions
 
 ## 2024-03-20 2.2.0
 * [MODDICORE-398](https://folio-org.atlassian.net/browse/MODDICORE-398) Upgrade mod-di-converter-storage to RMB 35.2.0, Vert.x 4.5.4

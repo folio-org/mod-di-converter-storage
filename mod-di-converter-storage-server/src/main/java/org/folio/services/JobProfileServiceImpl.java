@@ -1,6 +1,7 @@
 package org.folio.services;
 
 import io.vertx.core.Future;
+import java.util.Map;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
@@ -22,6 +23,7 @@ import org.folio.rest.jaxrs.model.OperationType;
 import org.folio.rest.jaxrs.model.ProfileAssociation;
 import org.folio.rest.jaxrs.model.ProfileSnapshotWrapper;
 import org.folio.rest.jaxrs.model.ProfileType;
+import org.folio.rest.jaxrs.model.ReactToType;
 import org.folio.services.snapshot.ProfileSnapshotService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
@@ -50,6 +52,7 @@ public class JobProfileServiceImpl extends AbstractProfileService<JobProfile, Jo
   private static final String MODIFY_ACTION_CANNOT_BE_USED_RIGHT_AFTER_THE_MATCH = "Modify action cannot be used right after a Match";
   private static final String LINKED_MATCH_PROFILES_WERE_NOT_FOUND = "Linked MatchProfiles with ids %s were not found";
   private static final String DEFAULT_CREATE_SRS_MARC_AUTHORITY_JOB_PROFILE_ID = "6eefa4c6-bbf7-4845-ad82-de7fc5abd0e3"; //NOSONAR
+  private static final String UPDATE_ACTIONS_CANNOT_BE_USED_UNDER_SAME_MATCH = "More than two update actions cannot be placed under the same match block";
   private static final List<String> DEFAULT_JOB_PROFILES = Arrays.asList(
     "d0ebb7b0-2f0f-11eb-adc1-0242ac120002", //OCLC_CREATE_INSTANCE_JOB_PROFILE_ID,
     "91f9b8d6-d80e-4727-9783-73fb53e3c786", //OCLC_UPDATE_INSTANCE_JOB_PROFILE_ID,
@@ -238,8 +241,7 @@ public class JobProfileServiceImpl extends AbstractProfileService<JobProfile, Jo
   private List<ProfileAssociation> filterProfileAssociations(List<ProfileAssociation> profileAssociations) {
     return profileAssociations.stream()
       .filter(profileAssociation -> profileAssociation.getDetailProfileType() != ProfileType.MAPPING_PROFILE &&
-        profileAssociation.getDetailProfileType() != ProfileType.JOB_PROFILE)
-      .collect(Collectors.toList());
+        profileAssociation.getDetailProfileType() != ProfileType.JOB_PROFILE).toList();
   }
 
   private List<ProfileAssociation> removeDeletedProfileAssociations(List<ProfileAssociation> profileAssociations,
@@ -306,6 +308,7 @@ public class JobProfileServiceImpl extends AbstractProfileService<JobProfile, Jo
             validateAddedModifyActionProfileAssociation(profileAssociations, association, actionProfile, actionProfiles, errors);
           }
         });
+        validateAddedUpdateActionProfileAssociationUnderSameMatch(actionProfileAssociations, actionProfiles, errors);
         return Future.succeededFuture(new Errors().withErrors(errors).withTotalRecords(errors.size()));
       });
   }
@@ -322,6 +325,25 @@ public class JobProfileServiceImpl extends AbstractProfileService<JobProfile, Jo
     }
   }
 
+  private static void validateAddedUpdateActionProfileAssociationUnderSameMatch(List<ProfileAssociation> actionProfileAssociations,
+                                                                                List<ActionProfile> actionProfiles,
+                                                                                List<Error> errors) {
+    var updateActionProfiles = getUpdateProfileAssociations(actionProfileAssociations, actionProfiles);
+
+    if (!updateActionProfiles.isEmpty()) {
+      Map<ReactToType, Long> counts = updateActionProfiles.stream()
+        .collect(Collectors.groupingBy(ProfileAssociation::getReactTo, Collectors.counting()));
+
+      boolean hasMultipleActionsUnderSameMatch = counts.getOrDefault(ReactToType.MATCH, 0L) >= 2
+        || counts.getOrDefault(ReactToType.NON_MATCH, 0L) >= 2;
+
+      if (hasMultipleActionsUnderSameMatch) {
+        LOGGER.warn("validateMatchProfilesAssociations:: " + UPDATE_ACTIONS_CANNOT_BE_USED_UNDER_SAME_MATCH);
+        errors.add(new Error().withMessage(UPDATE_ACTIONS_CANNOT_BE_USED_UNDER_SAME_MATCH));
+      }
+    }
+  }
+
   private static void validateAddedModifyActionProfileAssociation(List<ProfileAssociation> profileAssociations, ProfileAssociation association, ActionProfile actionProfile,
                                                                   List<ActionProfile> actionProfiles, List<Error> errors) {
     List<ProfileAssociation> notModifyProfileAssociations = getNotModifyProfileAssociations(profileAssociations, actionProfiles);
@@ -335,6 +357,15 @@ public class JobProfileServiceImpl extends AbstractProfileService<JobProfile, Jo
       LOGGER.warn("validateAddedModifyActionProfileAssociation:: Modify profile with id {}, used right after Match profile", actionProfile.getId());
       errors.add(new Error().withMessage(MODIFY_ACTION_CANNOT_BE_USED_RIGHT_AFTER_THE_MATCH));
     }
+  }
+
+  private static List<ProfileAssociation> getUpdateProfileAssociations(List<ProfileAssociation> profileAssociations,
+                                                                  List<ActionProfile> actionProfiles) {
+    List<String> updateActionProfileIds = actionProfiles.stream().filter(a -> a.getAction() == ActionProfile.Action.UPDATE).map(ActionProfile::getId).toList();
+    return profileAssociations.stream()
+      .filter(p -> updateActionProfileIds.contains(p.getDetailProfileId()))
+      .filter(profileAssociation -> profileAssociation.getReactTo() != null)
+      .toList();
   }
 
   private static List<ProfileAssociation> getNotModifyProfileAssociations(List<ProfileAssociation> profileAssociations, List<ActionProfile> actionProfiles) {
@@ -387,14 +418,13 @@ public class JobProfileServiceImpl extends AbstractProfileService<JobProfile, Jo
       });
   }
 
-  private Future<Errors> validateMatchProfilesAssociations(List<ProfileAssociation> profileAssociations,
+  private void validateMatchProfilesAssociations(List<ProfileAssociation> actionProfileAssociations,
                                                            List<Error> errors) {
     LOGGER.debug("validateMatchProfilesAssociations:: Validating JobProfile if its MatchProfile contains ActionProfile");
-    if (CollectionUtils.isEmpty(profileAssociations)) {
+    if (CollectionUtils.isEmpty(actionProfileAssociations)) {
       LOGGER.warn("validateMatchProfilesAssociations:: Job profile does not contain any associations");
       errors.add(new Error().withMessage("Linked ActionProfile was not found after MatchProfile"));
     }
-    return Future.succeededFuture(new Errors().withErrors(errors).withTotalRecords(errors.size()));
   }
 
   private List<ProfileAssociation> matchProfileAssociations(List<ProfileAssociation> profileAssociations) {
