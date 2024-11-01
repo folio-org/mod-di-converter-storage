@@ -1,4 +1,4 @@
-## 2024-xx-xx 2.3.0
+## 2024-10-29 2.3.0
 * [MODDICONV-312](https://folio-org.atlassian.net/browse/MODDICONV-312) Create general associations table
 * [MODDICONV-373](https://folio-org.atlassian.net/browse/MODDICONV-373) Disallow create/update of a job profile without actions
 * [MODDICONV-391](https://issues.folio.org/browse/MODDICONV-391) Create migration script for Order mapping profiles
@@ -7,6 +7,13 @@
 * [MODDICONV-396](https://folio-org.atlassian.net/browse/MODDICONV-396) Remove accepted values from Instance, Holdings, Items and Orders mapping profiles
 * [MODDICONV-403](https://folio-org.atlassian.net/browse/MODDICONV-403) mod-di-converter-storage Ramsons 2024 R2 - RMB v35.3.x update
 * [MODDICONV-394](https://folio-org.atlassian.net/browse/MODDICONV-394) Disallow usage of Update MARC Bib next to Update Instance actions
+* [MODDICONV-374](https://folio-org.atlassian.net/browse/MODDICONV-374) Validate Job Profiles with Modify action at create
+* [MODDICONV-380](https://folio-org.atlassian.net/browse/MODDICONV-380) Validate Job Profile with Modify action at Update
+* [MODDICONV-388](https://folio-org.atlassian.net/browse/MODDICONV-388) Allow hard delete of Data Import Profiles
+* [MODDICONV-389](https://folio-org.atlassian.net/browse/MODDICONV-389) Remove deprecated default job profile 'Create MARC Bibs'
+* [MODDICONV-390](https://folio-org.atlassian.net/browse/MODDICONV-390) Move data import profile validation to service layer
+* [MODDICONV-286](https://folio-org.atlassian.net/browse/MODDICONV-286) Allow Job Profiles To Be Imported
+* [MODDICONV-392](https://folio-org.atlassian.net/browse/MODDICONV-392) Overlay existing profile during job profile import
 
 ## 2024-03-20 2.2.0
 * [MODDICORE-398](https://folio-org.atlassian.net/browse/MODDICORE-398) Upgrade mod-di-converter-storage to RMB 35.2.0, Vert.x 4.5.4
