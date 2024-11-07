@@ -379,7 +379,7 @@ public class JobProfileServiceImpl extends AbstractProfileService<JobProfile, Jo
   }
 
   private static Predicate<ActionProfile> isUpdateMarcBibOrInstanceAction() {
-    return (ap) -> ap.getAction() == UPDATE &&
+    return ap -> ap.getAction() == UPDATE &&
                   (ap.getFolioRecord().equals(MARC_BIBLIOGRAPHIC) || ap.getFolioRecord().equals(INSTANCE));
   }
 
