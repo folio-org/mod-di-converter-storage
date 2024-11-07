@@ -38,10 +38,16 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
+import static org.folio.rest.jaxrs.model.ActionProfile.Action.UPDATE;
+import static org.folio.rest.jaxrs.model.ActionProfile.FolioRecord.INSTANCE;
+import static org.folio.rest.jaxrs.model.ActionProfile.FolioRecord.MARC_BIBLIOGRAPHIC;
 import static org.folio.rest.jaxrs.model.ProfileType.ACTION_PROFILE;
 import static org.folio.rest.jaxrs.model.ProfileType.MATCH_PROFILE;
+import static org.folio.rest.jaxrs.model.ReactToType.MATCH;
+import static org.folio.rest.jaxrs.model.ReactToType.NON_MATCH;
 
 @Component
 public class JobProfileServiceImpl extends AbstractProfileService<JobProfile, JobProfileCollection, JobProfileUpdateDto> {
@@ -52,7 +58,7 @@ public class JobProfileServiceImpl extends AbstractProfileService<JobProfile, Jo
   private static final String MODIFY_ACTION_CANNOT_BE_USED_RIGHT_AFTER_THE_MATCH = "Modify action cannot be used right after a Match";
   private static final String LINKED_MATCH_PROFILES_WERE_NOT_FOUND = "Linked MatchProfiles with ids %s were not found";
   private static final String DEFAULT_CREATE_SRS_MARC_AUTHORITY_JOB_PROFILE_ID = "6eefa4c6-bbf7-4845-ad82-de7fc5abd0e3"; //NOSONAR
-  private static final String UPDATE_ACTIONS_CANNOT_BE_USED_UNDER_SAME_MATCH = "More than two update actions cannot be placed under the same match block";
+  private static final String UPDATE_ACTIONS_CANNOT_BE_USED_UNDER_SAME_MATCH = "Update MARC Bib and Update Instance actions cannot be placed under the same match block";
   private static final List<String> DEFAULT_JOB_PROFILES = Arrays.asList(
     "d0ebb7b0-2f0f-11eb-adc1-0242ac120002", //OCLC_CREATE_INSTANCE_JOB_PROFILE_ID,
     "91f9b8d6-d80e-4727-9783-73fb53e3c786", //OCLC_UPDATE_INSTANCE_JOB_PROFILE_ID,
@@ -302,7 +308,7 @@ public class JobProfileServiceImpl extends AbstractProfileService<JobProfile, Jo
             .filter(profile -> profile.getId().equals(association.getDetailProfileId()))
             .findAny().orElseThrow(() -> new NotFoundException(String.format(LINKED_ACTION_PROFILES_WERE_NOT_FOUND, association.getDetailProfileId())));
 
-          if (actionProfile.getAction() == ActionProfile.Action.UPDATE) {
+          if (actionProfile.getAction() == UPDATE) {
             validateAddedUpdateActionProfileAssociation(association, actionProfile, errors);
           }
           if (actionProfile.getAction() == ActionProfile.Action.MODIFY) {
@@ -335,8 +341,8 @@ public class JobProfileServiceImpl extends AbstractProfileService<JobProfile, Jo
       Map<ReactToType, Long> counts = updateActionProfiles.stream()
         .collect(Collectors.groupingBy(ProfileAssociation::getReactTo, Collectors.counting()));
 
-      boolean hasMultipleActionsUnderSameMatch = counts.getOrDefault(ReactToType.MATCH, 0L) >= 2
-        || counts.getOrDefault(ReactToType.NON_MATCH, 0L) >= 2;
+      boolean hasMultipleActionsUnderSameMatch = counts.getOrDefault(MATCH, 0L) >= 2
+        || counts.getOrDefault(NON_MATCH, 0L) >= 2;
 
       if (hasMultipleActionsUnderSameMatch) {
         LOGGER.warn("validateMatchProfilesAssociations:: " + UPDATE_ACTIONS_CANNOT_BE_USED_UNDER_SAME_MATCH);
@@ -362,11 +368,19 @@ public class JobProfileServiceImpl extends AbstractProfileService<JobProfile, Jo
 
   private static List<ProfileAssociation> getUpdateProfileAssociations(List<ProfileAssociation> profileAssociations,
                                                                   List<ActionProfile> actionProfiles) {
-    List<String> updateActionProfileIds = actionProfiles.stream().filter(a -> a.getAction() == ActionProfile.Action.UPDATE).map(ActionProfile::getId).toList();
+    List<String> updateActionProfileIds = actionProfiles.stream()
+      .filter(isUpdateMarcBibOrInstanceAction())
+      .map(ActionProfile::getId)
+      .toList();
     return profileAssociations.stream()
       .filter(p -> updateActionProfileIds.contains(p.getDetailProfileId()))
       .filter(profileAssociation -> profileAssociation.getReactTo() != null)
       .toList();
+  }
+
+  private static Predicate<ActionProfile> isUpdateMarcBibOrInstanceAction() {
+    return (ap) -> ap.getAction() == UPDATE &&
+                  (ap.getFolioRecord().equals(MARC_BIBLIOGRAPHIC) || ap.getFolioRecord().equals(INSTANCE));
   }
 
   private static List<ProfileAssociation> getNotModifyProfileAssociations(List<ProfileAssociation> profileAssociations, List<ActionProfile> actionProfiles) {

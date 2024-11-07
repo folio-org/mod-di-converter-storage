@@ -1124,7 +1124,7 @@ public class JobProfileTest extends AbstractRestVerticleTest {
       .statusCode(HttpStatus.SC_UNPROCESSABLE_ENTITY)
       .body("errors", hasItem(
         hasEntry(is("message"),
-          is("More than two update actions cannot be placed under the same match block"))
+          is("Update MARC Bib and Update Instance actions cannot be placed under the same match block"))
       ));
   }
 
