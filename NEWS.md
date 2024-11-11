@@ -6,7 +6,6 @@
 * [MODDICONV-393](https://folio-org.atlassian.net/browse/MODDICONV-393) Fix inconsistencies in permission namings
 * [MODDICONV-396](https://folio-org.atlassian.net/browse/MODDICONV-396) Remove accepted values from Instance, Holdings, Items and Orders mapping profiles
 * [MODDICONV-403](https://folio-org.atlassian.net/browse/MODDICONV-403) mod-di-converter-storage Ramsons 2024 R2 - RMB v35.3.x update
-* [MODDICONV-394](https://folio-org.atlassian.net/browse/MODDICONV-394) Disallow usage of Update MARC Bib next to Update Instance actions
 * [MODDICONV-374](https://folio-org.atlassian.net/browse/MODDICONV-374) Validate Job Profiles with Modify action at create
 * [MODDICONV-380](https://folio-org.atlassian.net/browse/MODDICONV-380) Validate Job Profile with Modify action at Update
 * [MODDICONV-388](https://folio-org.atlassian.net/browse/MODDICONV-388) Allow hard delete of Data Import Profiles
