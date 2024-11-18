@@ -1,3 +1,6 @@
+## 2024-10-29 2.3.1
+* [MODDICONV-404](https://folio-org.atlassian.net/browse/MODDICONV-404) Missing interface dependencies in module descriptor
+
 ## 2024-10-29 2.3.0
 * [MODDICONV-312](https://folio-org.atlassian.net/browse/MODDICONV-312) Create general associations table
 * [MODDICONV-373](https://folio-org.atlassian.net/browse/MODDICONV-373) Disallow create/update of a job profile without actions
