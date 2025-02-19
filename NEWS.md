@@ -1,3 +1,6 @@
+## 2024-xx-xx 2.4.0
+* [MODDICONV-408](https://issues.folio.org/browse/MODDICONV-408) Create migration script to add 'Set for deletion' mappingRule
+
 ## 2024-10-29 2.3.0
 * [MODDICONV-312](https://folio-org.atlassian.net/browse/MODDICONV-312) Create general associations table
 * [MODDICONV-373](https://folio-org.atlassian.net/browse/MODDICONV-373) Disallow create/update of a job profile without actions
