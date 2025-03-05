@@ -20,16 +20,16 @@
   </modules>
 
   <properties>
-    <raml-module-builder.version>35.3.0</raml-module-builder.version>
+    <raml-module-builder.version>35.4.0</raml-module-builder.version>
     <vertx.version>4.5.7</vertx.version>
     <junit.version>4.13.2</junit.version>
-    <mockito.version>5.1.1</mockito.version>
+    <mockito.version>5.2.0</mockito.version>
     <rest-assured.version>4.5.1</rest-assured.version>
     <main.basedir>${project.basedir}</main.basedir>
     <ramlfiles_path>${basedir}/ramls</ramlfiles_path>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <sonar.exclusions>**/ModTenantAPI.java</sonar.exclusions>
-    <testcontainers.version>1.19.7</testcontainers.version>
+    <testcontainers.version>1.20.4</testcontainers.version>
     <spring.version>6.1.13</spring.version>
     <folio-module-descriptor-validator.version>1.0.0</folio-module-descriptor-validator.version>
   </properties>
@@ -85,9 +85,9 @@
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-compiler-plugin</artifactId>
-        <version>3.8.1</version>
+        <version>3.11.0</version>
         <configuration>
-          <release>17</release>
+          <release>21</release>
           <encoding>UTF-8</encoding>
         </configuration>
       </plugin>
