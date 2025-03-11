@@ -1,95 +1,160 @@
 {
-  "id" : "44f4a6c4-4504-4f53-b25c-f7fcba5faeae",
-  "profileId" : "e792f71f-7114-456c-acff-f83b49467329",
-  "profileWrapperId" : "fbc19c85-6757-4fb3-8af7-2c49b8814a1c",
+  "id" : "037cda3e-05c8-439d-bb02-d3f945215ab8",
+  "profileId" : "91f9b8d6-d80e-4727-9783-73fb53e3c786",
+  "profileWrapperId" : "94cba6e2-6441-4ae1-8ced-40674883b97f",
   "contentType" : "JOB_PROFILE",
   "content" : {
-    "id" : "e792f71f-7114-456c-acff-f83b49467329",
-    "name" : "test",
-    "description" : "",
+    "id" : "91f9b8d6-d80e-4727-9783-73fb53e3c786",
+    "name" : "Inventory Single Record - Default Update Instance",
+    "description" : "Triggered by an action in Inventory, this job profile imports a single record from an external system, to update an existing Instance, and either create a new MARC record or update an existing MARC record",
     "dataType" : "MARC",
     "userInfo" : {
-      "firstName" : "DIKU",
-      "lastName" : "ADMINISTRATOR",
-      "userName" : "diku_admin"
+      "firstName" : "System",
+      "lastName" : "System",
+      "userName" : "System"
     },
     "parentProfiles" : [ ],
     "childProfiles" : [ ],
     "hidden" : false,
     "metadata" : {
-      "createdDate" : "2024-04-23T17:53:51.054+00:00",
-      "createdByUserId" : "62314909-930d-5898-bfaf-3bcf9dab6e85",
-      "updatedDate" : "2024-04-23T17:53:51.054+00:00",
-      "updatedByUserId" : "62314909-930d-5898-bfaf-3bcf9dab6e85"
+      "createdDate" : "2020-11-30T09:07:47.667+00:00",
+      "createdByUserId" : "6a010e5b-5421-5b1c-9b52-568b37038575",
+      "updatedDate" : "2020-11-30T09:09:10.382+00:00",
+      "updatedByUserId" : "6a010e5b-5421-5b1c-9b52-568b37038575"
     }
   },
   "order" : 0,
   "childSnapshotWrappers" : [ {
-    "id" : "938de050-7a39-4dd0-adb8-82a4159b2316",
-    "profileId" : "d8706411-bdd6-4070-b43e-2ed04f2ada28",
-    "profileWrapperId" : "a91ae4b6-20b6-4346-927d-9b056c94e6d1",
+    "id" : "bc164152-c725-450a-9fe1-c13df0180d87",
+    "profileId" : "d27d71ce-8a1e-44c6-acea-96961b5592c6",
+    "profileWrapperId" : "5c690f8c-824f-4a1a-869c-3eb4e7ce9a87",
     "contentType" : "MATCH_PROFILE",
     "content" : {
-      "id" : "d8706411-bdd6-4070-b43e-2ed04f2ada28",
-      "name" : "jp-2 BODWR-202404231118",
+      "id" : "d27d71ce-8a1e-44c6-acea-96961b5592c6",
+      "name" : "Inventory Single Record - Default match for existing SRS record",
+      "description" : "Matches the Instance UUID from the 999 ff $i in the incoming MARC record to the same field in any SRS MARC Bib",
       "incomingRecordType" : "MARC_BIBLIOGRAPHIC",
       "existingRecordType" : "MARC_BIBLIOGRAPHIC",
-      "matchDetails" : [ ],
+      "matchDetails" : [ {
+        "incomingRecordType" : "MARC_BIBLIOGRAPHIC",
+        "existingRecordType" : "MARC_BIBLIOGRAPHIC",
+        "incomingMatchExpression" : {
+          "dataValueType" : "VALUE_FROM_RECORD",
+          "fields" : [ {
+            "label" : "field",
+            "value" : "999"
+          }, {
+            "label" : "indicator1",
+            "value" : "f"
+          }, {
+            "label" : "indicator2",
+            "value" : "f"
+          }, {
+            "label" : "recordSubfield",
+            "value" : "i"
+          } ]
+        },
+        "matchCriterion" : "EXACTLY_MATCHES",
+        "existingMatchExpression" : {
+          "dataValueType" : "VALUE_FROM_RECORD",
+          "fields" : [ {
+            "label" : "field",
+            "value" : "999"
+          }, {
+            "label" : "indicator1",
+            "value" : "f"
+          }, {
+            "label" : "indicator2",
+            "value" : "f"
+          }, {
+            "label" : "recordSubfield",
+            "value" : "i"
+          } ]
+        }
+      } ],
       "userInfo" : {
-        "firstName" : "DIKU",
-        "lastName" : "ADMINISTRATOR",
-        "userName" : "diku_admin"
+        "firstName" : "System",
+        "lastName" : "System",
+        "userName" : "System"
       },
       "parentProfiles" : [ ],
       "childProfiles" : [ ],
       "hidden" : false,
       "metadata" : {
-        "createdDate" : "2024-04-23T16:18:04.400+00:00",
-        "createdByUserId" : "62314909-930d-5898-bfaf-3bcf9dab6e85",
-        "updatedDate" : "2024-04-23T16:18:04.400+00:00",
-        "updatedByUserId" : "62314909-930d-5898-bfaf-3bcf9dab6e85"
+        "createdDate" : "2020-11-30T09:06:01.520+00:00",
+        "createdByUserId" : "6a010e5b-5421-5b1c-9b52-568b37038575",
+        "updatedDate" : "2020-11-30T09:59:01.248+00:00",
+        "updatedByUserId" : "6a010e5b-5421-5b1c-9b52-568b37038575"
       }
     },
     "order" : 0,
     "childSnapshotWrappers" : [ {
-      "id" : "b496f196-f8f3-404b-b640-43dfaf0c4088",
-      "profileId" : "db474655-9c78-4171-9ab4-39363986d5c6",
-      "profileWrapperId" : "96777875-885c-4811-bdda-738823047dd2",
+      "id" : "6daeaadd-d7b1-4b43-95fa-c688ba5a65e7",
+      "profileId" : "31dbb554-0826-48ec-a0a4-3c55293d4dee",
+      "profileWrapperId" : "79bd243d-05ad-490a-bb9e-aba7f5a51b2e",
       "contentType" : "MATCH_PROFILE",
-      "reactTo" : "MATCH",
+      "reactTo" : "NON_MATCH",
       "content" : {
-        "id" : "db474655-9c78-4171-9ab4-39363986d5c6",
-        "name" : "jp-2 GPHWV-202404231138",
+        "id" : "31dbb554-0826-48ec-a0a4-3c55293d4dee",
+        "name" : "Inventory Single Record - Default match for no SRS record",
+        "description" : "Matches the Instance UUID from the 999 ff $i in the incoming MARC record to the UUID of the existing Instance record",
         "incomingRecordType" : "MARC_BIBLIOGRAPHIC",
-        "existingRecordType" : "MARC_BIBLIOGRAPHIC",
-        "matchDetails" : [ ],
+        "existingRecordType" : "INSTANCE",
+        "matchDetails" : [ {
+          "incomingRecordType" : "MARC_BIBLIOGRAPHIC",
+          "existingRecordType" : "INSTANCE",
+          "incomingMatchExpression" : {
+            "dataValueType" : "VALUE_FROM_RECORD",
+            "fields" : [ {
+              "label" : "field",
+              "value" : "999"
+            }, {
+              "label" : "indicator1",
+              "value" : "f"
+            }, {
+              "label" : "indicator2",
+              "value" : "f"
+            }, {
+              "label" : "recordSubfield",
+              "value" : "i"
+            } ]
+          },
+          "matchCriterion" : "EXACTLY_MATCHES",
+          "existingMatchExpression" : {
+            "dataValueType" : "VALUE_FROM_RECORD",
+            "fields" : [ {
+              "label" : "field",
+              "value" : "instance.id"
+            } ]
+          }
+        } ],
         "userInfo" : {
-          "firstName" : "DIKU",
-          "lastName" : "ADMINISTRATOR",
-          "userName" : "diku_admin"
+          "firstName" : "System",
+          "lastName" : "System",
+          "userName" : "System"
         },
         "parentProfiles" : [ ],
         "childProfiles" : [ ],
         "hidden" : false,
         "metadata" : {
-          "createdDate" : "2024-04-23T16:39:02.191+00:00",
-          "createdByUserId" : "62314909-930d-5898-bfaf-3bcf9dab6e85",
-          "updatedDate" : "2024-04-23T16:39:02.191+00:00",
-          "updatedByUserId" : "62314909-930d-5898-bfaf-3bcf9dab6e85"
+          "createdDate" : "2020-11-30T09:06:57.367+00:00",
+          "createdByUserId" : "6a010e5b-5421-5b1c-9b52-568b37038575",
+          "updatedDate" : "2020-11-30T10:00:10.359+00:00",
+          "updatedByUserId" : "6a010e5b-5421-5b1c-9b52-568b37038575"
         }
       },
       "order" : 0,
       "childSnapshotWrappers" : [ {
-        "id" : "4e3c724e-d390-4ff0-a62e-436739fa31fd",
-        "profileId" : "fa45f3ec-9b83-11eb-a8b3-0242ac130003",
-        "profileWrapperId" : "e249d594-ab06-4a17-a4ad-af783c79b6bb",
+        "id" : "0543ed77-503e-43e2-bfe0-b2727f15ef28",
+        "profileId" : "cddff0e1-233c-47ba-8be5-553c632709d9",
+        "profileWrapperId" : "33b6e902-a79a-4afb-b531-faa3ffb0cd07",
         "contentType" : "ACTION_PROFILE",
         "reactTo" : "MATCH",
         "content" : {
-          "id" : "fa45f3ec-9b83-11eb-a8b3-0242ac130003",
-          "name" : "Default - Create instance",
-          "description" : "This action profile is used with FOLIO's default job profile for creating Inventory Instances and SRS MARC Bibliographic records. It can be edited, duplicated, or deleted.",
-          "action" : "CREATE",
+          "id" : "cddff0e1-233c-47ba-8be5-553c632709d9",
+          "name" : "Inventory Single Record - Default Update Instance",
+          "description" : "Updates existing Inventory Instances based on Inventory single record imports",
+          "action" : "UPDATE",
           "folioRecord" : "INSTANCE",
           "userInfo" : {
             "firstName" : "System",
@@ -101,22 +166,22 @@
           "hidden" : false,
           "remove9Subfields" : true,
           "metadata" : {
-            "createdDate" : "2021-04-13T14:00:00.000+00:00",
-            "createdByUserId" : "00000000-0000-0000-0000-000000000000",
-            "updatedDate" : "2021-04-13T15:00:00.462+00:00",
-            "updatedByUserId" : "00000000-0000-0000-0000-000000000000"
+            "createdDate" : "2020-11-30T09:03:05.334+00:00",
+            "createdByUserId" : "6a010e5b-5421-5b1c-9b52-568b37038575",
+            "updatedDate" : "2020-11-30T11:57:14.464+00:00",
+            "updatedByUserId" : "6a010e5b-5421-5b1c-9b52-568b37038575"
           }
         },
         "order" : 0,
         "childSnapshotWrappers" : [ {
-          "id" : "af352a3a-c955-432d-99d1-8ef6b45333e1",
-          "profileId" : "bf7b3b86-9b84-11eb-a8b3-0242ac130003",
-          "profileWrapperId" : "b350db9b-0df2-4e9d-bb10-b6697d5f880e",
+          "id" : "19ddd133-9990-4a24-ae73-a387fb14527d",
+          "profileId" : "862000b9-84ea-4cae-a223-5fc0552f2b42",
+          "profileWrapperId" : "d5bf86d7-433e-4e13-9ec9-173777120045",
           "contentType" : "MAPPING_PROFILE",
           "content" : {
-            "id" : "bf7b3b86-9b84-11eb-a8b3-0242ac130003",
-            "name" : "Default - Create instance",
-            "description" : "This field mapping profile is used with FOLIO's default job profile for creating Inventory Instances and SRS MARC Bibliographic records. It can be edited, duplicated, deleted, or linked to additional action profiles.",
+            "id" : "862000b9-84ea-4cae-a223-5fc0552f2b42",
+            "name" : "Inventory Single Record - Default Update Instance",
+            "description" : "Updates existing Inventory Instances based on Inventory single record imports",
             "incomingRecordType" : "MARC_BIBLIOGRAPHIC",
             "existingRecordType" : "INSTANCE",
             "userInfo" : {
@@ -359,15 +424,81 @@
             },
             "hidden" : false,
             "metadata" : {
-              "createdDate" : "2021-04-13T14:00:00.000+00:00",
-              "createdByUserId" : "00000000-0000-0000-0000-000000000000",
-              "updatedDate" : "2021-04-13T15:00:00.462+00:00",
-              "updatedByUserId" : "00000000-0000-0000-0000-000000000000"
+              "createdDate" : "2020-11-30T09:01:29.039+00:00",
+              "createdByUserId" : "6a010e5b-5421-5b1c-9b52-568b37038575",
+              "updatedDate" : "2020-11-30T11:57:35.927+00:00",
+              "updatedByUserId" : "6a010e5b-5421-5b1c-9b52-568b37038575"
             }
           },
           "order" : 0,
           "childSnapshotWrappers" : [ ]
         } ]
+      } ]
+    }, {
+      "id" : "42b02149-2d9e-40ea-8bca-35cd45d3596b",
+      "profileId" : "6aa8e98b-0d9f-41dd-b26f-15658d07eb52",
+      "profileWrapperId" : "8fc60cdb-d3a1-426e-b7c6-aab593418797",
+      "contentType" : "ACTION_PROFILE",
+      "reactTo" : "MATCH",
+      "content" : {
+        "id" : "6aa8e98b-0d9f-41dd-b26f-15658d07eb52",
+        "name" : "Inventory Single Record - Default Update MARC Bib",
+        "description" : "Updates existing SRS MARC Bib records based on Inventory single record imports",
+        "action" : "UPDATE",
+        "folioRecord" : "MARC_BIBLIOGRAPHIC",
+        "userInfo" : {
+          "firstName" : "System",
+          "lastName" : "System",
+          "userName" : "System"
+        },
+        "parentProfiles" : [ ],
+        "childProfiles" : [ ],
+        "hidden" : false,
+        "remove9Subfields" : true,
+        "metadata" : {
+          "createdDate" : "2020-11-30T09:02:39.960+00:00",
+          "createdByUserId" : "6a010e5b-5421-5b1c-9b52-568b37038575",
+          "updatedDate" : "2020-11-30T11:57:24.083+00:00",
+          "updatedByUserId" : "6a010e5b-5421-5b1c-9b52-568b37038575"
+        }
+      },
+      "order" : 0,
+      "childSnapshotWrappers" : [ {
+        "id" : "02fdc682-590c-4ba6-8846-f17143fba742",
+        "profileId" : "f90864ef-8030-480f-a43f-8cdd21233252",
+        "profileWrapperId" : "841d32f5-b66f-4cf7-b2da-ef7abe5fd00c",
+        "contentType" : "MAPPING_PROFILE",
+        "content" : {
+          "id" : "f90864ef-8030-480f-a43f-8cdd21233252",
+          "name" : "Inventory Single Record - Default Update MARC Bib",
+          "description" : "Updates existing SRS MARC Bib records based on Inventory single record imports",
+          "incomingRecordType" : "MARC_BIBLIOGRAPHIC",
+          "existingRecordType" : "MARC_BIBLIOGRAPHIC",
+          "userInfo" : {
+            "firstName" : "System",
+            "lastName" : "System",
+            "userName" : "System"
+          },
+          "marcFieldProtectionSettings" : [ ],
+          "parentProfiles" : [ ],
+          "childProfiles" : [ ],
+          "mappingDetails" : {
+            "name" : "marcBib",
+            "recordType" : "MARC_BIBLIOGRAPHIC",
+            "mappingFields" : [ ],
+            "marcMappingDetails" : [ ],
+            "marcMappingOption" : "UPDATE"
+          },
+          "hidden" : false,
+          "metadata" : {
+            "createdDate" : "2020-11-30T09:02:06.555+00:00",
+            "createdByUserId" : "6a010e5b-5421-5b1c-9b52-568b37038575",
+            "updatedDate" : "2020-11-30T11:57:46.948+00:00",
+            "updatedByUserId" : "6a010e5b-5421-5b1c-9b52-568b37038575"
+          }
+        },
+        "order" : 0,
+        "childSnapshotWrappers" : [ ]
       } ]
     } ]
   } ]

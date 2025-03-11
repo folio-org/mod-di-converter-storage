@@ -36,7 +36,7 @@ import static org.folio.graph.GraphWriter.DOT_FILE_PATTERN;
  * It uses the JGraphT library to represent and manipulate the graphs.
  */
 public class GraphReader {
-  private static final Logger LOGGER = LogManager.getLogger();
+  private static final Logger LOGGER = LogManager.getLogger(GraphReader.class);
   private static final DOTImporter<Profile, RegularEdge> DOT_IMPORTER = new DOTImporter<>();
 
   static {

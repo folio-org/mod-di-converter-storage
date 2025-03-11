@@ -49,7 +49,7 @@ import static org.folio.Constants.OBJECT_MAPPER;
  * It creates match, action, mapping, and job profiles in FOLIO, establishing the necessary associations between them.
  */
 public class ProfileHydration {
-  private static final Logger LOGGER = LogManager.getLogger();
+  private static final Logger LOGGER = LogManager.getLogger(ProfileHydration.class);
 
   private final FolioClient client;
 

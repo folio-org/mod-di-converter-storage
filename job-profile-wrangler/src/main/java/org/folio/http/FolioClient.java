@@ -30,7 +30,7 @@ import static org.folio.Constants.OKAPI_TENANT_HEADER;
 import static org.folio.Constants.OKAPI_TOKEN_HEADER;
 
 public class FolioClient {
-  private static final Logger LOGGER = LogManager.getLogger();
+  private static final Logger LOGGER = LogManager.getLogger(FolioClient.class);
   OkHttpClient httpClient = new OkHttpClient();
 
   private final String token;
@@ -44,7 +44,7 @@ public class FolioClient {
   public FolioClient(Supplier<HttpUrl.Builder> baseUrlBuilderSupplier, String tenantId, String username, String password) {
     this.baseUrlBuilderSupplier = baseUrlBuilderSupplier;
 
-    Optional<String> okapiToken = getOkapiToken(baseUrlBuilderSupplier.get(), tenantId, username, password);
+    Optional<String> okapiToken = getOkapiToken(httpClient, baseUrlBuilderSupplier.get(), tenantId, username, password);
     if (okapiToken.isEmpty()) {
       throw new IllegalStateException("Could not get okapi token");
     }
@@ -195,7 +195,7 @@ public class FolioClient {
     return Optional.empty();
   }
 
-  protected Optional<String> getOkapiToken(HttpUrl.Builder baseUrlBuilder, String tenantId, String username, String password) {
+  public static Optional<String> getOkapiToken(OkHttpClient httpClient, HttpUrl.Builder baseUrlBuilder, String tenantId, String username, String password) {
     HttpUrl url = baseUrlBuilder
       .addPathSegments("authn/login-with-expiry")
       .build();

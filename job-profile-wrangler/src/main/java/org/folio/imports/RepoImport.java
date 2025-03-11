@@ -20,11 +20,12 @@ import org.jgrapht.Graph;
 import org.jgrapht.graph.SimpleDirectedGraph;
 
 import java.util.Optional;
+import java.util.stream.StreamSupport;
 
 import static org.folio.Constants.OBJECT_MAPPER;
 
 public class RepoImport implements Runnable {
-  private static final Logger LOGGER = LogManager.getLogger();
+  private static final Logger LOGGER = LogManager.getLogger(RepoImport.class);
   private final FolioClient client;
   private final String repoPath;
 
@@ -53,7 +54,7 @@ public class RepoImport implements Runnable {
 
   public static Optional<RepoObject> fromString(String repoPath, JsonNode jsonNode) {
     Graph<Profile, RegularEdge> g = new SimpleDirectedGraph<>(RegularEdge.class);
-    addProfileToGraph(g, jsonNode);
+    buildGraph(g, jsonNode);
     var searched = GraphReader.search(repoPath, g);
     if (searched.isEmpty()) {
       Optional<Integer> repoId = GraphWriter.writeGraph(repoPath, g);
@@ -67,82 +68,78 @@ public class RepoImport implements Runnable {
     return Optional.empty();
   }
 
+  private static Graph<Profile, RegularEdge> buildGraph(Graph<Profile, RegularEdge> graph, JsonNode profileSnapshot) {
+    addProfileToGraph(graph, profileSnapshot);
+    return graph;
+  }
+
   private static Optional<Profile> addProfileToGraph(Graph<Profile, RegularEdge> graph, JsonNode profileSnapshot) {
+    return createProfileNode(profileSnapshot)
+      .map(node -> {
+        graph.addVertex(node);
+        addChildren(graph, profileSnapshot, node);
+        return node;
+      });
+  }
+
+  private static Optional<Profile> createProfileNode(JsonNode profileSnapshot) {
     String contentType = profileSnapshot.path("contentType").asText();
+    String id = profileSnapshot.path("profileWrapperId").asText();
+    int order = profileSnapshot.path("order").asInt();
 
     return switch (contentType) {
-      case "JOB_PROFILE" -> {
-        String dataType = profileSnapshot.path("content").path("dataType").asText();
-        String id = profileSnapshot.path("profileWrapperId").asText();
-        int order = profileSnapshot.path("order").asInt();
-        JobProfileNode node = new JobProfileNode(id, dataType, order);
-        graph.addVertex(node);
-        addChildProfilesToGraph(graph, profileSnapshot, node);
-        yield Optional.of(node);
-      }
-      case "MATCH_PROFILE" -> {
-        String incomingRecordType = profileSnapshot.path("content").path("incomingRecordType").asText();
-        String existingRecordType = profileSnapshot.path("content").path("existingRecordType").asText();
-        String id = profileSnapshot.path("profileWrapperId").asText();
-        int order = profileSnapshot.path("order").asInt();
-        MatchProfileNode node = new MatchProfileNode(id, incomingRecordType, existingRecordType, order);
-        graph.addVertex(node);
-        addChildMatchProfilesToGraph(graph, profileSnapshot, node);
-        yield Optional.of(node);
-      }
-      case "ACTION_PROFILE" -> {
-        String folioRecord = profileSnapshot.path("content").path("folioRecord").asText();
-        String actionType = profileSnapshot.path("content").path("action").asText();
-        String id = profileSnapshot.path("profileWrapperId").asText();
-        int order = profileSnapshot.path("order").asInt();
-        ActionProfileNode node = new ActionProfileNode(id, actionType, folioRecord, order);
-        graph.addVertex(node);
-        addChildProfilesToGraph(graph, profileSnapshot, node);
-        yield Optional.of(node);
-      }
-      case "MAPPING_PROFILE" -> {
-        String incomingRecordType = profileSnapshot.path("content").path("incomingRecordType").asText();
-        String existingRecordType = profileSnapshot.path("content").path("existingRecordType").asText();
-        String id = profileSnapshot.path("profileWrapperId").asText();
-        int order = profileSnapshot.path("order").asInt();
-        MappingProfileNode node = new MappingProfileNode(id, incomingRecordType, existingRecordType, order);
-        graph.addVertex(node);
-        JsonNode childSnapshotWrappers = profileSnapshot.get("childSnapshotWrappers");
-        if (childSnapshotWrappers != null && childSnapshotWrappers.isArray() && !childSnapshotWrappers.isEmpty()) {
-          LOGGER.warn("Found {} childSnapshotWrappers for mapping profile: {}", childSnapshotWrappers.size(), node);
-        }
-        yield Optional.of(node);
-      }
+      case "JOB_PROFILE" -> Optional.of(new JobProfileNode(id,
+        profileSnapshot.path("content").path("dataType").asText(), order));
+
+      case "MATCH_PROFILE" -> Optional.of(new MatchProfileNode(id,
+        profileSnapshot.path("content").path("incomingRecordType").asText(),
+        profileSnapshot.path("content").path("existingRecordType").asText(),
+        order));
+
+      case "ACTION_PROFILE" -> Optional.of(new ActionProfileNode(id,
+        profileSnapshot.path("content").path("action").asText(),
+        profileSnapshot.path("content").path("folioRecord").asText(),
+        order));
+
+      case "MAPPING_PROFILE" -> Optional.of(new MappingProfileNode(id,
+        profileSnapshot.path("content").path("incomingRecordType").asText(),
+        profileSnapshot.path("content").path("existingRecordType").asText(),
+        order));
+
       default -> Optional.empty();
     };
   }
 
-  private static void addChildProfilesToGraph(Graph<Profile, RegularEdge> graph, JsonNode profileSnapshot, Profile node) {
-    JsonNode childSnapshotWrappers = profileSnapshot.get("childSnapshotWrappers");
-    if (childSnapshotWrappers != null && childSnapshotWrappers.isArray()) {
-      for (JsonNode childSnapshotWrapper : childSnapshotWrappers) {
-        Optional<Profile> profile = addProfileToGraph(graph, childSnapshotWrapper);
-        profile.ifPresent(value -> graph.addEdge(node, value));
-      }
-    }
+  private static void addChildren(Graph<Profile, RegularEdge> graph, JsonNode profileSnapshot, Profile node) {
+    Optional.ofNullable(profileSnapshot.get("childSnapshotWrappers"))
+      .filter(JsonNode::isArray)
+      .ifPresent(children -> {
+        if (node instanceof MatchProfileNode matchNode) {
+          addMatchChildren(graph, children, matchNode);
+        } else {
+          addRegularChildren(graph, children, node);
+        }
+      });
   }
 
-  private static void addChildMatchProfilesToGraph(Graph<Profile, RegularEdge> graph, JsonNode profileSnapshot, MatchProfileNode node) {
-    JsonNode childSnapshotWrappers = profileSnapshot.get("childSnapshotWrappers");
-    if (childSnapshotWrappers != null && childSnapshotWrappers.isArray()) {
-      for (JsonNode childSnapshotWrapper : childSnapshotWrappers) {
-        Optional<Profile> profile = addProfileToGraph(graph, childSnapshotWrapper);
-        profile.ifPresent(value -> {
-          String reactTo = childSnapshotWrapper.path("reactTo").asText();
-          if ("NON_MATCH".equals(reactTo)) {
-            graph.addEdge(node, value, new NonMatchRelationshipEdge());
-          } else if ("MATCH".equals(reactTo)) {
-            graph.addEdge(node, value, new MatchRelationshipEdge());
-          } else {
-            LOGGER.warn("Found invalid relationship for matching on match profile: {}", node);
-          }
-        });
-      }
+  private static void addRegularChildren(Graph<Profile, RegularEdge> graph, JsonNode children, Profile parent) {
+    StreamSupport.stream(children.spliterator(), false)
+      .map(child -> addProfileToGraph(graph, child))
+      .flatMap(Optional::stream)
+      .forEach(child -> graph.addEdge(parent, child));
+  }
+
+  private static void addMatchChildren(Graph<Profile, RegularEdge> graph, JsonNode children, MatchProfileNode parent) {
+    StreamSupport.stream(children.spliterator(), false)
+      .forEach(child -> addProfileToGraph(graph, child)
+        .ifPresent(profile -> addMatchEdge(graph, parent, profile, child.path("reactTo").asText())));
+  }
+
+  private static void addMatchEdge(Graph<Profile, RegularEdge> graph, Profile parent, Profile child, String reactTo) {
+    switch (reactTo) {
+      case "NON_MATCH" -> graph.addEdge(parent, child, new NonMatchRelationshipEdge());
+      case "MATCH" -> graph.addEdge(parent, child, new MatchRelationshipEdge());
+      default -> LOGGER.warn("Invalid relationship for matching on profile: {}", parent);
     }
   }
 }

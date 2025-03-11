@@ -37,8 +37,8 @@ import java.util.stream.Stream;
  * It uses the JGraphT library for graph operations and the Graphviz library for rendering graphs.
  */
 public class GraphWriter {
-  private static final Logger LOGGER = LogManager.getLogger();
-  private static final DOTExporter<Profile, RegularEdge> DOT_EXPORTER = new DOTExporter<>();
+  private static final Logger LOGGER = LogManager.getLogger(GraphWriter.class);
+  protected static final DOTExporter<Profile, RegularEdge> DOT_EXPORTER = new DOTExporter<>();
   private static final PriorityQueue<Integer> maxHeap = new PriorityQueue<>(Collections.reverseOrder());
 
   public static final Pattern DOT_FILE_PATTERN = Pattern.compile("jp-(\\d+)\\.dot");

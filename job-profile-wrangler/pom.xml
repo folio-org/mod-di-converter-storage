@@ -58,9 +58,25 @@
       <version>2.20.0</version>
     </dependency>
     <dependency>
+      <groupId>org.marc4j</groupId>
+      <artifactId>marc4j</artifactId>
+      <version>2.9.2</version>
+    </dependency>
+    <dependency>
+      <groupId>org.folio</groupId>
+      <artifactId>data-import-processing-core</artifactId>
+      <version>4.3.0</version>
+    </dependency>
+    <dependency>
       <groupId>org.folio</groupId>
       <artifactId>mod-di-converter-storage-server</artifactId>
       <version>${project.parent.version}</version>
+    </dependency>
+    <!-- Add Picocli for CLI support -->
+    <dependency>
+      <groupId>info.picocli</groupId>
+      <artifactId>picocli</artifactId>
+      <version>4.7.5</version>
     </dependency>
     <dependency>
       <groupId>junit</groupId>
@@ -76,4 +92,30 @@
     </dependency>
   </dependencies>
 
+  <build>
+    <plugins>
+      <!-- Maven Shade Plugin to create an executable jar with dependencies -->
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-shade-plugin</artifactId>
+        <version>3.5.0</version>
+        <executions>
+          <execution>
+            <phase>package</phase>
+            <goals>
+              <goal>shade</goal>
+            </goals>
+            <configuration>
+              <transformers>
+                <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
+                  <mainClass>org.folio.JpWranglerCli</mainClass>
+                </transformer>
+              </transformers>
+              <createDependencyReducedPom>false</createDependencyReducedPom>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+    </plugins>
+  </build>
 </project>
