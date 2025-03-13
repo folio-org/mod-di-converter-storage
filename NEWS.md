@@ -1,4 +1,4 @@
-## 2025-XX-XX 2.4.0
+## 2025-03-13 2.4.0
 * [MODDATAIMP-1102](https://folio-org.atlassian.net/browse/MODDATAIMP-1102) Empty contributor and vendor reference properties created in order when no values in incoming record
 * [MODDICONV-409](https://folio-org.atlassian.net/browse/MODDICONV-409) Update to Java 21 mod-di-converter-storage Sunflower R1 2025
 
