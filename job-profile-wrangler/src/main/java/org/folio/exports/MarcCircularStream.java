@@ -25,6 +25,7 @@ public class MarcCircularStream implements AutoCloseable {
   private InputStream inputStream;
   private FolioMarcClient folioClient;
   private boolean usingFolio;
+  private String repositoryPath;
 
   /**
    * Creates a circular stream using a local MARC file.
@@ -45,7 +46,19 @@ public class MarcCircularStream implements AutoCloseable {
    * @param token The authorization token
    */
   public MarcCircularStream(String baseUrl, String token) {
-    this.folioClient = new FolioMarcClient(baseUrl, token);
+    this(baseUrl, token, null);
+  }
+
+  /**
+   * Creates a circular stream using a FOLIO instance API with repository path.
+   *
+   * @param baseUrl The base URL of the FOLIO instance
+   * @param token The authorization token
+   * @param repositoryPath Path to repository for storing currentId
+   */
+  public MarcCircularStream(String baseUrl, String token, String repositoryPath) {
+    this.repositoryPath = repositoryPath;
+    this.folioClient = new FolioMarcClient(baseUrl, token, repositoryPath);
     this.usingFolio = true;
   }
 
@@ -63,21 +76,6 @@ public class MarcCircularStream implements AutoCloseable {
     } else {
       return nextFileRecord();
     }
-  }
-
-  /**
-   * Retrieves a specific MARC record by ID from FOLIO.
-   * Only works when using FOLIO mode.
-   *
-   * @param recordId The record ID
-   * @return Optional containing the MARC record, or empty if not found
-   * @throws IllegalStateException If not in FOLIO mode
-   */
-  public Optional<Record> getRecordById(String recordId) {
-    if (!usingFolio) {
-      throw new IllegalStateException("Record retrieval by ID is only supported in FOLIO mode");
-    }
-    return folioClient.getRecordById(recordId);
   }
 
   /**
@@ -119,6 +117,21 @@ public class MarcCircularStream implements AutoCloseable {
     // Create a new MARC reader
     reader = new MarcStreamReader(inputStream);
     LOGGER.info("Reset MARC file stream to beginning of file: {}", marcFilePath);
+  }
+
+  /**
+   * Retrieves a specific MARC record by ID from FOLIO.
+   * Only works when using FOLIO mode.
+   *
+   * @param recordId The record ID
+   * @return Optional containing the MARC record, or empty if not found
+   * @throws IllegalStateException If not in FOLIO mode
+   */
+  public Optional<Record> getRecordById(String recordId) {
+    if (!usingFolio) {
+      throw new IllegalStateException("Record retrieval by ID is only supported in FOLIO mode");
+    }
+    return folioClient.getRecordById(recordId);
   }
 
   /**

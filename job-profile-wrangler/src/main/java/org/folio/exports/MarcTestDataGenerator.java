@@ -83,7 +83,18 @@ public class MarcTestDataGenerator {
    * @param token FOLIO authentication token
    */
   public MarcTestDataGenerator(String baseUrl, String token) {
-    this.marcStream = new MarcCircularStream(baseUrl, token);
+    this(baseUrl, token, null);
+  }
+
+  /**
+   * Creates a generator that uses records from a FOLIO instance with repository support.
+   *
+   * @param baseUrl FOLIO instance base URL
+   * @param token FOLIO authentication token
+   * @param repositoryPath Path to repository for storing currentId
+   */
+  public MarcTestDataGenerator(String baseUrl, String token, String repositoryPath) {
+    this.marcStream = new MarcCircularStream(baseUrl, token, repositoryPath);
     this.matchHandler = new MatchExpressionHandler(marcStream);
   }
 
@@ -142,6 +153,18 @@ public class MarcTestDataGenerator {
   }
 
   /**
+   * Checks if the path contains an action profile with action type "CREATE".
+   *
+   * @param profilePath The path to check
+   * @return true if the path contains a create action profile, false otherwise
+   */
+  public boolean isCreateActionPath(List<PathEntry> profilePath) {
+    return profilePath.stream()
+      .filter(entry -> "ACTION_PROFILE".equals(entry.node().path("contentType").asText()))
+      .anyMatch(entry -> "CREATE".equals(entry.node().path("content").path("action").asText()));
+  }
+
+  /**
    * Generates a MARC record that satisfies the match conditions in the given path.
    */
   private Record generateRecordFromPath(List<PathEntry> profilePath, Record baseRecord) {
@@ -171,6 +194,11 @@ public class MarcTestDataGenerator {
       for (MatchDetail matchDetail : matchDetails) {
         applyMatchDetailToRecord(baseRecord, record, matchDetail, isNonMatch);
       }
+    }
+
+    // If this path has a CREATE action profile, remove field 999ff$i if it exists
+    if (isCreateActionPath(profilePath)) {
+      record.removeVariableField(record.getVariableField("999"));
     }
 
     return record;

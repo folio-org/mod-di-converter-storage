@@ -362,7 +362,7 @@ public class JpWranglerCli implements Callable<Integer> {
   }
 
   @Command(name = "generate", description = "Generate test MARC records for FOLIO job profile", mixinStandardHelpOptions = true)
-  static class GenerateCommand implements Callable<Integer> {
+  static class GenerateCommand extends RepositoryOptions implements Callable<Integer> {
     @CommandLine.Mixin
     private FolioConnectionOptions folioOptions = new FolioConnectionOptions();
 
@@ -375,6 +375,9 @@ public class JpWranglerCli implements Callable<Integer> {
     @Override
     public Integer call() {
       try {
+        // Ensure repository exists
+        ensureRepositoryExists();
+
         // Get token either from options or by authenticating
         String token = folioOptions.getToken();
         if (token == null) {
@@ -399,7 +402,7 @@ public class JpWranglerCli implements Callable<Integer> {
         LOGGER.info("Successfully retrieved job profile snapshot for UUID: {}", jobProfileId);
 
         // Generate test MARC records using FOLIO as the source
-        MarcTestDataGenerator generator = new MarcTestDataGenerator(folioOptions.baseUrl, token);
+        MarcTestDataGenerator generator = new MarcTestDataGenerator(folioOptions.baseUrl, token, repoPath);
         try {
           generator.generateTestData(snapshot.get(), outputPath);
           LOGGER.info("Generated test MARC records to {}", outputPath);

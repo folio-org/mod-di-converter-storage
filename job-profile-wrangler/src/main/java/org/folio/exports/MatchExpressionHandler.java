@@ -84,13 +84,31 @@ public class MatchExpressionHandler {
 
     // Extract field tag, indicators, and subfield from the match expression
     String fieldTag = null;
+    String indicator1 = null;
+    String indicator2 = null;
     String subfieldCode = null;
 
     for (org.folio.rest.jaxrs.model.Field field : fields) {
-      if ("field".equals(field.getLabel())) {
-        fieldTag = field.getValue();
-      } else if ("recordSubfield".equals(field.getLabel())) {
-        subfieldCode = field.getValue();
+      String label = field.getLabel();
+      String value = field.getValue();
+
+      if (label == null || value == null) {
+        continue;
+      }
+
+      switch (label) {
+        case "field":
+          fieldTag = value;
+          break;
+        case "indicator1":
+          indicator1 = value;
+          break;
+        case "indicator2":
+          indicator2 = value;
+          break;
+        case "recordSubfield":
+          subfieldCode = value;
+          break;
       }
     }
 
@@ -107,10 +125,24 @@ public class MatchExpressionHandler {
           return controlField.getData();
         }
       }
-      // Handle data fields with subfields
+      // Handle data fields with subfields and optional indicators
       else if (subfieldCode != null && !subfieldCode.isEmpty()) {
-        DataField dataField = (DataField) record.getVariableField(fieldTag);
-        if (dataField != null) {
+        // Create final copies of the variables for use in lambdas
+        final String finalFieldTag = fieldTag;
+        final String finalIndicator1 = indicator1;
+        final String finalIndicator2 = indicator2;
+
+        // Get all matching data fields
+        List<DataField> matchingFields = record.getDataFields()
+          .stream()
+          .filter(df -> df.getTag().equals(finalFieldTag))
+          .filter(df -> finalIndicator1 == null || String.valueOf(df.getIndicator1()).equals(finalIndicator1))
+          .filter(df -> finalIndicator2 == null || String.valueOf(df.getIndicator2()).equals(finalIndicator2))
+          .toList();
+
+        // If we found matching fields, extract the subfield data
+        if (!matchingFields.isEmpty()) {
+          DataField dataField = matchingFields.get(0); // Use the first matching field
           Subfield subfield = dataField.getSubfield(subfieldCode.charAt(0));
           if (subfield != null) {
             return subfield.getData();
