@@ -42,7 +42,7 @@ public class FolioMarcClient {
   // Cache to store retrieved records
   private final List<Record> recordCache = new ArrayList<>();
   private int currentRecordIndex = 0;
-  private int currentOffset = 0;
+  private int currentOffset = 0;  // Absolute position in source records
   private int totalRecords = 0;
   private boolean endOfRecords = false;
 
@@ -90,6 +90,8 @@ public class FolioMarcClient {
   public synchronized Record getNextRecord() throws IOException {
     // If we've reached the end of the cache, fetch more records
     if (currentRecordIndex >= recordCache.size() && !endOfRecords) {
+      // Before fetching, make sure currentOffset reflects our position
+      currentOffset = currentOffset - currentRecordIndex + recordCache.size();
       fetchMoreRecords();
     }
 
@@ -106,21 +108,27 @@ public class FolioMarcClient {
 
     // Get the next record from the cache
     Record record = recordCache.get(currentRecordIndex);
+
+    // Increment both the index in the cache and the absolute position
     currentRecordIndex++;
+    currentOffset++;
+
+    // Save offset after each record if we have a repository path
+    if (repositoryPath != null) {
+      saveCurrentOffset();
+    }
 
     // If we've gone through the current batch, prepare for the next one
     if (currentRecordIndex >= recordCache.size()) {
       currentRecordIndex = 0;
-      currentOffset += PAGE_SIZE;
 
       // If we've reached the maximum, start back at the beginning
       if (currentOffset >= MAX_RECORDS) {
         LOGGER.info("Reached maximum offset of {}, resetting to 0", MAX_RECORDS);
         currentOffset = 0;
-      }
-
-      if (repositoryPath != null) {
-        saveCurrentOffset();
+        if (repositoryPath != null) {
+          saveCurrentOffset();
+        }
       }
     }
 
@@ -238,6 +246,10 @@ public class FolioMarcClient {
    * Saves the current offset to the repository.
    */
   private void saveCurrentOffset() {
+    if (repositoryPath == null) {
+      return;
+    }
+
     Path currentOffsetFile = Paths.get(repositoryPath, CURRENT_OFFSET_FILENAME);
     try {
       Files.writeString(currentOffsetFile, String.valueOf(currentOffset));
@@ -327,6 +339,11 @@ public class FolioMarcClient {
    * Closes the client and releases resources.
    */
   public void close() {
+    // Save offset one last time before closing
+    if (repositoryPath != null) {
+      saveCurrentOffset();
+    }
+
     httpClient.dispatcher().executorService().shutdown();
     httpClient.connectionPool().evictAll();
   }
