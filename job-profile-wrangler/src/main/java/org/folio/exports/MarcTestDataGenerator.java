@@ -28,6 +28,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -137,19 +138,68 @@ public class MarcTestDataGenerator {
     Collection<List<PathEntry>> paths = listAllPaths(graph, jobProfile.get());
     LOGGER.info("Found {} distinct paths in the job profile", paths.size());
 
-    ArrayList<Record> records = new ArrayList<>(paths.size());
+    // Group paths that can share the same record
+    Collection<List<List<PathEntry>>> groupedPaths = groupPathsByMatchResult(paths);
+    LOGGER.info("Grouped into {} records for testing", groupedPaths.size());
 
-    // Generate a record for each path
-    for (List<PathEntry> path : paths) {
+    ArrayList<Record> records = new ArrayList<>(groupedPaths.size());
+
+    // Generate one record for each group of paths
+    for (List<List<PathEntry>> pathGroup : groupedPaths) {
       try {
         Record baseRecord = marcStream.nextRecord();
-        records.add(generateRecordFromPath(path, baseRecord));
+        // Use the first path in the group as reference
+        List<PathEntry> referencePath = pathGroup.get(0);
+
+        // Generate initial record from reference path
+        Record record = generateRecordFromPath(referencePath, baseRecord);
+
+        // If there are additional paths in this group, ensure the record satisfies them all
+        for (int i = 1; i < pathGroup.size(); i++) {
+          enhanceRecordForPath(record, pathGroup.get(i), baseRecord);
+        }
+
+        records.add(record);
       } catch (Exception e) {
-        LOGGER.error("Error generating record for path: {}", e.getMessage(), e);
+        LOGGER.error("Error generating record for path group: {}", e.getMessage(), e);
       }
     }
 
+    //TODO: Handle case where there are action profiles create FOLIO objects like orders
+    // and we need special MARC records for those object types. The need MARC records with data in specific fields.
+
     return records;
+  }
+
+  /**
+   * Enhances an existing record to also satisfy an additional path.
+   * This ensures that a single record can be used to test multiple paths.
+   */
+  private void enhanceRecordForPath(Record record, List<PathEntry> path, Record baseRecord) {
+    // Extract all match profiles from the path
+    List<PathEntry> matchProfiles = path.stream()
+      .filter(entry -> "MATCH_PROFILE".equals(entry.node().path("contentType").asText()))
+      .toList();
+
+    // Apply each match profile's conditions to the record
+    for (PathEntry entry : matchProfiles) {
+      JsonNode matchProfileNode = entry.node();
+      boolean isNonMatch = entry.isNonMatch();
+
+      MatchProfile matchProfile = OBJECT_MAPPER.convertValue(
+        matchProfileNode.path("content"), MatchProfile.class);
+
+      List<MatchDetail> matchDetails = matchProfile.getMatchDetails();
+      if (matchDetails == null || matchDetails.isEmpty()) {
+        LOGGER.warn("Match profile has no match details: {}", matchProfile.getName());
+        continue;
+      }
+
+      // Apply each match detail to the record
+      for (MatchDetail matchDetail : matchDetails) {
+        applyMatchDetailToRecord(baseRecord, record, matchDetail, isNonMatch);
+      }
+    }
   }
 
   /**
@@ -513,6 +563,134 @@ public class MarcTestDataGenerator {
         }
       })
       .ifPresent(edge -> graph.addEdge(parent, child, edge));
+  }
+
+  /**
+   * Groups paths that can share the same record based on match result type.
+   * Paths are grouped when:
+   * 1. They share common ancestors AND
+   * 2. Either:
+   *    - Their most recent common ancestor is NOT a match profile, OR
+   *    - Their most recent common ancestor IS a match profile AND they diverge with the same match result type
+   *
+   * @param allPaths Collection of all paths through the job profile graph
+   * @return Collection of grouped paths, where each group will generate one record
+   */
+  private Collection<List<List<PathEntry>>> groupPathsByMatchResult(Collection<List<PathEntry>> allPaths) {
+    // Result: each list in the collection represents a group of paths that can share one record
+    List<List<List<PathEntry>>> groupedPaths = new ArrayList<>();
+
+    // Create a copy of allPaths to work with
+    List<List<PathEntry>> remainingPaths = new ArrayList<>(allPaths);
+
+    while (!remainingPaths.isEmpty()) {
+      // Take the first path as a reference
+      List<PathEntry> referencePath = remainingPaths.remove(0);
+
+      // Paths that will be grouped with the reference path
+      List<List<PathEntry>> currentGroup = new ArrayList<>();
+      currentGroup.add(referencePath);
+
+      // Iterate through remaining paths to find those that can be grouped
+      Iterator<List<PathEntry>> iterator = remainingPaths.iterator();
+      while (iterator.hasNext()) {
+        List<PathEntry> candidatePath = iterator.next();
+        if (canGroupPaths(referencePath, candidatePath)) {
+          currentGroup.add(candidatePath);
+          iterator.remove();
+        }
+      }
+
+      groupedPaths.add(currentGroup);
+    }
+
+    LOGGER.info("Grouped {} paths into {} groups for record generation",
+      allPaths.size(), groupedPaths.size());
+
+    return groupedPaths;
+  }
+
+  /**
+   * Determines if two paths can be grouped (share the same record).
+   *
+   * @param path1 First path
+   * @param path2 Second path
+   * @return true if paths can be grouped, false otherwise
+   */
+  private boolean canGroupPaths(List<PathEntry> path1, List<PathEntry> path2) {
+    // Find the index where the paths diverge
+    int divergenceIndex = findDivergenceIndex(path1, path2);
+
+    // If paths are identical, they can be grouped
+    if (divergenceIndex == -1) {
+      return true;
+    }
+
+    // If divergence happens at the very beginning, they can't be grouped
+    if (divergenceIndex == 0) {
+      return false;
+    }
+
+    // Get the node where paths diverge (common ancestor)
+    PathEntry commonAncestor = path1.get(divergenceIndex - 1);
+
+    // Check if the common ancestor is a match profile
+    boolean isMatchProfile = "MATCH_PROFILE".equals(
+      commonAncestor.node().path("contentType").asText());
+
+    // If not a match profile, paths can be grouped
+    if (!isMatchProfile) {
+      return true;
+    }
+
+    // If a match profile, get match result type for both paths at divergence
+    boolean isNonMatch1 = divergenceIndex < path1.size() && path1.get(divergenceIndex).isNonMatch();
+    boolean isNonMatch2 = divergenceIndex < path2.size() && path2.get(divergenceIndex).isNonMatch();
+
+    // If match result types differ, they can't be grouped
+    if (isNonMatch1 != isNonMatch2) {
+      return false;
+    }
+
+    // CRITICAL FIX: Check if any of the divergent nodes is a match profile
+    // If one path goes to another match profile and one doesn't, they can't be grouped
+    boolean isMatchProfile1 = divergenceIndex < path1.size() &&
+      "MATCH_PROFILE".equals(path1.get(divergenceIndex).node().path("contentType").asText());
+    boolean isMatchProfile2 = divergenceIndex < path2.size() &&
+      "MATCH_PROFILE".equals(path2.get(divergenceIndex).node().path("contentType").asText());
+
+    // If only one path contains a match profile at the divergence point, they can't be grouped
+    if (isMatchProfile1 != isMatchProfile2) {
+      return false;
+    }
+
+    // Both paths have the same match result type and neither or both contain match profiles
+    return true;
+  }
+
+  /**
+   * Finds the index where two paths diverge.
+   *
+   * @param path1 First path
+   * @param path2 Second path
+   * @return Index where paths diverge, or -1 if they are identical
+   */
+  private int findDivergenceIndex(List<PathEntry> path1, List<PathEntry> path2) {
+    int minLength = Math.min(path1.size(), path2.size());
+
+    for (int i = 0; i < minLength; i++) {
+      // Compare nodes by contentType and ID to identify divergence
+      JsonNode node1 = path1.get(i).node();
+      JsonNode node2 = path2.get(i).node();
+
+      // Using profileWrapperId for comparison
+      if (!node1.path("profileWrapperId").equals(node2.path("profileWrapperId"))) {
+        return i;
+      }
+    }
+
+    // If one path is a prefix of the other, return the length of the shorter path
+    return path1.size() != path2.size() ? minLength : -1;
   }
 
   /**
