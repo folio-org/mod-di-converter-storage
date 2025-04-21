@@ -12,6 +12,7 @@ import org.folio.rest.jaxrs.model.MarcSubfield;
 import org.folio.rest.jaxrs.model.MatchDetail;
 import org.folio.rest.jaxrs.model.MatchExpression;
 import org.folio.rest.jaxrs.model.MatchProfile;
+import org.folio.rest.jaxrs.model.StaticValueDetails;
 import org.jgrapht.Graph;
 import org.jgrapht.graph.SimpleDirectedGraph;
 import org.marc4j.MarcStreamWriter;
@@ -39,6 +40,7 @@ import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
 import static org.folio.Constants.OBJECT_MAPPER;
+
 
 /**
  * Generates MARC records for testing job profiles.
@@ -147,26 +149,23 @@ public class MarcTestDataGenerator {
     // Generate one record for each group of paths
     for (List<List<PathEntry>> pathGroup : groupedPaths) {
       try {
-        Record baseRecord = marcStream.nextRecord();
+        Record templateRecord = marcStream.nextRecord();
         // Use the first path in the group as reference
         List<PathEntry> referencePath = pathGroup.get(0);
 
         // Generate initial record from reference path
-        Record record = generateRecordFromPath(referencePath, baseRecord);
+        Record newRecord = generateRecordFromPath(referencePath, templateRecord);
 
         // If there are additional paths in this group, ensure the record satisfies them all
         for (int i = 1; i < pathGroup.size(); i++) {
-          enhanceRecordForPath(record, pathGroup.get(i), baseRecord);
+          enhanceRecordForPath(newRecord, pathGroup.get(i), templateRecord);
         }
 
-        records.add(record);
+        records.add(newRecord);
       } catch (Exception e) {
         LOGGER.error("Error generating record for path group: {}", e.getMessage(), e);
       }
     }
-
-    //TODO: Handle case where there are action profiles create FOLIO objects like orders
-    // and we need special MARC records for those object types. The need MARC records with data in specific fields.
 
     return records;
   }
@@ -175,7 +174,7 @@ public class MarcTestDataGenerator {
    * Enhances an existing record to also satisfy an additional path.
    * This ensures that a single record can be used to test multiple paths.
    */
-  private void enhanceRecordForPath(Record record, List<PathEntry> path, Record baseRecord) {
+  private void enhanceRecordForPath(Record newRecord, List<PathEntry> path, Record templateRecord) {
     // Extract all match profiles from the path
     List<PathEntry> matchProfiles = path.stream()
       .filter(entry -> "MATCH_PROFILE".equals(entry.node().path("contentType").asText()))
@@ -197,7 +196,7 @@ public class MarcTestDataGenerator {
 
       // Apply each match detail to the record
       for (MatchDetail matchDetail : matchDetails) {
-        applyMatchDetailToRecord(baseRecord, record, matchDetail, isNonMatch);
+        applyMatchDetailToRecord(templateRecord, newRecord, matchDetail, isNonMatch);
       }
     }
   }
@@ -217,9 +216,9 @@ public class MarcTestDataGenerator {
   /**
    * Generates a MARC record that satisfies the match conditions in the given path.
    */
-  private Record generateRecordFromPath(List<PathEntry> profilePath, Record baseRecord) {
+  private Record generateRecordFromPath(List<PathEntry> profilePath, Record templateRecord) {
     // Create a deep copy of the base record to modify
-    Record record = deepCopyRecord(baseRecord);
+    Record newRecord = deepCopyRecord(templateRecord);
 
     // Extract all match profiles from the path
     List<PathEntry> matchProfiles = profilePath.stream()
@@ -242,57 +241,171 @@ public class MarcTestDataGenerator {
 
       // Apply each match detail to the record
       for (MatchDetail matchDetail : matchDetails) {
-        applyMatchDetailToRecord(baseRecord, record, matchDetail, isNonMatch);
+        applyMatchDetailToRecord(templateRecord, newRecord, matchDetail, isNonMatch);
       }
     }
 
     // If this path has a CREATE action profile, remove field 999ff$i if it exists
     if (isCreateActionPath(profilePath)) {
-      record.removeVariableField(record.getVariableField("999"));
+      newRecord.removeVariableField(newRecord.getVariableField("999"));
     }
 
-    return record;
+    return newRecord;
   }
 
   /**
    * Applies a match detail to a MARC record, modifying fields as needed
    * to satisfy the match condition.
    *
+   * @param templateRecord The source/template MARC record used for reference
+   * @param newRecord The record being created/modified to satisfy match conditions
+   * @param matchDetail The match detail to apply
    * @param isNonMatch If true, the condition is inverted (NON_MATCH)
    */
-  private void applyMatchDetailToRecord(Record existingRecord, Record record, MatchDetail matchDetail, boolean isNonMatch) {
-    MatchExpression incomingMatchExpression = matchDetail.getIncomingMatchExpression();
-    if (incomingMatchExpression == null) {
-      LOGGER.warn("Match detail has no incoming match expression");
+  private void applyMatchDetailToRecord(Record templateRecord, Record newRecord, MatchDetail matchDetail, boolean isNonMatch) {
+    MatchExpression incomingExpression = matchDetail.getIncomingMatchExpression();
+    MatchExpression existingExpression = matchDetail.getExistingMatchExpression();
+
+    if (incomingExpression == null || existingExpression == null) {
+      LOGGER.warn("Match detail has incomplete match expressions");
       return;
     }
 
-    // Get the field information from the match expression
-    MarcField marcField = deriveMarcField(incomingMatchExpression);
+    // Get MARC field from incoming expression
+    MarcField marcField = deriveMarcField(incomingExpression);
     if (marcField == null || marcField.getField() == null) {
       LOGGER.warn("Could not derive MARC field from match expression");
       return;
     }
 
-    // Get the value to set in the field
-    String valueToSet = matchHandler.getValueFromMatchDetailOrExistingRecord(matchDetail, existingRecord);
+    // Get the match criterion
+    MatchDetail.MatchCriterion criterion = matchDetail.getMatchCriterion();
+
+    // For now, we only handle EXACTLY_MATCHES in detail
+    String valueToSet;
+    if (criterion != null && "EXACTLY_MATCHES".equals(criterion.value())) {
+      valueToSet = determineValueForExactMatch(matchDetail, templateRecord);
+    } else {
+      // Fall back to current implementation for other criteria
+      valueToSet = extractValueFromRecord(templateRecord, incomingExpression);
+      if (valueToSet == null || valueToSet.isEmpty()) {
+        valueToSet = generateAppropriateValue(incomingExpression);
+      }
+    }
 
     // For NON_MATCH conditions, modify the value so it won't match
     if (isNonMatch) {
       valueToSet = invertMatchValue(valueToSet, matchDetail);
     }
 
-    // Check if the field is a control field (001-009)
+    // Apply the value to the new record
     boolean isControlField = isControlField(marcField.getField());
-
-    // Handle control fields (001-009)
     if (isControlField) {
-      applyControlField(record, marcField, valueToSet);
-      return;
+      applyControlField(newRecord, marcField, valueToSet);
+    } else {
+      applyDataField(newRecord, marcField, valueToSet);
+    }
+  }
+
+  /**
+   * Determines the appropriate value for exact matching
+   */
+  private String determineValueForExactMatch(MatchDetail matchDetail, Record templateRecord) {
+    MatchExpression incomingExpression = matchDetail.getIncomingMatchExpression();
+    MatchExpression existingExpression = matchDetail.getExistingMatchExpression();
+
+    // First try to extract a value from the template record
+    String valueFromTemplate = extractValueFromRecord(templateRecord, incomingExpression);
+
+    // If no value found in the template, check if existing expression has a static value
+    if (valueFromTemplate == null || valueFromTemplate.isEmpty()) {
+      if (existingExpression.getDataValueType() == MatchExpression.DataValueType.STATIC_VALUE) {
+        return extractValueFromExpression(existingExpression);
+      } else {
+        // If everything else fails, generate an appropriate value
+        String fieldInfo = extractValueFromExpression(existingExpression);
+        return generateAppropriateValueFromFieldInfo(fieldInfo);
+      }
     }
 
-    // Handle data fields (010+)
-    applyDataField(record, marcField, valueToSet);
+    return valueFromTemplate;
+  }
+
+  /**
+   * Extracts value information from an expression
+   */
+  private String extractValueFromExpression(MatchExpression expression) {
+    // Check the data value type
+    if (expression.getDataValueType() == MatchExpression.DataValueType.STATIC_VALUE) {
+      // Handle static value case
+      StaticValueDetails staticValueDetails = expression.getStaticValueDetails();
+      if (staticValueDetails != null) {
+        StaticValueDetails.StaticValueType type = staticValueDetails.getStaticValueType();
+        if (type != null) {
+          switch (type.value()) {
+            case "TEXT":
+              return staticValueDetails.getText();
+            case "NUMBER":
+              return staticValueDetails.getNumber();
+            case "EXACT_DATE":
+              if (staticValueDetails.getExactDate() != null) {
+                return staticValueDetails.getExactDate().toString();
+              }
+              break;
+            case "DATE_RANGE":
+              // For date range, use fromDate as the representative value
+              if (staticValueDetails.getFromDate() != null) {
+                return staticValueDetails.getFromDate().toString();
+              }
+              break;
+          }
+        }
+      }
+    } else if (expression.getDataValueType() == MatchExpression.DataValueType.VALUE_FROM_RECORD) {
+      // Extract field information that could be useful for generating an appropriate value
+      List<Field> fields = expression.getFields();
+      if (fields != null && !fields.isEmpty()) {
+        // Get field name or identifier - could be used to understand expected data format
+        for (Field field : fields) {
+          if ("field".equals(field.getLabel())) {
+            return field.getValue();
+          }
+        }
+      }
+    }
+    return null;
+  }
+
+  /**
+   * Generates an appropriate value based on field information
+   */
+  private String generateAppropriateValueFromFieldInfo(String fieldInfo) {
+    if (fieldInfo == null) {
+      return generateRandomValue();
+    }
+
+    // Generate appropriate test values based on common MARC fields or field types
+    switch (fieldInfo) {
+      case "001":
+        return "oc" + randomNumeric(9); // Control number
+      case "020":
+        return "978" + randomNumeric(10); // ISBN
+      case "022":
+        return randomNumeric(4) + "-" + randomNumeric(4); // ISSN
+      case "245":
+        return "Test Title " + randomAlphanumeric(20); // Title
+      case "100":
+        return "Author, Test " + randomAlpha(10); // Author
+      case "260":
+      case "264":
+        return "Test Publisher, " + (2000 + Integer.parseInt(randomNumeric(2))); // Publication info
+      case "300":
+        return randomNumeric(3) + " p. ; " + randomNumeric(2) + " cm."; // Physical description
+      case "650":
+        return "Test Subject -- Subdivision"; // Subject term
+      default:
+        return generateRandomValue();
+    }
   }
 
   /**
@@ -387,15 +500,90 @@ public class MarcTestDataGenerator {
   }
 
   /**
-   * Determines if a field is a control field (001-009).
+   * Extracts a value from a MARC record based on the match expression.
+   *
+   * @param record The MARC record
+   * @param expression The match expression
+   * @return The extracted value
    */
-  private boolean isControlField(String field) {
-    try {
-      int fieldNum = Integer.parseInt(field);
-      return fieldNum >= 1 && fieldNum <= 9;
-    } catch (NumberFormatException e) {
-      return false;
+  private String extractValueFromRecord(Record record, MatchExpression expression) {
+    List<Field> fields = expression.getFields();
+    if (fields == null || fields.isEmpty()) {
+      return generateRandomValue();
     }
+
+    // Extract field tag, indicators, and subfield from the match expression
+    String fieldTag = null;
+    String indicator1 = null;
+    String indicator2 = null;
+    String subfieldCode = null;
+
+    for (Field field : fields) {
+      String label = field.getLabel();
+      String value = field.getValue();
+
+      if (label == null || value == null) {
+        continue;
+      }
+
+      switch (label) {
+        case "field":
+          fieldTag = value;
+          break;
+        case "indicator1":
+          indicator1 = value;
+          break;
+        case "indicator2":
+          indicator2 = value;
+          break;
+        case "recordSubfield":
+          subfieldCode = value;
+          break;
+      }
+    }
+
+    if (fieldTag == null) {
+      return generateRandomValue();
+    }
+
+    // Extract the value from the record
+    try {
+      // Handle control fields (001-009)
+      if (isControlField(fieldTag)) {
+        ControlField controlField = (ControlField) record.getVariableField(fieldTag);
+        if (controlField != null) {
+          return controlField.getData();
+        }
+      }
+      // Handle data fields with subfields and optional indicators
+      else if (subfieldCode != null && !subfieldCode.isEmpty()) {
+        // Create final copies of the variables for use in lambdas
+        final String finalFieldTag = fieldTag;
+        final String finalIndicator1 = indicator1;
+        final String finalIndicator2 = indicator2;
+
+        // Get all matching data fields
+        List<DataField> matchingFields = record.getDataFields()
+          .stream()
+          .filter(df -> df.getTag().equals(finalFieldTag))
+          .filter(df -> finalIndicator1 == null || String.valueOf(df.getIndicator1()).equals(finalIndicator1))
+          .filter(df -> finalIndicator2 == null || String.valueOf(df.getIndicator2()).equals(finalIndicator2))
+          .toList();
+
+        // If we found matching fields, extract the subfield data
+        if (!matchingFields.isEmpty()) {
+          DataField dataField = matchingFields.get(0); // Use the first matching field
+          Subfield subfield = dataField.getSubfield(subfieldCode.charAt(0));
+          if (subfield != null) {
+            return subfield.getData();
+          }
+        }
+      }
+    } catch (Exception e) {
+      LOGGER.warn("Error extracting value from record: {}", e.getMessage());
+    }
+
+    return generateAppropriateValue(expression);
   }
 
   /**
@@ -431,6 +619,99 @@ public class MarcTestDataGenerator {
     }
 
     return marcField;
+  }
+
+  /**
+   * Determines if a field is a control field (001-009).
+   */
+  private boolean isControlField(String field) {
+    try {
+      int fieldNum = Integer.parseInt(field);
+      return fieldNum >= 1 && fieldNum <= 9;
+    } catch (NumberFormatException e) {
+      return false;
+    }
+  }
+
+  /**
+   * Generates an appropriate value based on the match expression type.
+   * Attempts to create a value that would make sense for the field.
+   *
+   * @param expression The match expression
+   * @return A generated value
+   */
+  private String generateAppropriateValue(MatchExpression expression) {
+    // Extract field tag from the expression
+    String fieldTag = null;
+    List<Field> fields = expression.getFields();
+
+    if (fields != null) {
+      for (Field field : fields) {
+        if ("field".equals(field.getLabel())) {
+          fieldTag = field.getValue();
+          break;
+        }
+      }
+    }
+
+    return generateAppropriateValueFromFieldInfo(fieldTag);
+  }
+
+  /**
+   * Generates a random value for use when no specific value can be determined.
+   *
+   * @return A random string
+   */
+  private String generateRandomValue() {
+    return "TestValue-" + System.currentTimeMillis() + "-" + (int)(Math.random() * 10000);
+  }
+
+  /**
+   * Generates a random numeric string of the specified length.
+   *
+   * @param length The length of the string
+   * @return A random numeric string
+   */
+  private String randomNumeric(int length) {
+    StringBuilder sb = new StringBuilder();
+    for (int i = 0; i < length; i++) {
+      sb.append((int) (Math.random() * 10));
+    }
+    return sb.toString();
+  }
+
+  /**
+   * Generates a random alphabetic string of the specified length.
+   *
+   * @param length The length of the string
+   * @return A random alphabetic string
+   */
+  private String randomAlpha(int length) {
+    StringBuilder sb = new StringBuilder();
+    for (int i = 0; i < length; i++) {
+      char c = (char) ('a' + (int) (Math.random() * 26));
+      sb.append(c);
+    }
+    return sb.toString();
+  }
+
+  /**
+   * Generates a random alphanumeric string of the specified length.
+   *
+   * @param length The length of the string
+   * @return A random alphanumeric string
+   */
+  private String randomAlphanumeric(int length) {
+    StringBuilder sb = new StringBuilder();
+    for (int i = 0; i < length; i++) {
+      if (Math.random() < 0.7) {
+        char c = (char) ('a' + (int) (Math.random() * 26));
+        sb.append(c);
+      } else {
+        sb.append((int) (Math.random() * 10));
+      }
+    }
+    return sb.toString();
   }
 
   /**
