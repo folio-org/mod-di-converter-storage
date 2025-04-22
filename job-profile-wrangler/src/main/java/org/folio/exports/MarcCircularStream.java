@@ -10,6 +10,9 @@ import org.marc4j.marc.Record;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.NoSuchElementException;
 import java.util.Optional;
 
@@ -26,6 +29,7 @@ public class MarcCircularStream implements AutoCloseable {
   private FolioMarcClient folioClient;
   private boolean usingFolio;
   private String repositoryPath;
+  private int currentRecordPosition = 0;
 
   /**
    * Creates a circular stream using a local MARC file.
@@ -36,16 +40,37 @@ public class MarcCircularStream implements AutoCloseable {
   public MarcCircularStream(String marcFilePath) throws IOException {
     this.marcFilePath = marcFilePath;
     this.usingFolio = false;
-    resetFileStream();
+  }
+
+  /**
+   * Creates a circular stream using a local MARC file with repository support.
+   *
+   * @param marcFilePath Path to the MARC file
+   * @param repositoryPath Path to the repository for storing offsets
+   * @throws IOException If there's an error reading the file
+   */
+  public MarcCircularStream(String marcFilePath, String repositoryPath) throws IOException {
+    this.marcFilePath = marcFilePath;
+    this.repositoryPath = repositoryPath;
+    this.usingFolio = false;
+
+    // Initialize the MARC reader
+    inputStream = new FileInputStream(marcFilePath);
+    reader = new MarcStreamReader(inputStream);
+
+    // Load the current position from the repository if available
+    loadCurrentPosition();
   }
 
   /**
    * Creates a circular stream using a FOLIO instance API.
+   * Added boolean parameter to differentiate from the local file constructor.
    *
    * @param baseUrl The base URL of the FOLIO instance
    * @param token The authorization token
+   * @param useFolio Boolean flag (not used for logic, just to differentiate signature)
    */
-  public MarcCircularStream(String baseUrl, String token) {
+  public MarcCircularStream(String baseUrl, String token, boolean useFolio) {
     this(baseUrl, token, null);
   }
 
@@ -60,22 +85,6 @@ public class MarcCircularStream implements AutoCloseable {
     this.repositoryPath = repositoryPath;
     this.folioClient = new FolioMarcClient(baseUrl, token, repositoryPath);
     this.usingFolio = true;
-  }
-
-  /**
-   * Retrieves the next MARC record.
-   * If no more records, automatically restarts from the beginning.
-   *
-   * @return Next MARC record
-   * @throws IOException If there's an error reading records
-   * @throws NoSuchElementException If no records are available
-   */
-  public Record nextRecord() throws IOException, NoSuchElementException {
-    if (usingFolio) {
-      return folioClient.getNextRecord();
-    } else {
-      return nextFileRecord();
-    }
   }
 
   /**
@@ -96,11 +105,6 @@ public class MarcCircularStream implements AutoCloseable {
     return reader.next();
   }
 
-  /**
-   * Resets the file stream to the beginning of the file.
-   *
-   * @throws IOException If there's an error reopening the file
-   */
   private void resetFileStream() throws IOException {
     // Close existing stream if open
     if (inputStream != null) {
@@ -116,7 +120,82 @@ public class MarcCircularStream implements AutoCloseable {
 
     // Create a new MARC reader
     reader = new MarcStreamReader(inputStream);
-    LOGGER.info("Reset MARC file stream to beginning of file: {}", marcFilePath);
+
+    // Save the current position if repository path is provided
+    if (repositoryPath != null) {
+      Path currentOffsetFile = Paths.get(repositoryPath, ".currentMarcOffset");
+      try {
+        Files.writeString(currentOffsetFile, "0"); // Reset to beginning
+        LOGGER.info("Reset MARC file offset to beginning of file: {}", marcFilePath);
+      } catch (IOException e) {
+        LOGGER.warn("Failed to write currentOffset file: {}", e.getMessage());
+      }
+    }
+
+    // Reset the position counter
+    currentRecordPosition = 0;
+  }
+
+  /**
+   * Retrieves the next MARC record.
+   * If no more records, automatically restarts from the beginning.
+   *
+   * @return Next MARC record
+   * @throws IOException If there's an error reading records
+   * @throws NoSuchElementException If no records are available
+   */
+  public Record nextRecord() throws IOException, NoSuchElementException {
+    if (usingFolio) {
+      return folioClient.getNextRecord();
+    } else {
+      Record record = nextFileRecord();
+      currentRecordPosition++;
+
+      // Save position if we have a repository path
+      if (repositoryPath != null) {
+        saveCurrentPosition();
+      }
+
+      return record;
+    }
+  }
+
+  private void saveCurrentPosition() {
+    if (repositoryPath == null) {
+      return;
+    }
+
+    Path currentOffsetFile = Paths.get(repositoryPath, ".currentMarcOffset");
+    try {
+      Files.writeString(currentOffsetFile, String.valueOf(currentRecordPosition));
+      LOGGER.debug("Saved currentMarcOffset: {} to {}", currentRecordPosition, currentOffsetFile);
+    } catch (IOException e) {
+      LOGGER.warn("Failed to write currentMarcOffset file: {}", e.getMessage());
+    }
+  }
+
+  private void loadCurrentPosition() {
+    if (repositoryPath == null) {
+      return;
+    }
+
+    Path currentOffsetFile = Paths.get(repositoryPath, ".currentMarcOffset");
+    if (Files.exists(currentOffsetFile)) {
+      try {
+        String offsetStr = Files.readString(currentOffsetFile).trim();
+        int savedPosition = Integer.parseInt(offsetStr);
+
+        // Skip ahead to the saved position
+        for (int i = 0; i < savedPosition && reader.hasNext(); i++) {
+          reader.next();
+          currentRecordPosition++;
+        }
+
+        LOGGER.info("Resumed from position {} in MARC file", currentRecordPosition);
+      } catch (IOException | NumberFormatException e) {
+        LOGGER.warn("Failed to read currentMarcOffset file: {}", e.getMessage());
+      }
+    }
   }
 
   /**
@@ -132,6 +211,15 @@ public class MarcCircularStream implements AutoCloseable {
       throw new IllegalStateException("Record retrieval by ID is only supported in FOLIO mode");
     }
     return folioClient.getRecordById(recordId);
+  }
+
+  /**
+   * Checks if this stream is using FOLIO as its source.
+   *
+   * @return true if using FOLIO, false if using a local file
+   */
+  public boolean isUsingFolio() {
+    return usingFolio;
   }
 
   /**

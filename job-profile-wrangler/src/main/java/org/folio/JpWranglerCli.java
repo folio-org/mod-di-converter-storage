@@ -1,5 +1,6 @@
 package org.folio;
 
+import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -369,7 +370,10 @@ public class JpWranglerCli implements Callable<Integer> {
     @Parameters(index = "0", description = "FOLIO job profile UUID to use for test record generation")
     String jobProfileId;
 
-    @Option(names = {"-o", "--output"}, description = "Output MARC file path", required = true)
+    @Option(names = {"--template-file"}, description = "Local MARC template file path")
+    String templatePath;
+
+    @Option(names = {"-o", "--output"}, description = "Base output path for MARC records (suffixes will be added)", required = true)
     String outputPath;
 
     @Override
@@ -378,14 +382,27 @@ public class JpWranglerCli implements Callable<Integer> {
         // Ensure repository exists
         ensureRepositoryExists();
 
-        // Get token either from options or by authenticating
+        // Validate template file if provided
+        if (templatePath != null) {
+          File templateFile = new File(templatePath);
+          if (!templateFile.exists() || !templateFile.isFile()) {
+            LOGGER.error("Template MARC file not found or not a file: {}", templatePath);
+            return 1;
+          }
+          if (!templateFile.canRead()) {
+            LOGGER.error("Cannot read template MARC file: {}", templatePath);
+            return 1;
+          }
+          LOGGER.info("Using local template file: {}", templatePath);
+        }
+
+        // Connect to FOLIO to get the job profile snapshot
         String token = folioOptions.getToken();
         if (token == null) {
           LOGGER.error("Authentication failed: could not obtain token");
           return 1;
         }
 
-        // Connect to FOLIO
         FolioClient client = new FolioClient(
           () -> HttpUrl.parse(folioOptions.baseUrl).newBuilder(),
           token
@@ -401,16 +418,46 @@ public class JpWranglerCli implements Callable<Integer> {
 
         LOGGER.info("Successfully retrieved job profile snapshot for UUID: {}", jobProfileId);
 
-        // Generate test MARC records using FOLIO as the source
-        MarcTestDataGenerator generator = new MarcTestDataGenerator(folioOptions.baseUrl, token, repoPath);
+        // Generate test MARC records
+        MarcTestDataGenerator generator = null;
         try {
-          generator.generateTestData(snapshot.get(), outputPath);
-          LOGGER.info("Generated test MARC records to {}", outputPath);
+          if (templatePath != null) {
+            // Use local template file with repository path for offset tracking
+            LOGGER.info("Using local template file: {} with repository at {}", templatePath, repoPath);
+            generator = MarcTestDataGenerator.createWithLocalFile(templatePath, repoPath);
+          } else {
+            // Use FOLIO as the source (original behavior)
+            // Pass the boolean flag to use the new constructor signature
+            LOGGER.info("Using FOLIO as the source for template records");
+            generator = new MarcTestDataGenerator(folioOptions.baseUrl, token, repoPath);
+          }
+
+          if (generator == null) {
+            LOGGER.error("Failed to create MARC generator");
+            return 1;
+          }
+
+          LOGGER.info("Generating test MARC records for job profile...");
+          generator.generateTestDataWithFoundation(snapshot.get(), outputPath);
+
+          LOGGER.info("Test data generation complete. Files generated with base path: {}", outputPath);
+          LOGGER.info("  - Foundation records: {}-create.mrc", outputPath);
+
+          // Check if update records were also created
+          File updateFile = new File(outputPath + "-update.mrc");
+          if (updateFile.exists()) {
+            LOGGER.info("  - Update records: {}-update.mrc", outputPath);
+            LOGGER.info("Import records in order: first import foundation records, then import update records.");
+          } else {
+            LOGGER.info("No update records generated (job profile contains only create actions).");
+          }
         } finally {
-          try {
-            generator.close();
-          } catch (IOException e) {
-            LOGGER.warn("Error closing generator: {}", e.getMessage());
+          if (generator != null) {
+            try {
+              generator.close();
+            } catch (Exception e) {
+              LOGGER.warn("Error closing generator: {}", e.getMessage());
+            }
           }
         }
 
