@@ -1,3 +1,6 @@
+## 2025-04-30 2.3.2
+* [MODDICONV-418](https://issues.folio.org/browse/MODDICONV-418) Field mapping profile corruption for orders in Ramsons Test env
+
 ## 2024-10-29 2.3.1
 * [MODDICONV-404](https://folio-org.atlassian.net/browse/MODDICONV-404) Missing interface dependencies in module descriptor
 
