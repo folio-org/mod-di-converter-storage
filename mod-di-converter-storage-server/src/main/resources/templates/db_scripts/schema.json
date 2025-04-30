@@ -479,6 +479,11 @@
       "run": "after",
       "snippetPath": "data-migration/set_required_true_for_order_vendor_and_contributor.sql",
       "fromModuleVersion": "mod-di-converter-storage-2.4.0"
+    },
+    {
+      "run": "after",
+      "snippetPath": "data-migration/fix_order_mapping_profiles.sql",
+      "fromModuleVersion": "mod-di-converter-storage-2.3.2"
     }
   ]
 }
