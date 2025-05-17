@@ -1,3 +1,6 @@
+## 2025-05-16 2.4.2
+* [MODDICONV-422](https://issues.folio.org/browse/MODDICONV-422) Field mapping profile corruption for orders in Ramsons Test environment (MODDICONV-420)
+
 ## 2025-04-17 2.4.1
 * [MODDICONV-415](https://issues.folio.org/browse/MODDICONV-415) Upgrade dependencies for fixing vulnerabilities
 
