@@ -79,10 +79,7 @@ INSERT INTO ${myuniversity}_${mymodule}.mapping_profiles (id, jsonb) VALUES
             "value": "",
             "subfields": []
           }]
-        }],
-        "acceptedValues": {
-          "0ebb1f7d-983f-3026-8a4c-5318e0ebc041": "main"
-        }
+        }]
       },
       {
         "name": "billTo",
@@ -104,10 +101,7 @@ INSERT INTO ${myuniversity}_${mymodule}.mapping_profiles (id, jsonb) VALUES
         "enabled": true,
         "path": "invoice.batchGroupId",
         "value": "",
-        "subfields": [],
-        "acceptedValues": {
-          "2a2cb998-1437-41d1-88ad-01930aaeadd5": "FOLIO"
-        }
+        "subfields": []
       },
       {
         "name": "subTotal",
