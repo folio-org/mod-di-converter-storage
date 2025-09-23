@@ -1,0 +1,23 @@
+{
+  "instanceFormats": [
+    {
+      "id": "8d511d33-5e85-4c5d-9bce-6e3c9cd0c324",
+      "name": "computer -- online resource",
+      "code": "cr",
+      "source": "rdacarrier"
+    },
+    {
+      "id": "f5e8210f-7640-459b-a71f-552567f92369",
+      "name": "volume",
+      "code": "nc",
+      "source": "rdacarrier"
+    },
+    {
+      "id": "65fcd98b-d9db-4669-b1ae-0e4c4cd5c6b8",
+      "name": "microform",
+      "code": "he",
+      "source": "rdacarrier"
+    }
+  ],
+  "totalRecords": 3
+}

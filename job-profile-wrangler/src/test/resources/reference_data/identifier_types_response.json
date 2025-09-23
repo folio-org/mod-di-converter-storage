@@ -1,0 +1,20 @@
+{
+  "identifierTypes": [
+    {
+      "id": "8261054f-be78-422d-bd51-4ed9f33c3422",
+      "name": "ISBN",
+      "source": "folio"
+    },
+    {
+      "id": "913300b2-03ed-469a-8179-c1092c991227",
+      "name": "ISSN",
+      "source": "folio"
+    },
+    {
+      "id": "b5d8cdc4-9441-487c-90cf-0c7ec97728eb",
+      "name": "LCCN",
+      "source": "folio"
+    }
+  ],
+  "totalRecords": 3
+}

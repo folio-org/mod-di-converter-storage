@@ -1,0 +1,20 @@
+{
+  "mtypes": [
+    {
+      "id": "1a54b431-2e4f-452d-9cae-9cee66c9a892",
+      "name": "book",
+      "source": "folio"
+    },
+    {
+      "id": "71fbd940-1027-40a6-8a48-49b44d795e46",
+      "name": "electronic resource",
+      "source": "folio"
+    },
+    {
+      "id": "dd0bf600-dbd9-44ab-9ff2-e2a61a6539f1",
+      "name": "sound recording",
+      "source": "folio"
+    }
+  ],
+  "totalRecords": 3
+}

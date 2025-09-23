@@ -1,0 +1,26 @@
+{
+  "statisticalCodes": [
+    {
+      "id": "b5968c9e-cddc-4576-99e3-8e60aed8b0dd",
+      "code": "ARL",
+      "name": "Association of Research Libraries",
+      "source": "folio",
+      "statisticalCodeTypeId": "0868921a-4407-47c9-9b3e-db94644dbae2"
+    },
+    {
+      "id": "264c4f5d-7110-40c4-8246-526bb84cc5ea",
+      "code": "ASER",
+      "name": "Active serial",
+      "source": "folio",
+      "statisticalCodeTypeId": "0868921a-4407-47c9-9b3e-db94644dbae2"
+    },
+    {
+      "id": "775b6ad4-9c35-4d29-bf78-8775a9b42226",
+      "code": "BOOK",
+      "name": "Books",
+      "source": "folio",
+      "statisticalCodeTypeId": "0868921a-4407-47c9-9b3e-db94644dbae2"
+    }
+  ],
+  "totalRecords": 3
+}

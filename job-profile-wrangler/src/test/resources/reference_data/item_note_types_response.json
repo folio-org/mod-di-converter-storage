@@ -1,0 +1,20 @@
+{
+  "itemNoteTypes": [
+    {
+      "id": "1dde7141-ec8a-4dae-9825-49ce14c728e7",
+      "name": "General note",
+      "source": "folio"
+    },
+    {
+      "id": "87c450be-2033-41fb-80ba-dd2409883681",
+      "name": "Provenance",
+      "source": "folio"
+    },
+    {
+      "id": "8d0a5eca-25de-4391-81a9-236eeefdd20b",
+      "name": "Reproduction",
+      "source": "folio"
+    }
+  ],
+  "totalRecords": 3
+}

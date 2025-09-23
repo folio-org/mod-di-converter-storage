@@ -147,9 +147,6 @@ public class FolioMarcClient {
       .newBuilder()
       .addQueryParameter("offset", String.valueOf(currentOffset))
       .addQueryParameter("limit", String.valueOf(PAGE_SIZE))
-      .addQueryParameter("recordType", "MARC_BIB")
-      .addQueryParameter("deleted", "false")
-      .addQueryParameter("orderBy", "id,ASC")
       .build();
 
     Request request = new Request.Builder()
@@ -161,6 +158,7 @@ public class FolioMarcClient {
 
     try (Response response = httpClient.newCall(request).execute()) {
       if (!response.isSuccessful()) {
+        LOGGER.error("Failed to fetch MARC records: {} - {}", response.code(), response.message());
         throw new IOException("Failed to fetch MARC records: " + response.code() + " - " + response.message());
       }
 
@@ -170,13 +168,17 @@ public class FolioMarcClient {
       }
 
       JsonNode jsonResponse = OBJECT_MAPPER.readTree(body.string());
+      LOGGER.debug("Received response with {} source records", jsonResponse.has("sourceRecords") ? jsonResponse.get("sourceRecords").size() : 0);
+
       processSourceRecordsResponse(jsonResponse);
 
       // Update pagination variables
       if (jsonResponse.has("totalRecords")) {
         totalRecords = jsonResponse.get("totalRecords").asInt();
-        if (currentOffset >= totalRecords) {
+        LOGGER.debug("Total records available: {}", totalRecords);
+        if (currentOffset + recordCache.size() >= totalRecords) {
           endOfRecords = true;
+          LOGGER.info("Reached end of records. Total: {}, Current offset: {}", totalRecords, currentOffset);
         }
       }
     }
@@ -189,8 +191,13 @@ public class FolioMarcClient {
    * @throws IOException If an error occurs during processing
    */
   private void processSourceRecordsResponse(JsonNode jsonResponse) throws IOException {
-    if (!jsonResponse.has("sourceRecords") || !jsonResponse.get("sourceRecords").isArray()) {
-      LOGGER.warn("Invalid response format - no sourceRecords array found");
+    if (!jsonResponse.has("sourceRecords")) {
+      LOGGER.warn("No sourceRecords field in response");
+      return;
+    }
+
+    if (!jsonResponse.get("sourceRecords").isArray()) {
+      LOGGER.warn("sourceRecords is not an array");
       return;
     }
 
@@ -199,13 +206,26 @@ public class FolioMarcClient {
 
     // Clear the cache before adding new records
     recordCache.clear();
+    int processedCount = 0;
+    int skippedCount = 0;
 
     for (JsonNode sourceRecord : sourceRecords) {
-      if (sourceRecord.has("parsedRecord") &&
-        sourceRecord.get("parsedRecord").has("content")) {
+      try {
+        if (!sourceRecord.has("parsedRecord")) {
+          LOGGER.debug("Source record missing parsedRecord field");
+          skippedCount++;
+          continue;
+        }
+
+        JsonNode parsedRecord = sourceRecord.get("parsedRecord");
+        if (!parsedRecord.has("content")) {
+          LOGGER.debug("Parsed record missing content field");
+          skippedCount++;
+          continue;
+        }
 
         // Extract the MARC record JSON
-        JsonNode marcJson = sourceRecord.get("parsedRecord").get("content");
+        JsonNode marcJson = parsedRecord.get("content");
         String marcJsonString = OBJECT_MAPPER.writeValueAsString(marcJson);
 
         // Use MarcJsonReader to convert JSON to MARC record
@@ -214,14 +234,20 @@ public class FolioMarcClient {
           if (reader.hasNext()) {
             Record record = reader.next();
             recordCache.add(record);
+            processedCount++;
+          } else {
+            LOGGER.debug("No MARC record found in JSON content");
+            skippedCount++;
           }
-        } catch (Exception e) {
-          LOGGER.warn("Failed to parse MARC record: {}", e.getMessage());
         }
+      } catch (Exception e) {
+        LOGGER.warn("Failed to parse MARC record: {}", e.getMessage());
+        skippedCount++;
       }
     }
 
-    LOGGER.info("Added {} MARC records to cache, current offset: {}", recordCache.size(), currentOffset);
+    LOGGER.info("Processed {} MARC records, skipped {} invalid records, current offset: {}",
+                processedCount, skippedCount, currentOffset);
     currentRecordIndex = 0; // Reset the index to start from the beginning of the new batch
   }
 
@@ -346,5 +372,41 @@ public class FolioMarcClient {
 
     httpClient.dispatcher().executorService().shutdown();
     httpClient.connectionPool().evictAll();
+  }
+
+  /**
+   * Gets the current offset position.
+   *
+   * @return The current offset
+   */
+  public int getCurrentOffset() {
+    return currentOffset;
+  }
+
+  /**
+   * Gets the total number of records available.
+   *
+   * @return The total number of records
+   */
+  public int getTotalRecords() {
+    return totalRecords;
+  }
+
+  /**
+   * Checks if we've reached the end of records.
+   *
+   * @return True if end of records reached
+   */
+  public boolean isEndOfRecords() {
+    return endOfRecords;
+  }
+
+  /**
+   * Gets the number of records currently in cache.
+   *
+   * @return The cache size
+   */
+  public int getCacheSize() {
+    return recordCache.size();
   }
 }

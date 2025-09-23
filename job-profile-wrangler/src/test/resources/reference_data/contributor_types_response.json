@@ -1,0 +1,23 @@
+{
+  "contributorTypes": [
+    {
+      "id": "6e09d47d-95e2-4d8a-831b-f777b8ef6d81",
+      "name": "Author",
+      "code": "aut",
+      "source": "marcrelator"
+    },
+    {
+      "id": "e8b311a6-3b21-43f2-a269-dd9310cb2d0a",
+      "name": "Editor",
+      "code": "edt",
+      "source": "marcrelator"
+    },
+    {
+      "id": "9f0a2cf0-7a9b-45a2-a403-f68d2850d07c",
+      "name": "Translator",
+      "code": "trl",
+      "source": "marcrelator"
+    }
+  ],
+  "totalRecords": 3
+}

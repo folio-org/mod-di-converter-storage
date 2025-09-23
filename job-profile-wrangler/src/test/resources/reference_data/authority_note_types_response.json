@@ -1,0 +1,20 @@
+{
+  "authorityNoteTypes": [
+    {
+      "id": "ca479710-0cab-4aed-8c6a-a9ec5a6f1d98",
+      "name": "Nonpublic general note",
+      "source": "folio"
+    },
+    {
+      "id": "46bfb1c2-9c13-42d1-a5bc-a4b8f5bb6bbb",
+      "name": "General note",
+      "source": "folio"
+    },
+    {
+      "id": "e6a78168-80c4-4c13-a7bd-4ca0fe8b8a2e",
+      "name": "Cataloguer's note",
+      "source": "folio"
+    }
+  ],
+  "totalRecords": 3
+}

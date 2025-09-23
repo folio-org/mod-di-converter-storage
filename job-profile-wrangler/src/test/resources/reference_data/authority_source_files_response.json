@@ -1,0 +1,29 @@
+{
+  "authoritySourceFiles": [
+    {
+      "id": "f8e58651-f651-485d-aead-d2fa8700e2d1",
+      "name": "LC Name Authority file (LCNAF)",
+      "code": "LC Name Authority file (LCNAF)",
+      "type": "Names",
+      "baseUrl": "http://id.loc.gov/authorities/names/",
+      "source": "local"
+    },
+    {
+      "id": "b5511a20-9f04-4df7-9ee6-4431ba9dab33",
+      "name": "LC Subject Headings (LCSH)",
+      "code": "LC Subject Headings (LCSH)",
+      "type": "Subjects",
+      "baseUrl": "http://id.loc.gov/authorities/subjects/",
+      "source": "local"
+    },
+    {
+      "id": "037e3955-9999-4a74-bc86-13cb9e8b6ac3",
+      "name": "LC Children's Subject Headings",
+      "code": "LC Children's Subject Headings",
+      "type": "Subjects",
+      "baseUrl": "http://id.loc.gov/authorities/childrensSubjects/",
+      "source": "local"
+    }
+  ],
+  "totalRecords": 3
+}

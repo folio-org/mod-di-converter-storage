@@ -1,0 +1,23 @@
+{
+  "instanceTypes": [
+    {
+      "id": "6312d172-f0cf-40f6-b27d-9fa8feaf332f",
+      "name": "text",
+      "code": "txt",
+      "source": "rdacontent"
+    },
+    {
+      "id": "30fffe0e-e985-4144-b2e2-1e8179bdb41f",
+      "name": "computer dataset",
+      "code": "cod",
+      "source": "rdacontent"
+    },
+    {
+      "id": "dd0bf600-dbd9-44ab-9ff2-e2a61a6539f1",
+      "name": "performed music",
+      "code": "prm",
+      "source": "rdacontent"
+    }
+  ],
+  "totalRecords": 3
+}

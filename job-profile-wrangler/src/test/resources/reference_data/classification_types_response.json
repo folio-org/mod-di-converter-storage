@@ -1,0 +1,20 @@
+{
+  "classificationTypes": [
+    {
+      "id": "ce176ace-a53e-4b4d-aa89-725ed7b2edac",
+      "name": "Dewey Decimal classification",
+      "source": "folio"
+    },
+    {
+      "id": "42471af9-7d25-4f3a-bf78-60d29dcf463b",
+      "name": "Library of Congress classification",
+      "source": "folio"
+    },
+    {
+      "id": "5ee11d91-f7e8-481d-b079-65a708582fda",
+      "name": "National Library of Medicine classification",
+      "source": "folio"
+    }
+  ],
+  "totalRecords": 3
+}

@@ -1,0 +1,20 @@
+{
+  "holdingsTypes": [
+    {
+      "id": "996f93e2-5b5e-4cf2-9168-33ced1f95eed",
+      "name": "Electronic",
+      "source": "folio"
+    },
+    {
+      "id": "03c9c400-b9e3-4a07-ac0e-05ab470233ed",
+      "name": "Monograph",
+      "source": "folio"
+    },
+    {
+      "id": "0c422f92-0f4d-4d32-8cbe-390ebc33a3e5",
+      "name": "Serial",
+      "source": "folio"
+    }
+  ],
+  "totalRecords": 3
+}
