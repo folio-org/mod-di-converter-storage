@@ -11,7 +11,6 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.folio.dao.ProfileDao;
 import org.folio.dao.association.ProfileWrapperDao;
-import org.folio.okapi.common.GenericCompositeFuture;
 import org.folio.rest.impl.util.OkapiConnectionParams;
 import org.folio.rest.impl.util.RestUtil;
 import org.folio.rest.jaxrs.model.ActionProfile;
@@ -145,7 +144,7 @@ public abstract class AbstractProfileService<T, S, D> implements ProfileService<
       .collect(Collectors.toList());
 
     Promise<Boolean> result = Promise.promise();
-    GenericCompositeFuture.all(futureList).onComplete(ar -> {
+    Future.all(futureList).onComplete(ar -> {
       if (ar.succeeded()) {
         result.complete(true);
       } else {
@@ -185,7 +184,7 @@ public abstract class AbstractProfileService<T, S, D> implements ProfileService<
       return Future.succeededFuture(true);
     }
     Promise<Boolean> result = Promise.promise();
-    GenericCompositeFuture.all(fillProfileDataIfNeeded(profileAssociations, tenantId))
+    Future.all(fillProfileDataIfNeeded(profileAssociations, tenantId))
       .onSuccess(r ->
         associationService.wrapAssociationProfiles(profileAssociations, tenantId)
           .compose(e -> profileAssociationService.save(profileAssociations, tenantId))
@@ -226,10 +225,10 @@ public abstract class AbstractProfileService<T, S, D> implements ProfileService<
     String actionProfileId = actionProfileAssociation.getDetailProfileId();
     return profileWrapperDao.getWrapperByProfileId(actionProfileId, ACTION_PROFILE, tenantId)
       .compose(profileWrappers -> {
-        if (profileWrappers.size() == 0) {
+        if (profileWrappers.isEmpty()) {
           return Future.failedFuture(new NotFoundException(format("Wrapper does NOT exist for this Action Profile with id '%s' ", actionProfileId)));
         }
-        actionProfileAssociation.setDetailWrapperId(profileWrappers.get(0).getId());
+        actionProfileAssociation.setDetailWrapperId(profileWrappers.getFirst().getId());
         return Future.succeededFuture();
       });
   }
@@ -239,7 +238,7 @@ public abstract class AbstractProfileService<T, S, D> implements ProfileService<
     return profileWrapperDao.getWrapperByProfileId(actionProfileId, ACTION_PROFILE, tenantId)
       .compose(profileWrappers -> {
         if (profileWrappers.size() == 1) {
-          actionProfileAssociation.setMasterWrapperId(profileWrappers.get(0).getId());
+          actionProfileAssociation.setMasterWrapperId(profileWrappers.getFirst().getId());
           return Future.succeededFuture();
         }
         if (profileWrappers.size() > 1) {
@@ -429,7 +428,7 @@ public abstract class AbstractProfileService<T, S, D> implements ProfileService<
     Promise<S> result = Promise.promise();
     profilesList.forEach(profile ->
       futureList.add(fetchRelations(profile, tenantId)));
-    GenericCompositeFuture.all(futureList).onComplete(ar -> {
+    Future.all(futureList).onComplete(ar -> {
       if (ar.succeeded()) {
         result.complete(profilesCollection);
       } else {
@@ -459,7 +458,7 @@ public abstract class AbstractProfileService<T, S, D> implements ProfileService<
         setParentProfiles(profile, parentProfiles);
         return Future.succeededFuture(profile);
       }));
-    GenericCompositeFuture.all(futureList).onComplete(ar -> {
+    Future.all(futureList).onComplete(ar -> {
       if (ar.succeeded()) {
         result.complete(profile);
       } else {
@@ -538,7 +537,7 @@ public abstract class AbstractProfileService<T, S, D> implements ProfileService<
     Map<String, Future<Boolean>> validateConditions = getValidateConditions(operationType, profile, tenantId);
     List<String> errorCodes = new ArrayList<>(validateConditions.keySet());
     List<Future<Boolean>> futures = new ArrayList<>(validateConditions.values());
-    GenericCompositeFuture.all(futures).onComplete(ar -> {
+    Future.all(futures).onComplete(ar -> {
       if (ar.succeeded()) {
         List<Error> errors = new ArrayList<>(errorCodes).stream()
           .filter(errorCode -> ar.result().resultAt(errorCodes.indexOf(errorCode)))

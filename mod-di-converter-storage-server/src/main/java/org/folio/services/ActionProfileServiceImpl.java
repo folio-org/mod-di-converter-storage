@@ -7,7 +7,6 @@ import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.folio.okapi.common.GenericCompositeFuture;
 import org.folio.rest.impl.util.OkapiConnectionParams;
 import org.folio.rest.jaxrs.model.ActionProfile;
 import org.folio.rest.jaxrs.model.ActionProfileCollection;
@@ -208,7 +207,7 @@ public class ActionProfileServiceImpl extends AbstractProfileService<ActionProfi
           String.format(INVALID_RECORD_TYPE_LINKED_MAPPING_PROFILE_TO_ACTION_PROFILE, mappingProfile.getName())))
       ))
       .toList();
-    GenericCompositeFuture.all(futures)
+    Future.all(futures)
       .onSuccess(handler -> promise.complete(new Errors().withErrors(errors)))
       .onFailure(promise::fail);
 

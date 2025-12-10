@@ -3,13 +3,10 @@ package org.folio.dao;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
 import io.vertx.core.Promise;
-import io.vertx.sqlclient.Row;
-import io.vertx.sqlclient.RowSet;
 import io.vertx.sqlclient.Tuple;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.folio.cql2pgjson.CQL2PgJSON;
-import org.folio.cql2pgjson.exception.FieldException;
 import org.folio.rest.persist.Criteria.Criteria;
 import org.folio.rest.persist.Criteria.Criterion;
 import org.folio.rest.persist.PostgresClient;
@@ -52,7 +49,13 @@ public abstract class AbstractProfileDao<T, S> implements ProfileDao<T, S> {
         var notHiddenProfilesFilter = "hidden==false";
         cql.addWrapper(getCQLWrapper(getTableName(), notHiddenProfilesFilter));
       }
-      pgClientFactory.createInstance(tenantId).get(getTableName(), getProfileType(), fieldList, cql, true, false, promise);
+      pgClientFactory.createInstance(tenantId).get(getTableName(), getProfileType(), fieldList, cql, true, false, result -> {
+        if (result.succeeded()) {
+          promise.complete(result.result());
+        } else {
+          promise.fail(result.cause());
+        }
+      });
     } catch (Exception e) {
       logger.warn("getProfiles:: Error while searching for {}", getProfileType().getSimpleName(), e);
       promise.fail(e);
@@ -61,25 +64,39 @@ public abstract class AbstractProfileDao<T, S> implements ProfileDao<T, S> {
   }
 
   @Override
-  public Future<Optional<T>> getProfileById(String id, String tenantId) {
-    Promise<Results<T>> promise = Promise.promise();
-    try {
-      Criteria idCrit = constructCriteria(ID_FIELD, id);
-      pgClientFactory.createInstance(tenantId).get(getTableName(), getProfileType(), new Criterion(idCrit), true, false, promise);
-    } catch (Exception e) {
-      logger.warn("getProfileById:: Error querying {} by id", getProfileType().getSimpleName(), e);
-      promise.fail(e);
-    }
-    return promise.future()
-      .map(Results::getResults)
-      .map(profiles -> profiles.isEmpty() ? Optional.empty() : Optional.of(profiles.get(0)));
-  }
+public Future<Optional<T>> getProfileById(String id, String tenantId) {
+        Promise<Optional<T>> promise = Promise.promise();
+        Criteria idCrit = constructCriteria(ID_FIELD, id);
+        try {
+          pgClientFactory.createInstance(tenantId).get(getTableName(), getProfileType(), new Criterion(idCrit), true, false, result -> {
+            if (result.failed()) {
+              logger.warn("getProfileById:: Error querying {} by id", getProfileType().getSimpleName(), result.cause());
+              promise.fail(result.cause());
+            } else {
+              Results<T> rows = result.result();
+              if (rows.getResults().isEmpty()) {
+                logger.info("getProfileById:: {} with id {} was not found", getProfileType().getSimpleName(), id);
+                promise.complete(Optional.empty());
+              } else {
+                promise.complete(Optional.of(rows.getResults().getFirst()));
+              }
+            }
+          });
+        } catch (Exception e) {
+          logger.warn("getProfileById:: Error querying {} by id", getProfileType().getSimpleName(), e);
+          promise.fail(e);
+        }
+        return promise.future();
+      }
 
   @Override
   public Future<String> saveProfile(T profile, String tenantId) {
-    Promise<String> promise = Promise.promise();
-    pgClientFactory.createInstance(tenantId).save(getTableName(), getProfileId(profile), profile, promise);
-    return promise.future();
+    try {
+      return pgClientFactory.createInstance(tenantId).save(getTableName(), getProfileId(profile), profile);
+    } catch (Exception e) {
+      logger.error("saveProfile:: Failed to initiate save for profile of type {}", getProfileType(), e);
+      return Future.failedFuture(e);
+    }
   }
 
   @Override
@@ -122,7 +139,7 @@ public abstract class AbstractProfileDao<T, S> implements ProfileDao<T, S> {
       })
       .compose(profileList -> profileList.getResults().isEmpty()
         ? Future.failedFuture(new NotFoundException(format("%s with id '%s' was not found", getProfileType().getSimpleName(), profileId)))
-        : Future.succeededFuture(profileList.getResults().get(0)))
+        : Future.succeededFuture(profileList.getResults().getFirst()))
       .compose(profileMutator)
       .compose(mutatedProfile -> updateProfile(tx.future(), profileId, mutatedProfile, tenantId))
       .onComplete(updateAr -> {
@@ -140,21 +157,33 @@ public abstract class AbstractProfileDao<T, S> implements ProfileDao<T, S> {
   }
 
   protected Future<T> updateProfile(AsyncResult<SQLConnection> tx, String profileId, T profile, String tenantId) {
-    Promise<RowSet<Row>> promise = Promise.promise();
+    Promise<T> promise = Promise.promise();
     try {
       CQLWrapper updateFilter = new CQLWrapper(new CQL2PgJSON(getTableName()), "id==" + profileId);
-      pgClientFactory.createInstance(tenantId).update(tx, getTableName(), profile, updateFilter, true, promise);
-    } catch (FieldException e) {
-      logger.warn("updateProfile:: Error during updating {} by ID ", getProfileType(), e);
+      PostgresClient pgClient = pgClientFactory.createInstance(tenantId);
+      pgClient.update(tx, getTableName(), profile, updateFilter, true, updateResult -> {
+        if (updateResult.failed()) {
+          logger.warn("updateProfile:: Could not update {} with id {}", getProfileType().getSimpleName(), profileId, updateResult.cause());
+          promise.fail(updateResult.cause());
+        } else {
+          if (updateResult.result().rowCount() == 0) {
+            String message = String.format("updateProfile:: %s with id '%s' not found for update.", getProfileType().getSimpleName(), profileId);
+            logger.warn(message);
+            promise.fail(new NotFoundException(message));
+          } else {
+            promise.complete(profile);
+          }
+        }
+      });
+    } catch (Exception e) {
+      logger.warn("updateProfile:: Error preparing to update {} by ID", getProfileType(), e);
       promise.fail(e);
     }
-    return promise.future().map(profile);
+    return promise.future();
   }
 
   protected Future<Boolean> deleteProfile(PostgresClient pgClient, String profileId) {
-    Promise<RowSet<Row>> promise = Promise.promise();
-    pgClient.delete(getTableName(), profileId, promise);
-    return promise.future().map(true);
+    return pgClient.delete(getTableName(), profileId).map(true);
   }
 
   @Override
@@ -192,21 +221,26 @@ public abstract class AbstractProfileDao<T, S> implements ProfileDao<T, S> {
 
   @Override
   public Future<Boolean> hardDeleteProfile(String profileId, String tenantId) {
-    Criteria idCrit = constructCriteria(ID_FIELD, profileId);
-    PostgresClient pgClient = pgClientFactory.createInstance(tenantId);
-
-    Promise<Results<T>> selectPromise = Promise.promise();
-    pgClient.get(getTableName(), getProfileType(), new Criterion(idCrit), true, false, selectPromise);
-
-    return selectPromise.future()
-      .compose(profileList -> profileList.getResults().isEmpty()
-        ? Future.failedFuture(new NotFoundException(format("%s with id '%s' was not found", getProfileType().getSimpleName(), profileId)))
-        : Future.succeededFuture(profileList.getResults().get(0)))
-      .compose(profile -> deleteProfile(pgClient, profileId))
-      .onFailure(throwable -> {
-        String message = format("hardDeleteProfile:: Error during hard delete %s with id: %s ", getProfileType().getSimpleName(), profileId);
-        logger.warn(message, throwable);
-      });
+    try {
+      PostgresClient pgClient = pgClientFactory.createInstance(tenantId);
+      Criterion idCrit = new Criterion(constructCriteria(ID_FIELD, profileId));
+      return pgClient.get(getTableName(), getProfileType(), idCrit, false)
+        .compose(results -> {
+          if (results.getResults().isEmpty()) {
+            return Future.failedFuture(new NotFoundException(
+              format("%s with id '%s' was not found", getProfileType().getSimpleName(), profileId)));
+          }
+          return deleteProfile(pgClient, profileId);
+        })
+        .onFailure(throwable -> {
+          String message = format("hardDeleteProfile:: Error during hard delete %s with id: %s", getProfileType().getSimpleName(), profileId);
+          logger.warn(message, throwable);
+        });
+    } catch (Exception e) {
+      String message = format("hardDeleteProfile:: Failed to initiate hard delete for profile with id: %s", profileId);
+      logger.error(message, e);
+      return Future.failedFuture(e);
+    }
   }
 
   @Override

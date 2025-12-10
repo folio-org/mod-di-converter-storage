@@ -20,9 +20,9 @@
   </modules>
 
   <properties>
-    <raml-module-builder.version>35.4.0</raml-module-builder.version>
+    <raml-module-builder.version>36.0.0-SNAPSHOT</raml-module-builder.version>
     <aspectj.version>1.9.22.1</aspectj.version>
-    <vertx.version>4.5.14</vertx.version>
+    <vertx.version>5.0.5</vertx.version>
     <junit.version>4.13.2</junit.version>
     <mockito.version>5.17.0</mockito.version>
     <wiremock.version>3.12.1</wiremock.version>
