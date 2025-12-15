@@ -1,16 +1,14 @@
 package org.folio.dao;
 
-import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
 import io.vertx.core.Promise;
 import io.vertx.sqlclient.Tuple;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.folio.cql2pgjson.CQL2PgJSON;
+import org.folio.rest.persist.Conn;
 import org.folio.rest.persist.Criteria.Criteria;
 import org.folio.rest.persist.Criteria.Criterion;
 import org.folio.rest.persist.PostgresClient;
-import org.folio.rest.persist.SQLConnection;
 import org.folio.rest.persist.cql.CQLWrapper;
 import org.folio.rest.persist.interfaces.Results;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -127,59 +125,49 @@ public Future<Optional<T>> getProfileById(String id, String tenantId) {
 
   @Override
   public Future<T> updateBlocking(String profileId, Function<T, Future<T>> profileMutator, String tenantId) {
-    Promise<T> promise = Promise.promise();
-    Promise<SQLConnection> tx = Promise.promise();
-    Criteria idCrit = constructCriteria(ID_FIELD, profileId);
-    pgClientFactory.createInstance(tenantId).startTx(tx);
-    tx.future()
-      .compose(sqlConnection -> {
-        Promise<Results<T>> selectPromise = Promise.promise();
-        pgClientFactory.createInstance(tenantId).get(tx.future(), getTableName(), getProfileType(), new Criterion(idCrit), true, false, selectPromise);
-        return selectPromise.future();
-      })
-      .compose(profileList -> profileList.getResults().isEmpty()
-        ? Future.failedFuture(new NotFoundException(format("%s with id '%s' was not found", getProfileType().getSimpleName(), profileId)))
-        : Future.succeededFuture(profileList.getResults().getFirst()))
-      .compose(profileMutator)
-      .compose(mutatedProfile -> updateProfile(tx.future(), profileId, mutatedProfile, tenantId))
-      .onComplete(updateAr -> {
-        if (updateAr.succeeded()) {
-          pgClientFactory.createInstance(tenantId).endTx(tx.future(), endTx -> promise.complete(updateAr.result()));
-        } else {
-          pgClientFactory.createInstance(tenantId).rollbackTx(tx.future(), rollbackAr -> {
-            String message = format("updateBlocking:: Rollback transaction. Error during %s update by id: %s ", getProfileType().getSimpleName(), profileId);
-            logger.warn(message, updateAr.cause());
-            promise.fail(updateAr.cause());
-          });
-        }
-      });
-    return promise.future();
+    try {
+      PostgresClient pgClient = pgClientFactory.createInstance(tenantId);
+      Criterion idCrit = new Criterion(constructCriteria(ID_FIELD, profileId));
+      return pgClient.withTrans(conn ->
+          conn.get(getTableName(), getProfileType(), idCrit, false)
+            .compose(results -> {
+              if (results.getResults().isEmpty()) {
+                return Future.failedFuture(new NotFoundException(
+                  format("%s with id '%s' was not found", getProfileType().getSimpleName(), profileId)));
+              }
+              return Future.succeededFuture(results.getResults().getFirst());
+            })
+            .compose(profileMutator)
+            .compose(mutatedProfile -> updateProfile(conn, profileId, mutatedProfile))
+        )
+        .onFailure(throwable -> {
+          String message = format("updateBlocking:: Error during %s update by id: %s", getProfileType().getSimpleName(), profileId);
+          logger.warn(message, throwable);
+        });
+
+    } catch (Exception e) {
+      String message = format("updateBlocking:: Failed to initiate update for profile with id: %s", profileId);
+      logger.error(message, e);
+      return Future.failedFuture(e);
+    }
   }
 
-  protected Future<T> updateProfile(AsyncResult<SQLConnection> tx, String profileId, T profile, String tenantId) {
-    Promise<T> promise = Promise.promise();
+  protected Future<T> updateProfile(Conn conn, String profileId, T profile) {
     try {
-      CQLWrapper updateFilter = new CQLWrapper(new CQL2PgJSON(getTableName()), "id==" + profileId);
-      PostgresClient pgClient = pgClientFactory.createInstance(tenantId);
-      pgClient.update(tx, getTableName(), profile, updateFilter, true, updateResult -> {
-        if (updateResult.failed()) {
-          logger.warn("updateProfile:: Could not update {} with id {}", getProfileType().getSimpleName(), profileId, updateResult.cause());
-          promise.fail(updateResult.cause());
-        } else {
-          if (updateResult.result().rowCount() == 0) {
+      Criterion idCrit = new Criterion(constructCriteria(ID_FIELD, profileId));
+      return conn.update(getTableName(), profile, idCrit, true)
+        .compose(updateResult -> {
+          if (updateResult.rowCount() == 0) {
             String message = String.format("updateProfile:: %s with id '%s' not found for update.", getProfileType().getSimpleName(), profileId);
             logger.warn(message);
-            promise.fail(new NotFoundException(message));
-          } else {
-            promise.complete(profile);
+            return Future.failedFuture(new NotFoundException(message));
           }
-        }
-      });
+          return Future.succeededFuture(profile);
+        });
     } catch (Exception e) {
       logger.warn("updateProfile:: Error preparing to update {} by ID", getProfileType(), e);
-      promise.fail(e);
+      return Future.failedFuture(e);
     }
-    return promise.future();
   }
 
   protected Future<Boolean> deleteProfile(PostgresClient pgClient, String profileId) {
