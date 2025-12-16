@@ -1,3 +1,6 @@
+## 2025-12-dd 2.3.3
+* [MODDICONV-431](https://issues.folio.org/browse/MODDICONV-431) RMB Logging release - RMB 35.3.1, Vert.x 4.5.23
+
 ## 2025-04-30 2.3.2
 * [MODDICONV-418](https://issues.folio.org/browse/MODDICONV-418) Field mapping profile corruption for orders in Ramsons Test env
 
