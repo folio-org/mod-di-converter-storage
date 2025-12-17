@@ -24,7 +24,7 @@
     <aspectj.version>1.9.22.1</aspectj.version>
     <vertx.version>5.0.5</vertx.version>
     <junit.version>4.13.2</junit.version>
-    <mockito.version>5.17.0</mockito.version>
+    <mockito.version>5.21.0</mockito.version>
     <wiremock.version>3.12.1</wiremock.version>
     <rest-assured.version>5.5.1</rest-assured.version>
     <main.basedir>${project.basedir}</main.basedir>
