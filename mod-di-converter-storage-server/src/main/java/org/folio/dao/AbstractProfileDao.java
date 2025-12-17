@@ -5,7 +5,6 @@ import io.vertx.core.Promise;
 import io.vertx.sqlclient.Tuple;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.folio.rest.persist.Conn;
 import org.folio.rest.persist.Criteria.Criteria;
 import org.folio.rest.persist.Criteria.Criterion;
 import org.folio.rest.persist.PostgresClient;
@@ -15,7 +14,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 
 import javax.ws.rs.NotFoundException;
 import java.util.Optional;
-import java.util.function.Function;
 
 import static java.lang.String.format;
 import static org.folio.dao.util.DaoUtil.constructCriteria;
@@ -123,53 +121,6 @@ public Future<Optional<T>> getProfileById(String id, String tenantId) {
     return promise.future();
   }
 
-  @Override
-  public Future<T> updateBlocking(String profileId, Function<T, Future<T>> profileMutator, String tenantId) {
-    try {
-      PostgresClient pgClient = pgClientFactory.createInstance(tenantId);
-      Criterion idCrit = new Criterion(constructCriteria(ID_FIELD, profileId));
-      return pgClient.withTrans(conn ->
-          conn.get(getTableName(), getProfileType(), idCrit, false)
-            .compose(results -> {
-              if (results.getResults().isEmpty()) {
-                return Future.failedFuture(new NotFoundException(
-                  format("%s with id '%s' was not found", getProfileType().getSimpleName(), profileId)));
-              }
-              return Future.succeededFuture(results.getResults().getFirst());
-            })
-            .compose(profileMutator)
-            .compose(mutatedProfile -> updateProfile(conn, profileId, mutatedProfile))
-        )
-        .onFailure(throwable -> {
-          String message = format("updateBlocking:: Error during %s update by id: %s", getProfileType().getSimpleName(), profileId);
-          logger.warn(message, throwable);
-        });
-
-    } catch (Exception e) {
-      String message = format("updateBlocking:: Failed to initiate update for profile with id: %s", profileId);
-      logger.error(message, e);
-      return Future.failedFuture(e);
-    }
-  }
-
-  protected Future<T> updateProfile(Conn conn, String profileId, T profile) {
-    try {
-      Criterion idCrit = new Criterion(constructCriteria(ID_FIELD, profileId));
-      return conn.update(getTableName(), profile, idCrit, true)
-        .compose(updateResult -> {
-          if (updateResult.rowCount() == 0) {
-            String message = String.format("updateProfile:: %s with id '%s' not found for update.", getProfileType().getSimpleName(), profileId);
-            logger.warn(message);
-            return Future.failedFuture(new NotFoundException(message));
-          }
-          return Future.succeededFuture(profile);
-        });
-    } catch (Exception e) {
-      logger.warn("updateProfile:: Error preparing to update {} by ID", getProfileType(), e);
-      return Future.failedFuture(e);
-    }
-  }
-
   protected Future<Boolean> deleteProfile(PostgresClient pgClient, String profileId) {
     return pgClient.delete(getTableName(), profileId).map(true);
   }
@@ -229,21 +180,6 @@ public Future<Optional<T>> getProfileById(String id, String tenantId) {
       logger.error(message, e);
       return Future.failedFuture(e);
     }
-  }
-
-  @Override
-  public Future<Integer> getTotalProfilesNumber(String tenantId) {
-    Promise<Integer> promise = Promise.promise();
-    String totalCountSql = format("SELECT count(*) AS exact_count FROM %s;", getTableName());
-    pgClientFactory.createInstance((tenantId)).select(totalCountSql, selectAr -> {
-      if (selectAr.succeeded()) {
-        promise.complete(selectAr.result().iterator().next().getInteger(0));
-      } else {
-        logger.warn("getTotalProfilesNumber:: Error during retrieving total count for profiles", selectAr.cause());
-        promise.fail(selectAr.cause());
-      }
-    });
-    return promise.future();
   }
 
   /**
