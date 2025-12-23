@@ -199,7 +199,7 @@ public class CommonProfileAssociationDao implements ProfileAssociationDao {
       Tuple queryParams = Tuple.of(getValidUUIDOrNull(wrapperId));
       return pgClientFactory.createInstance(tenantId)
         .execute(query, queryParams)
-        .map(updateResult -> updateResult.rowCount() == 1)
+        .map(updateResult -> updateResult.rowCount() > 0)
         .onFailure(e -> LOGGER.warn("deleteByMasterWrapperId:: Error deleting by master wrapper id {}", wrapperId, e));
     } catch (Exception e) {
       LOGGER.warn("deleteByMasterWrapperId:: Error deleting by master wrapper id {}", wrapperId, e);
