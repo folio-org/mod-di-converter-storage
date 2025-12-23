@@ -20,11 +20,11 @@
   </modules>
 
   <properties>
-    <raml-module-builder.version>35.4.0</raml-module-builder.version>
+    <raml-module-builder.version>36.0.0-SNAPSHOT</raml-module-builder.version>
     <aspectj.version>1.9.22.1</aspectj.version>
-    <vertx.version>4.5.14</vertx.version>
+    <vertx.version>5.0.5</vertx.version>
     <junit.version>4.13.2</junit.version>
-    <mockito.version>5.17.0</mockito.version>
+    <mockito.version>5.21.0</mockito.version>
     <wiremock.version>3.12.1</wiremock.version>
     <rest-assured.version>5.5.1</rest-assured.version>
     <main.basedir>${project.basedir}</main.basedir>
@@ -101,13 +101,56 @@
           <generateBackupPoms>false</generateBackupPoms>
         </configuration>
       </plugin>
+
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-dependency-plugin</artifactId>
+        <executions>
+          <execution>
+            <goals>
+              <goal>properties</goal>
+            </goals>
+          </execution>
+        </executions>
+        <configuration>
+          <artifactItems>
+            <artifactItem>
+              <groupId>net.bytebuddy</groupId>
+              <artifactId>byte-buddy-agent</artifactId>
+              <type>jar</type>
+              <destFileName>byte-buddy-agent.jar</destFileName>
+            </artifactItem>
+          </artifactItems>
+        </configuration>
+      </plugin>
+
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-surefire-plugin</artifactId>
-        <version>3.5.3</version>
+        <version>3.5.4</version>
         <configuration>
           <useSystemClassLoader>false</useSystemClassLoader>
+          <includes>
+            <include>**/*Test.java</include>
+          </includes>
+<!--          <systemPropertyVariables>-->
+<!--            <api.version>1.44</api.version>-->
+<!--          </systemPropertyVariables>-->
+          <argLine>
+            -javaagent:${net.bytebuddy:byte-buddy-agent:jar}
+            --add-opens java.base/java.lang=ALL-UNNAMED
+            --add-opens java.base/java.lang.reflect=ALL-UNNAMED
+            --add-opens java.base/java.util=ALL-UNNAMED
+          </argLine>
         </configuration>
+        <dependencies>
+          <dependency>
+            <groupId>org.mockito</groupId>
+            <artifactId>mockito-core</artifactId>
+            <version>${mockito.version}</version>
+            <scope>compile</scope>
+          </dependency>
+        </dependencies>
       </plugin>
 
       <plugin>

@@ -26,6 +26,7 @@ import static org.hamcrest.Matchers.is;
 
 import io.restassured.RestAssured;
 import io.restassured.response.Response;
+import io.vertx.core.Future;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
@@ -2183,18 +2184,22 @@ public class JobProfileTest extends AbstractRestVerticleTest {
   public void clearTables(TestContext context) {
     Async async = context.async();
     PostgresClient pgClient = PostgresClient.getInstance(vertx, TENANT_ID);
-    pgClient.delete(ASSOCIATIONS_TABLE, new Criterion(), event1 ->
-      pgClient.delete(SNAPSHOTS_TABLE_NAME, new Criterion(), event2 ->
-        pgClient.delete(PROFILE_WRAPPERS_TABLE_NAME, new Criterion(), event3 ->
-          pgClient.delete(JOB_PROFILES_TABLE_NAME, new Criterion(), event4 ->
-            pgClient.delete(MATCH_PROFILES_TABLE_NAME, new Criterion(), event5 ->
-              pgClient.delete(ACTION_PROFILES_TABLE_NAME, new Criterion(), event6 ->
-                  pgClient.delete(MAPPING_PROFILES_TABLE_NAME, new Criterion(), event7 ->
-                      pgClient.delete(PROFILE_WRAPPERS_TABLE, new Criterion(), event8 -> {
-                        if (event7.failed()) {
-                        context.fail(event7.cause());
-                      }
-                      async.complete();
-                    }))))))));
+
+    Future.succeededFuture()
+      .compose(v -> pgClient.delete(ASSOCIATIONS_TABLE, new Criterion()))
+      .compose(v -> pgClient.delete(SNAPSHOTS_TABLE_NAME, new Criterion()))
+      .compose(v -> pgClient.delete(PROFILE_WRAPPERS_TABLE_NAME, new Criterion()))
+      .compose(v -> pgClient.delete(JOB_PROFILES_TABLE_NAME, new Criterion()))
+      .compose(v -> pgClient.delete(MATCH_PROFILES_TABLE_NAME, new Criterion()))
+      .compose(v -> pgClient.delete(ACTION_PROFILES_TABLE_NAME, new Criterion()))
+      .compose(v -> pgClient.delete(MAPPING_PROFILES_TABLE_NAME, new Criterion()))
+      .compose(v -> pgClient.delete(PROFILE_WRAPPERS_TABLE, new Criterion()))
+      .onComplete(ar -> {
+        if (ar.succeeded()) {
+          async.complete();
+        } else {
+          context.fail(ar.cause());
+        }
+      });
   }
 }

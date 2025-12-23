@@ -1,8 +1,6 @@
 package org.folio.rest.impl.util;
 
 import io.vertx.core.MultiMap;
-import io.vertx.core.http.impl.headers.HeadersMultiMap;
-
 import java.util.Map;
 
 /**
@@ -17,7 +15,7 @@ public final class OkapiConnectionParams {
   private final String tenantId;
   private final String token;
   private final Integer timeout;
-  private MultiMap headers = new HeadersMultiMap();
+  private MultiMap headers = MultiMap.caseInsensitiveMultiMap();
 
   public OkapiConnectionParams(Map<String, String> okapiHeaders, Integer timeout) {
     this.okapiUrl = okapiHeaders.getOrDefault(OKAPI_URL_HEADER, "localhost");

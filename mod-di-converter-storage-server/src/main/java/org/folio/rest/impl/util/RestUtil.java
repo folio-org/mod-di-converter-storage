@@ -101,9 +101,10 @@ public final class RestUtil {
         }
       }
       if (method == HttpMethod.PUT || method == HttpMethod.POST) {
-        request.sendBuffer(Buffer.buffer(new ObjectMapper().writeValueAsString(payload)), handleResponse(promise));
+        request.sendBuffer(Buffer.buffer(new ObjectMapper().writeValueAsString(payload)))
+          .onComplete(handleResponse(promise));
       } else {
-        request.send(handleResponse(promise));
+        request.send().onComplete(handleResponse(promise));
       }
       return promise.future();
     } catch (Exception e) {

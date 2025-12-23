@@ -1,26 +1,19 @@
 package org.folio.dao;
 
-import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
 import io.vertx.core.Promise;
-import io.vertx.sqlclient.Row;
-import io.vertx.sqlclient.RowSet;
 import io.vertx.sqlclient.Tuple;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.folio.cql2pgjson.CQL2PgJSON;
-import org.folio.cql2pgjson.exception.FieldException;
 import org.folio.rest.persist.Criteria.Criteria;
 import org.folio.rest.persist.Criteria.Criterion;
 import org.folio.rest.persist.PostgresClient;
-import org.folio.rest.persist.SQLConnection;
 import org.folio.rest.persist.cql.CQLWrapper;
 import org.folio.rest.persist.interfaces.Results;
 import org.springframework.beans.factory.annotation.Autowired;
 
 import javax.ws.rs.NotFoundException;
 import java.util.Optional;
-import java.util.function.Function;
 
 import static java.lang.String.format;
 import static org.folio.dao.util.DaoUtil.constructCriteria;
@@ -52,7 +45,13 @@ public abstract class AbstractProfileDao<T, S> implements ProfileDao<T, S> {
         var notHiddenProfilesFilter = "hidden==false";
         cql.addWrapper(getCQLWrapper(getTableName(), notHiddenProfilesFilter));
       }
-      pgClientFactory.createInstance(tenantId).get(getTableName(), getProfileType(), fieldList, cql, true, false, promise);
+      pgClientFactory.createInstance(tenantId).get(getTableName(), getProfileType(), fieldList, cql, true, false, result -> {
+        if (result.succeeded()) {
+          promise.complete(result.result());
+        } else {
+          promise.fail(result.cause());
+        }
+      });
     } catch (Exception e) {
       logger.warn("getProfiles:: Error while searching for {}", getProfileType().getSimpleName(), e);
       promise.fail(e);
@@ -61,25 +60,39 @@ public abstract class AbstractProfileDao<T, S> implements ProfileDao<T, S> {
   }
 
   @Override
-  public Future<Optional<T>> getProfileById(String id, String tenantId) {
-    Promise<Results<T>> promise = Promise.promise();
-    try {
-      Criteria idCrit = constructCriteria(ID_FIELD, id);
-      pgClientFactory.createInstance(tenantId).get(getTableName(), getProfileType(), new Criterion(idCrit), true, false, promise);
-    } catch (Exception e) {
-      logger.warn("getProfileById:: Error querying {} by id", getProfileType().getSimpleName(), e);
-      promise.fail(e);
-    }
-    return promise.future()
-      .map(Results::getResults)
-      .map(profiles -> profiles.isEmpty() ? Optional.empty() : Optional.of(profiles.get(0)));
-  }
+public Future<Optional<T>> getProfileById(String id, String tenantId) {
+        Promise<Optional<T>> promise = Promise.promise();
+        Criteria idCrit = constructCriteria(ID_FIELD, id);
+        try {
+          pgClientFactory.createInstance(tenantId).get(getTableName(), getProfileType(), new Criterion(idCrit), true, false, result -> {
+            if (result.failed()) {
+              logger.warn("getProfileById:: Error querying {} by id", getProfileType().getSimpleName(), result.cause());
+              promise.fail(result.cause());
+            } else {
+              Results<T> rows = result.result();
+              if (rows.getResults().isEmpty()) {
+                logger.info("getProfileById:: {} with id {} was not found", getProfileType().getSimpleName(), id);
+                promise.complete(Optional.empty());
+              } else {
+                promise.complete(Optional.of(rows.getResults().getFirst()));
+              }
+            }
+          });
+        } catch (Exception e) {
+          logger.warn("getProfileById:: Error querying {} by id", getProfileType().getSimpleName(), e);
+          promise.fail(e);
+        }
+        return promise.future();
+      }
 
   @Override
   public Future<String> saveProfile(T profile, String tenantId) {
-    Promise<String> promise = Promise.promise();
-    pgClientFactory.createInstance(tenantId).save(getTableName(), getProfileId(profile), profile, promise);
-    return promise.future();
+    try {
+      return pgClientFactory.createInstance(tenantId).save(getTableName(), getProfileId(profile), profile);
+    } catch (Exception e) {
+      logger.error("saveProfile:: Failed to initiate save for profile of type {}", getProfileType(), e);
+      return Future.failedFuture(e);
+    }
   }
 
   @Override
@@ -108,53 +121,8 @@ public abstract class AbstractProfileDao<T, S> implements ProfileDao<T, S> {
     return promise.future();
   }
 
-  @Override
-  public Future<T> updateBlocking(String profileId, Function<T, Future<T>> profileMutator, String tenantId) {
-    Promise<T> promise = Promise.promise();
-    Promise<SQLConnection> tx = Promise.promise();
-    Criteria idCrit = constructCriteria(ID_FIELD, profileId);
-    pgClientFactory.createInstance(tenantId).startTx(tx);
-    tx.future()
-      .compose(sqlConnection -> {
-        Promise<Results<T>> selectPromise = Promise.promise();
-        pgClientFactory.createInstance(tenantId).get(tx.future(), getTableName(), getProfileType(), new Criterion(idCrit), true, false, selectPromise);
-        return selectPromise.future();
-      })
-      .compose(profileList -> profileList.getResults().isEmpty()
-        ? Future.failedFuture(new NotFoundException(format("%s with id '%s' was not found", getProfileType().getSimpleName(), profileId)))
-        : Future.succeededFuture(profileList.getResults().get(0)))
-      .compose(profileMutator)
-      .compose(mutatedProfile -> updateProfile(tx.future(), profileId, mutatedProfile, tenantId))
-      .onComplete(updateAr -> {
-        if (updateAr.succeeded()) {
-          pgClientFactory.createInstance(tenantId).endTx(tx.future(), endTx -> promise.complete(updateAr.result()));
-        } else {
-          pgClientFactory.createInstance(tenantId).rollbackTx(tx.future(), rollbackAr -> {
-            String message = format("updateBlocking:: Rollback transaction. Error during %s update by id: %s ", getProfileType().getSimpleName(), profileId);
-            logger.warn(message, updateAr.cause());
-            promise.fail(updateAr.cause());
-          });
-        }
-      });
-    return promise.future();
-  }
-
-  protected Future<T> updateProfile(AsyncResult<SQLConnection> tx, String profileId, T profile, String tenantId) {
-    Promise<RowSet<Row>> promise = Promise.promise();
-    try {
-      CQLWrapper updateFilter = new CQLWrapper(new CQL2PgJSON(getTableName()), "id==" + profileId);
-      pgClientFactory.createInstance(tenantId).update(tx, getTableName(), profile, updateFilter, true, promise);
-    } catch (FieldException e) {
-      logger.warn("updateProfile:: Error during updating {} by ID ", getProfileType(), e);
-      promise.fail(e);
-    }
-    return promise.future().map(profile);
-  }
-
   protected Future<Boolean> deleteProfile(PostgresClient pgClient, String profileId) {
-    Promise<RowSet<Row>> promise = Promise.promise();
-    pgClient.delete(getTableName(), profileId, promise);
-    return promise.future().map(true);
+    return pgClient.delete(getTableName(), profileId).map(true);
   }
 
   @Override
@@ -192,36 +160,26 @@ public abstract class AbstractProfileDao<T, S> implements ProfileDao<T, S> {
 
   @Override
   public Future<Boolean> hardDeleteProfile(String profileId, String tenantId) {
-    Criteria idCrit = constructCriteria(ID_FIELD, profileId);
-    PostgresClient pgClient = pgClientFactory.createInstance(tenantId);
-
-    Promise<Results<T>> selectPromise = Promise.promise();
-    pgClient.get(getTableName(), getProfileType(), new Criterion(idCrit), true, false, selectPromise);
-
-    return selectPromise.future()
-      .compose(profileList -> profileList.getResults().isEmpty()
-        ? Future.failedFuture(new NotFoundException(format("%s with id '%s' was not found", getProfileType().getSimpleName(), profileId)))
-        : Future.succeededFuture(profileList.getResults().get(0)))
-      .compose(profile -> deleteProfile(pgClient, profileId))
-      .onFailure(throwable -> {
-        String message = format("hardDeleteProfile:: Error during hard delete %s with id: %s ", getProfileType().getSimpleName(), profileId);
-        logger.warn(message, throwable);
-      });
-  }
-
-  @Override
-  public Future<Integer> getTotalProfilesNumber(String tenantId) {
-    Promise<Integer> promise = Promise.promise();
-    String totalCountSql = format("SELECT count(*) AS exact_count FROM %s;", getTableName());
-    pgClientFactory.createInstance((tenantId)).select(totalCountSql, selectAr -> {
-      if (selectAr.succeeded()) {
-        promise.complete(selectAr.result().iterator().next().getInteger(0));
-      } else {
-        logger.warn("getTotalProfilesNumber:: Error during retrieving total count for profiles", selectAr.cause());
-        promise.fail(selectAr.cause());
-      }
-    });
-    return promise.future();
+    try {
+      PostgresClient pgClient = pgClientFactory.createInstance(tenantId);
+      Criterion idCrit = new Criterion(constructCriteria(ID_FIELD, profileId));
+      return pgClient.get(getTableName(), getProfileType(), idCrit, false)
+        .compose(results -> {
+          if (results.getResults().isEmpty()) {
+            return Future.failedFuture(new NotFoundException(
+              format("%s with id '%s' was not found", getProfileType().getSimpleName(), profileId)));
+          }
+          return deleteProfile(pgClient, profileId);
+        })
+        .onFailure(throwable -> {
+          String message = format("hardDeleteProfile:: Error during hard delete %s with id: %s", getProfileType().getSimpleName(), profileId);
+          logger.warn(message, throwable);
+        });
+    } catch (Exception e) {
+      String message = format("hardDeleteProfile:: Failed to initiate hard delete for profile with id: %s", profileId);
+      logger.error(message, e);
+      return Future.failedFuture(e);
+    }
   }
 
   /**

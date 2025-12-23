@@ -4,7 +4,6 @@ import io.vertx.core.Future;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 import org.folio.dao.snapshot.ProfileSnapshotDao;
-import org.folio.dao.snapshot.ProfileSnapshotDaoImpl;
 import org.folio.rest.jaxrs.model.ActionProfile;
 import org.folio.rest.jaxrs.model.JobProfile;
 import org.folio.rest.jaxrs.model.MappingProfile;
@@ -146,16 +145,16 @@ public class ProfileSnapshotServiceTest extends AbstractUnitTest {
         context.assertEquals(expectedJobProfileWrapper.getContentType(), actualJobProfileWrapper.getContentType());
         context.assertEquals(expectedJobProfileWrapper.getContent().getClass(), actualJobProfileWrapper.getContent().getClass());
 
-        ProfileSnapshotWrapper expectedMatchProfileWrapper = expectedJobProfileWrapper.getChildSnapshotWrappers().get(0);
-        ProfileSnapshotWrapper actualMatchProfileWrapper = actualJobProfileWrapper.getChildSnapshotWrappers().get(0);
+        ProfileSnapshotWrapper expectedMatchProfileWrapper = expectedJobProfileWrapper.getChildSnapshotWrappers().getFirst();
+        ProfileSnapshotWrapper actualMatchProfileWrapper = actualJobProfileWrapper.getChildSnapshotWrappers().getFirst();
         assertExpectedChildOnActualChild(expectedMatchProfileWrapper, actualMatchProfileWrapper, context);
 
-        ProfileSnapshotWrapper expectedActionProfileWrapper = expectedMatchProfileWrapper.getChildSnapshotWrappers().get(0);
-        ProfileSnapshotWrapper actualActionProfileWrapper = actualMatchProfileWrapper.getChildSnapshotWrappers().get(0);
+        ProfileSnapshotWrapper expectedActionProfileWrapper = expectedMatchProfileWrapper.getChildSnapshotWrappers().getFirst();
+        ProfileSnapshotWrapper actualActionProfileWrapper = actualMatchProfileWrapper.getChildSnapshotWrappers().getFirst();
         assertExpectedChildOnActualChild(expectedActionProfileWrapper, actualActionProfileWrapper, context);
 
-        ProfileSnapshotWrapper expectedMappingProfileWrapper = expectedActionProfileWrapper.getChildSnapshotWrappers().get(0);
-        ProfileSnapshotWrapper actualMappingProfileWrapper = actualActionProfileWrapper.getChildSnapshotWrappers().get(0);
+        ProfileSnapshotWrapper expectedMappingProfileWrapper = expectedActionProfileWrapper.getChildSnapshotWrappers().getFirst();
+        ProfileSnapshotWrapper actualMappingProfileWrapper = actualActionProfileWrapper.getChildSnapshotWrappers().getFirst();
         assertExpectedChildOnActualChild(expectedMappingProfileWrapper, actualMappingProfileWrapper, context);
 
         async.complete();
@@ -169,7 +168,7 @@ public class ProfileSnapshotServiceTest extends AbstractUnitTest {
   public void shouldReturnFailedFutureIfNoSnapshotAssociationsExist(TestContext context) {
     Async async = context.async();
     // given
-    ProfileSnapshotDao mockDao = Mockito.mock(ProfileSnapshotDaoImpl.class);
+    ProfileSnapshotDao mockDao = Mockito.mock(ProfileSnapshotDao.class);
     ProfileSnapshotService profileSnapshotService = new ProfileSnapshotServiceImpl(dao);
 
     String jobProfileId = UUID.randomUUID().toString();
@@ -187,7 +186,7 @@ public class ProfileSnapshotServiceTest extends AbstractUnitTest {
   public void shouldBuildAndSaveSnapshotForJobProfile(TestContext testContext) {
     Async async = testContext.async();
     // given
-    ProfileSnapshotDao mockDao = Mockito.mock(ProfileSnapshotDaoImpl.class);
+    ProfileSnapshotDao mockDao = Mockito.mock(ProfileSnapshotDao.class);
     ProfileSnapshotService profileSnapshotService = new ProfileSnapshotServiceImpl(mockDao);
 
     Mockito.when(mockDao.getSnapshotAssociations(jobProfile.getId(), JOB_PROFILE, jobProfile.getId(), TENANT_ID)).thenReturn(Future.succeededFuture(associations));
@@ -202,17 +201,17 @@ public class ProfileSnapshotServiceTest extends AbstractUnitTest {
       testContext.assertEquals(jobProfile.getId(), actualJobProfile.getId());
       testContext.assertEquals(jobProfile.getId(), jobProfileWrapper.getProfileId());
 
-      ProfileSnapshotWrapper matchProfileWrapper = jobProfileWrapper.getChildSnapshotWrappers().get(0);
+      ProfileSnapshotWrapper matchProfileWrapper = jobProfileWrapper.getChildSnapshotWrappers().getFirst();
       MatchProfile actualMatchProfile = (MatchProfile) matchProfileWrapper.getContent();
       testContext.assertEquals(matchProfile.getId(), actualMatchProfile.getId());
       testContext.assertEquals(matchProfile.getId(), matchProfileWrapper.getProfileId());
 
-      ProfileSnapshotWrapper actionProfileWrapper = matchProfileWrapper.getChildSnapshotWrappers().get(0);
+      ProfileSnapshotWrapper actionProfileWrapper = matchProfileWrapper.getChildSnapshotWrappers().getFirst();
       ActionProfile actualActionProfile = (ActionProfile) actionProfileWrapper.getContent();
       testContext.assertEquals(actionProfile.getId(), actualActionProfile.getId());
       testContext.assertEquals(actionProfile.getId(), actionProfileWrapper.getProfileId());
 
-      ProfileSnapshotWrapper mappingProfileWrapper = actionProfileWrapper.getChildSnapshotWrappers().get(0);
+      ProfileSnapshotWrapper mappingProfileWrapper = actionProfileWrapper.getChildSnapshotWrappers().getFirst();
       MappingProfile actualMappingProfile = (MappingProfile) mappingProfileWrapper.getContent();
       testContext.assertEquals(mappingProfile.getId(), actualMappingProfile.getId());
       testContext.assertEquals(mappingProfile.getId(), mappingProfileWrapper.getProfileId());
@@ -224,7 +223,7 @@ public class ProfileSnapshotServiceTest extends AbstractUnitTest {
   public void shouldBuildAndSaveSnapshotWithDuplicateProfilesForJobProfile(TestContext testContext) {
     Async async = testContext.async();
     // given
-    ProfileSnapshotDao mockDao = Mockito.mock(ProfileSnapshotDaoImpl.class);
+    ProfileSnapshotDao mockDao = Mockito.mock(ProfileSnapshotDao.class);
     ProfileSnapshotService profileSnapshotService = new ProfileSnapshotServiceImpl(mockDao);
 
     Mockito.when(mockDao.getSnapshotAssociations(jobProfile.getId(), JOB_PROFILE, jobProfile.getId(), TENANT_ID)).thenReturn(Future.succeededFuture(getAssociationsWithDuplicates()));
@@ -241,43 +240,43 @@ public class ProfileSnapshotServiceTest extends AbstractUnitTest {
       testContext.assertEquals(jobProfile.getId(), jobProfileWrapper.getProfileId());
       testContext.assertEquals(jobProfileWrapper.getChildSnapshotWrappers().size(), 2);
 
-      ProfileSnapshotWrapper matchProfileWrapper1 = jobProfileWrapper.getChildSnapshotWrappers().get(0);
+      ProfileSnapshotWrapper matchProfileWrapper1 = jobProfileWrapper.getChildSnapshotWrappers().getFirst();
       MatchProfile actualMatchProfile1 = (MatchProfile) matchProfileWrapper1.getContent();
       testContext.assertEquals(matchProfile.getId(), actualMatchProfile1.getId());
       testContext.assertEquals(matchProfile.getId(), matchProfileWrapper1.getProfileId());
       testContext.assertEquals(matchProfileWrapper1.getChildSnapshotWrappers().size(), 1);
 
-      ProfileSnapshotWrapper matchProfileWrapper2 = jobProfileWrapper.getChildSnapshotWrappers().get(0);
+      ProfileSnapshotWrapper matchProfileWrapper2 = jobProfileWrapper.getChildSnapshotWrappers().getFirst();
       MatchProfile actualMatchProfile2 = (MatchProfile) matchProfileWrapper2.getContent();
       testContext.assertEquals(matchProfile.getId(), actualMatchProfile2.getId());
       testContext.assertEquals(matchProfile.getId(), matchProfileWrapper2.getProfileId());
       testContext.assertEquals(matchProfileWrapper2.getChildSnapshotWrappers().size(), 1);
 
-      ProfileSnapshotWrapper childMatchProfileWrapper1 = matchProfileWrapper1.getChildSnapshotWrappers().get(0);
+      ProfileSnapshotWrapper childMatchProfileWrapper1 = matchProfileWrapper1.getChildSnapshotWrappers().getFirst();
       testContext.assertEquals(childMatchProfileWrapper1.getChildSnapshotWrappers().size(), 1);
 
-      ProfileSnapshotWrapper childMatchProfileWrapper2 = matchProfileWrapper2.getChildSnapshotWrappers().get(0);
+      ProfileSnapshotWrapper childMatchProfileWrapper2 = matchProfileWrapper2.getChildSnapshotWrappers().getFirst();
       testContext.assertEquals(childMatchProfileWrapper2.getChildSnapshotWrappers().size(), 1);
 
-      ProfileSnapshotWrapper actionProfileWrapper1 = childMatchProfileWrapper1.getChildSnapshotWrappers().get(0);
+      ProfileSnapshotWrapper actionProfileWrapper1 = childMatchProfileWrapper1.getChildSnapshotWrappers().getFirst();
       ActionProfile actualActionProfile1 = (ActionProfile) actionProfileWrapper1.getContent();
       testContext.assertEquals(actionProfile.getId(), actualActionProfile1.getId());
       testContext.assertEquals(actionProfile.getId(), actionProfileWrapper1.getProfileId());
       testContext.assertEquals(actionProfileWrapper1.getChildSnapshotWrappers().size(), 1);
 
-      ProfileSnapshotWrapper actionProfileWrapper2 = childMatchProfileWrapper2.getChildSnapshotWrappers().get(0);
+      ProfileSnapshotWrapper actionProfileWrapper2 = childMatchProfileWrapper2.getChildSnapshotWrappers().getFirst();
       ActionProfile actualActionProfile2 = (ActionProfile) actionProfileWrapper2.getContent();
       testContext.assertEquals(actionProfile.getId(), actualActionProfile2.getId());
       testContext.assertEquals(actionProfile.getId(), actionProfileWrapper2.getProfileId());
       testContext.assertEquals(actionProfileWrapper2.getChildSnapshotWrappers().size(), 1);
 
-      ProfileSnapshotWrapper mappingProfileWrapper1 = actionProfileWrapper1.getChildSnapshotWrappers().get(0);
+      ProfileSnapshotWrapper mappingProfileWrapper1 = actionProfileWrapper1.getChildSnapshotWrappers().getFirst();
       MappingProfile actualMappingProfile1 = (MappingProfile) mappingProfileWrapper1.getContent();
       testContext.assertEquals(mappingProfile.getId(), actualMappingProfile1.getId());
       testContext.assertEquals(mappingProfile.getId(), mappingProfileWrapper1.getProfileId());
       testContext.assertEquals(mappingProfileWrapper1.getChildSnapshotWrappers().size(), 0);
 
-      ProfileSnapshotWrapper mappingProfileWrapper2 = actionProfileWrapper2.getChildSnapshotWrappers().get(0);
+      ProfileSnapshotWrapper mappingProfileWrapper2 = actionProfileWrapper2.getChildSnapshotWrappers().getFirst();
       MappingProfile actualMappingProfile2 = (MappingProfile) mappingProfileWrapper2.getContent();
       testContext.assertEquals(mappingProfile.getId(), actualMappingProfile2.getId());
       testContext.assertEquals(mappingProfile.getId(), mappingProfileWrapper2.getProfileId());
@@ -291,7 +290,7 @@ public class ProfileSnapshotServiceTest extends AbstractUnitTest {
   public void shouldConstructSnapshotForJobProfile(TestContext testContext) {
     Async async = testContext.async();
     // given
-    ProfileSnapshotDao mockDao = Mockito.mock(ProfileSnapshotDaoImpl.class);
+    ProfileSnapshotDao mockDao = Mockito.mock(ProfileSnapshotDao.class);
     ProfileSnapshotService profileSnapshotService = new ProfileSnapshotServiceImpl(mockDao);
 
     Mockito.when(mockDao.getSnapshotAssociations(jobProfile.getId(), JOB_PROFILE, jobProfile.getId(), TENANT_ID)).thenReturn(Future.succeededFuture(associations));
@@ -305,17 +304,17 @@ public class ProfileSnapshotServiceTest extends AbstractUnitTest {
       testContext.assertEquals(jobProfile.getId(), actualJobProfile.getId());
       testContext.assertEquals(jobProfile.getId(), jobProfileWrapper.getProfileId());
 
-      ProfileSnapshotWrapper matchProfileWrapper = jobProfileWrapper.getChildSnapshotWrappers().get(0);
+      ProfileSnapshotWrapper matchProfileWrapper = jobProfileWrapper.getChildSnapshotWrappers().getFirst();
       MatchProfile actualMatchProfile = (MatchProfile) matchProfileWrapper.getContent();
       testContext.assertEquals(matchProfile.getId(), actualMatchProfile.getId());
       testContext.assertEquals(matchProfile.getId(), matchProfileWrapper.getProfileId());
 
-      ProfileSnapshotWrapper actionProfileWrapper = matchProfileWrapper.getChildSnapshotWrappers().get(0);
+      ProfileSnapshotWrapper actionProfileWrapper = matchProfileWrapper.getChildSnapshotWrappers().getFirst();
       ActionProfile actualActionProfile = (ActionProfile) actionProfileWrapper.getContent();
       testContext.assertEquals(actionProfile.getId(), actualActionProfile.getId());
       testContext.assertEquals(actionProfile.getId(), actionProfileWrapper.getProfileId());
 
-      ProfileSnapshotWrapper mappingProfileWrapper = actionProfileWrapper.getChildSnapshotWrappers().get(0);
+      ProfileSnapshotWrapper mappingProfileWrapper = actionProfileWrapper.getChildSnapshotWrappers().getFirst();
       MappingProfile actualMappingProfile = (MappingProfile) mappingProfileWrapper.getContent();
       testContext.assertEquals(mappingProfile.getId(), actualMappingProfile.getId());
       testContext.assertEquals(mappingProfile.getId(), mappingProfileWrapper.getProfileId());
@@ -327,7 +326,7 @@ public class ProfileSnapshotServiceTest extends AbstractUnitTest {
   public void shouldReturnSnapshotAssociations(TestContext testContext) {
     Async async = testContext.async();
     // given
-    ProfileSnapshotDao mockDao = Mockito.mock(ProfileSnapshotDaoImpl.class);
+    ProfileSnapshotDao mockDao = Mockito.mock(ProfileSnapshotDao.class);
     ProfileSnapshotService profileSnapshotService = new ProfileSnapshotServiceImpl(mockDao);
 
     Mockito.when(mockDao.getSnapshotAssociations(jobProfile.getId(), JOB_PROFILE, jobProfile.getId(), TENANT_ID)).thenReturn(Future.succeededFuture(associations));
