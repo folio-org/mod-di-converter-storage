@@ -19,12 +19,6 @@
       <groupId>org.folio</groupId>
       <artifactId>domain-models-runtime</artifactId>
       <version>${raml-module-builder.version}</version>
-      <exclusions>
-        <exclusion>
-          <groupId>com.ongres.scram</groupId>
-          <artifactId>client</artifactId>
-        </exclusion>
-      </exclusions>
     </dependency>
     <dependency>
       <groupId>org.folio</groupId>
