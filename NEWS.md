@@ -1,4 +1,4 @@
-## 2025-12-30 2.4.3
+## 2025-01-08 2.4.3
 * [MODDICONV-432](https://issues.folio.org/browse/MODDICONV-432) Upgrade RMB v35.4.2 (verbose logging suppression), Vert.x v4.5.23 (CVE-2025-67735 Netty CRLF injection fix)
 
 ## 2025-05-16 2.4.2
