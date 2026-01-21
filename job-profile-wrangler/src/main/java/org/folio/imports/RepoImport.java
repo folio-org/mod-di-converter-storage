@@ -20,6 +20,7 @@ import org.jgrapht.Graph;
 import org.jgrapht.graph.SimpleDirectedGraph;
 
 import java.util.Optional;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.StreamSupport;
 
 import static org.folio.Constants.OBJECT_MAPPER;
@@ -37,14 +38,31 @@ public class RepoImport implements Runnable {
 
   @Override
   public void run() {
+    AtomicInteger successCount = new AtomicInteger(0);
+    AtomicInteger failureCount = new AtomicInteger(0);
+
     client.getJobProfiles()
       .forEach(profile -> {
         String profileId = profile.get("id").asText();
+        String profileName = profile.path("name").asText(profileId);
         Optional<JsonNode> jobProfileSnapshotOptional = client.getJobProfileSnapshot(profileId);
-        jobProfileSnapshotOptional.ifPresent(json -> fromString(repoPath, json));
+
+        if (jobProfileSnapshotOptional.isEmpty()) {
+          LOGGER.warn("Failed to fetch snapshot for profile: id={}, name={}", profileId, profileName);
+          failureCount.incrementAndGet();
+          return;
+        }
+
+        Optional<RepoObject> result = fromString(repoPath, jobProfileSnapshotOptional.get());
+        if (result.isPresent()) {
+          successCount.incrementAndGet();
+        } else {
+          LOGGER.warn("Failed to import profile: id={}, name={}", profileId, profileName);
+          failureCount.incrementAndGet();
+        }
       });
 
-    LOGGER.info("DONE");
+    LOGGER.info("Import complete: {} succeeded, {} failed", successCount.get(), failureCount.get());
   }
 
   public static Optional<RepoObject> fromString(String repoPath, String json) throws JsonProcessingException {
@@ -60,6 +78,8 @@ public class RepoImport implements Runnable {
       Optional<Integer> repoId = GraphWriter.writeGraph(repoPath, g);
       if (repoId.isPresent()) {
         return Optional.of(new RepoObject(repoId.get(), g));
+      } else {
+        LOGGER.error("Failed to write graph to repository: {}", g);
       }
     } else {
       LOGGER.info("Graph already exists. graph={}", g);
@@ -139,7 +159,7 @@ public class RepoImport implements Runnable {
     switch (reactTo) {
       case "NON_MATCH" -> graph.addEdge(parent, child, new NonMatchRelationshipEdge());
       case "MATCH" -> graph.addEdge(parent, child, new MatchRelationshipEdge());
-      default -> LOGGER.warn("Invalid relationship for matching on profile: {}", parent);
+      default -> LOGGER.warn("Skipping child profile due to invalid reactTo value '{}' for parent: {}", reactTo, parent);
     }
   }
 }

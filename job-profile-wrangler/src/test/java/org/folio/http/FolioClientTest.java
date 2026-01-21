@@ -45,8 +45,7 @@ public class FolioClientTest {
 
   @Before
   public void setup() throws IOException {
-    folioClient = new FolioClient(() -> baseUrlBuilder, "token");
-    folioClient.setHttpClient(httpClient);
+    folioClient = new FolioClient(() -> baseUrlBuilder, "token", null, httpClient);
 
     when(httpClient.newCall(any())).thenReturn(call);
     when(call.execute()).thenReturn(response);

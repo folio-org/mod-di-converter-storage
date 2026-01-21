@@ -20,7 +20,9 @@ import org.folio.rest.jaxrs.model.ActionProfileUpdateDto;
 import org.folio.rest.jaxrs.model.EntityType;
 import org.folio.rest.jaxrs.model.JobProfile;
 import org.folio.rest.jaxrs.model.JobProfileUpdateDto;
+import org.folio.rest.jaxrs.model.MappingDetail;
 import org.folio.rest.jaxrs.model.MappingProfile;
+import org.folio.rest.jaxrs.model.MatchDetail;
 import org.folio.rest.jaxrs.model.MappingProfileUpdateDto;
 import org.folio.rest.jaxrs.model.MatchProfile;
 import org.folio.rest.jaxrs.model.MatchProfileUpdateDto;
@@ -59,6 +61,16 @@ public class ProfileHydration {
     this.client = client;
   }
 
+  private static String getAttributeOrThrow(Profile node, String attributeName) {
+    String value = node.getAttributes().get(attributeName);
+    if (value == null) {
+      throw new IllegalStateException(
+        String.format("Missing required attribute '%s' for profile: %s (type: %s)",
+          attributeName, node.getName(), node.getClass().getSimpleName()));
+    }
+    return value;
+  }
+
   /**
    * Hydrates the profiles in FOLIO based on the provided graph.
    *
@@ -94,18 +106,31 @@ public class ProfileHydration {
     // Create profiles in FOLIO based on their type
     vertexSet.forEach(node -> {
       if (node instanceof MappingProfileNode mappingProfileNode) {
+        String incomingRecordType = getAttributeOrThrow(mappingProfileNode, "incomingRecordType");
+        String existingRecordType = getAttributeOrThrow(mappingProfileNode, "existingRecordType");
+
         MappingProfile mappingProfile = new MappingProfile()
           .withName(String.format(profileNamePattern, repoId, EPOCH, mappingProfileNode.id()))
-          .withIncomingRecordType(EntityType.fromValue(mappingProfileNode.getAttributes().get("incomingRecordType")))
-          .withExistingRecordType(EntityType.fromValue(mappingProfileNode.getAttributes().get("existingRecordType")));
+          .withIncomingRecordType(EntityType.fromValue(incomingRecordType))
+          .withExistingRecordType(EntityType.fromValue(existingRecordType));
+
+        // Add default mappingDetails based on existing record type
+        MappingDetail mappingDetails = MappingDetailsFactory.createMappingDetailsForRecordType(existingRecordType);
+        if (mappingDetails != null) {
+          mappingProfile.withMappingDetails(mappingDetails);
+        }
+
         createProfileInFolio(mappingProfileNode, new MappingProfileUpdateDto().withProfile(mappingProfile),
           MappingProfileUpdateDto.class,
           client::createMappingProfile, createdObjectsInFolio);
       } else if (node instanceof ActionProfileNode actionProfileNode) {
+        String action = getAttributeOrThrow(actionProfileNode, "action");
+        String folioRecord = getAttributeOrThrow(actionProfileNode, "folioRecord");
+
         ActionProfile actionProfile = new ActionProfile()
           .withName(String.format(profileNamePattern, repoId, EPOCH, actionProfileNode.id()))
-          .withAction(ActionProfile.Action.fromValue(actionProfileNode.getAttributes().get("action")))
-          .withFolioRecord(ActionProfile.FolioRecord.fromValue(actionProfileNode.getAttributes().get("folioRecord")));
+          .withAction(ActionProfile.Action.fromValue(action))
+          .withFolioRecord(ActionProfile.FolioRecord.fromValue(folioRecord));
 
         Optional<RegularEdge> edge = graph.edgesOf(actionProfileNode)
           .stream().filter(e -> e.getSource().equals(actionProfileNode))
@@ -127,10 +152,26 @@ public class ProfileHydration {
           ActionProfileUpdateDto.class,
           client::createActionProfile, createdObjectsInFolio);
       } else if (node instanceof MatchProfileNode matchProfileNode) {
+        String matchIncomingRecordType = getAttributeOrThrow(matchProfileNode, "incomingRecordType");
+        String matchExistingRecordType = getAttributeOrThrow(matchProfileNode, "existingRecordType");
+
         MatchProfile matchProfile = new MatchProfile()
           .withName(String.format(profileNamePattern, repoId, EPOCH, matchProfileNode.id()))
-          .withIncomingRecordType(EntityType.fromValue(matchProfileNode.getAttributes().get("incomingRecordType")))
-          .withExistingRecordType(EntityType.fromValue(matchProfileNode.getAttributes().get("existingRecordType")));
+          .withIncomingRecordType(EntityType.fromValue(matchIncomingRecordType))
+          .withExistingRecordType(EntityType.fromValue(matchExistingRecordType));
+
+        // Add default matchDetails based on record types
+        try {
+          List<MatchDetail> matchDetails = MatchDetailsFactory.createMatchDetailsForRecordTypes(
+            matchIncomingRecordType, matchExistingRecordType);
+          if (matchDetails != null && !matchDetails.isEmpty()) {
+            matchProfile.withMatchDetails(matchDetails);
+          }
+        } catch (IllegalArgumentException e) {
+          LOGGER.warn("Could not create default match details for {} -> {}: {}",
+            matchIncomingRecordType, matchExistingRecordType, e.getMessage());
+        }
+
         createProfileInFolio(matchProfileNode, new MatchProfileUpdateDto().withProfile(matchProfile), MatchProfileUpdateDto.class,
           client::createMatchProfile, createdObjectsInFolio);
       }
@@ -142,11 +183,14 @@ public class ProfileHydration {
       .filter(key -> graph.incomingEdgesOf(key).isEmpty())
       .findFirst();
 
-    jobProfile.ifPresent(profile -> jobProfileUpdateDto.setProfile(
-      new JobProfile()
-        .withDataType(JobProfile.DataType.fromValue(profile.getAttributes().get("dataType")))
-        .withName(String.format("jp-%03d %s", repoId, EPOCH))
-    ));
+    jobProfile.ifPresent(profile -> {
+      String dataType = getAttributeOrThrow(profile, "dataType");
+      jobProfileUpdateDto.setProfile(
+        new JobProfile()
+          .withDataType(JobProfile.DataType.fromValue(dataType))
+          .withName(String.format("jp-%03d %s", repoId, EPOCH))
+      );
+    });
 
     if (jobProfile.isEmpty() || jobProfileUpdateDto.getProfile() == null) {
       LOGGER.error("No Job Profile found");

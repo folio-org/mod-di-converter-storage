@@ -31,18 +31,34 @@ import static org.folio.Constants.OKAPI_TOKEN_HEADER;
 
 public class FolioClient {
   private static final Logger LOGGER = LogManager.getLogger(FolioClient.class);
-  OkHttpClient httpClient = new OkHttpClient();
-
+  private final OkHttpClient httpClient;
   private final String token;
+  private final String tenantId;
   private final Supplier<HttpUrl.Builder> baseUrlBuilderSupplier;
 
   public FolioClient(Supplier<HttpUrl.Builder> baseUrlBuilderSupplier, String token) {
+    this(baseUrlBuilderSupplier, token, null, new OkHttpClient());
+  }
+
+  public FolioClient(Supplier<HttpUrl.Builder> baseUrlBuilderSupplier, String token, String tenantId) {
+    this(baseUrlBuilderSupplier, token, tenantId, new OkHttpClient());
+  }
+
+  public FolioClient(Supplier<HttpUrl.Builder> baseUrlBuilderSupplier, String token, String tenantId, OkHttpClient httpClient) {
     this.baseUrlBuilderSupplier = baseUrlBuilderSupplier;
     this.token = token;
+    this.tenantId = tenantId;
+    this.httpClient = httpClient;
   }
 
   public FolioClient(Supplier<HttpUrl.Builder> baseUrlBuilderSupplier, String tenantId, String username, String password) {
+    this(baseUrlBuilderSupplier, tenantId, username, password, new OkHttpClient());
+  }
+
+  public FolioClient(Supplier<HttpUrl.Builder> baseUrlBuilderSupplier, String tenantId, String username, String password, OkHttpClient httpClient) {
     this.baseUrlBuilderSupplier = baseUrlBuilderSupplier;
+    this.tenantId = tenantId;
+    this.httpClient = httpClient;
 
     Optional<String> okapiToken = getOkapiToken(httpClient, baseUrlBuilderSupplier.get(), tenantId, username, password);
     if (okapiToken.isEmpty()) {
@@ -51,8 +67,16 @@ public class FolioClient {
     this.token = okapiToken.get();
   }
 
-  protected void setHttpClient(OkHttpClient client) {
-    httpClient = client;
+  /**
+   * Adds common FOLIO headers to a request builder.
+   * Includes x-okapi-token and x-okapi-tenant if available.
+   */
+  private Request.Builder addFolioHeaders(Request.Builder builder) {
+    builder.addHeader(OKAPI_TOKEN_HEADER, token);
+    if (tenantId != null) {
+      builder.addHeader(OKAPI_TENANT_HEADER, tenantId);
+    }
+    return builder;
   }
 
   public Stream<JsonNode> getJobProfiles() {
@@ -90,16 +114,17 @@ public class FolioClient {
         intermediateUrlBuilder.addQueryParameter("query", query);
         HttpUrl url = intermediateUrlBuilder.build();
         LOGGER.info("Query: {}", url);
-        Request request = new Request.Builder()
-          .url(url)
-          .addHeader(OKAPI_TOKEN_HEADER, token)
+        Request request = addFolioHeaders(new Request.Builder()
+          .url(url))
           .get()
           .build();
 
         try (Response response = httpClient.newCall(request).execute()) {
           if (!response.isSuccessful()) throw new IOException("Unexpected code " + response);
 
-          assert response.body() != null;
+          if (response.body() == null) {
+            throw new IOException("Response body is null for getJobProfiles request");
+          }
           String result = response.body().string();
           JsonNode jsonNode = OBJECT_MAPPER.readTree(result);
 
@@ -128,18 +153,24 @@ public class FolioClient {
       .addQueryParameter("jobProfileId", jobProfileId)
       .build();
 
-    Request request = new Request.Builder()
-      .url(url)
-      .addHeader(OKAPI_TOKEN_HEADER, token)
+    Request request = addFolioHeaders(new Request.Builder()
+      .url(url))
       .get()
       .build();
 
     try (Response response = httpClient.newCall(request).execute()) {
-      assert response.body() != null;
+      if (!response.isSuccessful()) {
+        LOGGER.error("Failed to fetch profile snapshot: {} - Status: {}", jobProfileId, response.code());
+        return Optional.empty();
+      }
+      if (response.body() == null) {
+        LOGGER.error("Response body is null for profile snapshot: {}", jobProfileId);
+        return Optional.empty();
+      }
       String result = response.body().string();
       return Optional.of(OBJECT_MAPPER.readTree(result));
     } catch (IOException e) {
-      LOGGER.error("Something happened while querying for profile snapshot", e);
+      LOGGER.error("Failed to fetch profile snapshot: {}", jobProfileId, e);
     }
     return Optional.empty();
   }
@@ -176,21 +207,164 @@ public class FolioClient {
     return createObjInFolio(url, mappingProfile);
   }
 
+  public boolean deleteJobProfile(String jobProfileId) {
+    HttpUrl url = baseUrlBuilderSupplier.get()
+      .addPathSegments("data-import-profiles/jobProfiles")
+      .addPathSegment(jobProfileId)
+      .build();
+
+    Request request = addFolioHeaders(new Request.Builder()
+      .url(url))
+      .delete()
+      .build();
+
+    try (Response response = httpClient.newCall(request).execute()) {
+      if (!response.isSuccessful()) {
+        String errorBody = response.body() != null ? response.body().string() : "No response body";
+        LOGGER.error("Failed to delete job profile: {} - Status: {} - Response: {}",
+          jobProfileId, response.code(), errorBody);
+        return false;
+      }
+      return true;
+    } catch (IOException e) {
+      LOGGER.error("Failed to delete job profile: {}", jobProfileId, e);
+      return false;
+    }
+  }
+
+  public boolean deleteMatchProfile(String matchProfileId) {
+    HttpUrl url = baseUrlBuilderSupplier.get()
+      .addPathSegments("data-import-profiles/matchProfiles")
+      .addPathSegment(matchProfileId)
+      .build();
+
+    Request request = addFolioHeaders(new Request.Builder()
+      .url(url))
+      .delete()
+      .build();
+
+    try (Response response = httpClient.newCall(request).execute()) {
+      if (!response.isSuccessful()) {
+        String errorBody = response.body() != null ? response.body().string() : "No response body";
+        LOGGER.error("Failed to delete match profile: {} - Status: {} - Response: {}",
+          matchProfileId, response.code(), errorBody);
+        return false;
+      }
+      return true;
+    } catch (IOException e) {
+      LOGGER.error("Failed to delete match profile: {}", matchProfileId, e);
+      return false;
+    }
+  }
+
+  public boolean deleteActionProfile(String actionProfileId) {
+    HttpUrl url = baseUrlBuilderSupplier.get()
+      .addPathSegments("data-import-profiles/actionProfiles")
+      .addPathSegment(actionProfileId)
+      .build();
+
+    Request request = addFolioHeaders(new Request.Builder()
+      .url(url))
+      .delete()
+      .build();
+
+    try (Response response = httpClient.newCall(request).execute()) {
+      if (!response.isSuccessful()) {
+        String errorBody = response.body() != null ? response.body().string() : "No response body";
+        LOGGER.error("Failed to delete action profile: {} - Status: {} - Response: {}",
+          actionProfileId, response.code(), errorBody);
+        return false;
+      }
+      return true;
+    } catch (IOException e) {
+      LOGGER.error("Failed to delete action profile: {}", actionProfileId, e);
+      return false;
+    }
+  }
+
+  public boolean deleteMappingProfile(String mappingProfileId) {
+    HttpUrl url = baseUrlBuilderSupplier.get()
+      .addPathSegments("data-import-profiles/mappingProfiles")
+      .addPathSegment(mappingProfileId)
+      .build();
+
+    Request request = addFolioHeaders(new Request.Builder()
+      .url(url))
+      .delete()
+      .build();
+
+    try (Response response = httpClient.newCall(request).execute()) {
+      if (!response.isSuccessful()) {
+        String errorBody = response.body() != null ? response.body().string() : "No response body";
+        LOGGER.error("Failed to delete mapping profile: {} - Status: {} - Response: {}",
+          mappingProfileId, response.code(), errorBody);
+        return false;
+      }
+      return true;
+    } catch (IOException e) {
+      LOGGER.error("Failed to delete mapping profile: {}", mappingProfileId, e);
+      return false;
+    }
+  }
+
   private Optional<JsonNode> createObjInFolio(HttpUrl url, String obj) {
     RequestBody body = RequestBody.create(obj, MediaType.parse("application/json"));
 
-    Request request = new Request.Builder()
-      .url(url)
-      .addHeader(OKAPI_TOKEN_HEADER, token)
+    Request request = addFolioHeaders(new Request.Builder()
+      .url(url))
       .post(body)
       .build();
 
     try (Response response = httpClient.newCall(request).execute()) {
-      assert response.body() != null;
+      if (!response.isSuccessful()) {
+        String errorBody = response.body() != null ? response.body().string() : "No response body";
+        LOGGER.error("Failed to create object at: {} - Status: {} - Response: {}",
+          url, response.code(), errorBody);
+        return Optional.empty();
+      }
+      if (response.body() == null) {
+        LOGGER.error("Response body is null for create request to: {}", url);
+        return Optional.empty();
+      }
       String result = response.body().string();
       return Optional.of(OBJECT_MAPPER.readTree(result));
     } catch (IOException e) {
-      LOGGER.error("Something happened while querying for profile snapshot", e);
+      LOGGER.error("Failed to create object at: {}", url, e);
+    }
+    return Optional.empty();
+  }
+
+  /**
+   * Fetches mapping metadata from mod-source-record-manager.
+   *
+   * @param recordType the record type (e.g., "marc-bib", "marc-holdings", "marc-authority")
+   * @return optional JSON response containing mapping metadata
+   */
+  public Optional<JsonNode> getMappingMetadata(String recordType) {
+    HttpUrl url = baseUrlBuilderSupplier.get()
+      .addPathSegments("mapping-metadata/type")
+      .addPathSegment(recordType)
+      .build();
+
+    Request request = addFolioHeaders(new Request.Builder()
+      .url(url))
+      .get()
+      .build();
+
+    try (Response response = httpClient.newCall(request).execute()) {
+      if (!response.isSuccessful()) {
+        LOGGER.warn("Failed to fetch mapping metadata for record type: {} - Status: {}",
+          recordType, response.code());
+        return Optional.empty();
+      }
+      if (response.body() == null) {
+        LOGGER.error("Response body is null for mapping metadata request: {}", recordType);
+        return Optional.empty();
+      }
+      String result = response.body().string();
+      return Optional.of(OBJECT_MAPPER.readTree(result));
+    } catch (IOException e) {
+      LOGGER.error("Failed to fetch mapping metadata for record type: {}", recordType, e);
     }
     return Optional.empty();
   }
