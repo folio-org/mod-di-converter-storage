@@ -400,9 +400,45 @@ public class JpWranglerCli implements Callable<Integer> {
     @Option(names = {"-o", "--output"}, description = "Base output path for MARC records (suffixes will be added)", required = true)
     String outputPath;
 
-
     @Option(names = {"-v", "--verbose"}, description = "Show detailed field generation report")
     boolean verbose;
+
+    /**
+     * Enum to track the reaction type (MATCH vs NON_MATCH) for a path.
+     */
+    private enum ReactTo {
+      MATCH,
+      NON_MATCH,
+      NONE // For paths without a match profile (direct CREATE)
+    }
+
+    /**
+     * A path paired with its reaction type (MATCH/NON_MATCH).
+     * This avoids map key collisions when paths have identical pathIds.
+     */
+    private record CategorizedPath(
+      JobProfilePath path,
+      ReactTo reactTo,
+      String matchProfileId  // The match profile this path is under (if any)
+    ) {}
+
+    /**
+     * Result of path extraction containing both CREATE and UPDATE paths.
+     */
+    private record PathExtractionResult(
+      List<CategorizedPath> createPaths,
+      List<CategorizedPath> updatePaths
+    ) {}
+
+    /**
+     * Pairs a CREATE path with an UPDATE path that share the same match profile.
+     * Used to generate records that will trigger both branches of a match.
+     */
+    private record MatchedPathPair(
+      CategorizedPath createPath, // Path triggered on NON_MATCH
+      CategorizedPath updatePath, // Path triggered on MATCH
+      String matchProfileId       // The shared match profile ID
+    ) {}
 
     @Override
     public Integer call() {
@@ -446,6 +482,9 @@ public class JpWranglerCli implements Callable<Integer> {
 
     /**
      * Generates minimal MARC records from scratch using mapping rules.
+     * Creates two files:
+     * - {outputPath}-create.mrc: Foundation records to seed the database
+     * - {outputPath}-update.mrc: Records for both CREATE paths (new) and UPDATE paths (modify foundation)
      */
     private Integer generateMinimalRecords(FolioClient client, JsonNode snapshot) throws IOException {
       LOGGER.info("Generating minimal MARC records from scratch...");
@@ -460,43 +499,157 @@ public class JpWranglerCli implements Callable<Integer> {
           analysis.getRequiredInventoryFields().size());
       }
 
-      // Build the graph from snapshot and analyze paths
-      // For now, we'll generate one record per CREATE action path
-      List<JobProfilePath> createPaths = extractCreateOnlyPaths(snapshot);
+      // Extract all paths (CREATE and UPDATE)
+      PathExtractionResult pathResult = extractAllPaths(snapshot);
 
-      if (createPaths.isEmpty()) {
-        LOGGER.warn("No CREATE action paths found in job profile");
+      if (pathResult.createPaths().isEmpty() && pathResult.updatePaths().isEmpty()) {
+        LOGGER.warn("No CREATE or UPDATE action paths found in job profile");
         return 1;
       }
 
-      LOGGER.info("Found {} CREATE action paths in job profile", createPaths.size());
+      LOGGER.info("Found {} CREATE path(s) and {} UPDATE path(s) in job profile",
+        pathResult.createPaths().size(), pathResult.updatePaths().size());
 
       // Generate minimal records using stateless builder
       GenerationReport.Builder reportBuilder = verbose ? GenerationReport.builder() : null;
-      List<Record> records = new ArrayList<>();
+
+      // Collections for the two output files
+      List<Record> foundationRecords = new ArrayList<>();  // For -create.mrc (seeds database)
+      List<Record> updateFileRecords = new ArrayList<>();  // For -update.mrc (triggers both branches)
+
+      // Pair CREATE and UPDATE paths that share the same match profile
+      List<MatchedPathPair> pairs = pairPaths(pathResult.createPaths(), pathResult.updatePaths());
+
+      LOGGER.info("Found {} matched path pair(s) (CREATE + UPDATE sharing same match profile)", pairs.size());
 
       int recordNumber = 0;
-      for (JobProfilePath path : createPaths) {
-        recordNumber++;
-        MinimalMarcRecordBuilder.BuildResult result = MinimalMarcRecordBuilder.buildRecordForPath(
-          path, recordNumber, reportBuilder);
-        records.add(result.record());
-      }
 
-      // Write to output file
-      String createFilePath = outputPath + "-create.mrc";
-      try (FileOutputStream fos = new FileOutputStream(createFilePath)) {
-        MarcStreamWriter writer = new MarcStreamWriter(fos, "UTF-8");
-        for (Record record : records) {
-          writer.write(record);
+      // Process paired paths: generate foundation record + CREATE record + UPDATE record
+      Set<CategorizedPath> processedCreatePaths = new HashSet<>();
+      Set<CategorizedPath> processedUpdatePaths = new HashSet<>();
+
+      for (MatchedPathPair pair : pairs) {
+        // Generate foundation record (will be imported first to seed database)
+        if (reportBuilder != null) {
+          reportBuilder.startNewRecord();
         }
-        writer.close();
+        recordNumber++;
+        MinimalMarcRecordBuilder.BuildResult foundationResult = MinimalMarcRecordBuilder.buildRecordForPath(
+          pair.updatePath().path(), recordNumber, reportBuilder);
+        Record foundationRecord = foundationResult.record();
+        foundationRecords.add(foundationRecord);
+
+        // Generate CREATE path record (fresh UUID - will NOT match, triggers NON_MATCH → CREATE)
+        if (reportBuilder != null) {
+          reportBuilder.startNewRecord();
+        }
+        recordNumber++;
+        MinimalMarcRecordBuilder.BuildResult createResult = MinimalMarcRecordBuilder.buildRecordForPath(
+          pair.createPath().path(), recordNumber, reportBuilder);
+        updateFileRecords.add(createResult.record());
+
+        // Generate UPDATE record (same 001 as foundation - will MATCH, triggers MATCH → UPDATE)
+        if (reportBuilder != null) {
+          reportBuilder.startNewRecord();
+        }
+        recordNumber++;
+        MinimalMarcRecordBuilder.BuildResult updateResult = MinimalMarcRecordBuilder.buildUpdateRecordFromBase(
+          foundationRecord, pair.updatePath().path(), recordNumber, reportBuilder);
+        updateFileRecords.add(updateResult.record());
+
+        processedCreatePaths.add(pair.createPath());
+        processedUpdatePaths.add(pair.updatePath());
+
+        if (verbose) {
+          LOGGER.info("Generated records for paired paths:");
+          LOGGER.info("  Foundation (001: {}) -> -create.mrc", foundationRecord.getControlNumber());
+          LOGGER.info("  CREATE path (001: {}) -> -update.mrc", createResult.record().getControlNumber());
+          LOGGER.info("  UPDATE path (001: {}) -> -update.mrc (matches foundation)", updateResult.record().getControlNumber());
+        }
       }
 
-      LOGGER.info("Generated {} minimal MARC record(s) written to {}", records.size(), createFilePath);
+      // Process unpaired CREATE paths (direct CREATE without match profile, or CREATE-only profiles)
+      for (CategorizedPath createCatPath : pathResult.createPaths()) {
+        if (!processedCreatePaths.contains(createCatPath)) {
+          // For CREATE paths without pairing, generate record for -update.mrc
+          if (reportBuilder != null) {
+            reportBuilder.startNewRecord();
+          }
+          recordNumber++;
+          MinimalMarcRecordBuilder.BuildResult result = MinimalMarcRecordBuilder.buildRecordForPath(
+            createCatPath.path(), recordNumber, reportBuilder);
+          updateFileRecords.add(result.record());
+
+          if (verbose) {
+            LOGGER.info("Generated record for unpaired CREATE path (reactTo: {}): {}",
+              createCatPath.reactTo(), createCatPath.path().getPathId());
+          }
+        }
+      }
+
+      // Process unpaired UPDATE paths (UPDATE without corresponding CREATE - unusual but handle it)
+      for (CategorizedPath updateCatPath : pathResult.updatePaths()) {
+        if (!processedUpdatePaths.contains(updateCatPath)) {
+          // Generate foundation and update records
+          if (reportBuilder != null) {
+            reportBuilder.startNewRecord();
+          }
+          recordNumber++;
+          MinimalMarcRecordBuilder.BuildResult foundationResult = MinimalMarcRecordBuilder.buildRecordForPath(
+            updateCatPath.path(), recordNumber, reportBuilder);
+          Record foundationRecord = foundationResult.record();
+          foundationRecords.add(foundationRecord);
+
+          if (reportBuilder != null) {
+            reportBuilder.startNewRecord();
+          }
+          recordNumber++;
+          MinimalMarcRecordBuilder.BuildResult updateResult = MinimalMarcRecordBuilder.buildUpdateRecordFromBase(
+            foundationRecord, updateCatPath.path(), recordNumber, reportBuilder);
+          updateFileRecords.add(updateResult.record());
+
+          if (verbose) {
+            LOGGER.info("Generated records for unpaired UPDATE path: {}", updateCatPath.path().getPathId());
+          }
+        }
+      }
+
+      // Write foundation records to -create.mrc
+      String createFilePath = outputPath + "-create.mrc";
+      if (!foundationRecords.isEmpty()) {
+        try (FileOutputStream fos = new FileOutputStream(createFilePath)) {
+          MarcStreamWriter writer = new MarcStreamWriter(fos, "UTF-8");
+          for (Record record : foundationRecords) {
+            writer.write(record);
+          }
+          writer.close();
+        }
+        LOGGER.info("Generated {} foundation record(s) written to {}", foundationRecords.size(), createFilePath);
+      } else {
+        LOGGER.info("No foundation records needed (no UPDATE paths found)");
+      }
+
+      // Write update file records to -update.mrc
+      String updateFilePath = outputPath + "-update.mrc";
+      if (!updateFileRecords.isEmpty()) {
+        try (FileOutputStream fos = new FileOutputStream(updateFilePath)) {
+          MarcStreamWriter writer = new MarcStreamWriter(fos, "UTF-8");
+          for (Record record : updateFileRecords) {
+            writer.write(record);
+          }
+          writer.close();
+        }
+        LOGGER.info("Generated {} record(s) for import written to {}", updateFileRecords.size(), updateFilePath);
+      }
+
+      // Summary
+      LOGGER.info("Generation complete:");
+      LOGGER.info("  {} - {} foundation record(s) to seed database", createFilePath, foundationRecords.size());
+      LOGGER.info("  {} - {} record(s) to trigger both CREATE and UPDATE paths", updateFilePath, updateFileRecords.size());
+      LOGGER.info("Workflow: Import {} first, then import {}", createFilePath, updateFilePath);
 
       // Print verbose report if requested
-      if (verbose) {
+      if (verbose && reportBuilder != null) {
         GenerationReport report = reportBuilder
           .outputPath(createFilePath)
           .build();
@@ -507,19 +660,31 @@ public class JpWranglerCli implements Callable<Integer> {
     }
 
     /**
-     * Extracts CREATE-only paths from the job profile snapshot.
-     * This simplified implementation creates paths for each CREATE action found.
+     * Extracts all paths (CREATE and UPDATE) from the job profile snapshot.
+     * Tracks the reactTo field to determine if paths are triggered by MATCH or NON_MATCH.
      */
-    private List<JobProfilePath> extractCreateOnlyPaths(JsonNode snapshot) {
-      List<JobProfilePath> paths = new ArrayList<>();
-      extractPathsRecursive(snapshot, new ArrayList<>(), paths);
-      return paths;
+    private PathExtractionResult extractAllPaths(JsonNode snapshot) {
+      List<CategorizedPath> createPaths = new ArrayList<>();
+      List<CategorizedPath> updatePaths = new ArrayList<>();
+
+      extractPathsWithOutcome(snapshot, new ArrayList<>(), ReactTo.NONE, null,
+        createPaths, updatePaths);
+
+      return new PathExtractionResult(createPaths, updatePaths);
     }
 
     /**
-     * Recursively extracts paths from the snapshot, creating a path for each leaf.
+     * Recursively extracts paths from the snapshot, tracking reactTo (MATCH/NON_MATCH) for categorization.
+     * UPDATE actions are always under MATCH edges, CREATE actions can be under NON_MATCH or direct.
      */
-    private void extractPathsRecursive(JsonNode node, List<Profile> currentPath, List<JobProfilePath> paths) {
+    private void extractPathsWithOutcome(
+        JsonNode node,
+        List<Profile> currentPath,
+        ReactTo currentReactTo,
+        String currentMatchProfileId,
+        List<CategorizedPath> createPaths,
+        List<CategorizedPath> updatePaths) {
+
       String contentType = node.path("contentType").asText();
       JsonNode content = node.path("content");
 
@@ -535,36 +700,96 @@ public class JpWranglerCli implements Callable<Integer> {
         if (verbose) {
           LOGGER.info("Traversing profile: {} (type: {})", profile.getName(), profile.getClass().getSimpleName());
         }
+
+        // Track match profile ID for pairing
+        if ("MATCH_PROFILE".equals(contentType)) {
+          currentMatchProfileId = content.path("id").asText();
+        }
       }
 
       // Check children
       JsonNode children = node.path("childSnapshotWrappers");
-      if (children.isArray() && children.size() > 0) {
+      if (children.isArray() && !children.isEmpty()) {
         if (verbose) {
           LOGGER.info("Found {} children", children.size());
         }
         for (JsonNode child : children) {
-          extractPathsRecursive(child, new ArrayList<>(currentPath), paths);
+          // Check reactTo field on child to determine branch type
+          String reactToStr = child.path("reactTo").asText("");
+          ReactTo childReactTo = switch (reactToStr) {
+            case "MATCH" -> ReactTo.MATCH;
+            case "NON_MATCH" -> ReactTo.NON_MATCH;
+            default -> currentReactTo; // Inherit from parent if not specified
+          };
+
+          if (verbose && !reactToStr.isEmpty()) {
+            LOGGER.info("Child has reactTo: {}", reactToStr);
+          }
+
+          extractPathsWithOutcome(child, new ArrayList<>(currentPath), childReactTo, currentMatchProfileId,
+            createPaths, updatePaths);
         }
       } else {
-        // Leaf node - check if this path contains a CREATE action
-        boolean hasCreateAction = currentPath.stream()
+        // Leaf node - categorize by action type
+        Optional<ActionProfileNode> actionOpt = currentPath.stream()
           .filter(p -> p instanceof ActionProfileNode)
           .map(p -> (ActionProfileNode) p)
-          .anyMatch(ap -> "CREATE".equals(ap.action()));
+          .reduce((first, second) -> second); // Get last action profile
 
-        if (verbose) {
-          LOGGER.info("Leaf node - path size: {}, hasCreateAction: {}", currentPath.size(), hasCreateAction);
-          currentPath.stream()
-            .filter(p -> p instanceof ActionProfileNode)
-            .map(p -> (ActionProfileNode) p)
-            .forEach(ap -> LOGGER.info("  ActionProfile action: '{}'", ap.action()));
-        }
+        if (actionOpt.isPresent() && !currentPath.isEmpty()) {
+          ActionProfileNode action = actionOpt.get();
+          JobProfilePath path = new JobProfilePath(new ArrayList<>(currentPath));
+          CategorizedPath categorizedPath = new CategorizedPath(path, currentReactTo, currentMatchProfileId);
 
-        if (hasCreateAction && !currentPath.isEmpty()) {
-          paths.add(new JobProfilePath(new ArrayList<>(currentPath)));
+          if ("CREATE".equals(action.action())) {
+            createPaths.add(categorizedPath);
+            if (verbose) {
+              LOGGER.info("Found CREATE path (reactTo: {}): {}", currentReactTo, path.getPathId());
+            }
+          } else if ("UPDATE".equals(action.action())) {
+            updatePaths.add(categorizedPath);
+            if (verbose) {
+              LOGGER.info("Found UPDATE path (reactTo: {}): {}", currentReactTo, path.getPathId());
+            }
+          }
         }
       }
+    }
+
+    /**
+     * Pairs CREATE and UPDATE paths that share the same match profile.
+     * Returns pairs where:
+     * - createPath is triggered on NON_MATCH
+     * - updatePath is triggered on MATCH
+     */
+    private List<MatchedPathPair> pairPaths(
+        List<CategorizedPath> createPaths,
+        List<CategorizedPath> updatePaths) {
+
+      List<MatchedPathPair> pairs = new ArrayList<>();
+
+      // Find CREATE paths that are under NON_MATCH (paired with UPDATE paths under MATCH)
+      for (CategorizedPath createCatPath : createPaths) {
+        // Only pair CREATE paths that are triggered by NON_MATCH
+        if (createCatPath.reactTo() == ReactTo.NON_MATCH && createCatPath.matchProfileId() != null) {
+          String matchProfileId = createCatPath.matchProfileId();
+
+          // Find UPDATE path with the same match profile under MATCH
+          for (CategorizedPath updateCatPath : updatePaths) {
+            if (updateCatPath.reactTo() == ReactTo.MATCH &&
+                matchProfileId.equals(updateCatPath.matchProfileId())) {
+              pairs.add(new MatchedPathPair(createCatPath, updateCatPath, matchProfileId));
+              if (verbose) {
+                LOGGER.info("Paired CREATE path {} with UPDATE path {} via match profile {}",
+                  createCatPath.path().getPathId(), updateCatPath.path().getPathId(), matchProfileId);
+              }
+              break; // One pair per CREATE path
+            }
+          }
+        }
+      }
+
+      return pairs;
     }
 
     private String iteratorToString(java.util.Iterator<String> iterator) {
@@ -775,6 +1000,7 @@ public class JpWranglerCli implements Callable<Integer> {
 
     /**
      * Deletes a job profile and all its sub-profiles, returning the result counts.
+     * Deletion order: Job profile first (removes associations), then sub-profiles.
      */
     private DeletionResult deleteProfileCascade(FolioClient client, ProfileDeletionData data) {
       System.out.println("\nDeleting job profile: " + data.name());
@@ -784,7 +1010,21 @@ public class JpWranglerCli implements Callable<Integer> {
       int matchSuccess = 0, matchFail = 0;
       int jobSuccess = 0, jobFail = 0;
 
-      // Delete mapping profiles first
+      // Delete the job profile FIRST to remove associations
+      if (client.deleteJobProfile(data.id())) {
+        System.out.println("  Deleted: " + data.name());
+        jobSuccess++;
+      } else {
+        System.out.println("  Failed to delete: " + data.name());
+        jobFail++;
+        // If job profile deletion fails, skip sub-profile deletion
+        return new DeletionResult(
+          jobSuccess, jobFail, matchSuccess, matchFail,
+          actionSuccess, actionFail, mappingSuccess, mappingFail
+        );
+      }
+
+      // Delete mapping profiles (may fail if shared with other job profiles)
       for (String mappingId : data.mappingIds()) {
         if (client.deleteMappingProfile(mappingId)) {
           mappingSuccess++;
@@ -795,7 +1035,7 @@ public class JpWranglerCli implements Callable<Integer> {
         }
       }
 
-      // Delete action profiles
+      // Delete action profiles (may fail if shared with other job profiles)
       for (String actionId : data.actionIds()) {
         if (client.deleteActionProfile(actionId)) {
           actionSuccess++;
@@ -806,7 +1046,7 @@ public class JpWranglerCli implements Callable<Integer> {
         }
       }
 
-      // Delete match profiles
+      // Delete match profiles (may fail if shared with other job profiles)
       for (String matchId : data.matchIds()) {
         if (client.deleteMatchProfile(matchId)) {
           matchSuccess++;
@@ -815,15 +1055,6 @@ public class JpWranglerCli implements Callable<Integer> {
           matchFail++;
           LOGGER.warn("  Failed to delete match profile: {}", matchId);
         }
-      }
-
-      // Delete the job profile
-      if (client.deleteJobProfile(data.id())) {
-        System.out.println("  Deleted: " + data.name());
-        jobSuccess++;
-      } else {
-        System.out.println("  Failed to delete: " + data.name());
-        jobFail++;
       }
 
       return new DeletionResult(
