@@ -34,12 +34,14 @@ public class MatchDetailsFactoryTest {
     assertEquals("field", detail.getIncomingMatchExpression().getFields().get(0).getLabel());
     assertEquals("001", detail.getIncomingMatchExpression().getFields().get(0).getValue());
 
-    // Verify existing match expression (instance.hrid)
+    // Verify existing match expression (instance.identifiers[].value with identifierTypeId)
     assertNotNull(detail.getExistingMatchExpression());
     assertEquals(VALUE_FROM_RECORD, detail.getExistingMatchExpression().getDataValueType());
-    assertEquals(1, detail.getExistingMatchExpression().getFields().size());
+    assertEquals(2, detail.getExistingMatchExpression().getFields().size());
     assertEquals("field", detail.getExistingMatchExpression().getFields().get(0).getLabel());
-    assertEquals("instance.hrid", detail.getExistingMatchExpression().getFields().get(0).getValue());
+    assertEquals("instance.identifiers[].value", detail.getExistingMatchExpression().getFields().get(0).getValue());
+    assertEquals("identifierTypeId", detail.getExistingMatchExpression().getFields().get(1).getLabel());
+    assertEquals("7e591197-f335-4afb-bc6d-a6d76ca3bace", detail.getExistingMatchExpression().getFields().get(1).getValue());
   }
 
   @Test
@@ -54,8 +56,19 @@ public class MatchDetailsFactoryTest {
     assertEquals(EntityType.MARC_BIBLIOGRAPHIC, detail.getIncomingRecordType());
     assertEquals(EntityType.MARC_BIBLIOGRAPHIC, detail.getExistingRecordType());
     assertEquals(EXACTLY_MATCHES, detail.getMatchCriterion());
-    assertEquals("001", detail.getIncomingMatchExpression().getFields().get(0).getValue());
-    assertEquals("instance.hrid", detail.getExistingMatchExpression().getFields().get(0).getValue());
+
+    // Verify 001 field on both incoming and existing (MARC-to-MARC matching)
+    var incomingFields = detail.getIncomingMatchExpression().getFields();
+    assertEquals("001", incomingFields.get(0).getValue());
+    assertEquals("", incomingFields.get(1).getValue()); // indicator1
+    assertEquals("", incomingFields.get(2).getValue()); // indicator2
+    assertEquals("", incomingFields.get(3).getValue()); // recordSubfield
+
+    var existingFields = detail.getExistingMatchExpression().getFields();
+    assertEquals("001", existingFields.get(0).getValue());
+    assertEquals("", existingFields.get(1).getValue()); // indicator1
+    assertEquals("", existingFields.get(2).getValue()); // indicator2
+    assertEquals("", existingFields.get(3).getValue()); // recordSubfield
   }
 
   @Test
@@ -71,7 +84,7 @@ public class MatchDetailsFactoryTest {
     assertEquals(EntityType.HOLDINGS, detail.getExistingRecordType());
     assertEquals(EXACTLY_MATCHES, detail.getMatchCriterion());
     assertEquals("004", detail.getIncomingMatchExpression().getFields().get(0).getValue());
-    assertEquals("holdings.hrid", detail.getExistingMatchExpression().getFields().get(0).getValue());
+    assertEquals("holdings.formerIds[]", detail.getExistingMatchExpression().getFields().get(0).getValue());
   }
 
   @Test
@@ -144,7 +157,7 @@ public class MatchDetailsFactoryTest {
     assertEquals(EntityType.ITEM, detail.getExistingRecordType());
     assertEquals(EXACTLY_MATCHES, detail.getMatchCriterion());
     assertEquals("001", detail.getIncomingMatchExpression().getFields().get(0).getValue());
-    assertEquals("item.hrid", detail.getExistingMatchExpression().getFields().get(0).getValue());
+    assertEquals("item.formerIds[]", detail.getExistingMatchExpression().getFields().get(0).getValue());
   }
 
   @Test

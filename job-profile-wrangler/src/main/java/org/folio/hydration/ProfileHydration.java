@@ -211,10 +211,12 @@ public class ProfileHydration {
           Object targetObjInFolio = createdObjectsInFolio.get(target);
           String targetProfileId = invokeGetId(targetObjInFolio);
           ProfileType targetProfileType = getProfileType(target);
+          int order = target.getOrder();
           profileAssociations.add(new ProfileAssociation()
             .withMasterProfileType(ProfileType.JOB_PROFILE)
             .withDetailProfileId(targetProfileId)
-            .withDetailProfileType(targetProfileType));
+            .withDetailProfileType(targetProfileType)
+            .withOrder(order));
         } else if (target instanceof MappingProfileNode) {
           // Don't create the association between the action profile and the mapping profile
           LOGGER.debug("Skipping profile association for mapping profile: {}", edge);

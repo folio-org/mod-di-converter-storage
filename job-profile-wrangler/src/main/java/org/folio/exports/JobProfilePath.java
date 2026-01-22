@@ -1,5 +1,6 @@
 package org.folio.exports;
 
+import org.folio.graph.nodes.ActionProfileNode;
 import org.folio.graph.nodes.Profile;
 
 import java.util.Collections;
@@ -40,13 +41,44 @@ public class JobProfilePath {
     return profiles.stream().anyMatch(profileType::isInstance);
   }
 
+  /**
+   * Checks if this path contains an action profile that creates HOLDINGS records.
+   *
+   * @return true if the path creates Holdings
+   */
+  public boolean createsHoldings() {
+    return createsRecordType("HOLDINGS");
+  }
+
+  /**
+   * Checks if this path contains an action profile that creates ITEM records.
+   *
+   * @return true if the path creates Items
+   */
+  public boolean createsItems() {
+    return createsRecordType("ITEM");
+  }
+
+  /**
+   * Checks if this path contains an action profile that creates the specified record type.
+   *
+   * @param recordType the FOLIO record type to check for (e.g., "INSTANCE", "HOLDINGS", "ITEM")
+   * @return true if the path creates the specified record type
+   */
+  public boolean createsRecordType(String recordType) {
+    return profiles.stream()
+        .filter(ActionProfileNode.class::isInstance)
+        .map(ActionProfileNode.class::cast)
+        .anyMatch(action -> "CREATE".equals(action.action()) && recordType.equals(action.folioRecord()));
+  }
+
   private static String generatePathId(List<Profile> profiles) {
     StringBuilder pathId = new StringBuilder();
     for (Profile profile : profiles) {
       if (!pathId.isEmpty()) {
         pathId.append("->");
       }
-      pathId.append(profile.getName().replaceAll("\\s+", ""));
+      pathId.append(ProfileDisplayUtils.getProfileDisplayNameForId(profile));
     }
     return pathId.toString();
   }

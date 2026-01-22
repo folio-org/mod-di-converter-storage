@@ -9,6 +9,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.io.IOException;
+import java.util.Objects;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -17,17 +18,27 @@ import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
 import static org.folio.Constants.OBJECT_MAPPER;
+import static org.folio.Constants.OKAPI_TENANT_HEADER;
 import static org.folio.Constants.OKAPI_TOKEN_HEADER;
 
+/**
+ * Manages reference data fetching and caching for FOLIO tenant reference data endpoints.
+ *
+ * <p><strong>Thread Safety:</strong> This class is thread-safe. The reference data cache
+ * uses {@link ConcurrentHashMap} for safe concurrent access. Note that individual fetch
+ * operations are not atomic - concurrent requests for uncached data may result in
+ * duplicate fetches, but this is safe (last write wins, data is identical).
+ */
 public class ReferenceDataManager {
     private static final Logger LOGGER = LogManager.getLogger(ReferenceDataManager.class);
 
     private final String token;
+    private final String tenantId;
     private final Supplier<HttpUrl.Builder> baseUrlBuilderSupplier;
-    private OkHttpClient httpClient = new OkHttpClient();
+    private final OkHttpClient httpClient;
 
     private final Map<String, List<JsonNode>> cache = new ConcurrentHashMap<>();
-    private final Map<String, ReferenceDataEndpoint> endpointConfig = new HashMap<>();
+    private final Map<String, ReferenceDataEndpoint> endpointConfig;
     private final Random random = new Random();
 
     private static final Set<String> HIGH_PRIORITY_ENDPOINTS = Set.of(
@@ -45,38 +56,79 @@ public class ReferenceDataManager {
         "authority-source-files", "subject-sources", "subject-types"
     );
 
+    /**
+     * Creates a ReferenceDataManager with a default OkHttpClient.
+     *
+     * @param baseUrlBuilderSupplier supplier for the base URL builder
+     * @param token authentication token
+     */
     public ReferenceDataManager(Supplier<HttpUrl.Builder> baseUrlBuilderSupplier, String token) {
-        this.baseUrlBuilderSupplier = baseUrlBuilderSupplier;
+        this(new OkHttpClient(), baseUrlBuilderSupplier, token, null);
+    }
+
+    /**
+     * Creates a ReferenceDataManager with a default OkHttpClient and tenant ID.
+     *
+     * @param baseUrlBuilderSupplier supplier for the base URL builder
+     * @param token authentication token
+     * @param tenantId tenant identifier
+     */
+    public ReferenceDataManager(Supplier<HttpUrl.Builder> baseUrlBuilderSupplier, String token, String tenantId) {
+        this(new OkHttpClient(), baseUrlBuilderSupplier, token, tenantId);
+    }
+
+    /**
+     * Creates a ReferenceDataManager with an injected OkHttpClient.
+     * This constructor is preferred for testability.
+     *
+     * @param httpClient the HTTP client to use for requests
+     * @param baseUrlBuilderSupplier supplier for the base URL builder
+     * @param token authentication token
+     * @param tenantId tenant identifier (may be null)
+     */
+    public ReferenceDataManager(
+        OkHttpClient httpClient,
+        Supplier<HttpUrl.Builder> baseUrlBuilderSupplier,
+        String token,
+        String tenantId
+    ) {
+        this.httpClient = Objects.requireNonNull(httpClient, "httpClient must not be null");
+        this.baseUrlBuilderSupplier = Objects.requireNonNull(baseUrlBuilderSupplier, "baseUrlBuilderSupplier must not be null");
         this.token = token;
-        initializeEndpointConfiguration();
+        this.tenantId = tenantId;
+        this.endpointConfig = initializeEndpointConfiguration();
     }
 
-    protected void setHttpClient(OkHttpClient client) {
-        this.httpClient = client;
-    }
+    /**
+     * Creates the endpoint configuration map.
+     * Returns an immutable map for thread safety.
+     */
+    private static Map<String, ReferenceDataEndpoint> initializeEndpointConfiguration() {
+        Map<String, ReferenceDataEndpoint> config = new HashMap<>();
 
-    private void initializeEndpointConfiguration() {
-        endpointConfig.put("instance-types", new ReferenceDataEndpoint("instance-types", "instanceTypes"));
-        endpointConfig.put("identifier-types", new ReferenceDataEndpoint("identifier-types", "identifierTypes"));
-        endpointConfig.put("contributor-types", new ReferenceDataEndpoint("contributor-types", "contributorTypes"));
-        endpointConfig.put("instance-formats", new ReferenceDataEndpoint("instance-formats", "instanceFormats"));
-        endpointConfig.put("classification-types", new ReferenceDataEndpoint("classification-types", "classificationTypes"));
+        config.put("instance-types", new ReferenceDataEndpoint("instance-types", "instanceTypes"));
+        config.put("identifier-types", new ReferenceDataEndpoint("identifier-types", "identifierTypes"));
+        config.put("contributor-types", new ReferenceDataEndpoint("contributor-types", "contributorTypes"));
+        config.put("instance-formats", new ReferenceDataEndpoint("instance-formats", "instanceFormats"));
+        config.put("classification-types", new ReferenceDataEndpoint("classification-types", "classificationTypes"));
 
-        endpointConfig.put("holdings-types", new ReferenceDataEndpoint("holdings-types", "holdingsTypes"));
-        endpointConfig.put("material-types", new ReferenceDataEndpoint("material-types", "mtypes"));
-        endpointConfig.put("call-number-types", new ReferenceDataEndpoint("call-number-types", "callNumberTypes"));
-        endpointConfig.put("item-note-types", new ReferenceDataEndpoint("item-note-types", "itemNoteTypes"));
-        endpointConfig.put("loan-types", new ReferenceDataEndpoint("loan-types", "loantypes"));
+        config.put("holdings-types", new ReferenceDataEndpoint("holdings-types", "holdingsTypes"));
+        config.put("material-types", new ReferenceDataEndpoint("material-types", "mtypes"));
+        config.put("call-number-types", new ReferenceDataEndpoint("call-number-types", "callNumberTypes"));
+        config.put("item-note-types", new ReferenceDataEndpoint("item-note-types", "itemNoteTypes"));
+        config.put("loan-types", new ReferenceDataEndpoint("loan-types", "loantypes"));
 
-        endpointConfig.put("statistical-codes", new ReferenceDataEndpoint("statistical-codes", "statisticalCodes"));
-        endpointConfig.put("locations", new ReferenceDataEndpoint("locations", "locations"));
-        endpointConfig.put("service-points", new ReferenceDataEndpoint("service-points", "servicepoints"));
-        endpointConfig.put("statistical-code-types", new ReferenceDataEndpoint("statistical-code-types", "statisticalCodeTypes"));
+        config.put("statistical-codes", new ReferenceDataEndpoint("statistical-codes", "statisticalCodes"));
+        config.put("locations", new ReferenceDataEndpoint("locations", "locations"));
+        config.put("service-points", new ReferenceDataEndpoint("service-points", "servicepoints"));
+        config.put("statistical-code-types", new ReferenceDataEndpoint("statistical-code-types", "statisticalCodeTypes"));
 
-        endpointConfig.put("authority-note-types", new ReferenceDataEndpoint("authority-note-types", "authorityNoteTypes"));
-        endpointConfig.put("authority-source-files", new ReferenceDataEndpoint("authority-source-files", "authoritySourceFiles"));
-        endpointConfig.put("subject-sources", new ReferenceDataEndpoint("subject-sources", "subjectSources"));
-        endpointConfig.put("subject-types", new ReferenceDataEndpoint("subject-types", "subjectTypes"));
+        config.put("authority-note-types", new ReferenceDataEndpoint("authority-note-types", "authorityNoteTypes"));
+        config.put("authority-source-files", new ReferenceDataEndpoint("authority-source-files", "authoritySourceFiles"));
+        config.put("subject-sources", new ReferenceDataEndpoint("subject-sources", "subjectSources"));
+        config.put("subject-types", new ReferenceDataEndpoint("subject-types", "subjectTypes"));
+
+        return Collections.unmodifiableMap(config);
     }
 
     public List<JsonNode> getReferenceData(String referenceType) {
@@ -120,11 +172,13 @@ public class ReferenceDataManager {
             HttpUrl url = urlBuilder.build();
             LOGGER.debug("Fetching reference data from: {}", url);
 
-            Request request = new Request.Builder()
+            Request.Builder requestBuilder = new Request.Builder()
                 .url(url)
-                .addHeader(OKAPI_TOKEN_HEADER, token)
-                .get()
-                .build();
+                .addHeader(OKAPI_TOKEN_HEADER, token);
+            if (tenantId != null) {
+                requestBuilder.addHeader(OKAPI_TENANT_HEADER, tenantId);
+            }
+            Request request = requestBuilder.get().build();
 
             try (Response response = httpClient.newCall(request).execute()) {
                 if (!response.isSuccessful()) {
@@ -170,6 +224,28 @@ public class ReferenceDataManager {
             return Optional.of(randomRecord.get("id").asText());
         }
         return Optional.empty();
+    }
+
+    /**
+     * Looks up a reference data ID by name.
+     * This is useful for finding IDs for well-known reference data entries like
+     * identifier types (e.g., "System control number").
+     *
+     * @param referenceType the type of reference data (e.g., "identifier-types")
+     * @param name the name to search for (case-insensitive)
+     * @return Optional containing the ID if found, empty otherwise
+     */
+    public Optional<String> getIdByName(String referenceType, String name) {
+        if (name == null || name.isBlank()) {
+            return Optional.empty();
+        }
+
+        List<JsonNode> data = getReferenceData(referenceType);
+        return data.stream()
+            .filter(record -> record.has("name") && record.has("id"))
+            .filter(record -> name.equalsIgnoreCase(record.get("name").asText()))
+            .map(record -> record.get("id").asText())
+            .findFirst();
     }
 
     public boolean isValidReference(String referenceType, String id) {

@@ -44,8 +44,8 @@ public class ReferenceDataManagerTest {
 
     @Before
     public void setup() throws IOException {
-        referenceDataManager = new ReferenceDataManager(() -> baseUrlBuilder, "token");
-        referenceDataManager.setHttpClient(httpClient);
+        // Use constructor injection for OkHttpClient (DOP-compliant)
+        referenceDataManager = new ReferenceDataManager(httpClient, () -> baseUrlBuilder, "token", null);
 
         when(httpClient.newCall(any())).thenReturn(call);
         when(call.execute()).thenReturn(response);

@@ -8,7 +8,9 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.Callable;
@@ -28,8 +30,10 @@ import org.folio.graph.GraphWriter;
 import org.folio.graph.GraphWriterEnhanced;
 import org.folio.graph.edges.RegularEdge;
 import org.folio.graph.nodes.ActionProfileNode;
+import org.folio.graph.nodes.MappingProfileNode;
 import org.folio.graph.nodes.Profile;
 import org.folio.http.FolioClient;
+import org.folio.http.ReferenceDataManager;
 import org.folio.hydration.ProfileHydration;
 import org.folio.imports.RepoImport;
 import org.jgrapht.Graph;
@@ -440,6 +444,26 @@ public class JpWranglerCli implements Callable<Integer> {
       String matchProfileId       // The shared match profile ID
     ) {}
 
+    /**
+     * Result of categorizing paths into paired and unpaired groups.
+     * This is an immutable data carrier for the path categorization step.
+     */
+    private record CategorizedPaths(
+      List<MatchedPathPair> pairedPaths,
+      List<CategorizedPath> unpairedCreatePaths,
+      List<CategorizedPath> unpairedUpdatePaths
+    ) {}
+
+    /**
+     * Result of record generation containing both file collections.
+     * This is an immutable data carrier for the generation step.
+     */
+    private record GeneratedRecords(
+      List<Record> foundationRecords,
+      List<Record> updateFileRecords,
+      int totalRecordsGenerated
+    ) {}
+
     @Override
     public Integer call() {
       try {
@@ -499,6 +523,13 @@ public class JpWranglerCli implements Callable<Integer> {
           analysis.getRequiredInventoryFields().size());
       }
 
+      // Fetch reference data for Holdings and Items
+      MinimalMarcRecordBuilder.ReferenceDataContext refData = fetchReferenceDataContext(client);
+      if (refData != null && verbose) {
+        LOGGER.info("Reference data fetched for Holdings/Items: locationId={}, materialTypeId={}, loanTypeId={}",
+          refData.locationId(), refData.materialTypeId(), refData.loanTypeId());
+      }
+
       // Extract all paths (CREATE and UPDATE)
       PathExtractionResult pathResult = extractAllPaths(snapshot);
 
@@ -510,153 +541,282 @@ public class JpWranglerCli implements Callable<Integer> {
       LOGGER.info("Found {} CREATE path(s) and {} UPDATE path(s) in job profile",
         pathResult.createPaths().size(), pathResult.updatePaths().size());
 
-      // Generate minimal records using stateless builder
+      // Categorize paths into paired and unpaired
+      CategorizedPaths categorized = categorizePaths(pathResult);
+
+      LOGGER.info("Found {} matched path pair(s) (CREATE + UPDATE sharing same match profile)",
+        categorized.pairedPaths().size());
+
+      // Generate records
       GenerationReport.Builder reportBuilder = verbose ? GenerationReport.builder() : null;
+      GeneratedRecords generated = generateRecordsFromCategorizedPaths(
+        categorized, refData, reportBuilder, pathResult.updatePaths().isEmpty());
 
-      // Collections for the two output files
-      List<Record> foundationRecords = new ArrayList<>();  // For -create.mrc (seeds database)
-      List<Record> updateFileRecords = new ArrayList<>();  // For -update.mrc (triggers both branches)
-
-      // Pair CREATE and UPDATE paths that share the same match profile
-      List<MatchedPathPair> pairs = pairPaths(pathResult.createPaths(), pathResult.updatePaths());
-
-      LOGGER.info("Found {} matched path pair(s) (CREATE + UPDATE sharing same match profile)", pairs.size());
-
-      int recordNumber = 0;
-
-      // Process paired paths: generate foundation record + CREATE record + UPDATE record
-      Set<CategorizedPath> processedCreatePaths = new HashSet<>();
-      Set<CategorizedPath> processedUpdatePaths = new HashSet<>();
-
-      for (MatchedPathPair pair : pairs) {
-        // Generate foundation record (will be imported first to seed database)
-        if (reportBuilder != null) {
-          reportBuilder.startNewRecord();
-        }
-        recordNumber++;
-        MinimalMarcRecordBuilder.BuildResult foundationResult = MinimalMarcRecordBuilder.buildRecordForPath(
-          pair.updatePath().path(), recordNumber, reportBuilder);
-        Record foundationRecord = foundationResult.record();
-        foundationRecords.add(foundationRecord);
-
-        // Generate CREATE path record (fresh UUID - will NOT match, triggers NON_MATCH → CREATE)
-        if (reportBuilder != null) {
-          reportBuilder.startNewRecord();
-        }
-        recordNumber++;
-        MinimalMarcRecordBuilder.BuildResult createResult = MinimalMarcRecordBuilder.buildRecordForPath(
-          pair.createPath().path(), recordNumber, reportBuilder);
-        updateFileRecords.add(createResult.record());
-
-        // Generate UPDATE record (same 001 as foundation - will MATCH, triggers MATCH → UPDATE)
-        if (reportBuilder != null) {
-          reportBuilder.startNewRecord();
-        }
-        recordNumber++;
-        MinimalMarcRecordBuilder.BuildResult updateResult = MinimalMarcRecordBuilder.buildUpdateRecordFromBase(
-          foundationRecord, pair.updatePath().path(), recordNumber, reportBuilder);
-        updateFileRecords.add(updateResult.record());
-
-        processedCreatePaths.add(pair.createPath());
-        processedUpdatePaths.add(pair.updatePath());
-
-        if (verbose) {
-          LOGGER.info("Generated records for paired paths:");
-          LOGGER.info("  Foundation (001: {}) -> -create.mrc", foundationRecord.getControlNumber());
-          LOGGER.info("  CREATE path (001: {}) -> -update.mrc", createResult.record().getControlNumber());
-          LOGGER.info("  UPDATE path (001: {}) -> -update.mrc (matches foundation)", updateResult.record().getControlNumber());
-        }
-      }
-
-      // Process unpaired CREATE paths (direct CREATE without match profile, or CREATE-only profiles)
-      for (CategorizedPath createCatPath : pathResult.createPaths()) {
-        if (!processedCreatePaths.contains(createCatPath)) {
-          // For CREATE paths without pairing, generate record for -update.mrc
-          if (reportBuilder != null) {
-            reportBuilder.startNewRecord();
-          }
-          recordNumber++;
-          MinimalMarcRecordBuilder.BuildResult result = MinimalMarcRecordBuilder.buildRecordForPath(
-            createCatPath.path(), recordNumber, reportBuilder);
-          updateFileRecords.add(result.record());
-
-          if (verbose) {
-            LOGGER.info("Generated record for unpaired CREATE path (reactTo: {}): {}",
-              createCatPath.reactTo(), createCatPath.path().getPathId());
-          }
-        }
-      }
-
-      // Process unpaired UPDATE paths (UPDATE without corresponding CREATE - unusual but handle it)
-      for (CategorizedPath updateCatPath : pathResult.updatePaths()) {
-        if (!processedUpdatePaths.contains(updateCatPath)) {
-          // Generate foundation and update records
-          if (reportBuilder != null) {
-            reportBuilder.startNewRecord();
-          }
-          recordNumber++;
-          MinimalMarcRecordBuilder.BuildResult foundationResult = MinimalMarcRecordBuilder.buildRecordForPath(
-            updateCatPath.path(), recordNumber, reportBuilder);
-          Record foundationRecord = foundationResult.record();
-          foundationRecords.add(foundationRecord);
-
-          if (reportBuilder != null) {
-            reportBuilder.startNewRecord();
-          }
-          recordNumber++;
-          MinimalMarcRecordBuilder.BuildResult updateResult = MinimalMarcRecordBuilder.buildUpdateRecordFromBase(
-            foundationRecord, updateCatPath.path(), recordNumber, reportBuilder);
-          updateFileRecords.add(updateResult.record());
-
-          if (verbose) {
-            LOGGER.info("Generated records for unpaired UPDATE path: {}", updateCatPath.path().getPathId());
-          }
-        }
-      }
-
-      // Write foundation records to -create.mrc
-      String createFilePath = outputPath + "-create.mrc";
-      if (!foundationRecords.isEmpty()) {
-        try (FileOutputStream fos = new FileOutputStream(createFilePath)) {
-          MarcStreamWriter writer = new MarcStreamWriter(fos, "UTF-8");
-          for (Record record : foundationRecords) {
-            writer.write(record);
-          }
-          writer.close();
-        }
-        LOGGER.info("Generated {} foundation record(s) written to {}", foundationRecords.size(), createFilePath);
-      } else {
-        LOGGER.info("No foundation records needed (no UPDATE paths found)");
-      }
-
-      // Write update file records to -update.mrc
-      String updateFilePath = outputPath + "-update.mrc";
-      if (!updateFileRecords.isEmpty()) {
-        try (FileOutputStream fos = new FileOutputStream(updateFilePath)) {
-          MarcStreamWriter writer = new MarcStreamWriter(fos, "UTF-8");
-          for (Record record : updateFileRecords) {
-            writer.write(record);
-          }
-          writer.close();
-        }
-        LOGGER.info("Generated {} record(s) for import written to {}", updateFileRecords.size(), updateFilePath);
-      }
-
-      // Summary
-      LOGGER.info("Generation complete:");
-      LOGGER.info("  {} - {} foundation record(s) to seed database", createFilePath, foundationRecords.size());
-      LOGGER.info("  {} - {} record(s) to trigger both CREATE and UPDATE paths", updateFilePath, updateFileRecords.size());
-      LOGGER.info("Workflow: Import {} first, then import {}", createFilePath, updateFilePath);
+      // Write records to output files - I/O at the boundary
+      writeOutputFiles(generated, pathResult.updatePaths().isEmpty());
 
       // Print verbose report if requested
       if (verbose && reportBuilder != null) {
         GenerationReport report = reportBuilder
-          .outputPath(createFilePath)
+          .outputPath(outputPath + "-create.mrc")
           .build();
         report.print();
       }
 
       return 0;
+    }
+
+    /**
+     * Categorizes paths into paired and unpaired groups.
+     *
+     * @param pathResult the extracted paths
+     * @return categorized paths with paired and unpaired groups
+     */
+    private CategorizedPaths categorizePaths(PathExtractionResult pathResult) {
+      List<MatchedPathPair> pairs = pairPaths(pathResult.createPaths(), pathResult.updatePaths());
+
+      Set<CategorizedPath> pairedCreatePaths = new HashSet<>();
+      Set<CategorizedPath> pairedUpdatePaths = new HashSet<>();
+
+      for (MatchedPathPair pair : pairs) {
+        pairedCreatePaths.add(pair.createPath());
+        pairedUpdatePaths.add(pair.updatePath());
+      }
+
+      List<CategorizedPath> unpairedCreate = pathResult.createPaths().stream()
+        .filter(p -> !pairedCreatePaths.contains(p))
+        .toList();
+
+      List<CategorizedPath> unpairedUpdate = pathResult.updatePaths().stream()
+        .filter(p -> !pairedUpdatePaths.contains(p))
+        .toList();
+
+      return new CategorizedPaths(pairs, unpairedCreate, unpairedUpdate);
+    }
+
+    /**
+     * Generates MARC records from categorized paths.
+     * Note: This method has side effects on reportBuilder (if non-null) for verbose output tracking.
+     *
+     * @param categorized the categorized paths
+     * @param refData reference data context for Holdings/Items
+     * @param reportBuilder optional report builder for verbose output (modified via side effects)
+     * @param isCreateOnlyProfile whether this is a CREATE-only profile
+     * @return generated records for both output files
+     */
+    private GeneratedRecords generateRecordsFromCategorizedPaths(
+        CategorizedPaths categorized,
+        MinimalMarcRecordBuilder.ReferenceDataContext refData,
+        GenerationReport.Builder reportBuilder,
+        boolean isCreateOnlyProfile) {
+
+      List<Record> foundationRecords = new ArrayList<>();
+      List<Record> updateFileRecords = new ArrayList<>();
+      int recordNumber = 0;
+
+      // Process paired paths
+      for (MatchedPathPair pair : categorized.pairedPaths()) {
+        recordNumber = generatePairedPathRecords(
+          pair, recordNumber, refData, reportBuilder, foundationRecords, updateFileRecords);
+      }
+
+      // Process unpaired CREATE paths
+      recordNumber = generateUnpairedCreateRecords(
+        categorized.unpairedCreatePaths(), recordNumber, refData, reportBuilder,
+        foundationRecords, updateFileRecords, isCreateOnlyProfile);
+
+      // Process unpaired UPDATE paths
+      recordNumber = generateUnpairedUpdateRecords(
+        categorized.unpairedUpdatePaths(), recordNumber, refData, reportBuilder,
+        foundationRecords, updateFileRecords);
+
+      return new GeneratedRecords(foundationRecords, updateFileRecords, recordNumber);
+    }
+
+    /**
+     * Generates records for a paired CREATE/UPDATE path combination.
+     *
+     * @return the updated record number
+     */
+    private int generatePairedPathRecords(
+        MatchedPathPair pair,
+        int recordNumber,
+        MinimalMarcRecordBuilder.ReferenceDataContext refData,
+        GenerationReport.Builder reportBuilder,
+        List<Record> foundationRecords,
+        List<Record> updateFileRecords) {
+
+      // Generate foundation record
+      if (reportBuilder != null) reportBuilder.startNewRecord();
+      recordNumber++;
+      MinimalMarcRecordBuilder.BuildResult foundationResult = MinimalMarcRecordBuilder.buildRecordForPath(
+        pair.updatePath().path(), recordNumber, reportBuilder, refData);
+      Record foundationRecord = foundationResult.record();
+      foundationRecords.add(foundationRecord);
+
+      // Generate CREATE path record
+      if (reportBuilder != null) reportBuilder.startNewRecord();
+      recordNumber++;
+      MinimalMarcRecordBuilder.BuildResult createResult = MinimalMarcRecordBuilder.buildRecordForPath(
+        pair.createPath().path(), recordNumber, reportBuilder, refData);
+      updateFileRecords.add(createResult.record());
+
+      // Generate UPDATE record
+      if (reportBuilder != null) reportBuilder.startNewRecord();
+      recordNumber++;
+      MinimalMarcRecordBuilder.BuildResult updateResult = MinimalMarcRecordBuilder.buildUpdateRecordFromBase(
+        foundationRecord, pair.updatePath().path(), recordNumber, reportBuilder, refData);
+      updateFileRecords.add(updateResult.record());
+
+      if (verbose) {
+        LOGGER.info("Generated records for paired paths:");
+        LOGGER.info("  Foundation (001: {}) -> -create.mrc", foundationRecord.getControlNumber());
+        LOGGER.info("  CREATE path (001: {}) -> -update.mrc", createResult.record().getControlNumber());
+        LOGGER.info("  UPDATE path (001: {}) -> -update.mrc (matches foundation)", updateResult.record().getControlNumber());
+      }
+
+      return recordNumber;
+    }
+
+    /**
+     * Generates records for unpaired CREATE paths.
+     *
+     * @return the updated record number
+     */
+    private int generateUnpairedCreateRecords(
+        List<CategorizedPath> unpairedCreatePaths,
+        int recordNumber,
+        MinimalMarcRecordBuilder.ReferenceDataContext refData,
+        GenerationReport.Builder reportBuilder,
+        List<Record> foundationRecords,
+        List<Record> updateFileRecords,
+        boolean isCreateOnlyProfile) {
+
+      if (unpairedCreatePaths.isEmpty()) {
+        return recordNumber;
+      }
+
+      if (isCreateOnlyProfile) {
+        // Consolidate sibling paths into single records
+        Map<String, List<CategorizedPath>> pathsByParent = groupPathsByParentProfile(unpairedCreatePaths);
+
+        for (Map.Entry<String, List<CategorizedPath>> entry : pathsByParent.entrySet()) {
+          List<CategorizedPath> siblingPaths = entry.getValue();
+
+          if (reportBuilder != null) reportBuilder.startNewRecord();
+          recordNumber++;
+
+          JobProfilePath consolidatedPath = consolidateCreatePaths(siblingPaths);
+          MinimalMarcRecordBuilder.BuildResult result = MinimalMarcRecordBuilder.buildRecordForPath(
+            consolidatedPath, recordNumber, reportBuilder, refData);
+          foundationRecords.add(result.record());
+
+          if (verbose) {
+            LOGGER.info("Generated consolidated record for {} sibling CREATE paths -> -create.mrc",
+              siblingPaths.size());
+            for (CategorizedPath path : siblingPaths) {
+              LOGGER.info("  - {}", path.path().getPathId());
+            }
+          }
+        }
+      } else {
+        // Process individually for mixed profiles
+        for (CategorizedPath createCatPath : unpairedCreatePaths) {
+          if (reportBuilder != null) reportBuilder.startNewRecord();
+          recordNumber++;
+          MinimalMarcRecordBuilder.BuildResult result = MinimalMarcRecordBuilder.buildRecordForPath(
+            createCatPath.path(), recordNumber, reportBuilder, refData);
+          updateFileRecords.add(result.record());
+
+          if (verbose) {
+            LOGGER.info("Generated record for unpaired CREATE path (reactTo: {}) -> -update.mrc: {}",
+              createCatPath.reactTo(), createCatPath.path().getPathId());
+          }
+        }
+      }
+
+      return recordNumber;
+    }
+
+    /**
+     * Generates records for unpaired UPDATE paths.
+     *
+     * @return the updated record number
+     */
+    private int generateUnpairedUpdateRecords(
+        List<CategorizedPath> unpairedUpdatePaths,
+        int recordNumber,
+        MinimalMarcRecordBuilder.ReferenceDataContext refData,
+        GenerationReport.Builder reportBuilder,
+        List<Record> foundationRecords,
+        List<Record> updateFileRecords) {
+
+      for (CategorizedPath updateCatPath : unpairedUpdatePaths) {
+        // Generate foundation record
+        if (reportBuilder != null) reportBuilder.startNewRecord();
+        recordNumber++;
+        MinimalMarcRecordBuilder.BuildResult foundationResult = MinimalMarcRecordBuilder.buildRecordForPath(
+          updateCatPath.path(), recordNumber, reportBuilder, refData);
+        Record foundationRecord = foundationResult.record();
+        foundationRecords.add(foundationRecord);
+
+        // Generate update record
+        if (reportBuilder != null) reportBuilder.startNewRecord();
+        recordNumber++;
+        MinimalMarcRecordBuilder.BuildResult updateResult = MinimalMarcRecordBuilder.buildUpdateRecordFromBase(
+          foundationRecord, updateCatPath.path(), recordNumber, reportBuilder, refData);
+        updateFileRecords.add(updateResult.record());
+
+        if (verbose) {
+          LOGGER.info("Generated records for unpaired UPDATE path: {}", updateCatPath.path().getPathId());
+        }
+      }
+
+      return recordNumber;
+    }
+
+    /**
+     * Writes the generated records to output files.
+     * This is the I/O boundary - all pure transformations happen before this.
+     */
+    private void writeOutputFiles(GeneratedRecords generated, boolean isCreateOnlyProfile) throws IOException {
+      String createFilePath = outputPath + "-create.mrc";
+      String updateFilePath = outputPath + "-update.mrc";
+
+      // Write foundation/CREATE records to -create.mrc
+      if (!generated.foundationRecords().isEmpty()) {
+        try (FileOutputStream fos = new FileOutputStream(createFilePath)) {
+          MarcStreamWriter writer = new MarcStreamWriter(fos, "UTF-8");
+          for (Record record : generated.foundationRecords()) {
+            writer.write(record);
+          }
+          writer.close();
+        }
+        LOGGER.info("Generated {} record(s) written to {}", generated.foundationRecords().size(), createFilePath);
+      }
+
+      // Write update file records to -update.mrc (only if there are records)
+      if (!generated.updateFileRecords().isEmpty()) {
+        try (FileOutputStream fos = new FileOutputStream(updateFilePath)) {
+          MarcStreamWriter writer = new MarcStreamWriter(fos, "UTF-8");
+          for (Record record : generated.updateFileRecords()) {
+            writer.write(record);
+          }
+          writer.close();
+        }
+        LOGGER.info("Generated {} record(s) for import written to {}", generated.updateFileRecords().size(), updateFilePath);
+      }
+
+      // Log summary
+      LOGGER.info("Generation complete:");
+      if (isCreateOnlyProfile) {
+        LOGGER.info("  {} - {} record(s) for CREATE paths", createFilePath, generated.foundationRecords().size());
+        LOGGER.info("Workflow: Import {} to create new records", createFilePath);
+      } else {
+        LOGGER.info("  {} - {} foundation record(s) to seed database", createFilePath, generated.foundationRecords().size());
+        LOGGER.info("  {} - {} record(s) to trigger both CREATE and UPDATE paths", updateFilePath, generated.updateFileRecords().size());
+        LOGGER.info("Workflow: Import {} first, then import {}", createFilePath, updateFilePath);
+      }
     }
 
     /**
@@ -799,6 +959,80 @@ public class JpWranglerCli implements Callable<Integer> {
     }
 
     /**
+     * Groups CREATE paths by their parent job profile ID.
+     * Paths that share the same parent should be consolidated into a single MARC record.
+     *
+     * @param createPaths the CREATE paths to group
+     * @return a map of parent profile ID to list of paths under that parent
+     */
+    private Map<String, List<CategorizedPath>> groupPathsByParentProfile(List<CategorizedPath> createPaths) {
+      Map<String, List<CategorizedPath>> grouped = new LinkedHashMap<>();
+
+      if (createPaths == null) {
+        return grouped;
+      }
+
+      for (CategorizedPath catPath : createPaths) {
+        // Get the job profile (first profile in the path) as the parent
+        String parentId = "unknown";
+        if (catPath != null && catPath.path() != null && !catPath.path().getProfiles().isEmpty()) {
+          Profile firstProfile = catPath.path().getProfiles().get(0);
+          Map<String, String> attributes = firstProfile.getAttributes();
+          if (attributes != null) {
+            parentId = attributes.getOrDefault("id", "unknown");
+          }
+        }
+
+        grouped.computeIfAbsent(parentId, k -> new ArrayList<>()).add(catPath);
+      }
+
+      return grouped;
+    }
+
+    /**
+     * Consolidates multiple CREATE paths into a single JobProfilePath that includes
+     * all the action profiles. This allows generating a single MARC record that
+     * contains fields for all record types (Instance, Holdings, Item).
+     *
+     * @param createPaths the CREATE paths to consolidate
+     * @return a consolidated JobProfilePath containing all action profiles, or an empty path if input is null/empty
+     */
+    private JobProfilePath consolidateCreatePaths(List<CategorizedPath> createPaths) {
+      if (createPaths == null || createPaths.isEmpty()) {
+        return new JobProfilePath(java.util.Collections.emptyList());
+      }
+
+      // Collect all unique profiles from all paths, preserving order
+      List<Profile> consolidatedProfiles = new ArrayList<>();
+      Set<String> seenProfileIds = new HashSet<>();
+
+      for (CategorizedPath catPath : createPaths) {
+        if (catPath == null || catPath.path() == null) {
+          continue;
+        }
+        for (Profile profile : catPath.path().getProfiles()) {
+          if (profile == null) {
+            continue;
+          }
+          String profileKey = profile.getClass().getSimpleName() + "-" + profile.getName();
+          // For ActionProfileNode, use a more specific key
+          if (profile instanceof ActionProfileNode actionProfile) {
+            profileKey = "ActionProfile-" + actionProfile.action() + "-" + actionProfile.folioRecord();
+          } else if (profile instanceof MappingProfileNode mappingProfile) {
+            profileKey = "MappingProfile-" + mappingProfile.existingRecordType();
+          }
+
+          if (!seenProfileIds.contains(profileKey)) {
+            seenProfileIds.add(profileKey);
+            consolidatedProfiles.add(profile);
+          }
+        }
+      }
+
+      return new JobProfilePath(consolidatedProfiles);
+    }
+
+    /**
      * Creates a Profile object from a snapshot node.
      */
     private Profile createProfileFromNode(String contentType, JsonNode content) {
@@ -825,6 +1059,49 @@ public class JpWranglerCli implements Callable<Integer> {
         }
         default -> null;
       };
+    }
+
+    /**
+     * Fetches reference data from the FOLIO tenant to create a ReferenceDataContext
+     * for generating Holdings and Item fields.
+     *
+     * @param client the FolioClient for API access
+     * @return a ReferenceDataContext with valid UUIDs, or null if reference data cannot be fetched
+     */
+    private MinimalMarcRecordBuilder.ReferenceDataContext fetchReferenceDataContext(FolioClient client) {
+      try {
+        ReferenceDataManager refDataManager = new ReferenceDataManager(
+          () -> okhttp3.HttpUrl.parse(folioOptions.baseUrl).newBuilder(),
+          folioOptions.getToken(),
+          folioOptions.tenant
+        );
+
+        Optional<String> locationId = refDataManager.getRandomValidId("locations");
+        Optional<String> materialTypeId = refDataManager.getRandomValidId("material-types");
+        Optional<String> loanTypeId = refDataManager.getRandomValidId("loan-types");
+
+        if (locationId.isEmpty()) {
+          LOGGER.warn("No locations found in tenant. Holdings/Item fields will not be generated.");
+          return null;
+        }
+        if (materialTypeId.isEmpty()) {
+          LOGGER.warn("No material types found in tenant. Item fields will not be generated.");
+          return null;
+        }
+        if (loanTypeId.isEmpty()) {
+          LOGGER.warn("No loan types found in tenant. Item fields will not be generated.");
+          return null;
+        }
+
+        return new MinimalMarcRecordBuilder.ReferenceDataContext(
+          locationId.get(),
+          materialTypeId.get(),
+          loanTypeId.get()
+        );
+      } catch (Exception e) {
+        LOGGER.warn("Failed to fetch reference data: {}. Holdings/Item fields will not be generated.", e.getMessage());
+        return null;
+      }
     }
   }
 

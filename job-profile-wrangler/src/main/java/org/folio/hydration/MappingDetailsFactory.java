@@ -187,9 +187,9 @@ public final class MappingDetailsFactory {
         // Former IDs
         createFieldWithSubfields("formerIds", "holdings.formerIds[]", true,
           createSubfield(0, "holdings.formerIds[]",
-            createSubfieldField("formerId", "holdings.formerIds[]", true))),
+            createSubfieldField("formerId", "holdings.formerIds[]", true, "004"))),
 
-        createField("holdingsTypeId", "holdings.holdingsTypeId", true),
+        createField("holdingsTypeId", "holdings.holdingsTypeId", true, "\"Monograph\""),
 
         // Statistical codes
         createFieldWithSubfields("statisticalCodeIds", "holdings.statisticalCodeIds[]", true,
@@ -202,7 +202,7 @@ public final class MappingDetailsFactory {
             createSubfieldField("administrativeNote", "holdings.administrativeNotes[]", true))),
 
         // Location
-        createField("permanentLocationId", "holdings.permanentLocationId", true),
+        createField("permanentLocationId", "holdings.permanentLocationId", true, "852$b"),
         createField("temporaryLocationId", "holdings.temporaryLocationId", true),
         createField("shelvingOrder", "holdings.shelvingOrder", true),
         createField("shelvingTitle", "holdings.shelvingTitle", true),
@@ -210,9 +210,9 @@ public final class MappingDetailsFactory {
 
         // Call number
         createField("callNumberTypeId", "holdings.callNumberTypeId", true),
-        createField("callNumberPrefix", "holdings.callNumberPrefix", true),
-        createField("callNumber", "holdings.callNumber", true),
-        createField("callNumberSuffix", "holdings.callNumberSuffix", true),
+        createField("callNumberPrefix", "holdings.callNumberPrefix", true, "852$k"),
+        createField("callNumber", "holdings.callNumber", true, "852$h"),
+        createField("callNumberSuffix", "holdings.callNumberSuffix", true, "852$m"),
         createField("numberOfItems", "holdings.numberOfItems", true),
 
         // Holdings statements
@@ -277,7 +277,7 @@ public final class MappingDetailsFactory {
       .withMappingFields(Arrays.asList(
         createField("discoverySuppress", "item.discoverySuppress", true),
         createField("hrid", "item.hrid", true),
-        createField("barcode", "item.barcode", true),
+        createField("barcode", "item.barcode", true, "945$b"),
         createField("accessionNumber", "item.accessionNumber", true),
         createField("itemIdentifier", "item.itemIdentifier", true),
 
@@ -297,7 +297,7 @@ public final class MappingDetailsFactory {
             createSubfieldField("administrativeNote", "item.administrativeNotes[]", true))),
 
         // Material type
-        createField("materialType.id", "item.materialType.id", true),
+        createField("materialType.id", "item.materialType.id", true, "945$m"),
         createField("copyNumber", "item.copyNumber", true),
 
         // Call number
@@ -337,11 +337,11 @@ public final class MappingDetailsFactory {
             createSubfieldField("staffOnly", "item.notes[].staffOnly", true))),
 
         // Loan types
-        createField("permanentLoanType.id", "item.permanentLoanType.id", true),
+        createField("permanentLoanType.id", "item.permanentLoanType.id", true, "945$t"),
         createField("temporaryLoanType.id", "item.temporaryLoanType.id", true),
 
         // Status
-        createField("status.name", "item.status.name", true),
+        createField("status.name", "item.status.name", true, "945$a"),
 
         // Circulation notes
         createFieldWithSubfields("circulationNotes", "item.circulationNotes[]", true,
@@ -351,7 +351,7 @@ public final class MappingDetailsFactory {
             createSubfieldField("staffOnly", "item.circulationNotes[].staffOnly", true))),
 
         // Locations
-        createField("permanentLocation.id", "item.permanentLocation.id", true),
+        createField("permanentLocation.id", "item.permanentLocation.id", true, "945$h"),
         createField("temporaryLocation.id", "item.temporaryLocation.id", true),
 
         // Electronic access
@@ -396,10 +396,14 @@ public final class MappingDetailsFactory {
   }
 
   private static MappingRule createField(String name, String path, boolean enabled) {
+    return createField(name, path, enabled, "");
+  }
+
+  private static MappingRule createField(String name, String path, boolean enabled, String value) {
     return new MappingRule()
       .withName(name)
       .withPath(path)
-      .withValue("")
+      .withValue(value)
       .withEnabled(enabled ? "true" : "false")
       .withSubfields(Collections.emptyList());
   }
@@ -422,10 +426,14 @@ public final class MappingDetailsFactory {
   }
 
   private static MappingRule createSubfieldField(String name, String path, boolean enabled) {
+    return createSubfieldField(name, path, enabled, "");
+  }
+
+  private static MappingRule createSubfieldField(String name, String path, boolean enabled, String value) {
     return new MappingRule()
       .withName(name)
       .withPath(path)
-      .withValue("")
+      .withValue(value)
       .withEnabled(enabled ? "true" : "false");
   }
 

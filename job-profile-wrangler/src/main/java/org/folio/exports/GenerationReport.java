@@ -149,17 +149,67 @@ public final class GenerationReport {
 
   /**
    * Builder for constructing GenerationReport instances.
+   *
+   * <p>This builder uses an explicit record boundary model for clearer state management:
+   * <ol>
+   *   <li>Call {@link #startNewRecord()} before adding entries for each record</li>
+   *   <li>Add field and reference data entries</li>
+   *   <li>Repeat for each record</li>
+   *   <li>Call {@link #build()} to create the immutable report</li>
+   * </ol>
+   *
+   * <p>The builder maintains a "current record" context. All field/reference entries
+   * are accumulated into this context until {@link #startNewRecord()} or {@link #build()}
+   * is called, which commits the current record and starts fresh.
    */
   public static final class Builder {
     private final List<RecordReport> recordReports = new ArrayList<>();
     private String outputPath;
 
-    // Current path being built
-    private String currentPathId;
-    private final List<FieldEntry> currentFields = new ArrayList<>();
-    private final List<ReferenceEntry> currentReferenceData = new ArrayList<>();
+    // Current record state - encapsulated in an immutable snapshot when committed
+    private RecordContext currentRecord = RecordContext.empty();
 
     private Builder() {}
+
+    /**
+     * Value object representing the current record state.
+     * Methods return new instances with updated data (copy-on-write pattern).
+     * Note: Internal lists are defensively copied in mutation methods but the
+     * record itself is a Java record (shallow immutable).
+     */
+    private record RecordContext(
+      String pathId,
+      List<FieldEntry> fields,
+      List<ReferenceEntry> referenceData
+    ) {
+      static RecordContext empty() {
+        return new RecordContext(null, List.of(), List.of());
+      }
+
+      RecordContext withPathId(String pathId) {
+        return new RecordContext(pathId, this.fields, this.referenceData);
+      }
+
+      RecordContext addField(FieldEntry field) {
+        List<FieldEntry> newFields = new ArrayList<>(this.fields);
+        newFields.add(field);
+        return new RecordContext(this.pathId, newFields, this.referenceData);
+      }
+
+      RecordContext addReference(ReferenceEntry ref) {
+        List<ReferenceEntry> newRefs = new ArrayList<>(this.referenceData);
+        newRefs.add(ref);
+        return new RecordContext(this.pathId, this.fields, newRefs);
+      }
+
+      boolean hasContent() {
+        return pathId != null && !fields.isEmpty();
+      }
+
+      RecordReport toReport() {
+        return new RecordReport(pathId, fields, referenceData);
+      }
+    }
 
     /**
      * Sets the output file path for the report.
@@ -173,7 +223,9 @@ public final class GenerationReport {
     }
 
     /**
-     * Adds a field generation entry for the current path.
+     * Adds a field generation entry for the current record.
+     * If the pathId differs from the current record's pathId, the current record
+     * is committed and a new record is started.
      *
      * @param pathId the path identifier
      * @param fieldTag the MARC field tag
@@ -183,12 +235,14 @@ public final class GenerationReport {
      */
     public Builder addFieldGeneration(String pathId, String fieldTag, String value, String mapsTo) {
       ensurePath(pathId);
-      currentFields.add(new FieldEntry(fieldTag, value, mapsTo));
+      currentRecord = currentRecord.addField(new FieldEntry(fieldTag, value, mapsTo));
       return this;
     }
 
     /**
-     * Adds a reference data entry for the current path.
+     * Adds a reference data entry for the current record.
+     * If the pathId differs from the current record's pathId, the current record
+     * is committed and a new record is started.
      *
      * @param pathId the path identifier
      * @param fieldTag the MARC field tag
@@ -198,45 +252,55 @@ public final class GenerationReport {
      */
     public Builder addReferenceData(String pathId, String fieldTag, String displayName, String referenceType) {
       ensurePath(pathId);
-      currentReferenceData.add(new ReferenceEntry(fieldTag, displayName, referenceType));
+      currentRecord = currentRecord.addReference(new ReferenceEntry(fieldTag, displayName, referenceType));
       return this;
     }
 
     /**
-     * Ensures the path is tracked and commits the previous path if different.
+     * Ensures the path is tracked and commits the previous record if different.
      */
     private void ensurePath(String pathId) {
-      if (currentPathId == null) {
-        currentPathId = pathId;
-      } else if (!currentPathId.equals(pathId)) {
-        commitCurrentPath();
-        currentPathId = pathId;
+      if (currentRecord.pathId() == null) {
+        currentRecord = currentRecord.withPathId(pathId);
+      } else if (!currentRecord.pathId().equals(pathId)) {
+        commitCurrentRecord();
+        currentRecord = RecordContext.empty().withPathId(pathId);
       }
     }
 
     /**
-     * Commits the current path's data to the report.
+     * Commits the current record to the report if it has content.
      */
-    private void commitCurrentPath() {
-      if (currentPathId != null && !currentFields.isEmpty()) {
-        recordReports.add(new RecordReport(
-          currentPathId,
-          new ArrayList<>(currentFields),
-          new ArrayList<>(currentReferenceData)
-        ));
+    private void commitCurrentRecord() {
+      if (currentRecord.hasContent()) {
+        recordReports.add(currentRecord.toReport());
       }
-      currentFields.clear();
-      currentReferenceData.clear();
+      currentRecord = RecordContext.empty();
+    }
+
+    /**
+     * Explicitly starts a new record, committing any pending data.
+     * This ensures each record is tracked separately regardless of pathId.
+     *
+     * <p><strong>Usage contract:</strong> Call this method before generating each
+     * new MARC record to avoid field collisions when multiple records share
+     * the same pathId.
+     *
+     * @return this builder
+     */
+    public Builder startNewRecord() {
+      commitCurrentRecord();
+      return this;
     }
 
     /**
      * Builds an immutable GenerationReport instance.
-     * Commits any pending path data before building.
+     * Commits any pending record data before building.
      *
      * @return the built GenerationReport
      */
     public GenerationReport build() {
-      commitCurrentPath();
+      commitCurrentRecord();
       return new GenerationReport(this);
     }
   }
