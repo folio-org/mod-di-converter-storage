@@ -146,46 +146,6 @@ INSERT INTO ${myuniversity}_${mymodule}.mapping_profiles (id, jsonb) values
 }
 ') ON CONFLICT DO NOTHING;
 
-INSERT INTO ${myuniversity}_${mymodule}.job_to_match_profiles (id, jsonb) values
-('83477fa3-1db1-4088-af0e-3c5fccb7e337',
-'{
-	"id": "83477fa3-1db1-4088-af0e-3c5fccb7e337",
-	"order": 0,
-	"triggered": false,
-	"detailProfileId": "91cec42a-260d-4a8c-a9fb-90d9435ca2f4",
-	"masterProfileId": "cf6f2718-5aa5-482a-bba5-5bc9b75614da",
-	"detailProfileType": "MATCH_PROFILE",
-	"masterProfileType": "JOB_PROFILE"
-}
-') ON CONFLICT DO NOTHING;
-
-INSERT INTO ${myuniversity}_${mymodule}.match_to_action_profiles (id, jsonb) values
-('e5f754a0-1b44-487c-b037-bb68eebba383',
-'{
-	"id": "e5f754a0-1b44-487c-b037-bb68eebba383",
-	"order": 0,
-	"reactTo": "MATCH",
-	"triggered": false,
-	"jobProfileId": "cf6f2718-5aa5-482a-bba5-5bc9b75614da",
-	"detailProfileId": "c2e2d482-9486-476e-a28c-8f1e303cbe1a",
-	"masterProfileId": "91cec42a-260d-4a8c-a9fb-90d9435ca2f4",
-	"detailProfileType": "ACTION_PROFILE",
-	"masterProfileType": "MATCH_PROFILE"
-}
-') ON CONFLICT DO NOTHING;
-
-INSERT INTO ${myuniversity}_${mymodule}.action_to_mapping_profiles (id, jsonb) values
-('4e2bf7bf-dee1-4e7a-9074-e2139ef3f031',
-'{
-	"id": "4e2bf7bf-dee1-4e7a-9074-e2139ef3f031",
-	"order": 0,
-	"triggered": false,
-	"detailProfileId": "39b265e1-c963-4e5f-859d-6e8c327a265c",
-	"masterProfileId": "c2e2d482-9486-476e-a28c-8f1e303cbe1a",
-	"detailProfileType": "MAPPING_PROFILE",
-	"masterProfileType": "ACTION_PROFILE"
-}') ON CONFLICT DO NOTHING;
-
 DO
 $$
 DECLARE
