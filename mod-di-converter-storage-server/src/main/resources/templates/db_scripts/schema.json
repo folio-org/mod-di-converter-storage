@@ -203,7 +203,7 @@
     {
       "run": "after",
       "snippetPath": "associations-migration/remove_old_association_tables.sql",
-      "fromModuleVersion": "mod-di-converter-storage-2.4.0"
+      "fromModuleVersion": "mod-di-converter-storage-2.5.0"
     }
   ]
 }
