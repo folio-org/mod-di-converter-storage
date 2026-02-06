@@ -119,34 +119,6 @@ INSERT INTO ${myuniversity}_${mymodule}.match_profiles (id, jsonb) values
 }')
 ON CONFLICT DO NOTHING;
 
-INSERT INTO ${myuniversity}_${mymodule}.job_to_match_profiles (id, jsonb) values
-('644e53c2-7be2-4ae5-bc17-131334222d39',
-'{
-	"id": "644e53c2-7be2-4ae5-bc17-131334222d39",
-	"order": 0,
-	"triggered": false,
-	"detailProfileId": "4be5d1d2-1f5a-42ff-a9bd-fc90609d94b6",
-	"masterProfileId": "1a338fcd-3efc-4a03-b007-394eeb0d5fb9",
-	"detailProfileType": "MATCH_PROFILE",
-	"masterProfileType": "JOB_PROFILE"
-}
-') ON CONFLICT DO NOTHING;
-
-INSERT INTO ${myuniversity}_${mymodule}.match_to_action_profiles (id, jsonb) values
-('e0fd6684-fa34-4493-9048-a9e01c58f782',
-'{
-    "id": "e0fd6684-fa34-4493-9048-a9e01c58f782",
-    "masterProfileId": "4be5d1d2-1f5a-42ff-a9bd-fc90609d94b6",
-    "detailProfileId": "fabd9a3e-33c3-49b7-864d-c5af830d9990",
-    "order": 0,
-    "reactTo": "MATCH",
-    "triggered": false,
-    "masterProfileType": "MATCH_PROFILE",
-    "detailProfileType": "ACTION_PROFILE",
-    "jobProfileId": "1a338fcd-3efc-4a03-b007-394eeb0d5fb9"
-}
-') ON CONFLICT DO NOTHING;
-
 DO
 $$
 DECLARE

@@ -258,27 +258,3 @@ BEGIN
 
 END
 $$;
-
-INSERT INTO ${myuniversity}_${mymodule}.job_to_action_profiles (id, jsonb) values
-  ('06915a99-9b58-493d-828b-4ff104ba7e49', '{
-  "id": "06915a99-9b58-493d-828b-4ff104ba7e49",
-  "order": 0,
-  "triggered": false,
-  "detailWrapperId": "fea9b307-7121-488e-a09b-e1c9fa670601",
-  "masterWrapperId": "0a416462-f13a-40bd-b6dd-09fdb92971e4",
-  "detailProfileType": "ACTION_PROFILE",
-  "masterProfileType": "JOB_PROFILE"
-}')
-  ON CONFLICT DO NOTHING;
-
-INSERT INTO ${myuniversity}_${mymodule}.action_to_mapping_profiles (id, jsonb) values
-  ('cfde7532-28e0-4bcc-9d3c-54f8853bcba1',
-   '{
-     "id": "cfde7532-28e0-4bcc-9d3c-54f8853bcba1",
-     "order": 0,
-     "triggered": false,
-     "detailWrapperId": "1fc9af82-6f1e-4ff2-ab15-97c50c3a8d49",
-     "masterWrapperId": "fea9b307-7121-488e-a09b-e1c9fa670601",
-     "detailProfileType": "MAPPING_PROFILE",
-     "masterProfileType": "ACTION_PROFILE"
-   }') ON CONFLICT DO NOTHING;
