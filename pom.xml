@@ -20,7 +20,7 @@
   </modules>
 
   <properties>
-    <raml-module-builder.version>36.0.0-SNAPSHOT</raml-module-builder.version>
+    <raml-module-builder.version>36.0.0</raml-module-builder.version>
     <aspectj.version>1.9.22.1</aspectj.version>
     <vertx.version>5.0.5</vertx.version>
     <junit.version>4.13.2</junit.version>
@@ -32,7 +32,7 @@
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <sonar.exclusions>**/ModTenantAPI.java</sonar.exclusions>
     <testcontainers.version>1.20.6</testcontainers.version>
-    <spring.version>6.2.5</spring.version>
+    <spring.version>7.0.6</spring.version>
     <folio-module-descriptor-validator.version>1.0.1</folio-module-descriptor-validator.version>
   </properties>
 
