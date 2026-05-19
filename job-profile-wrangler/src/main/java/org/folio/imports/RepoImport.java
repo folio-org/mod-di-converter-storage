@@ -16,11 +16,14 @@ import org.folio.graph.nodes.MappingProfileNode;
 import org.folio.graph.nodes.MatchProfileNode;
 import org.folio.graph.nodes.Profile;
 import org.folio.http.FolioClient;
+import org.folio.validation.ProfileShapeValidator;
 import org.jgrapht.Graph;
 import org.jgrapht.graph.SimpleDirectedGraph;
 
+import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.StreamSupport;
 
 import static org.folio.Constants.OBJECT_MAPPER;
@@ -38,8 +41,11 @@ public class RepoImport implements Runnable {
 
   @Override
   public void run() {
-    AtomicInteger successCount = new AtomicInteger(0);
-    AtomicInteger failureCount = new AtomicInteger(0);
+    importProfiles();
+  }
+
+  public ImportReport importProfiles() {
+    List<ImportReport.Entry> entries = new ArrayList<>();
 
     client.getJobProfiles()
       .forEach(profile -> {
@@ -49,20 +55,21 @@ public class RepoImport implements Runnable {
 
         if (jobProfileSnapshotOptional.isEmpty()) {
           LOGGER.warn("Failed to fetch snapshot for profile: id={}, name={}", profileId, profileName);
-          failureCount.incrementAndGet();
+          entries.add(new ImportReport.Entry(profileId, profileName,
+            new ImportOutcome.ImportError("Failed to fetch job profile snapshot")));
           return;
         }
 
-        Optional<RepoObject> result = fromString(repoPath, jobProfileSnapshotOptional.get());
-        if (result.isPresent()) {
-          successCount.incrementAndGet();
-        } else {
-          LOGGER.warn("Failed to import profile: id={}, name={}", profileId, profileName);
-          failureCount.incrementAndGet();
-        }
+        ImportReport.Entry entry = importSnapshot(repoPath, profileId, profileName, jobProfileSnapshotOptional.get());
+        entries.add(entry);
+        LOGGER.info("Import profile outcome: id={}, name={}, outcome={}",
+          profileId, profileName, entry.outcome().label());
       });
 
-    LOGGER.info("Import complete: {} succeeded, {} failed", successCount.get(), failureCount.get());
+    ImportReport report = new ImportReport(Instant.now().toString(), entries);
+    LOGGER.info("Import complete: Added: {}, Duplicate: {}, Blocked: {}, Errors: {}",
+      report.addedCount(), report.duplicateCount(), report.blockedCount(), report.errorCount());
+    return report;
   }
 
   public static Optional<RepoObject> fromString(String repoPath, String json) throws JsonProcessingException {
@@ -71,21 +78,42 @@ public class RepoImport implements Runnable {
   }
 
   public static Optional<RepoObject> fromString(String repoPath, JsonNode jsonNode) {
+    ImportReport.Entry entry = importSnapshot(repoPath,
+      jsonNode.path("content").path("id").asText(null),
+      jsonNode.path("content").path("name").asText(null),
+      jsonNode);
+    if (entry.outcome() instanceof ImportOutcome.Added added) {
+      return Optional.of(new RepoObject(added.repoId(), buildGraph(new SimpleDirectedGraph<>(RegularEdge.class), jsonNode)));
+    }
+    if (entry.outcome() instanceof ImportOutcome.Duplicate duplicate) {
+      return Optional.of(new RepoObject(duplicate.existingRepoId(), buildGraph(new SimpleDirectedGraph<>(RegularEdge.class), jsonNode)));
+    }
+    return Optional.empty();
+  }
+
+  public static ImportReport.Entry importSnapshot(String repoPath, String profileId, String profileName, JsonNode jsonNode) {
+    var blocked = ProfileShapeValidator.defaultValidator().validate(jsonNode);
+    if (blocked.isPresent()) {
+      return new ImportReport.Entry(profileId, profileName,
+        new ImportOutcome.BlockedUnsupported(blocked.get().rule(), blocked.get().message()));
+    }
+
     Graph<Profile, RegularEdge> g = new SimpleDirectedGraph<>(RegularEdge.class);
     buildGraph(g, jsonNode);
     var searched = GraphReader.search(repoPath, g);
     if (searched.isEmpty()) {
       Optional<Integer> repoId = GraphWriter.writeGraph(repoPath, g);
       if (repoId.isPresent()) {
-        return Optional.of(new RepoObject(repoId.get(), g));
+        return new ImportReport.Entry(profileId, profileName, new ImportOutcome.Added(repoId.get()));
       } else {
         LOGGER.error("Failed to write graph to repository: {}", g);
+        return new ImportReport.Entry(profileId, profileName,
+          new ImportOutcome.ImportError("Failed to write graph to repository"));
       }
     } else {
       LOGGER.info("Graph already exists. graph={}", g);
-      return searched;
+      return new ImportReport.Entry(profileId, profileName, new ImportOutcome.Duplicate(searched.get().repoId()));
     }
-    return Optional.empty();
   }
 
   private static Graph<Profile, RegularEdge> buildGraph(Graph<Profile, RegularEdge> graph, JsonNode profileSnapshot) {

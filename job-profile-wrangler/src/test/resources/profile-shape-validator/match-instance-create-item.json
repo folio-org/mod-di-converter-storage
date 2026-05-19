@@ -1,0 +1,31 @@
+{
+  "contentType": "JOB_PROFILE",
+  "content": {
+    "id": "job-1",
+    "name": "Unsupported match instance create item",
+    "dataType": "MARC"
+  },
+  "childSnapshotWrappers": [
+    {
+      "contentType": "MATCH_PROFILE",
+      "content": {
+        "id": "match-instance-1",
+        "name": "Match existing instance",
+        "incomingRecordType": "MARC_BIBLIOGRAPHIC",
+        "existingRecordType": "INSTANCE"
+      },
+      "childSnapshotWrappers": [
+        {
+          "contentType": "ACTION_PROFILE",
+          "reactTo": "MATCH",
+          "content": {
+            "id": "create-item-1",
+            "name": "Create item",
+            "action": "CREATE",
+            "folioRecord": "ITEM"
+          }
+        }
+      ]
+    }
+  ]
+}

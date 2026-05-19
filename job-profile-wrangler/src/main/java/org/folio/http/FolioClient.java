@@ -36,14 +36,38 @@ public class FolioClient {
   private final String tenantId;
   private final Supplier<HttpUrl.Builder> baseUrlBuilderSupplier;
 
+  /**
+   * Creates a FolioClient with an existing authentication token.
+   * Use this constructor when you already have a valid FOLIO/Okapi token.
+   *
+   * @param baseUrlBuilderSupplier supplier for the base URL builder
+   * @param token the authentication token (from prior login)
+   */
   public FolioClient(Supplier<HttpUrl.Builder> baseUrlBuilderSupplier, String token) {
     this(baseUrlBuilderSupplier, token, null, new OkHttpClient());
   }
 
+  /**
+   * Creates a FolioClient with an existing authentication token and tenant ID.
+   * Use this constructor when you already have a valid FOLIO/Okapi token.
+   *
+   * @param baseUrlBuilderSupplier supplier for the base URL builder
+   * @param token the authentication token (from prior login)
+   * @param tenantId the FOLIO tenant identifier
+   */
   public FolioClient(Supplier<HttpUrl.Builder> baseUrlBuilderSupplier, String token, String tenantId) {
     this(baseUrlBuilderSupplier, token, tenantId, new OkHttpClient());
   }
 
+  /**
+   * Creates a FolioClient with an existing authentication token, tenant ID, and custom HTTP client.
+   * Use this constructor when you already have a valid FOLIO/Okapi token.
+   *
+   * @param baseUrlBuilderSupplier supplier for the base URL builder
+   * @param token the authentication token (from prior login)
+   * @param tenantId the FOLIO tenant identifier
+   * @param httpClient custom OkHttpClient instance
+   */
   public FolioClient(Supplier<HttpUrl.Builder> baseUrlBuilderSupplier, String token, String tenantId, OkHttpClient httpClient) {
     this.baseUrlBuilderSupplier = baseUrlBuilderSupplier;
     this.token = token;
@@ -51,10 +75,31 @@ public class FolioClient {
     this.httpClient = httpClient;
   }
 
+  /**
+   * Creates a FolioClient by authenticating with username and password.
+   * Use this constructor when you need to perform a fresh login to FOLIO.
+   *
+   * @param baseUrlBuilderSupplier supplier for the base URL builder
+   * @param tenantId the FOLIO tenant identifier
+   * @param username the FOLIO username
+   * @param password the FOLIO password
+   * @throws IllegalStateException if authentication fails
+   */
   public FolioClient(Supplier<HttpUrl.Builder> baseUrlBuilderSupplier, String tenantId, String username, String password) {
     this(baseUrlBuilderSupplier, tenantId, username, password, new OkHttpClient());
   }
 
+  /**
+   * Creates a FolioClient by authenticating with username and password using a custom HTTP client.
+   * Use this constructor when you need to perform a fresh login to FOLIO with custom HTTP settings.
+   *
+   * @param baseUrlBuilderSupplier supplier for the base URL builder
+   * @param tenantId the FOLIO tenant identifier
+   * @param username the FOLIO username
+   * @param password the FOLIO password
+   * @param httpClient custom OkHttpClient instance
+   * @throws IllegalStateException if authentication fails
+   */
   public FolioClient(Supplier<HttpUrl.Builder> baseUrlBuilderSupplier, String tenantId, String username, String password, OkHttpClient httpClient) {
     this.baseUrlBuilderSupplier = baseUrlBuilderSupplier;
     this.tenantId = tenantId;
@@ -79,10 +124,24 @@ public class FolioClient {
     return builder;
   }
 
+  /**
+   * Returns a lazy stream of all job profiles from the FOLIO tenant.
+   * Handles pagination internally, fetching up to 3000 profiles per request.
+   *
+   * @return stream of job profile JSON nodes
+   */
   public Stream<JsonNode> getJobProfiles() {
     return getJobProfiles(null);
   }
 
+  /**
+   * Returns a lazy stream of job profiles matching the specified query parameters.
+   * Handles pagination internally, fetching up to 3000 profiles per request.
+   * Results are sorted by ID for consistent ordering.
+   *
+   * @param queryParams optional query parameters (use "query" key for CQL filter)
+   * @return stream of job profile JSON nodes
+   */
   public Stream<JsonNode> getJobProfiles(Map<String, String> queryParams) {
     final int queryParamLimit = 3000;
     final AtomicInteger queryParamOffset = new AtomicInteger(0);
@@ -307,6 +366,14 @@ public class FolioClient {
     }
   }
 
+  /**
+   * Generic helper method to create any FOLIO object via POST request.
+   * Used internally by createJobProfile, createMatchProfile, createActionProfile, etc.
+   *
+   * @param url the FOLIO API endpoint URL
+   * @param obj the JSON string representation of the object to create
+   * @return optional containing the created object's JSON, or empty on failure
+   */
   private Optional<JsonNode> createObjInFolio(HttpUrl url, String obj) {
     RequestBody body = RequestBody.create(obj, MediaType.parse("application/json"));
 
@@ -367,6 +434,129 @@ public class FolioClient {
       LOGGER.error("Failed to fetch mapping metadata for record type: {}", recordType, e);
     }
     return Optional.empty();
+  }
+
+  /**
+   * Finds an instance by its HRID (human-readable identifier).
+   * The HRID typically corresponds to the 001 control field in MARC records.
+   *
+   * @param hrid the instance HRID to search for
+   * @return optional JsonNode containing the instance data, or empty if not found
+   */
+  public Optional<JsonNode> findInstanceByHrid(String hrid) {
+    // Escape CQL special characters in HRID to prevent injection
+    String escapedHrid = hrid.replace("\\", "\\\\").replace("\"", "\\\"");
+    HttpUrl url = baseUrlBuilderSupplier.get()
+      .addPathSegments("instance-storage/instances")
+      .addQueryParameter("query", "hrid==\"" + escapedHrid + "\"")
+      .build();
+
+    Request request = addFolioHeaders(new Request.Builder()
+      .url(url))
+      .get()
+      .build();
+
+    try (Response response = httpClient.newCall(request).execute()) {
+      if (!response.isSuccessful()) {
+        LOGGER.warn("Failed to find instance by HRID: {} - Status: {}", hrid, response.code());
+        return Optional.empty();
+      }
+      if (response.body() == null) {
+        return Optional.empty();
+      }
+      String result = response.body().string();
+      JsonNode jsonNode = OBJECT_MAPPER.readTree(result);
+      JsonNode instances = jsonNode.path("instances");
+      if (instances.isArray() && !instances.isEmpty()) {
+        return Optional.of(instances.get(0));
+      }
+      return Optional.empty();
+    } catch (IOException e) {
+      LOGGER.error("Failed to find instance by HRID: {}", hrid, e);
+      return Optional.empty();
+    }
+  }
+
+  /**
+   * Finds an instance by a specific identifier value (e.g., OCLC number, ISBN).
+   *
+   * @param value the identifier value to search for
+   * @param identifierTypeId the UUID of the identifier type (e.g., OCLC, ISBN type ID)
+   * @return optional JsonNode containing the instance data, or empty if not found
+   */
+  public Optional<JsonNode> findInstanceByIdentifier(String value, String identifierTypeId) {
+    // CQL query to match identifier value within the identifiers array
+    String query = String.format("identifiers=\\\"*\\\"%s\\\"*\\\"", value);
+    if (identifierTypeId != null && !identifierTypeId.isBlank()) {
+      query = String.format("(identifiers=\\\"*\\\"%s\\\"*\\\" and identifiers=\\\"*\\\"%s\\\"*\\\")",
+        value, identifierTypeId);
+    }
+
+    HttpUrl url = baseUrlBuilderSupplier.get()
+      .addPathSegments("instance-storage/instances")
+      .addQueryParameter("query", query)
+      .build();
+
+    Request request = addFolioHeaders(new Request.Builder()
+      .url(url))
+      .get()
+      .build();
+
+    try (Response response = httpClient.newCall(request).execute()) {
+      if (!response.isSuccessful()) {
+        LOGGER.warn("Failed to find instance by identifier: {} - Status: {}", value, response.code());
+        return Optional.empty();
+      }
+      if (response.body() == null) {
+        return Optional.empty();
+      }
+      String result = response.body().string();
+      JsonNode jsonNode = OBJECT_MAPPER.readTree(result);
+      JsonNode instances = jsonNode.path("instances");
+      if (instances.isArray() && !instances.isEmpty()) {
+        return Optional.of(instances.get(0));
+      }
+      return Optional.empty();
+    } catch (IOException e) {
+      LOGGER.error("Failed to find instance by identifier: {}", value, e);
+      return Optional.empty();
+    }
+  }
+
+  /**
+   * Finds an instance by its UUID.
+   *
+   * @param instanceId the instance UUID
+   * @return optional JsonNode containing the instance data, or empty if not found
+   */
+  public Optional<JsonNode> findInstanceById(String instanceId) {
+    HttpUrl url = baseUrlBuilderSupplier.get()
+      .addPathSegments("instance-storage/instances")
+      .addPathSegment(instanceId)
+      .build();
+
+    Request request = addFolioHeaders(new Request.Builder()
+      .url(url))
+      .get()
+      .build();
+
+    try (Response response = httpClient.newCall(request).execute()) {
+      if (!response.isSuccessful()) {
+        if (response.code() == 404) {
+          return Optional.empty();
+        }
+        LOGGER.warn("Failed to find instance by ID: {} - Status: {}", instanceId, response.code());
+        return Optional.empty();
+      }
+      if (response.body() == null) {
+        return Optional.empty();
+      }
+      String result = response.body().string();
+      return Optional.of(OBJECT_MAPPER.readTree(result));
+    } catch (IOException e) {
+      LOGGER.error("Failed to find instance by ID: {}", instanceId, e);
+      return Optional.empty();
+    }
   }
 
   public static Optional<String> getOkapiToken(OkHttpClient httpClient, HttpUrl.Builder baseUrlBuilder, String tenantId, String username, String password) {

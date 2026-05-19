@@ -109,6 +109,7 @@ public class GraphReader {
     try (Stream<Path> stream = Files.list(Paths.get(repoPath))) {
       stream
         .filter(Files::isRegularFile)
+        .filter(GraphReader::isDotFile)
         .forEach(filePath -> {
           Graph<Profile, RegularEdge> g = new SimpleDirectedGraph<>(RegularEdge.class);
           DOT_IMPORTER.importGraph(g, filePath.toFile());
@@ -133,12 +134,13 @@ public class GraphReader {
     try (Stream<Path> stream = Files.list(Paths.get(repoPath))) {
       return stream
         .filter(Files::isRegularFile)
+        .filter(GraphReader::isDotFile)
         .map(filePath -> {
           Graph<Profile, RegularEdge> g = new SimpleDirectedGraph<>(RegularEdge.class);
           DOT_IMPORTER.importGraph(g, filePath.toFile());
           return Pair.of(filePath, g);
         })
-        .filter(pair -> areGraphsEqual(graph, pair.getRight()))
+        .filter(pair -> isShapeEquivalent(graph, pair.getRight()))
         .findFirst()
         .map(pair -> {
           String fileName = pair.getLeft().getFileName().toString();
@@ -173,14 +175,22 @@ public class GraphReader {
       ));
   }
 
+  private static boolean isDotFile(Path path) {
+    return DOT_FILE_PATTERN.matcher(path.getFileName().toString()).matches();
+  }
+
   /**
-   * Compares two graphs for equality using a custom comparator.
+   * Compares two graphs for shape equivalence.
+   *
+   * <p>Shape equivalence intentionally ignores tenant-specific profile identifiers,
+   * profile names, and mapping/match details. See {@code ShapeEquivalenceRules.md}
+   * for the repository identity contract.
    *
    * @param graph1 The first graph to compare.
    * @param graph2 The second graph to compare.
-   * @return true if the graphs are equal, false otherwise.
+   * @return true if the graphs are shape-equivalent, false otherwise.
    */
-  public static boolean areGraphsEqual(Graph<Profile, RegularEdge> graph1, Graph<Profile, RegularEdge> graph2) {
+  public static boolean isShapeEquivalent(Graph<Profile, RegularEdge> graph1, Graph<Profile, RegularEdge> graph2) {
     // Check if the graphs have the same number of vertices and edges
     if (graph1.vertexSet().size() != graph2.vertexSet().size() ||
       graph1.edgeSet().size() != graph2.edgeSet().size()) {
@@ -209,11 +219,20 @@ public class GraphReader {
             Profile source2 = graph2.getEdgeSource(edge2);
             Profile target2 = graph2.getEdgeTarget(edge2);
 
-            return source1.getClass().equals(source2.getClass())
+            return edge1.getClass().equals(edge2.getClass())
+              && source1.getClass().equals(source2.getClass())
               && target1.getClass().equals(target2.getClass())
               && source1.getComparator().compare(source1, source2) == 0
               && target1.getComparator().compare(target1, target2) == 0;
           });
       });
+  }
+
+  /**
+   * @deprecated use {@link #isShapeEquivalent(Graph, Graph)}.
+   */
+  @Deprecated(forRemoval = false)
+  public static boolean areGraphsEqual(Graph<Profile, RegularEdge> graph1, Graph<Profile, RegularEdge> graph2) {
+    return isShapeEquivalent(graph1, graph2);
   }
 }

@@ -250,10 +250,11 @@ public class JobProfileAnalyzerTest {
     assertNotNull("Match criteria should not be null", matchCriteria);
     assertFalse("Match criteria should not be empty", matchCriteria.isEmpty());
 
-    // Should have criteria from match profiles
+    // Should have criteria from match profiles (now contains profile ID and empty field lists)
     MatchCriteria criteria = matchCriteria.iterator().next();
-    assertNotNull("Match criteria should have incoming record type", criteria.incomingRecordType());
-    assertNotNull("Match criteria should have existing record type", criteria.existingRecordType());
+    assertNotNull("Match criteria should have match profile ID", criteria.matchProfileId());
+    assertNotNull("Match criteria should have matchFields list", criteria.matchFields());
+    assertNotNull("Match criteria should have nonMarcMatches list", criteria.nonMarcMatches());
   }
 
   @Test

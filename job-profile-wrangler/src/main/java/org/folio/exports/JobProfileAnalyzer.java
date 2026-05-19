@@ -116,9 +116,12 @@ public class JobProfileAnalyzer {
 
     for (Profile profile : jobProfileGraph.vertexSet()) {
       if (profile instanceof MatchProfileNode matchProfile) {
+        // Create MatchCriteria with the match profile ID and empty field specs
+        // The actual field specs would be extracted from the profile snapshot in JpWranglerCli
         MatchCriteria criteria = new MatchCriteria(
-          matchProfile.incomingRecordType(),
-          matchProfile.existingRecordType()
+          matchProfile.id(),  // Use actual profile ID for uniqueness
+          java.util.Collections.emptyList(),
+          java.util.Collections.emptyList()
         );
         matchCriteria.add(criteria);
       }

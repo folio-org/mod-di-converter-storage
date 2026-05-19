@@ -1,0 +1,41 @@
+{
+  "contentType": "JOB_PROFILE",
+  "content": {
+    "id": "job-1",
+    "name": "Create instance holdings item",
+    "dataType": "MARC"
+  },
+  "childSnapshotWrappers": [
+    {
+      "contentType": "ACTION_PROFILE",
+      "content": {
+        "id": "create-instance-1",
+        "name": "Create instance",
+        "action": "CREATE",
+        "folioRecord": "INSTANCE"
+      },
+      "childSnapshotWrappers": [
+        {
+          "contentType": "ACTION_PROFILE",
+          "content": {
+            "id": "create-holdings-1",
+            "name": "Create holdings",
+            "action": "CREATE",
+            "folioRecord": "HOLDINGS"
+          },
+          "childSnapshotWrappers": [
+            {
+              "contentType": "ACTION_PROFILE",
+              "content": {
+                "id": "create-item-1",
+                "name": "Create item",
+                "action": "CREATE",
+                "folioRecord": "ITEM"
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -1,8 +1,12 @@
 package org.folio;
 
 import java.io.Console;
+import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.time.Instant;
+import java.time.ZoneOffset;
+import java.time.format.DateTimeFormatter;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -20,11 +24,23 @@ import okhttp3.OkHttpClient;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.folio.exports.GenerationReport;
+import org.folio.exports.GenerationReportWriter;
+import org.folio.exports.GenerationOutcome;
+import org.folio.exports.CategorizedPath;
+import org.folio.exports.CategorizedPaths;
+import org.folio.exports.EnrichmentDetector;
+import org.folio.exports.GeneratorGapException;
 import org.folio.exports.JobProfileAnalyzer;
 import org.folio.exports.JobProfilePath;
+import org.folio.exports.MatchedPathPair;
+import org.folio.exports.MatchCriteria;
 import org.folio.exports.MappingRulesAnalysis;
 import org.folio.exports.MappingRulesProcessor;
 import org.folio.exports.MinimalMarcRecordBuilder;
+import org.folio.exports.PathExtractionResult;
+import org.folio.exports.PathOutcome;
+import org.folio.exports.ReactTo;
+import org.folio.exports.StrictRecordWriter;
 import org.folio.graph.GraphReader;
 import org.folio.graph.GraphWriter;
 import org.folio.graph.GraphWriterEnhanced;
@@ -35,9 +51,16 @@ import org.folio.graph.nodes.Profile;
 import org.folio.http.FolioClient;
 import org.folio.http.ReferenceDataManager;
 import org.folio.hydration.ProfileHydration;
+import org.folio.imports.ImportReport;
 import org.folio.imports.RepoImport;
+import org.folio.validation.ProfileShapeValidator;
 import org.jgrapht.Graph;
+import org.marc4j.MarcReader;
+import org.marc4j.MarcStreamReader;
 import org.marc4j.MarcStreamWriter;
+import org.marc4j.marc.ControlField;
+import org.marc4j.marc.DataField;
+import org.marc4j.marc.MarcFactory;
 import org.marc4j.marc.Record;
 
 import com.fasterxml.jackson.databind.JsonNode;
@@ -59,7 +82,8 @@ import picocli.CommandLine.Parameters;
     JpWranglerCli.ListCommand.class,
     JpWranglerCli.VisualizeCommand.class,
     JpWranglerCli.GenerateCommand.class,
-    JpWranglerCli.DeleteCommand.class
+    JpWranglerCli.DeleteCommand.class,
+    JpWranglerCli.EnrichCommand.class
   },
   footer = "Note: The 'visualize' command requires GraphViz to be installed (https://graphviz.org/).")
 public class JpWranglerCli implements Callable<Integer> {
@@ -193,7 +217,12 @@ public class JpWranglerCli implements Callable<Integer> {
     }
   }
 
-  @Command(name = "import", description = "Import job profiles from FOLIO to repository", mixinStandardHelpOptions = true)
+  @Command(name = "import", description = "Import job profiles from FOLIO to repository", mixinStandardHelpOptions = true,
+    exitCodeOnInvalidInput = 1, exitCodeOnExecutionException = 1,
+    footer = {
+      "Writes import-report-<UTC timestamp>.json with per-profile outcomes:",
+      "  added, duplicate, blocked-unsupported, import-error"
+    })
   static class ImportCommand extends RepositoryOptions implements Callable<Integer> {
     @CommandLine.Mixin
     private FolioConnectionOptions folioOptions = new FolioConnectionOptions();
@@ -205,13 +234,25 @@ public class JpWranglerCli implements Callable<Integer> {
       try {
         FolioClient client = folioOptions.createFolioClient();
         RepoImport importer = new RepoImport(client, repoPath);
-        importer.run();
-        LOGGER.info("Import completed successfully");
+        ImportReport report = importer.importProfiles();
+        Path reportPath = writeImportReport(report);
+        System.out.printf("Added: %d, Duplicate: %d, Blocked: %d, Errors: %d%n",
+          report.addedCount(), report.duplicateCount(), report.blockedCount(), report.errorCount());
+        System.out.println("Report: " + reportPath);
         return 0;
       } catch (Exception e) {
         LOGGER.error("Import failed: {}", e.getMessage(), e);
         return 1;
       }
+    }
+
+    private Path writeImportReport(ImportReport report) throws IOException {
+      String timestamp = DateTimeFormatter.ofPattern("yyyyMMdd'T'HHmmss'Z'")
+        .withZone(ZoneOffset.UTC)
+        .format(Instant.parse(report.runTimestamp()));
+      Path reportPath = Paths.get(repoPath, "import-report-" + timestamp + ".json");
+      Constants.OBJECT_MAPPER.writerWithDefaultPrettyPrinter().writeValue(reportPath.toFile(), report);
+      return reportPath;
     }
   }
 
@@ -393,7 +434,17 @@ public class JpWranglerCli implements Callable<Integer> {
     }
   }
 
-  @Command(name = "generate", description = "Generate test MARC records for FOLIO job profile", mixinStandardHelpOptions = true)
+  @Command(name = "generate", description = "Generate test MARC records for FOLIO job profile", mixinStandardHelpOptions = true,
+    exitCodeOnInvalidInput = 1, exitCodeOnExecutionException = 1,
+    footer = {
+      "Exit codes:",
+      "  0 generated",
+      "  1 setup, usage, or unexpected failure",
+      "  2 needs-enrichment",
+      "  3 blocked-unsupported-workflow",
+      "  4 generator-gap",
+      "  5 invalid-profile-shape"
+    })
   static class GenerateCommand extends RepositoryOptions implements Callable<Integer> {
     @CommandLine.Mixin
     private FolioConnectionOptions folioOptions = new FolioConnectionOptions();
@@ -408,51 +459,45 @@ public class JpWranglerCli implements Callable<Integer> {
     boolean verbose;
 
     /**
-     * Enum to track the reaction type (MATCH vs NON_MATCH) for a path.
+     * FOLIO entity dependency chain: INSTANCE <- HOLDINGS <- ITEM.
+     * When creating an entity, prerequisite entities must exist first.
      */
-    private enum ReactTo {
-      MATCH,
-      NON_MATCH,
-      NONE // For paths without a match profile (direct CREATE)
+    private static final Map<String, Set<String>> ENTITY_PREREQUISITES = Map.of(
+      "ITEM", Set.of("INSTANCE", "HOLDINGS"),
+      "HOLDINGS", Set.of("INSTANCE"),
+      "INSTANCE", Set.of()
+    );
+
+    /**
+     * Determines what entities need to exist for a given target entity.
+     * Based on FOLIO's entity hierarchy: Instance -> Holdings -> Item
+     *
+     * @param targetEntity the entity being created (e.g., "ITEM", "HOLDINGS")
+     * @return set of prerequisite entities that must exist first
+     */
+    private Set<String> getPrerequisiteEntities(String targetEntity) {
+      return ENTITY_PREREQUISITES.getOrDefault(targetEntity, Set.of());
     }
 
     /**
-     * A path paired with its reaction type (MATCH/NON_MATCH).
-     * This avoids map key collisions when paths have identical pathIds.
+     * Extracts the target entity (folioRecord) from a CREATE action in the path.
+     * Returns the entity type being created by the last CREATE action in the path.
+     *
+     * @param path the job profile execution path
+     * @return the target entity type (e.g., "ITEM", "HOLDINGS", "INSTANCE") or null if not found
      */
-    private record CategorizedPath(
-      JobProfilePath path,
-      ReactTo reactTo,
-      String matchProfileId  // The match profile this path is under (if any)
-    ) {}
-
-    /**
-     * Result of path extraction containing both CREATE and UPDATE paths.
-     */
-    private record PathExtractionResult(
-      List<CategorizedPath> createPaths,
-      List<CategorizedPath> updatePaths
-    ) {}
-
-    /**
-     * Pairs a CREATE path with an UPDATE path that share the same match profile.
-     * Used to generate records that will trigger both branches of a match.
-     */
-    private record MatchedPathPair(
-      CategorizedPath createPath, // Path triggered on NON_MATCH
-      CategorizedPath updatePath, // Path triggered on MATCH
-      String matchProfileId       // The shared match profile ID
-    ) {}
-
-    /**
-     * Result of categorizing paths into paired and unpaired groups.
-     * This is an immutable data carrier for the path categorization step.
-     */
-    private record CategorizedPaths(
-      List<MatchedPathPair> pairedPaths,
-      List<CategorizedPath> unpairedCreatePaths,
-      List<CategorizedPath> unpairedUpdatePaths
-    ) {}
+    private String getTargetEntityFromPath(JobProfilePath path) {
+      // Find the last CREATE action profile in the path
+      for (int i = path.getProfiles().size() - 1; i >= 0; i--) {
+        Profile profile = path.getProfiles().get(i);
+        if (profile instanceof ActionProfileNode actionProfile) {
+          if ("CREATE".equals(actionProfile.action())) {
+            return actionProfile.folioRecord();
+          }
+        }
+      }
+      return null;
+    }
 
     /**
      * Result of record generation containing both file collections.
@@ -472,6 +517,9 @@ public class JpWranglerCli implements Callable<Integer> {
 
         // Ensure repository exists
         ensureRepositoryExists();
+        if (!isOutputParentWritable()) {
+          return 1;
+        }
 
         // Connect to FOLIO to get the job profile snapshot
         String token = folioOptions.getToken();
@@ -507,11 +555,18 @@ public class JpWranglerCli implements Callable<Integer> {
     /**
      * Generates minimal MARC records from scratch using mapping rules.
      * Creates two files:
-     * - {outputPath}-create.mrc: Foundation records to seed the database
-     * - {outputPath}-update.mrc: Records for both CREATE paths (new) and UPDATE paths (modify foundation)
+     * - {outputPath}-foundation.mrc: Foundation records to seed the database before testing
+     * - {outputPath}-import.mrc: Test records for exercising both CREATE and UPDATE paths
+     *
+     * NOTE: The file names do NOT correspond to action types. Both CREATE and UPDATE
+     * path records go to -import.mrc. The -foundation.mrc file contains pre-requisite
+     * records that must exist in the database before running the test import.
      */
     private Integer generateMinimalRecords(FolioClient client, JsonNode snapshot) throws IOException {
       LOGGER.info("Generating minimal MARC records from scratch...");
+      String runTimestamp = Instant.now().toString();
+      GenerationReportWriter reportWriter = new GenerationReportWriter();
+      Path outputBase = Paths.get(outputPath);
 
       // Get mapping rules from tenant
       MappingRulesProcessor rulesProcessor = new MappingRulesProcessor(client);
@@ -530,12 +585,35 @@ public class JpWranglerCli implements Callable<Integer> {
           refData.locationId(), refData.materialTypeId(), refData.loanTypeId());
       }
 
+      cleanupOutputFiles();
+
+      if (analysis.getAllMappedInventoryFields().isEmpty()) {
+        GeneratorGapException gap = GeneratorGapException.mappingRulesUnavailable("marc-bib");
+        GenerationOutcome.GeneratorGap outcome = new GenerationOutcome.GeneratorGap(-1, null,
+          gap.reason().name(), gap.getMessage());
+        writeReport(reportWriter, outputBase, snapshot, runTimestamp, outcome, List.of(), refData);
+        LOGGER.error("Generation outcome: {} - {}", GenerationOutcome.GENERATOR_GAP, gap.getMessage());
+        return outcome.exitCode();
+      }
+
+      Optional<GenerationOutcome.BlockedUnsupportedWorkflow> blocked =
+        ProfileShapeValidator.defaultValidator().validate(snapshot);
+      if (blocked.isPresent()) {
+        writeReport(reportWriter, outputBase, snapshot, runTimestamp, blocked.get(), List.of(), refData);
+        LOGGER.error("Generation outcome: {} - {}", blocked.get().label(), blocked.get().message());
+        return blocked.get().exitCode();
+      }
+
       // Extract all paths (CREATE and UPDATE)
       PathExtractionResult pathResult = extractAllPaths(snapshot);
 
       if (pathResult.createPaths().isEmpty() && pathResult.updatePaths().isEmpty()) {
+        GenerationOutcome.InvalidProfileShape outcome = new GenerationOutcome.InvalidProfileShape(
+          "EMPTY_PATH", "No CREATE or UPDATE action paths found in job profile");
+        writeReport(reportWriter, outputBase, snapshot, runTimestamp, outcome, List.of(), refData);
         LOGGER.warn("No CREATE or UPDATE action paths found in job profile");
-        return 1;
+        LOGGER.error("Generation outcome: {} - EMPTY_PATH", GenerationOutcome.INVALID_PROFILE_SHAPE);
+        return outcome.exitCode();
       }
 
       LOGGER.info("Found {} CREATE path(s) and {} UPDATE path(s) in job profile",
@@ -547,23 +625,130 @@ public class JpWranglerCli implements Callable<Integer> {
       LOGGER.info("Found {} matched path pair(s) (CREATE + UPDATE sharing same match profile)",
         categorized.pairedPaths().size());
 
-      // Generate records
-      GenerationReport.Builder reportBuilder = verbose ? GenerationReport.builder() : null;
-      GeneratedRecords generated = generateRecordsFromCategorizedPaths(
-        categorized, refData, reportBuilder, pathResult.updatePaths().isEmpty());
+      StrictRecordWriter writer = new StrictRecordWriter();
+      List<CategorizedPath> allPaths = writer.pathOrder(categorized);
+      Map<Integer, GenerationOutcome.NeedsEnrichment> needsEnrichment =
+        EnrichmentDetector.detect(allPaths, outputPath);
 
-      // Write records to output files - I/O at the boundary
-      writeOutputFiles(generated, pathResult.updatePaths().isEmpty());
+      StrictRecordWriter.WriteResult result = writer.write(categorized, refData, outputBase);
+      List<PathOutcome> pathOutcomes = mergeEnrichmentOutcomes(result.pathOutcomes(), needsEnrichment);
+      GenerationOutcome overallOutcome = mergedOverallOutcome(result.overallOutcome(), needsEnrichment);
+      writeReport(reportWriter, outputBase, snapshot, runTimestamp, overallOutcome, pathOutcomes, refData);
 
-      // Print verbose report if requested
-      if (verbose && reportBuilder != null) {
-        GenerationReport report = reportBuilder
-          .outputPath(outputPath + "-create.mrc")
-          .build();
-        report.print();
+      if (result.overallOutcome() instanceof GenerationOutcome.GeneratorGap gap) {
+        LOGGER.error("Generation outcome: {} - {}", gap.label(), gap.message());
+        return gap.exitCode();
       }
 
-      return 0;
+      if (!result.foundationRecords().isEmpty()) {
+        LOGGER.info("Generated {} foundation record(s) written to {}",
+          result.foundationRecords().size(), outputPath + "-foundation.mrc");
+      }
+      if (!result.importRecords().isEmpty()) {
+        LOGGER.info("Generated {} record(s) for import written to {}",
+          result.importRecords().size(), outputPath + "-import.mrc");
+      }
+
+      if (!needsEnrichment.isEmpty()) {
+        LOGGER.warn("Generated pre-enrichment MARC records; {} path(s) require the enrich step before final import.",
+          needsEnrichment.size());
+        needsEnrichment.values().forEach(outcome -> LOGGER.warn("{}", outcome.hint()));
+        return overallOutcome.exitCode();
+      }
+
+      return overallOutcome.exitCode();
+    }
+
+    private void writeReport(
+        GenerationReportWriter reportWriter,
+        Path outputBase,
+        JsonNode snapshot,
+        String runTimestamp,
+        GenerationOutcome overallOutcome,
+        List<PathOutcome> paths,
+        MinimalMarcRecordBuilder.ReferenceDataContext refData) throws IOException {
+      reportWriter.write(outputBase, GenerationReport.of(
+        snapshotProfileId(snapshot),
+        snapshotProfileName(snapshot),
+        runTimestamp,
+        overallOutcome,
+        paths,
+        refData
+      ), System.out, verbose);
+    }
+
+    private List<PathOutcome> mergeEnrichmentOutcomes(
+        List<PathOutcome> pathOutcomes,
+        Map<Integer, GenerationOutcome.NeedsEnrichment> needsEnrichment) {
+      if (needsEnrichment.isEmpty()) {
+        return pathOutcomes;
+      }
+
+      List<PathOutcome> merged = new ArrayList<>();
+      for (PathOutcome pathOutcome : pathOutcomes) {
+        GenerationOutcome outcome = pathOutcome.outcome();
+        GenerationOutcome.NeedsEnrichment enrichment = needsEnrichment.get(pathOutcome.pathIndex());
+        if (enrichment != null && !(outcome instanceof GenerationOutcome.GeneratorGap)) {
+          outcome = enrichment;
+        }
+        merged.add(new PathOutcome(
+          pathOutcome.pathIndex(),
+          pathOutcome.pathId(),
+          pathOutcome.reactTo(),
+          pathOutcome.matchProfileId(),
+          pathOutcome.destinationFiles(),
+          pathOutcome.fieldsWritten(),
+          outcome
+        ));
+      }
+      return merged;
+    }
+
+    private GenerationOutcome mergedOverallOutcome(
+        GenerationOutcome writerOutcome,
+        Map<Integer, GenerationOutcome.NeedsEnrichment> needsEnrichment) {
+      if (writerOutcome instanceof GenerationOutcome.GeneratorGap || needsEnrichment.isEmpty()) {
+        return writerOutcome;
+      }
+      return needsEnrichment.entrySet().stream()
+        .min(Map.Entry.comparingByKey())
+        .<GenerationOutcome>map(Map.Entry::getValue)
+        .orElse(writerOutcome);
+    }
+
+    private String snapshotProfileId(JsonNode snapshot) {
+      String contentId = snapshot.path("content").path("id").asText(null);
+      if (contentId != null && !contentId.isBlank()) {
+        return contentId;
+      }
+      return snapshot.path("profileId").asText(jobProfileId);
+    }
+
+    private String snapshotProfileName(JsonNode snapshot) {
+      return snapshot.path("content").path("name").asText(null);
+    }
+
+    private boolean isOutputParentWritable() {
+      Path outputBase = Paths.get(outputPath).toAbsolutePath();
+      Path parent = outputBase.getParent();
+      if (parent == null) {
+        parent = Paths.get(".").toAbsolutePath();
+      }
+      if (!Files.exists(parent)) {
+        LOGGER.error("Output parent directory does not exist: {}", parent);
+        return false;
+      }
+      if (!Files.isDirectory(parent) || !Files.isWritable(parent)) {
+        LOGGER.error("Output parent directory is not writable: {}", parent);
+        return false;
+      }
+      return true;
+    }
+
+    private void cleanupOutputFiles() throws IOException {
+      Files.deleteIfExists(Paths.get(outputPath + "-foundation.mrc"));
+      Files.deleteIfExists(Paths.get(outputPath + "-import.mrc"));
+      Files.deleteIfExists(Paths.get(outputPath + "-report.json"));
     }
 
     /**
@@ -646,33 +831,36 @@ public class JpWranglerCli implements Callable<Integer> {
         List<Record> foundationRecords,
         List<Record> updateFileRecords) {
 
-      // Generate foundation record
+      // Get match criteria from the paired paths
+      MatchCriteria matchCriteria = pair.updatePath().matchCriteria();
+
+      // Generate foundation record (with match criteria to populate match fields)
       if (reportBuilder != null) reportBuilder.startNewRecord();
       recordNumber++;
       MinimalMarcRecordBuilder.BuildResult foundationResult = MinimalMarcRecordBuilder.buildRecordForPath(
-        pair.updatePath().path(), recordNumber, reportBuilder, refData);
+        pair.updatePath().path(), recordNumber, reportBuilder, refData, matchCriteria);
       Record foundationRecord = foundationResult.record();
       foundationRecords.add(foundationRecord);
 
-      // Generate CREATE path record
+      // Generate CREATE path record (no match criteria - this is for NON_MATCH branch)
       if (reportBuilder != null) reportBuilder.startNewRecord();
       recordNumber++;
       MinimalMarcRecordBuilder.BuildResult createResult = MinimalMarcRecordBuilder.buildRecordForPath(
-        pair.createPath().path(), recordNumber, reportBuilder, refData);
+        pair.createPath().path(), recordNumber, reportBuilder, refData, null);
       updateFileRecords.add(createResult.record());
 
-      // Generate UPDATE record
+      // Generate UPDATE record (preserves match fields from foundation)
       if (reportBuilder != null) reportBuilder.startNewRecord();
       recordNumber++;
       MinimalMarcRecordBuilder.BuildResult updateResult = MinimalMarcRecordBuilder.buildUpdateRecordFromBase(
-        foundationRecord, pair.updatePath().path(), recordNumber, reportBuilder, refData);
+        foundationRecord, pair.updatePath().path(), recordNumber, reportBuilder, refData, matchCriteria);
       updateFileRecords.add(updateResult.record());
 
       if (verbose) {
         LOGGER.info("Generated records for paired paths:");
-        LOGGER.info("  Foundation (001: {}) -> -create.mrc", foundationRecord.getControlNumber());
-        LOGGER.info("  CREATE path (001: {}) -> -update.mrc", createResult.record().getControlNumber());
-        LOGGER.info("  UPDATE path (001: {}) -> -update.mrc (matches foundation)", updateResult.record().getControlNumber());
+        LOGGER.info("  Foundation (001: {}) -> -foundation.mrc", foundationRecord.getControlNumber());
+        LOGGER.info("  CREATE path (001: {}) -> -import.mrc", createResult.record().getControlNumber());
+        LOGGER.info("  UPDATE path (001: {}) -> -import.mrc (matches foundation)", updateResult.record().getControlNumber());
       }
 
       return recordNumber;
@@ -680,6 +868,11 @@ public class JpWranglerCli implements Callable<Integer> {
 
     /**
      * Generates records for unpaired CREATE paths.
+     *
+     * CREATE paths are handled differently based on their reactTo value:
+     * - ReactTo.NONE: Direct CREATE (no match profile) - records go to import file
+     * - ReactTo.NON_MATCH: CREATE on non-match - records go to import file
+     * - ReactTo.MATCH: CREATE on match - needs foundation record first, then import record
      *
      * @return the updated record number
      */
@@ -696,41 +889,97 @@ public class JpWranglerCli implements Callable<Integer> {
         return recordNumber;
       }
 
-      if (isCreateOnlyProfile) {
-        // Consolidate sibling paths into single records
-        Map<String, List<CategorizedPath>> pathsByParent = groupPathsByParentProfile(unpairedCreatePaths);
+      // Separate CREATE paths by their reactTo value
+      // MATCH-triggered CREATE paths need foundation records
+      List<CategorizedPath> matchTriggeredPaths = unpairedCreatePaths.stream()
+        .filter(p -> p.reactTo() == ReactTo.MATCH)
+        .toList();
 
-        for (Map.Entry<String, List<CategorizedPath>> entry : pathsByParent.entrySet()) {
-          List<CategorizedPath> siblingPaths = entry.getValue();
+      // Direct CREATE paths (NONE or NON_MATCH) only need import records
+      List<CategorizedPath> directCreatePaths = unpairedCreatePaths.stream()
+        .filter(p -> p.reactTo() != ReactTo.MATCH)
+        .toList();
 
-          if (reportBuilder != null) reportBuilder.startNewRecord();
-          recordNumber++;
+      // Handle MATCH-triggered CREATE paths (need foundation + import records)
+      // These are CREATE actions that trigger when a match IS found (e.g., match Instance -> create Item)
+      for (CategorizedPath createCatPath : matchTriggeredPaths) {
+        MatchCriteria matchCriteria = createCatPath.matchCriteria();
 
-          JobProfilePath consolidatedPath = consolidateCreatePaths(siblingPaths);
-          MinimalMarcRecordBuilder.BuildResult result = MinimalMarcRecordBuilder.buildRecordForPath(
-            consolidatedPath, recordNumber, reportBuilder, refData);
-          foundationRecords.add(result.record());
+        // Determine prerequisites for the target entity
+        // For example, if creating ITEM, we need INSTANCE and HOLDINGS to exist first
+        String targetEntity = getTargetEntityFromPath(createCatPath.path());
+        Set<String> prerequisites = getPrerequisiteEntities(targetEntity);
 
-          if (verbose) {
-            LOGGER.info("Generated consolidated record for {} sibling CREATE paths -> -create.mrc",
-              siblingPaths.size());
-            for (CategorizedPath path : siblingPaths) {
-              LOGGER.info("  - {}", path.path().getPathId());
+        if (verbose && !prerequisites.isEmpty()) {
+          LOGGER.info("Target entity {} requires prerequisites: {}", targetEntity, prerequisites);
+        }
+
+        // Generate foundation record with prerequisites included
+        // This ensures the foundation record creates all entities needed before the test import
+        if (reportBuilder != null) reportBuilder.startNewRecord();
+        recordNumber++;
+        MinimalMarcRecordBuilder.BuildResult foundationResult = MinimalMarcRecordBuilder.buildRecordForPathWithPrerequisites(
+          createCatPath.path(), recordNumber, reportBuilder, refData, matchCriteria, prerequisites);
+        Record foundationRecord = foundationResult.record();
+        foundationRecords.add(foundationRecord);
+
+        // Generate import record that will match the foundation record
+        if (reportBuilder != null) reportBuilder.startNewRecord();
+        recordNumber++;
+        MinimalMarcRecordBuilder.BuildResult importResult = MinimalMarcRecordBuilder.buildUpdateRecordFromBase(
+          foundationRecord, createCatPath.path(), recordNumber, reportBuilder, refData, matchCriteria);
+        updateFileRecords.add(importResult.record());
+
+        if (verbose) {
+          LOGGER.info("Generated records for MATCH-triggered CREATE path: {}", createCatPath.path().getPathId());
+          LOGGER.info("  Foundation (001: {}) -> -foundation.mrc (includes prerequisites: {})",
+            foundationRecord.getControlNumber(), prerequisites.isEmpty() ? "none" : prerequisites);
+          LOGGER.info("  Import (001: {}) -> -import.mrc (matches foundation)", importResult.record().getControlNumber());
+        }
+      }
+
+      // Handle direct CREATE paths
+      if (!directCreatePaths.isEmpty()) {
+        if (isCreateOnlyProfile && matchTriggeredPaths.isEmpty()) {
+          // Pure CREATE-only profile (no MATCH triggers): consolidate sibling paths into single records
+          Map<String, List<CategorizedPath>> pathsByParent = groupPathsByParentProfile(directCreatePaths);
+
+          for (Map.Entry<String, List<CategorizedPath>> entry : pathsByParent.entrySet()) {
+            List<CategorizedPath> siblingPaths = entry.getValue();
+
+            if (reportBuilder != null) reportBuilder.startNewRecord();
+            recordNumber++;
+
+            // Get match criteria from first path (if any)
+            MatchCriteria matchCriteria = siblingPaths.isEmpty() ? null : siblingPaths.get(0).matchCriteria();
+
+            JobProfilePath consolidatedPath = consolidateCreatePaths(siblingPaths);
+            MinimalMarcRecordBuilder.BuildResult result = MinimalMarcRecordBuilder.buildRecordForPath(
+              consolidatedPath, recordNumber, reportBuilder, refData, matchCriteria);
+            // For pure CREATE-only profiles, records go to import file (not foundation)
+            updateFileRecords.add(result.record());
+
+            if (verbose) {
+              LOGGER.info("Generated consolidated record for {} sibling CREATE paths -> -import.mrc",
+                siblingPaths.size());
+              for (CategorizedPath path : siblingPaths) {
+                LOGGER.info("  - {}", path.path().getPathId());
+              }
             }
           }
-        }
-      } else {
-        // Process individually for mixed profiles
-        for (CategorizedPath createCatPath : unpairedCreatePaths) {
-          if (reportBuilder != null) reportBuilder.startNewRecord();
-          recordNumber++;
-          MinimalMarcRecordBuilder.BuildResult result = MinimalMarcRecordBuilder.buildRecordForPath(
-            createCatPath.path(), recordNumber, reportBuilder, refData);
-          updateFileRecords.add(result.record());
+        } else {
+          // Mixed profile or has MATCH triggers: CREATE paths that aren't paired go to import file
+          for (CategorizedPath createCatPath : directCreatePaths) {
+            if (reportBuilder != null) reportBuilder.startNewRecord();
+            recordNumber++;
+            MinimalMarcRecordBuilder.BuildResult result = MinimalMarcRecordBuilder.buildRecordForPath(
+              createCatPath.path(), recordNumber, reportBuilder, refData, createCatPath.matchCriteria());
+            updateFileRecords.add(result.record());
 
-          if (verbose) {
-            LOGGER.info("Generated record for unpaired CREATE path (reactTo: {}) -> -update.mrc: {}",
-              createCatPath.reactTo(), createCatPath.path().getPathId());
+            if (verbose) {
+              LOGGER.info("Generated record for unpaired CREATE path (reactTo: {}) -> -import.mrc: {}",
+                createCatPath.reactTo(), createCatPath.path().getPathId());
+            }
           }
         }
       }
@@ -752,19 +1001,22 @@ public class JpWranglerCli implements Callable<Integer> {
         List<Record> updateFileRecords) {
 
       for (CategorizedPath updateCatPath : unpairedUpdatePaths) {
-        // Generate foundation record
+        // Get match criteria from the path
+        MatchCriteria matchCriteria = updateCatPath.matchCriteria();
+
+        // Generate foundation record (with match criteria to populate match fields)
         if (reportBuilder != null) reportBuilder.startNewRecord();
         recordNumber++;
         MinimalMarcRecordBuilder.BuildResult foundationResult = MinimalMarcRecordBuilder.buildRecordForPath(
-          updateCatPath.path(), recordNumber, reportBuilder, refData);
+          updateCatPath.path(), recordNumber, reportBuilder, refData, matchCriteria);
         Record foundationRecord = foundationResult.record();
         foundationRecords.add(foundationRecord);
 
-        // Generate update record
+        // Generate update record (preserves match fields from foundation)
         if (reportBuilder != null) reportBuilder.startNewRecord();
         recordNumber++;
         MinimalMarcRecordBuilder.BuildResult updateResult = MinimalMarcRecordBuilder.buildUpdateRecordFromBase(
-          foundationRecord, updateCatPath.path(), recordNumber, reportBuilder, refData);
+          foundationRecord, updateCatPath.path(), recordNumber, reportBuilder, refData, matchCriteria);
         updateFileRecords.add(updateResult.record());
 
         if (verbose) {
@@ -780,42 +1032,42 @@ public class JpWranglerCli implements Callable<Integer> {
      * This is the I/O boundary - all pure transformations happen before this.
      */
     private void writeOutputFiles(GeneratedRecords generated, boolean isCreateOnlyProfile) throws IOException {
-      String createFilePath = outputPath + "-create.mrc";
-      String updateFilePath = outputPath + "-update.mrc";
+      String foundationFilePath = outputPath + "-foundation.mrc";
+      String importFilePath = outputPath + "-import.mrc";
 
-      // Write foundation/CREATE records to -create.mrc
+      // Write foundation records to -foundation.mrc
       if (!generated.foundationRecords().isEmpty()) {
-        try (FileOutputStream fos = new FileOutputStream(createFilePath)) {
+        try (FileOutputStream fos = new FileOutputStream(foundationFilePath)) {
           MarcStreamWriter writer = new MarcStreamWriter(fos, "UTF-8");
           for (Record record : generated.foundationRecords()) {
             writer.write(record);
           }
           writer.close();
         }
-        LOGGER.info("Generated {} record(s) written to {}", generated.foundationRecords().size(), createFilePath);
+        LOGGER.info("Generated {} foundation record(s) written to {}", generated.foundationRecords().size(), foundationFilePath);
       }
 
-      // Write update file records to -update.mrc (only if there are records)
+      // Write import file records to -import.mrc (only if there are records)
       if (!generated.updateFileRecords().isEmpty()) {
-        try (FileOutputStream fos = new FileOutputStream(updateFilePath)) {
+        try (FileOutputStream fos = new FileOutputStream(importFilePath)) {
           MarcStreamWriter writer = new MarcStreamWriter(fos, "UTF-8");
           for (Record record : generated.updateFileRecords()) {
             writer.write(record);
           }
           writer.close();
         }
-        LOGGER.info("Generated {} record(s) for import written to {}", generated.updateFileRecords().size(), updateFilePath);
+        LOGGER.info("Generated {} record(s) for import written to {}", generated.updateFileRecords().size(), importFilePath);
       }
 
       // Log summary
       LOGGER.info("Generation complete:");
       if (isCreateOnlyProfile) {
-        LOGGER.info("  {} - {} record(s) for CREATE paths", createFilePath, generated.foundationRecords().size());
-        LOGGER.info("Workflow: Import {} to create new records", createFilePath);
+        LOGGER.info("  {} - {} record(s) for CREATE paths", importFilePath, generated.updateFileRecords().size());
+        LOGGER.info("Workflow: Import {} to create new records", importFilePath);
       } else {
-        LOGGER.info("  {} - {} foundation record(s) to seed database", createFilePath, generated.foundationRecords().size());
-        LOGGER.info("  {} - {} record(s) to trigger both CREATE and UPDATE paths", updateFilePath, generated.updateFileRecords().size());
-        LOGGER.info("Workflow: Import {} first, then import {}", createFilePath, updateFilePath);
+        LOGGER.info("  {} - {} foundation record(s) to seed database", foundationFilePath, generated.foundationRecords().size());
+        LOGGER.info("  {} - {} record(s) to exercise CREATE and UPDATE paths", importFilePath, generated.updateFileRecords().size());
+        LOGGER.info("Workflow: Import {} first (using a CREATE-only profile), then import {}", foundationFilePath, importFilePath);
       }
     }
 
@@ -827,7 +1079,7 @@ public class JpWranglerCli implements Callable<Integer> {
       List<CategorizedPath> createPaths = new ArrayList<>();
       List<CategorizedPath> updatePaths = new ArrayList<>();
 
-      extractPathsWithOutcome(snapshot, new ArrayList<>(), ReactTo.NONE, null,
+      extractPathsWithOutcome(snapshot, new ArrayList<>(), ReactTo.NONE, null, MatchCriteria.empty(),
         createPaths, updatePaths);
 
       return new PathExtractionResult(createPaths, updatePaths);
@@ -842,6 +1094,7 @@ public class JpWranglerCli implements Callable<Integer> {
         List<Profile> currentPath,
         ReactTo currentReactTo,
         String currentMatchProfileId,
+        MatchCriteria currentMatchCriteria,
         List<CategorizedPath> createPaths,
         List<CategorizedPath> updatePaths) {
 
@@ -861,9 +1114,16 @@ public class JpWranglerCli implements Callable<Integer> {
           LOGGER.info("Traversing profile: {} (type: {})", profile.getName(), profile.getClass().getSimpleName());
         }
 
-        // Track match profile ID for pairing
+        // Track match profile ID and extract match criteria
         if ("MATCH_PROFILE".equals(contentType)) {
           currentMatchProfileId = content.path("id").asText();
+          currentMatchCriteria = extractMatchCriteria(content);
+          if (verbose && !currentMatchCriteria.isEmpty()) {
+            LOGGER.info("Extracted match criteria from match profile {}: {} MARC field(s), {} non-MARC match(es)",
+              currentMatchProfileId,
+              currentMatchCriteria.matchFields().size(),
+              currentMatchCriteria.nonMarcMatches().size());
+          }
         }
       }
 
@@ -887,7 +1147,7 @@ public class JpWranglerCli implements Callable<Integer> {
           }
 
           extractPathsWithOutcome(child, new ArrayList<>(currentPath), childReactTo, currentMatchProfileId,
-            createPaths, updatePaths);
+            currentMatchCriteria, createPaths, updatePaths);
         }
       } else {
         // Leaf node - categorize by action type
@@ -899,7 +1159,7 @@ public class JpWranglerCli implements Callable<Integer> {
         if (actionOpt.isPresent() && !currentPath.isEmpty()) {
           ActionProfileNode action = actionOpt.get();
           JobProfilePath path = new JobProfilePath(new ArrayList<>(currentPath));
-          CategorizedPath categorizedPath = new CategorizedPath(path, currentReactTo, currentMatchProfileId);
+          CategorizedPath categorizedPath = new CategorizedPath(path, currentReactTo, currentMatchProfileId, currentMatchCriteria);
 
           if ("CREATE".equals(action.action())) {
             createPaths.add(categorizedPath);
@@ -914,6 +1174,142 @@ public class JpWranglerCli implements Callable<Integer> {
           }
         }
       }
+    }
+
+    /**
+     * Extracts match criteria from a match profile's content node.
+     * Parses matchDetails to build MARC field specifications for matching.
+     *
+     * @param matchProfileContent the content node of a MATCH_PROFILE
+     * @return MatchCriteria with extracted field specifications
+     */
+    private MatchCriteria extractMatchCriteria(JsonNode matchProfileContent) {
+      String matchProfileId = matchProfileContent.path("id").asText();
+      List<MatchCriteria.MatchFieldSpec> matchFields = new ArrayList<>();
+      List<MatchCriteria.NonMarcMatchSpec> nonMarcMatches = new ArrayList<>();
+
+      JsonNode matchDetails = matchProfileContent.path("matchDetails");
+      if (!matchDetails.isArray()) {
+        return MatchCriteria.empty();
+      }
+
+      for (JsonNode matchDetail : matchDetails) {
+        // Parse incoming match expression (the MARC field in the incoming record)
+        JsonNode incomingExpr = matchDetail.path("incomingMatchExpression");
+        JsonNode existingExpr = matchDetail.path("existingMatchExpression");
+
+        String incomingDataType = incomingExpr.path("dataValueType").asText();
+        String existingDataType = existingExpr.path("dataValueType").asText();
+
+        // Check if incoming expression targets a MARC field
+        if ("VALUE_FROM_RECORD".equals(incomingDataType)) {
+          JsonNode fields = incomingExpr.path("fields");
+          if (fields.isArray() && !fields.isEmpty()) {
+            MatchCriteria.MatchFieldSpec spec = parseFieldsToMatchSpec(fields, null);
+            if (spec != null) {
+              matchFields.add(spec);
+              if (verbose) {
+                LOGGER.info("  Extracted MARC match field: {} {} {} subfield {}",
+                  spec.fieldTag(), spec.indicator1(), spec.indicator2(), spec.subfieldCode());
+              }
+            }
+          }
+        } else if ("STATIC_VALUE".equals(incomingDataType)) {
+          // Static value match - extract the static value and any field spec
+          String staticValue = incomingExpr.path("staticValueDetails").path("text").asText(null);
+          JsonNode fields = incomingExpr.path("fields");
+          if (fields.isArray() && !fields.isEmpty()) {
+            MatchCriteria.MatchFieldSpec spec = parseFieldsToMatchSpec(fields, staticValue);
+            if (spec != null) {
+              matchFields.add(spec);
+            }
+          }
+        }
+
+        // Check if existing expression targets a non-MARC field (instance.*, holdings.*)
+        if ("VALUE_FROM_RECORD".equals(existingDataType)) {
+          JsonNode existingFields = existingExpr.path("fields");
+          if (existingFields.isArray() && !existingFields.isEmpty()) {
+            String existingField = extractExistingFieldPath(existingFields);
+            if (existingField != null && !existingField.startsWith("marc")) {
+              // This is a non-MARC match (e.g., instance.hrid, instance.id)
+              // Extract the target MARC field from incoming expression for enrichment
+              JsonNode incomingFields = incomingExpr.path("fields");
+              if (incomingFields.isArray() && !incomingFields.isEmpty()) {
+                MatchCriteria.MatchFieldSpec incomingSpec = parseFieldsToMatchSpec(incomingFields, null);
+                if (incomingSpec != null) {
+                  nonMarcMatches.add(new MatchCriteria.NonMarcMatchSpec(
+                    existingField,
+                    incomingSpec.fieldTag(),
+                    incomingSpec.subfieldCode(),
+                    incomingSpec.indicator1(),
+                    incomingSpec.indicator2()
+                  ));
+                  if (verbose) {
+                    LOGGER.info("  Extracted non-MARC match: {} -> MARC {} subfield {}",
+                      existingField, incomingSpec.fieldTag(), incomingSpec.subfieldCode());
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+
+      return new MatchCriteria(matchProfileId, matchFields, nonMarcMatches);
+    }
+
+    /**
+     * Parses the fields array from a match expression to create a MatchFieldSpec.
+     *
+     * @param fields the fields array from the match expression
+     * @param staticValue optional static value for STATIC_VALUE type matches
+     * @return MatchFieldSpec or null if parsing fails
+     */
+    private MatchCriteria.MatchFieldSpec parseFieldsToMatchSpec(JsonNode fields, String staticValue) {
+      String fieldTag = null;
+      String indicator1 = null;
+      String indicator2 = null;
+      String subfieldCode = null;
+
+      for (JsonNode field : fields) {
+        String label = field.path("label").asText("");
+        String value = field.path("value").asText("");
+
+        switch (label) {
+          case "field" -> fieldTag = value;
+          case "indicator1" -> indicator1 = value;
+          case "indicator2" -> indicator2 = value;
+          case "recordSubfield" -> subfieldCode = value;
+        }
+      }
+
+      if (fieldTag == null || fieldTag.isBlank()) {
+        return null;
+      }
+
+      return new MatchCriteria.MatchFieldSpec(fieldTag, indicator1, indicator2, subfieldCode, staticValue);
+    }
+
+    /**
+     * Extracts the field path from an existing match expression's fields array.
+     * Concatenates label values to form paths like "instance.hrid" or "instance.id".
+     *
+     * @param fields the fields array from the existing match expression
+     * @return the field path or null if not determinable
+     */
+    private String extractExistingFieldPath(JsonNode fields) {
+      StringBuilder path = new StringBuilder();
+      for (JsonNode field : fields) {
+        String value = field.path("value").asText("");
+        if (!value.isEmpty()) {
+          if (path.length() > 0) {
+            path.append(".");
+          }
+          path.append(value);
+        }
+      }
+      return path.length() > 0 ? path.toString() : null;
     }
 
     /**
@@ -1066,7 +1462,7 @@ public class JpWranglerCli implements Callable<Integer> {
      * for generating Holdings and Item fields.
      *
      * @param client the FolioClient for API access
-     * @return a ReferenceDataContext with valid UUIDs, or null if reference data cannot be fetched
+     * @return a ReferenceDataContext populated with available UUIDs; fields may be null when unavailable
      */
     private MinimalMarcRecordBuilder.ReferenceDataContext fetchReferenceDataContext(FolioClient client) {
       try {
@@ -1081,26 +1477,24 @@ public class JpWranglerCli implements Callable<Integer> {
         Optional<String> loanTypeId = refDataManager.getRandomValidId("loan-types");
 
         if (locationId.isEmpty()) {
-          LOGGER.warn("No locations found in tenant. Holdings/Item fields will not be generated.");
-          return null;
+          LOGGER.warn("No locations found in tenant. Holdings/Item paths will be classified as generator gaps.");
         }
         if (materialTypeId.isEmpty()) {
-          LOGGER.warn("No material types found in tenant. Item fields will not be generated.");
-          return null;
+          LOGGER.warn("No material types found in tenant. Item paths will be classified as generator gaps.");
         }
         if (loanTypeId.isEmpty()) {
-          LOGGER.warn("No loan types found in tenant. Item fields will not be generated.");
-          return null;
+          LOGGER.warn("No loan types found in tenant. Item paths will be classified as generator gaps.");
         }
 
         return new MinimalMarcRecordBuilder.ReferenceDataContext(
-          locationId.get(),
-          materialTypeId.get(),
-          loanTypeId.get()
+          locationId.orElse(null),
+          materialTypeId.orElse(null),
+          loanTypeId.orElse(null)
         );
       } catch (Exception e) {
-        LOGGER.warn("Failed to fetch reference data: {}. Holdings/Item fields will not be generated.", e.getMessage());
-        return null;
+        LOGGER.warn("Failed to fetch reference data: {}. Holdings/Item paths will be classified as generator gaps.",
+          e.getMessage());
+        return new MinimalMarcRecordBuilder.ReferenceDataContext(null, null, null);
       }
     }
   }
@@ -1339,5 +1733,269 @@ public class JpWranglerCli implements Callable<Integer> {
         actionSuccess, actionFail, mappingSuccess, mappingFail
       );
     }
+  }
+
+  @Command(name = "enrich", description = "Enrich update MARC file with instance identifiers from FOLIO", mixinStandardHelpOptions = true)
+  static class EnrichCommand implements Callable<Integer> {
+    @CommandLine.Mixin
+    private FolioConnectionOptions folioOptions = new FolioConnectionOptions();
+
+    @Parameters(index = "0", description = "Path to the -import.mrc file to enrich")
+    String importFilePath;
+
+    @Option(names = {"-o", "--output"}, description = "Output file path (default: input file with -ready suffix)")
+    String outputPath;
+
+    @Option(names = {"--match-field"}, description = "MARC field for looking up instances (default: 001 for HRID lookup)")
+    String matchField = "001";
+
+    @Option(names = {"--enrich-field"}, description = "MARC field to add with instance identifier (e.g., 999ff$i)", required = true)
+    String enrichField;
+
+    @Option(names = {"--enrich-type"}, description = "Type of value to enrich with: INSTANCE_ID or INSTANCE_HRID")
+    EnrichType enrichType = EnrichType.INSTANCE_ID;
+
+    @Option(names = {"--skip-missing"}, description = "Skip records where instance is not found (default: fail)")
+    boolean skipMissing = false;
+
+    enum EnrichType { INSTANCE_ID, INSTANCE_HRID }
+
+    private static final MarcFactory MARC_FACTORY = MarcFactory.newInstance();
+
+    @Override
+    public Integer call() {
+      try {
+        // Ensure password is available if needed
+        folioOptions.ensurePassword();
+
+        // Validate input file exists
+        Path inputPath = Paths.get(importFilePath);
+        if (!Files.exists(inputPath)) {
+          LOGGER.error("Input file does not exist: {}", importFilePath);
+          return 1;
+        }
+
+        // Determine output path
+        if (outputPath == null) {
+          String inputName = inputPath.getFileName().toString();
+          String baseName = inputName.replaceFirst("\\.mrc$", "");
+          outputPath = inputPath.getParent() != null
+            ? inputPath.getParent().resolve(baseName + "-ready.mrc").toString()
+            : baseName + "-ready.mrc";
+        }
+
+        // Parse the enrich field specification
+        EnrichFieldSpec enrichSpec = parseEnrichField(enrichField);
+        if (enrichSpec == null) {
+          LOGGER.error("Invalid enrich field format: {}. Expected format like '999ff$i' or '035$a'", enrichField);
+          return 1;
+        }
+
+        // Connect to FOLIO
+        FolioClient client = folioOptions.createFolioClient();
+
+        // Process MARC records
+        List<Record> enrichedRecords = new ArrayList<>();
+        int totalRecords = 0;
+        int enrichedCount = 0;
+        int skippedCount = 0;
+
+        try (FileInputStream fis = new FileInputStream(importFilePath)) {
+          MarcReader reader = new MarcStreamReader(fis);
+
+          while (reader.hasNext()) {
+            Record record = reader.next();
+            totalRecords++;
+
+            // Extract the lookup value from the record
+            String lookupValue = extractLookupValue(record, matchField);
+            if (lookupValue == null || lookupValue.isBlank()) {
+              LOGGER.warn("Record {} has no {} field, skipping", totalRecords, matchField);
+              if (skipMissing) {
+                enrichedRecords.add(record);
+                skippedCount++;
+                continue;
+              } else {
+                LOGGER.error("Cannot enrich record without lookup field. Use --skip-missing to continue.");
+                return 1;
+              }
+            }
+
+            // Look up instance in FOLIO
+            Optional<JsonNode> instanceOpt = lookupInstance(client, lookupValue, matchField);
+
+            if (instanceOpt.isEmpty()) {
+              LOGGER.warn("Instance not found for {} = '{}'", matchField, lookupValue);
+              if (skipMissing) {
+                enrichedRecords.add(record);
+                skippedCount++;
+                continue;
+              } else {
+                LOGGER.error("Instance not found. Use --skip-missing to continue without this record.");
+                return 1;
+              }
+            }
+
+            JsonNode instance = instanceOpt.get();
+
+            // Extract the enrichment value
+            String enrichValue = extractEnrichValue(instance, enrichType);
+            if (enrichValue == null) {
+              LOGGER.warn("Could not extract {} from instance", enrichType);
+              if (skipMissing) {
+                enrichedRecords.add(record);
+                skippedCount++;
+                continue;
+              } else {
+                return 1;
+              }
+            }
+
+            // Enrich the record
+            Record enrichedRecord = enrichRecord(record, enrichValue, enrichSpec);
+            enrichedRecords.add(enrichedRecord);
+            enrichedCount++;
+
+            LOGGER.info("Enriched record {} ({} = '{}'): added {}${} = '{}'",
+              totalRecords, matchField, lookupValue, enrichSpec.fieldTag, enrichSpec.subfieldCode, enrichValue);
+          }
+        }
+
+        // Write enriched records to output file
+        try (FileOutputStream fos = new FileOutputStream(outputPath)) {
+          MarcStreamWriter writer = new MarcStreamWriter(fos, "UTF-8");
+          try {
+            for (Record record : enrichedRecords) {
+              writer.write(record);
+            }
+          } finally {
+            writer.close();
+          }
+        }
+
+        LOGGER.info("Enrichment complete:");
+        LOGGER.info("  Total records: {}", totalRecords);
+        LOGGER.info("  Enriched: {}", enrichedCount);
+        LOGGER.info("  Skipped: {}", skippedCount);
+        LOGGER.info("  Output written to: {}", outputPath);
+
+        return 0;
+
+      } catch (Exception e) {
+        LOGGER.error("Enrichment failed: {}", e.getMessage(), e);
+        return 1;
+      }
+    }
+
+    /**
+     * Parses an enrich field specification like "999ff$i" or "035$a".
+     * Format: FIELD[IND1][IND2]$SUBFIELD
+     */
+    private EnrichFieldSpec parseEnrichField(String fieldSpec) {
+      if (fieldSpec == null || fieldSpec.isBlank()) {
+        return null;
+      }
+
+      // Split on $ to separate field/indicators from subfield
+      int dollarPos = fieldSpec.indexOf('$');
+      if (dollarPos == -1 || dollarPos == fieldSpec.length() - 1) {
+        return null;
+      }
+
+      String fieldPart = fieldSpec.substring(0, dollarPos);
+      char subfieldCode = fieldSpec.charAt(dollarPos + 1);
+
+      // Parse field tag and indicators
+      if (fieldPart.length() < 3) {
+        return null;
+      }
+
+      String fieldTag = fieldPart.substring(0, 3);
+      char indicator1 = ' ';
+      char indicator2 = ' ';
+
+      if (fieldPart.length() >= 4) {
+        indicator1 = fieldPart.charAt(3);
+      }
+      if (fieldPart.length() >= 5) {
+        indicator2 = fieldPart.charAt(4);
+      }
+
+      return new EnrichFieldSpec(fieldTag, indicator1, indicator2, subfieldCode);
+    }
+
+    /**
+     * Extracts a lookup value from a MARC record.
+     */
+    private String extractLookupValue(Record record, String fieldTag) {
+      if ("001".equals(fieldTag)) {
+        return record.getControlNumber();
+      }
+
+      // Get the field and check its type to avoid ClassCastException
+      var field = record.getVariableField(fieldTag);
+      if (field == null) {
+        return null;
+      }
+
+      // For control fields (001-009)
+      if (field instanceof ControlField cf) {
+        return cf.getData();
+      }
+
+      // For data fields, extract first subfield 'a' by default
+      if (field instanceof DataField df && df.getSubfield('a') != null) {
+        return df.getSubfield('a').getData();
+      }
+
+      return null;
+    }
+
+    /**
+     * Looks up an instance in FOLIO based on the match field.
+     */
+    private Optional<JsonNode> lookupInstance(FolioClient client, String value, String matchField) {
+      if ("001".equals(matchField)) {
+        // 001 typically maps to HRID
+        return client.findInstanceByHrid(value);
+      } else {
+        // Other fields use identifier lookup
+        return client.findInstanceByIdentifier(value, null);
+      }
+    }
+
+    /**
+     * Extracts the enrichment value from an instance.
+     */
+    private String extractEnrichValue(JsonNode instance, EnrichType type) {
+      return switch (type) {
+        case INSTANCE_ID -> instance.path("id").asText(null);
+        case INSTANCE_HRID -> instance.path("hrid").asText(null);
+      };
+    }
+
+    /**
+     * Enriches a MARC record by adding a field with the specified value.
+     */
+    private Record enrichRecord(Record original, String value, EnrichFieldSpec spec) {
+      // Create a new data field with the enrichment value
+      DataField dataField = MARC_FACTORY.newDataField(spec.fieldTag, spec.indicator1, spec.indicator2);
+      dataField.addSubfield(MARC_FACTORY.newSubfield(spec.subfieldCode, value));
+
+      // Add to the record (creates a copy if record is immutable)
+      original.addVariableField(dataField);
+
+      return original;
+    }
+
+    /**
+     * Specification for an enrichment MARC field.
+     */
+    private record EnrichFieldSpec(
+      String fieldTag,
+      char indicator1,
+      char indicator2,
+      char subfieldCode
+    ) {}
   }
 }

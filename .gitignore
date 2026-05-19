@@ -8,3 +8,4 @@ node_modules/
 /src/main/java/storage/model/*
 /src/main/resources/postgres-conf.json
 */target/
+job-profile-wrangler/src/main/resources/repository/*
