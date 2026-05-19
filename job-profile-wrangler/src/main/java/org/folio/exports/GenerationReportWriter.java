@@ -1,22 +1,18 @@
 package org.folio.exports;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.SerializationFeature;
-
 import java.io.IOException;
 import java.io.PrintStream;
 import java.nio.file.Path;
+
+import org.folio.Constants;
 
 /**
  * Writes the machine-readable generation report and renders the human summary.
  */
 public class GenerationReportWriter {
-  private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper()
-    .enable(SerializationFeature.INDENT_OUTPUT);
-
   public Path write(Path outputBase, GenerationReport report, PrintStream out, boolean verbose) throws IOException {
     Path reportPath = reportPath(outputBase);
-    OBJECT_MAPPER.writeValue(reportPath.toFile(), report);
+    Constants.OBJECT_MAPPER.writerWithDefaultPrettyPrinter().writeValue(reportPath.toFile(), report);
     render(report, reportPath, out, verbose);
     return reportPath;
   }
