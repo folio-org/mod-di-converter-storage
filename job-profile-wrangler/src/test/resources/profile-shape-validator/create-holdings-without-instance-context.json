@@ -1,0 +1,19 @@
+{
+  "contentType": "JOB_PROFILE",
+  "content": {
+    "id": "job-1",
+    "name": "Create holdings without instance context",
+    "dataType": "MARC"
+  },
+  "childSnapshotWrappers": [
+    {
+      "contentType": "ACTION_PROFILE",
+      "content": {
+        "id": "create-holdings-1",
+        "name": "Create holdings",
+        "action": "CREATE",
+        "folioRecord": "HOLDINGS"
+      }
+    }
+  ]
+}

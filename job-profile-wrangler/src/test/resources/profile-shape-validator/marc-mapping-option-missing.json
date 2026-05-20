@@ -1,0 +1,34 @@
+{
+  "contentType": "JOB_PROFILE",
+  "content": {
+    "id": "job-1",
+    "name": "Missing MARC mapping option",
+    "dataType": "MARC"
+  },
+  "childSnapshotWrappers": [
+    {
+      "contentType": "ACTION_PROFILE",
+      "content": {
+        "id": "create-marc-1",
+        "name": "Create MARC",
+        "action": "CREATE",
+        "folioRecord": "MARC_BIBLIOGRAPHIC"
+      },
+      "childSnapshotWrappers": [
+        {
+          "contentType": "MAPPING_PROFILE",
+          "content": {
+            "id": "mapping-1",
+            "name": "Missing option",
+            "incomingRecordType": "MARC_BIBLIOGRAPHIC",
+            "existingRecordType": "MARC_BIBLIOGRAPHIC",
+            "mappingDetails": {
+              "recordType": "MARC_BIBLIOGRAPHIC",
+              "mappingFields": []
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

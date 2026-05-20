@@ -97,6 +97,18 @@ public class RepoImportTest {
   }
 
   @Test
+  public void fromStringRejectsBlockedSnapshotBeforeRepositoryImport() throws IOException {
+    String repoPath = tempDir.getRoot().toString();
+    String content = Resources.toString(
+      Resources.getResource("profile-shape-validator/empty-match-details.json"), StandardCharsets.UTF_8);
+
+    Optional<RepoObject> repoObject = RepoImport.fromString(repoPath, content);
+
+    assertFalse(repoObject.isPresent());
+    assertTrue(GraphReader.readAll(repoPath).isEmpty());
+  }
+
+  @Test
   public void importReportSerializesOutcomeDiscriminators() throws Exception {
     ImportReport report = new ImportReport("2026-05-19T20:00:00Z", List.of(
       new ImportReport.Entry("profile-1", "Profile 1", new ImportOutcome.Added(1)),

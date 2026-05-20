@@ -1,0 +1,43 @@
+{
+  "contentType": "JOB_PROFILE",
+  "content": {
+    "id": "job-1",
+    "name": "Match instance with non-match create instance then holdings",
+    "dataType": "MARC"
+  },
+  "childSnapshotWrappers": [
+    {
+      "contentType": "MATCH_PROFILE",
+      "content": {
+        "id": "match-instance-1",
+        "name": "Match instance",
+        "incomingRecordType": "MARC_BIBLIOGRAPHIC",
+        "existingRecordType": "INSTANCE"
+      },
+      "childSnapshotWrappers": [
+        {
+          "contentType": "ACTION_PROFILE",
+          "reactTo": "NON_MATCH",
+          "content": {
+            "id": "create-instance-1",
+            "name": "Create instance",
+            "action": "CREATE",
+            "folioRecord": "INSTANCE",
+            "order": 1
+          }
+        },
+        {
+          "contentType": "ACTION_PROFILE",
+          "reactTo": "NON_MATCH",
+          "content": {
+            "id": "create-holdings-1",
+            "name": "Create holdings",
+            "action": "CREATE",
+            "folioRecord": "HOLDINGS",
+            "order": 2
+          }
+        }
+      ]
+    }
+  ]
+}

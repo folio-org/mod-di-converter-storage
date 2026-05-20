@@ -1,0 +1,20 @@
+{
+  "contentType": "JOB_PROFILE",
+  "content": {
+    "id": "job-1",
+    "name": "Empty match details",
+    "dataType": "MARC"
+  },
+  "childSnapshotWrappers": [
+    {
+      "contentType": "MATCH_PROFILE",
+      "content": {
+        "id": "match-1",
+        "name": "Empty match",
+        "incomingRecordType": "STATIC_VALUE",
+        "existingRecordType": "HOLDINGS",
+        "matchDetails": []
+      }
+    }
+  ]
+}

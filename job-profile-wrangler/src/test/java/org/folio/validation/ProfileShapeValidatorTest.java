@@ -3,7 +3,10 @@ package org.folio.validation;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.folio.exports.GenerationOutcome.BlockedUnsupportedWorkflow;
+import org.folio.validation.rules.CreateHoldingsWithoutInstanceContextRule;
+import org.folio.validation.rules.EmptyMatchDetailsRule;
 import org.folio.validation.rules.MatchInstanceCreateItemRule;
+import org.folio.validation.rules.MissingMarcMappingOptionRule;
 import org.junit.Test;
 
 import java.io.IOException;
@@ -30,13 +33,50 @@ public class ProfileShapeValidatorTest {
   }
 
   @Test
+  public void emptyMatchDetailsFires() throws Exception {
+    Optional<BlockedUnsupportedWorkflow> outcome = ProfileShapeValidator.defaultValidator()
+      .validate(fixture("empty-match-details.json"));
+
+    assertTrue(outcome.isPresent());
+    assertEquals(EmptyMatchDetailsRule.RULE_NAME, outcome.get().rule());
+  }
+
+  @Test
+  public void missingMarcMappingOptionFires() throws Exception {
+    Optional<BlockedUnsupportedWorkflow> outcome = ProfileShapeValidator.defaultValidator()
+      .validate(fixture("marc-mapping-option-missing.json"));
+
+    assertTrue(outcome.isPresent());
+    assertEquals(MissingMarcMappingOptionRule.RULE_NAME, outcome.get().rule());
+  }
+
+  @Test
+  public void createHoldingsWithoutInstanceContextFires() throws Exception {
+    Optional<BlockedUnsupportedWorkflow> outcome = ProfileShapeValidator.defaultValidator()
+      .validate(fixture("create-holdings-without-instance-context.json"));
+
+    assertTrue(outcome.isPresent());
+    assertEquals(CreateHoldingsWithoutInstanceContextRule.RULE_NAME, outcome.get().rule());
+  }
+
+  @Test
   public void createInstanceHoldingsItemDoesNotMatch() throws Exception {
     assertNoRuleMatch("create-instance-holdings-item.json");
   }
 
   @Test
+  public void inventoryMappingWithMarcInputDoesNotNeedMarcMappingOption() throws Exception {
+    assertNoRuleMatch("inventory-mapping-with-marc-input.json");
+  }
+
+  @Test
   public void matchInstanceCreateHoldingsCreateItemDoesNotMatch() throws Exception {
     assertNoRuleMatch("match-instance-create-holdings-create-item.json");
+  }
+
+  @Test
+  public void matchInstanceNonMatchBranchCreateInstanceBeforeHoldingsDoesNotMatch() throws Exception {
+    assertNoRuleMatch("match-instance-nonmatch-create-instance-holdings.json");
   }
 
   @Test

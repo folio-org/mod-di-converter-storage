@@ -2,7 +2,10 @@ package org.folio.validation;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import org.folio.exports.GenerationOutcome.BlockedUnsupportedWorkflow;
+import org.folio.validation.rules.CreateHoldingsWithoutInstanceContextRule;
+import org.folio.validation.rules.EmptyMatchDetailsRule;
 import org.folio.validation.rules.MatchInstanceCreateItemRule;
+import org.folio.validation.rules.MissingMarcMappingOptionRule;
 
 import java.util.List;
 import java.util.Objects;
@@ -13,7 +16,10 @@ import java.util.Optional;
  */
 public class ProfileShapeValidator {
   private static final List<UnsupportedShapeRule> DEFAULT_RULES = List.of(
-    new MatchInstanceCreateItemRule()
+    new MatchInstanceCreateItemRule(),
+    new EmptyMatchDetailsRule(),
+    new MissingMarcMappingOptionRule(),
+    new CreateHoldingsWithoutInstanceContextRule()
   );
 
   private final List<UnsupportedShapeRule> rules;
