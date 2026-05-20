@@ -59,6 +59,22 @@ public class MinimalMarcRecordBuilderTest {
     }
   }
 
+  @Test
+  public void itemUpdateVariantIncludesHoldingsFieldsForSiblingCreateHoldingsBranches() {
+    MinimalMarcRecordBuilder.ReferenceDataContext refData =
+      new MinimalMarcRecordBuilder.ReferenceDataContext("location-id", "material-type-id", "loan-type-id");
+    JobProfilePath itemPath = path("CREATE", "ITEM");
+    MinimalMarcRecordBuilder.BuildResult base =
+      MinimalMarcRecordBuilder.buildRecordForPathWithPrerequisites(itemPath, 1, null, refData, null,
+        java.util.Set.of("HOLDINGS"));
+
+    MinimalMarcRecordBuilder.BuildResult update =
+      MinimalMarcRecordBuilder.buildUpdateRecordFromBase(base.record(), itemPath, 2, null, refData, null);
+
+    assertNotNull(update.record().getVariableField("852"));
+    assertNotNull(update.record().getVariableField("945"));
+  }
+
   private JobProfilePath path(String action, String folioRecord) {
     List<Profile> profiles = List.of(
       new JobProfileNode("job-1", "MARC", 0),

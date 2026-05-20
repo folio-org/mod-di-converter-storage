@@ -416,7 +416,7 @@ public final class MinimalMarcRecordBuilder {
     boolean createsHoldings = pathCreatesRecordType(path, "HOLDINGS");
     boolean createsItems = pathCreatesRecordType(path, "ITEM");
 
-    if (createsHoldings) {
+    if (createsHoldings || createsItems) {
       String callNumber = "TEST " + shortId + " UPDATED";
       addHoldingsFields(record, requireRefData(refData), callNumber, pathId, reportBuilder);
     }
