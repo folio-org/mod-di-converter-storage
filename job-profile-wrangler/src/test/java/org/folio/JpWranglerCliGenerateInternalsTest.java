@@ -7,6 +7,7 @@ import org.folio.exports.GenerationOutcome;
 import org.folio.exports.JobProfilePath;
 import org.folio.exports.MatchedPathPair;
 import org.folio.exports.MatchCriteria;
+import org.folio.exports.PathExtractionResult;
 import org.folio.exports.ReactTo;
 import org.folio.exports.StrictRecordWriter;
 import org.folio.graph.nodes.ActionProfileNode;
@@ -60,6 +61,55 @@ public class JpWranglerCliGenerateInternalsTest {
     assertEquals("update", ordered.get(0).path().getPathId());
     assertTrue(enrichment.containsKey(0));
     assertEquals("update", enrichment.get(0).pathId());
+  }
+
+  @Test
+  public void extractionKeepsUnsupportedActionPathsSeparateFromEmptyProfiles() throws Exception {
+    Method method = JpWranglerCli.GenerateCommand.class.getDeclaredMethod("extractAllPaths", JsonNode.class);
+    method.setAccessible(true);
+    JsonNode snapshot = OBJECT_MAPPER.readTree("""
+      {
+        "contentType": "JOB_PROFILE",
+        "content": {"id": "job", "dataType": "MARC", "order": 0},
+        "childSnapshotWrappers": [{
+          "contentType": "MATCH_PROFILE",
+          "reactTo": "MATCH",
+          "content": {
+            "id": "match",
+            "incomingRecordType": "MARC_AUTHORITY",
+            "existingRecordType": "MARC_AUTHORITY",
+            "order": 0,
+            "matchDetails": []
+          },
+          "childSnapshotWrappers": [{
+            "contentType": "ACTION_PROFILE",
+            "content": {
+              "id": "delete",
+              "action": "DELETE",
+              "folioRecord": "MARC_AUTHORITY",
+              "order": 0
+            },
+            "childSnapshotWrappers": [{
+              "contentType": "MAPPING_PROFILE",
+              "content": {
+                "id": "mapping",
+                "incomingRecordType": "MARC_AUTHORITY",
+                "existingRecordType": "MARC_AUTHORITY",
+                "order": 0
+              }
+            }]
+          }]
+        }]
+      }
+      """);
+
+    PathExtractionResult result = (PathExtractionResult) method.invoke(new JpWranglerCli.GenerateCommand(), snapshot);
+
+    assertTrue(result.createPaths().isEmpty());
+    assertTrue(result.updatePaths().isEmpty());
+    assertEquals(1, result.unsupportedActionPaths().size());
+    assertEquals(ReactTo.MATCH, result.unsupportedActionPaths().get(0).reactTo());
+    assertTrue(result.unsupportedActionPaths().get(0).path().getPathId().contains("DELETE_MARC_AUTHORITY"));
   }
 
   private CategorizedPath path(String pathId, ReactTo reactTo, MatchCriteria criteria) {

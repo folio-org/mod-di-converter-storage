@@ -560,6 +560,14 @@ public class JpWranglerCli implements Callable<Integer> {
       PathExtractionResult pathResult = extractAllPaths(snapshot);
 
       if (pathResult.createPaths().isEmpty() && pathResult.updatePaths().isEmpty()) {
+        if (!pathResult.unsupportedActionPaths().isEmpty()) {
+          List<PathOutcome> unsupportedOutcomes = unsupportedActionOutcomes(pathResult.unsupportedActionPaths());
+          GenerationOutcome.GeneratorGap outcome =
+            (GenerationOutcome.GeneratorGap) unsupportedOutcomes.get(0).outcome();
+          writeReport(reportWriter, outputBase, snapshot, runTimestamp, outcome, unsupportedOutcomes, refData);
+          LOGGER.error("Generation outcome: {} - {}", outcome.label(), outcome.message());
+          return outcome.exitCode();
+        }
         GenerationOutcome.InvalidProfileShape outcome = new GenerationOutcome.InvalidProfileShape(
           "EMPTY_PATH", "No CREATE or UPDATE action paths found in job profile");
         writeReport(reportWriter, outputBase, snapshot, runTimestamp, outcome, List.of(), refData);
@@ -739,11 +747,12 @@ public class JpWranglerCli implements Callable<Integer> {
     private PathExtractionResult extractAllPaths(JsonNode snapshot) {
       List<CategorizedPath> createPaths = new ArrayList<>();
       List<CategorizedPath> updatePaths = new ArrayList<>();
+      List<CategorizedPath> unsupportedActionPaths = new ArrayList<>();
 
       extractPathsWithOutcome(snapshot, new ArrayList<>(), ReactTo.NONE, null, MatchCriteria.empty(),
-        createPaths, updatePaths);
+        createPaths, updatePaths, unsupportedActionPaths);
 
-      return new PathExtractionResult(createPaths, updatePaths);
+      return new PathExtractionResult(createPaths, updatePaths, unsupportedActionPaths);
     }
 
     /**
@@ -757,7 +766,8 @@ public class JpWranglerCli implements Callable<Integer> {
         String currentMatchProfileId,
         MatchCriteria currentMatchCriteria,
         List<CategorizedPath> createPaths,
-        List<CategorizedPath> updatePaths) {
+        List<CategorizedPath> updatePaths,
+        List<CategorizedPath> unsupportedActionPaths) {
 
       String contentType = node.path("contentType").asText();
       JsonNode content = node.path("content");
@@ -808,7 +818,7 @@ public class JpWranglerCli implements Callable<Integer> {
           }
 
           extractPathsWithOutcome(child, new ArrayList<>(currentPath), childReactTo, currentMatchProfileId,
-            currentMatchCriteria, createPaths, updatePaths);
+            currentMatchCriteria, createPaths, updatePaths, unsupportedActionPaths);
         }
       } else {
         // Leaf node - categorize by action type
@@ -832,9 +842,42 @@ public class JpWranglerCli implements Callable<Integer> {
             if (verbose) {
               LOGGER.info("Found UPDATE path (reactTo: {}): {}", currentReactTo, path.getPathId());
             }
+          } else {
+            unsupportedActionPaths.add(categorizedPath);
+            if (verbose) {
+              LOGGER.info("Found unsupported action path ({} {}, reactTo: {}): {}",
+                action.action(), action.folioRecord(), currentReactTo, path.getPathId());
+            }
           }
         }
       }
+    }
+
+    private List<PathOutcome> unsupportedActionOutcomes(List<CategorizedPath> unsupportedPaths) {
+      List<PathOutcome> outcomes = new ArrayList<>();
+      for (int pathIndex = 0; pathIndex < unsupportedPaths.size(); pathIndex++) {
+        CategorizedPath path = unsupportedPaths.get(pathIndex);
+        ActionProfileNode action = lastAction(path.path()).orElseThrow();
+        GeneratorGapException gap = GeneratorGapException.unsupportedAction(action.action(), action.folioRecord());
+        GenerationOutcome.GeneratorGap outcome = new GenerationOutcome.GeneratorGap(
+          pathIndex, path.path().getPathId(), gap.reason().name(), gap.getMessage());
+        outcomes.add(new PathOutcome(
+          pathIndex,
+          path.path().getPathId(),
+          path.reactTo().name(),
+          path.matchProfileId(),
+          List.of(),
+          List.of(),
+          outcome));
+      }
+      return outcomes;
+    }
+
+    private Optional<ActionProfileNode> lastAction(JobProfilePath path) {
+      return path.getProfiles().stream()
+        .filter(ActionProfileNode.class::isInstance)
+        .map(ActionProfileNode.class::cast)
+        .reduce((first, second) -> second);
     }
 
     /**

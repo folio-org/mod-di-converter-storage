@@ -7,5 +7,6 @@ import java.util.List;
  */
 public record PathExtractionResult(
   List<CategorizedPath> createPaths,
-  List<CategorizedPath> updatePaths
+  List<CategorizedPath> updatePaths,
+  List<CategorizedPath> unsupportedActionPaths
 ) {}
