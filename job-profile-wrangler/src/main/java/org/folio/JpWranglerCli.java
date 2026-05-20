@@ -110,6 +110,9 @@ public class JpWranglerCli implements Callable<Integer> {
     @Option(names = {"--tenant"}, description = "FOLIO tenant ID")
     String tenant;
 
+    @Option(names = {"--okapi-url"}, description = "Value for X-Okapi-Url header when modules need to call back through a gateway")
+    String okapiUrl;
+
     @Option(names = {"--username"}, description = "FOLIO username")
     String username;
 
@@ -155,9 +158,9 @@ public class JpWranglerCli implements Callable<Integer> {
       }
 
       if (token != null) {
-        return new FolioClient(() -> HttpUrl.parse(baseUrl).newBuilder(), token);
+        return new FolioClient(new OkHttpClient(), () -> HttpUrl.parse(baseUrl).newBuilder(), token, tenant, okapiUrl);
       } else if (tenant != null && username != null && password != null) {
-        return new FolioClient(() -> HttpUrl.parse(baseUrl).newBuilder(), tenant, username, password);
+        return new FolioClient(new OkHttpClient(), () -> HttpUrl.parse(baseUrl).newBuilder(), getToken(), tenant, okapiUrl);
       } else {
         throw new IllegalArgumentException("Either token or tenant, username, and password must be provided");
       }
@@ -476,9 +479,11 @@ public class JpWranglerCli implements Callable<Integer> {
         }
 
         FolioClient client = new FolioClient(
+          new OkHttpClient(),
           () -> HttpUrl.parse(folioOptions.baseUrl).newBuilder(),
           token,
-          folioOptions.tenant
+          folioOptions.tenant,
+          folioOptions.okapiUrl
         );
 
         // Get the job profile snapshot directly using the provided UUID
@@ -1052,7 +1057,8 @@ public class JpWranglerCli implements Callable<Integer> {
         ReferenceDataManager refDataManager = new ReferenceDataManager(
           () -> okhttp3.HttpUrl.parse(folioOptions.baseUrl).newBuilder(),
           folioOptions.getToken(),
-          folioOptions.tenant
+          folioOptions.tenant,
+          folioOptions.okapiUrl
         );
 
         Optional<String> locationId = refDataManager.getRandomValidId("locations");

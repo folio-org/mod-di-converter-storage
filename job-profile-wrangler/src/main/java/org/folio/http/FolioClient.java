@@ -28,12 +28,14 @@ import static org.folio.Constants.JSON_MEDIA_TYPE;
 import static org.folio.Constants.OBJECT_MAPPER;
 import static org.folio.Constants.OKAPI_TENANT_HEADER;
 import static org.folio.Constants.OKAPI_TOKEN_HEADER;
+import static org.folio.Constants.OKAPI_URL_HEADER;
 
 public class FolioClient {
   private static final Logger LOGGER = LogManager.getLogger(FolioClient.class);
   private final OkHttpClient httpClient;
   private final String token;
   private final String tenantId;
+  private final String okapiUrl;
   private final Supplier<HttpUrl.Builder> baseUrlBuilderSupplier;
 
   /**
@@ -44,7 +46,7 @@ public class FolioClient {
    * @param token the authentication token (from prior login)
    */
   public FolioClient(Supplier<HttpUrl.Builder> baseUrlBuilderSupplier, String token) {
-    this(baseUrlBuilderSupplier, token, null, new OkHttpClient());
+    this(baseUrlBuilderSupplier, token, null, null, new OkHttpClient());
   }
 
   /**
@@ -56,7 +58,7 @@ public class FolioClient {
    * @param tenantId the FOLIO tenant identifier
    */
   public FolioClient(Supplier<HttpUrl.Builder> baseUrlBuilderSupplier, String token, String tenantId) {
-    this(baseUrlBuilderSupplier, token, tenantId, new OkHttpClient());
+    this(baseUrlBuilderSupplier, token, tenantId, null, new OkHttpClient());
   }
 
   /**
@@ -72,6 +74,16 @@ public class FolioClient {
     this.baseUrlBuilderSupplier = baseUrlBuilderSupplier;
     this.token = token;
     this.tenantId = tenantId;
+    this.okapiUrl = null;
+    this.httpClient = httpClient;
+  }
+
+  public FolioClient(OkHttpClient httpClient, Supplier<HttpUrl.Builder> baseUrlBuilderSupplier, String token,
+                     String tenantId, String okapiUrl) {
+    this.baseUrlBuilderSupplier = baseUrlBuilderSupplier;
+    this.token = token;
+    this.tenantId = tenantId;
+    this.okapiUrl = okapiUrl;
     this.httpClient = httpClient;
   }
 
@@ -86,7 +98,7 @@ public class FolioClient {
    * @throws IllegalStateException if authentication fails
    */
   public FolioClient(Supplier<HttpUrl.Builder> baseUrlBuilderSupplier, String tenantId, String username, String password) {
-    this(baseUrlBuilderSupplier, tenantId, username, password, new OkHttpClient());
+    this(baseUrlBuilderSupplier, tenantId, username, password, null, new OkHttpClient());
   }
 
   /**
@@ -101,8 +113,14 @@ public class FolioClient {
    * @throws IllegalStateException if authentication fails
    */
   public FolioClient(Supplier<HttpUrl.Builder> baseUrlBuilderSupplier, String tenantId, String username, String password, OkHttpClient httpClient) {
+    this(baseUrlBuilderSupplier, tenantId, username, password, null, httpClient);
+  }
+
+  private FolioClient(Supplier<HttpUrl.Builder> baseUrlBuilderSupplier, String tenantId, String username,
+                     String password, String okapiUrl, OkHttpClient httpClient) {
     this.baseUrlBuilderSupplier = baseUrlBuilderSupplier;
     this.tenantId = tenantId;
+    this.okapiUrl = okapiUrl;
     this.httpClient = httpClient;
 
     Optional<String> okapiToken = getOkapiToken(httpClient, baseUrlBuilderSupplier.get(), tenantId, username, password);
@@ -120,6 +138,9 @@ public class FolioClient {
     builder.addHeader(OKAPI_TOKEN_HEADER, token);
     if (tenantId != null) {
       builder.addHeader(OKAPI_TENANT_HEADER, tenantId);
+    }
+    if (okapiUrl != null) {
+      builder.addHeader(OKAPI_URL_HEADER, okapiUrl);
     }
     return builder;
   }
@@ -432,6 +453,41 @@ public class FolioClient {
       return Optional.of(OBJECT_MAPPER.readTree(result));
     } catch (IOException e) {
       LOGGER.error("Failed to fetch mapping metadata for record type: {}", recordType, e);
+    }
+    return Optional.empty();
+  }
+
+  /**
+   * Fetches raw mapping rules from mod-source-record-manager.
+   *
+   * @param recordType the record type (e.g., "marc-bib", "marc-holdings", "marc-authority")
+   * @return optional JSON response containing mapping rules
+   */
+  public Optional<JsonNode> getMappingRules(String recordType) {
+    HttpUrl url = baseUrlBuilderSupplier.get()
+      .addPathSegments("mapping-rules")
+      .addPathSegment(recordType)
+      .build();
+
+    Request request = addFolioHeaders(new Request.Builder()
+      .url(url))
+      .get()
+      .build();
+
+    try (Response response = httpClient.newCall(request).execute()) {
+      if (!response.isSuccessful()) {
+        LOGGER.warn("Failed to fetch mapping rules for record type: {} - Status: {}",
+          recordType, response.code());
+        return Optional.empty();
+      }
+      if (response.body() == null) {
+        LOGGER.error("Response body is null for mapping rules request: {}", recordType);
+        return Optional.empty();
+      }
+      String result = response.body().string();
+      return Optional.of(OBJECT_MAPPER.readTree(result));
+    } catch (IOException e) {
+      LOGGER.error("Failed to fetch mapping rules for record type: {}", recordType, e);
     }
     return Optional.empty();
   }

@@ -14,7 +14,7 @@ import java.util.stream.Collectors;
  * Processes mapping rules from mod-source-record-manager to reverse-engineer
  * required MARC fields and extract target inventory fields.
  *
- * This component fetches mapping rules via the /mapping-metadata/type/{recordType} API
+ * This component fetches mapping rules via the /mapping-rules/{recordType} API
  * and parses the JSON structure to determine what inventory fields are affected.
  */
 public class MappingRulesProcessor {
@@ -85,7 +85,7 @@ public class MappingRulesProcessor {
    */
   private Optional<JsonNode> fetchMappingRules(String recordType) {
     LOGGER.info("Fetching mapping rules for record type: {}", recordType);
-    return folioClient.getMappingMetadata(recordType);
+    return folioClient.getMappingRules(recordType);
   }
 
   /**
@@ -98,15 +98,8 @@ public class MappingRulesProcessor {
     Set<String> targetFields = new HashSet<>();
 
     try {
-      // Parse the mappingRules field which contains encoded JSON
-      JsonNode mappingRulesNode = mappingMetadata.get("mappingRules");
-      if (mappingRulesNode != null && mappingRulesNode.isTextual()) {
-        String mappingRulesJson = mappingRulesNode.asText();
-        JsonNode mappingRules = OBJECT_MAPPER.readTree(mappingRulesJson);
-
-        // Extract target fields from the mapping rules structure
-        extractTargetFieldsRecursively(mappingRules, targetFields);
-      }
+      JsonNode mappingRules = mappingRulesPayload(mappingMetadata);
+      extractTargetFieldsRecursively(mappingRules, targetFields);
     } catch (IOException e) {
       LOGGER.error("Error parsing mapping rules JSON", e);
     }
@@ -192,16 +185,8 @@ public class MappingRulesProcessor {
     }
 
     try {
-      JsonNode metadata = mappingMetadata.get();
-      JsonNode mappingRulesNode = metadata.get("mappingRules");
-
-      if (mappingRulesNode != null && mappingRulesNode.isTextual()) {
-        String mappingRulesJson = mappingRulesNode.asText();
-        JsonNode mappingRules = OBJECT_MAPPER.readTree(mappingRulesJson);
-
-        // Build reverse mapping from the rules
-        buildReverseMapping(mappingRules, builder);
-      }
+      JsonNode mappingRules = mappingRulesPayload(mappingMetadata.get());
+      buildReverseMapping(mappingRules, builder);
 
       // Add required fields based on FOLIO instance requirements
       addRequiredInstanceFields(builder);
@@ -216,6 +201,14 @@ public class MappingRulesProcessor {
       analysis.getRequiredInventoryFields().size());
 
     return analysis;
+  }
+
+  private JsonNode mappingRulesPayload(JsonNode response) throws IOException {
+    JsonNode mappingRulesNode = response.get("mappingRules");
+    if (mappingRulesNode != null && mappingRulesNode.isTextual()) {
+      return OBJECT_MAPPER.readTree(mappingRulesNode.asText());
+    }
+    return response;
   }
 
   /**

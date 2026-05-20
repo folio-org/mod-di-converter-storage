@@ -20,6 +20,7 @@ import java.util.stream.StreamSupport;
 import static org.folio.Constants.OBJECT_MAPPER;
 import static org.folio.Constants.OKAPI_TENANT_HEADER;
 import static org.folio.Constants.OKAPI_TOKEN_HEADER;
+import static org.folio.Constants.OKAPI_URL_HEADER;
 
 /**
  * Manages reference data fetching and caching for FOLIO tenant reference data endpoints.
@@ -34,6 +35,7 @@ public class ReferenceDataManager {
 
     private final String token;
     private final String tenantId;
+    private final String okapiUrl;
     private final Supplier<HttpUrl.Builder> baseUrlBuilderSupplier;
     private final OkHttpClient httpClient;
 
@@ -63,7 +65,7 @@ public class ReferenceDataManager {
      * @param token authentication token
      */
     public ReferenceDataManager(Supplier<HttpUrl.Builder> baseUrlBuilderSupplier, String token) {
-        this(new OkHttpClient(), baseUrlBuilderSupplier, token, null);
+        this(new OkHttpClient(), baseUrlBuilderSupplier, token, null, null);
     }
 
     /**
@@ -74,7 +76,11 @@ public class ReferenceDataManager {
      * @param tenantId tenant identifier
      */
     public ReferenceDataManager(Supplier<HttpUrl.Builder> baseUrlBuilderSupplier, String token, String tenantId) {
-        this(new OkHttpClient(), baseUrlBuilderSupplier, token, tenantId);
+        this(new OkHttpClient(), baseUrlBuilderSupplier, token, tenantId, null);
+    }
+
+    public ReferenceDataManager(Supplier<HttpUrl.Builder> baseUrlBuilderSupplier, String token, String tenantId, String okapiUrl) {
+        this(new OkHttpClient(), baseUrlBuilderSupplier, token, tenantId, okapiUrl);
     }
 
     /**
@@ -92,10 +98,21 @@ public class ReferenceDataManager {
         String token,
         String tenantId
     ) {
+        this(httpClient, baseUrlBuilderSupplier, token, tenantId, null);
+    }
+
+    public ReferenceDataManager(
+        OkHttpClient httpClient,
+        Supplier<HttpUrl.Builder> baseUrlBuilderSupplier,
+        String token,
+        String tenantId,
+        String okapiUrl
+    ) {
         this.httpClient = Objects.requireNonNull(httpClient, "httpClient must not be null");
         this.baseUrlBuilderSupplier = Objects.requireNonNull(baseUrlBuilderSupplier, "baseUrlBuilderSupplier must not be null");
         this.token = token;
         this.tenantId = tenantId;
+        this.okapiUrl = okapiUrl;
         this.endpointConfig = initializeEndpointConfiguration();
     }
 
@@ -177,6 +194,9 @@ public class ReferenceDataManager {
                 .addHeader(OKAPI_TOKEN_HEADER, token);
             if (tenantId != null) {
                 requestBuilder.addHeader(OKAPI_TENANT_HEADER, tenantId);
+            }
+            if (okapiUrl != null) {
+                requestBuilder.addHeader(OKAPI_URL_HEADER, okapiUrl);
             }
             Request request = requestBuilder.get().build();
 

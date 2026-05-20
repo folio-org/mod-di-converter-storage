@@ -5,11 +5,13 @@ import com.google.common.io.Resources;
 import okhttp3.Call;
 import okhttp3.HttpUrl;
 import okhttp3.OkHttpClient;
+import okhttp3.Request;
 import okhttp3.Response;
 import okhttp3.ResponseBody;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnitRunner;
 
@@ -92,6 +94,48 @@ public class FolioClientTest {
 
     Optional<JsonNode> jobProfileSnapshot = folioClient.getJobProfileSnapshot(jobProfileId);
     assertNotNull(jobProfileSnapshot);
+  }
+
+  @Test
+  public void testAddsTenantAndOkapiUrlHeaders() throws IOException {
+    folioClient = new FolioClient(
+      httpClient,
+      () -> baseUrlBuilder,
+      "token",
+      "diku",
+      "http://wiremock:8080");
+
+    when(baseUrlBuilder.addPathSegments(anyString())).thenReturn(baseUrlBuilder);
+    when(baseUrlBuilder.addPathSegment(anyString())).thenReturn(baseUrlBuilder);
+    when(baseUrlBuilder.addQueryParameter(anyString(), anyString())).thenReturn(baseUrlBuilder);
+    when(baseUrlBuilder.build()).thenReturn(HttpUrl.get("http://example.com"));
+
+    String content = Resources.toString(Resources.getResource("job_profile_response.json"), StandardCharsets.UTF_8);
+    when(body.string()).thenReturn(content);
+
+    folioClient.getJobProfileSnapshot("123");
+
+    ArgumentCaptor<Request> requestCaptor = ArgumentCaptor.forClass(Request.class);
+    verify(httpClient).newCall(requestCaptor.capture());
+    Request request = requestCaptor.getValue();
+    assertEquals("token", request.header("x-okapi-token"));
+    assertEquals("diku", request.header("x-okapi-tenant"));
+    assertEquals("http://wiremock:8080", request.header("x-okapi-url"));
+  }
+
+  @Test
+  public void testGetMappingRulesUsesMappingRulesEndpoint() throws IOException {
+    when(baseUrlBuilder.addPathSegments(anyString())).thenReturn(baseUrlBuilder);
+    when(baseUrlBuilder.addPathSegment(anyString())).thenReturn(baseUrlBuilder);
+    when(baseUrlBuilder.build()).thenReturn(HttpUrl.get("http://example.com"));
+
+    when(body.string()).thenReturn("{}");
+
+    Optional<JsonNode> mappingRules = folioClient.getMappingRules("marc-bib");
+
+    assertTrue(mappingRules.isPresent());
+    verify(baseUrlBuilder).addPathSegments("mapping-rules");
+    verify(baseUrlBuilder).addPathSegment("marc-bib");
   }
 
   @Test

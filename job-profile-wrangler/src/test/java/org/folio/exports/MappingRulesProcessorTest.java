@@ -11,6 +11,8 @@ import org.mockito.MockitoAnnotations;
 import java.util.*;
 
 import static org.junit.Assert.*;
+import static org.mockito.Mockito.when;
+import static org.folio.Constants.OBJECT_MAPPER;
 
 public class MappingRulesProcessorTest {
 
@@ -37,6 +39,37 @@ public class MappingRulesProcessorTest {
     assertNotNull("Result should not be null", result);
     // Since we don't have real API calls yet, this returns empty
     // TODO: Add mock API responses when HTTP implementation is complete
+  }
+
+  @Test
+  public void testAnalyzeMappingRules_ParsesDirectMappingRulesResponse() throws Exception {
+    when(mockFolioClient.getMappingRules("marc-bib")).thenReturn(Optional.of(OBJECT_MAPPER.readTree("""
+      {
+        "245": [
+          {
+            "target": "title",
+            "subfield": ["a"]
+          }
+        ]
+      }
+      """)));
+
+    Set<String> result = processor.analyzeMappingRules(Set.of("INSTANCE"));
+
+    assertTrue("Should extract target fields from /mapping-rules response", result.contains("title"));
+  }
+
+  @Test
+  public void testAnalyzeMappingRules_ParsesMetadataWrappedResponse() throws Exception {
+    when(mockFolioClient.getMappingRules("marc-bib")).thenReturn(Optional.of(OBJECT_MAPPER.readTree("""
+      {
+        "mappingRules": "{\\"245\\":[{\\"target\\":\\"title\\",\\"subfield\\":[\\"a\\"]}]}"
+      }
+      """)));
+
+    Set<String> result = processor.analyzeMappingRules(Set.of("INSTANCE"));
+
+    assertTrue("Should still support metadata-wrapped mapping rules", result.contains("title"));
   }
 
   @Test
