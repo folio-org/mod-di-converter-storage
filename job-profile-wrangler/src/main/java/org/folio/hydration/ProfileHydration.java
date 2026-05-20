@@ -231,7 +231,8 @@ public class ProfileHydration {
             .withMasterProfileId(sourceProfileId)
             .withMasterProfileType(sourceProfileType)
             .withDetailProfileId(targetProfileId)
-            .withDetailProfileType(targetProfileType);
+            .withDetailProfileType(targetProfileType)
+            .withOrder(target.getOrder());
           if (edge instanceof MatchRelationshipEdge) {
             profileAssociation.setReactTo(ReactToType.MATCH);
           } else if (edge instanceof NonMatchRelationshipEdge) {
@@ -248,7 +249,7 @@ public class ProfileHydration {
       client::createJobProfile,
       createdObjectsInFolio);
 
-    return Optional.of(createdObjectsInFolio.get(jobProfile.get()));
+    return Optional.ofNullable(createdObjectsInFolio.get(jobProfile.get()));
   }
 
   /**
