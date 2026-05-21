@@ -75,6 +75,32 @@ public class MinimalMarcRecordBuilderTest {
     assertNotNull(update.record().getVariableField("945"));
   }
 
+  @Test
+  public void marcBibliographicUpdatePathBuildsFoundationAndUpdateRecord() {
+    JobProfilePath marcBibUpdatePath = path("UPDATE", "MARC_BIBLIOGRAPHIC");
+
+    MinimalMarcRecordBuilder.BuildResult base =
+      MinimalMarcRecordBuilder.buildRecordForPath(marcBibUpdatePath, 1, null, null);
+    MinimalMarcRecordBuilder.BuildResult update =
+      MinimalMarcRecordBuilder.buildUpdateRecordFromBase(base.record(), marcBibUpdatePath, 2, null, null, null);
+
+    assertNotNull(base.record());
+    assertNotNull(update.record());
+    assertEquals(base.record().getControlNumber(), update.record().getControlNumber());
+    assertNotNull(update.record().getVariableField("500"));
+  }
+
+  @Test
+  public void marcBibliographicModifyPathRemainsUnsupported() {
+    try {
+      MinimalMarcRecordBuilder.buildRecordForPath(path("MODIFY", "MARC_BIBLIOGRAPHIC"), 1, null, null);
+      fail("Expected GeneratorGapException");
+    } catch (GeneratorGapException e) {
+      assertEquals(GeneratorGapException.Reason.UNSUPPORTED_ACTION, e.reason());
+      assertEquals("MODIFY MARC_BIBLIOGRAPHIC", e.detail());
+    }
+  }
+
   private JobProfilePath path(String action, String folioRecord) {
     List<Profile> profiles = List.of(
       new JobProfileNode("job-1", "MARC", 0),

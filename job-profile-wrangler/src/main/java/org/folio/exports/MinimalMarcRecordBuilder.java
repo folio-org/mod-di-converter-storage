@@ -354,6 +354,7 @@ public final class MinimalMarcRecordBuilder {
 
     String pathId = path.getPathId();
     boolean verbose = reportBuilder != null;
+    boolean updatesMarcBib = pathUpdatesRecordType(path, "MARC_BIBLIOGRAPHIC");
     validateSupportedActions(path);
 
     Record record = FACTORY.newRecord();
@@ -390,7 +391,8 @@ public final class MinimalMarcRecordBuilder {
     field245.addSubfield(FACTORY.newSubfield('a', title));
     record.addVariableField(field245);
     if (verbose) {
-      reportBuilder.addFieldGeneration(pathId, "245$a", title, "instance.title (MODIFIED for UPDATE)");
+      reportBuilder.addFieldGeneration(pathId, "245$a", title,
+        updatesMarcBib ? "marc.245$a (MODIFIED for UPDATE)" : "instance.title (MODIFIED for UPDATE)");
     }
 
     // Add 336 - Content Type (maps to instanceTypeId - REQUIRED)
@@ -410,7 +412,8 @@ public final class MinimalMarcRecordBuilder {
     field500.addSubfield(FACTORY.newSubfield('a', note));
     record.addVariableField(field500);
     if (verbose) {
-      reportBuilder.addFieldGeneration(pathId, "500$a", note, "instance.notes (UPDATE marker)");
+      reportBuilder.addFieldGeneration(pathId, "500$a", note,
+        updatesMarcBib ? "marc.500$a (UPDATE marker)" : "instance.notes (UPDATE marker)");
     }
 
     boolean createsHoldings = pathCreatesRecordType(path, "HOLDINGS");
@@ -545,18 +548,36 @@ public final class MinimalMarcRecordBuilder {
     return false;
   }
 
+  private static boolean pathUpdatesRecordType(JobProfilePath path, String recordType) {
+    for (Profile profile : path.getProfiles()) {
+      if (profile instanceof ActionProfileNode actionProfile) {
+        if ("UPDATE".equals(actionProfile.action()) && recordType.equals(actionProfile.folioRecord())) {
+          return true;
+        }
+      }
+    }
+    return false;
+  }
+
   private static void validateSupportedActions(JobProfilePath path) {
     for (Profile profile : path.getProfiles()) {
       if (profile instanceof ActionProfileNode actionProfile) {
-        boolean supportedAction = "CREATE".equals(actionProfile.action()) || "UPDATE".equals(actionProfile.action());
-        boolean supportedRecord = "INSTANCE".equals(actionProfile.folioRecord())
-            || "HOLDINGS".equals(actionProfile.folioRecord())
-            || "ITEM".equals(actionProfile.folioRecord());
-        if (!supportedAction || !supportedRecord) {
+        if (!isSupportedAction(actionProfile)) {
           throw GeneratorGapException.unsupportedAction(actionProfile.action(), actionProfile.folioRecord());
         }
       }
     }
+  }
+
+  private static boolean isSupportedAction(ActionProfileNode actionProfile) {
+    boolean supportedInventoryAction =
+      ("CREATE".equals(actionProfile.action()) || "UPDATE".equals(actionProfile.action()))
+        && ("INSTANCE".equals(actionProfile.folioRecord())
+          || "HOLDINGS".equals(actionProfile.folioRecord())
+          || "ITEM".equals(actionProfile.folioRecord()));
+    boolean supportedMarcBibUpdate =
+      "UPDATE".equals(actionProfile.action()) && "MARC_BIBLIOGRAPHIC".equals(actionProfile.folioRecord());
+    return supportedInventoryAction || supportedMarcBibUpdate;
   }
 
   private static ReferenceDataContext requireRefData(ReferenceDataContext refData) {

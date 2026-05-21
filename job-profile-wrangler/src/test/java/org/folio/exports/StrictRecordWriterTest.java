@@ -64,6 +64,27 @@ public class StrictRecordWriterTest {
   }
 
   @Test
+  public void updateMarcBibliographicWritesFoundationAndImportRecords() throws IOException {
+    Path outputBase = temp.getRoot().toPath().resolve("records");
+    Path foundation = outputBase.resolveSibling("records-foundation.mrc");
+    Path importFile = outputBase.resolveSibling("records-import.mrc");
+
+    StrictRecordWriter.WriteResult result = new StrictRecordWriter().write(
+      new CategorizedPaths(List.of(), List.of(), List.of(categorized(path("UPDATE", "MARC_BIBLIOGRAPHIC")))),
+      new MinimalMarcRecordBuilder.ReferenceDataContext(null, null, null),
+      outputBase);
+
+    assertEquals(GenerationOutcome.GENERATED, result.overallOutcome().label());
+    assertTrue(Files.exists(foundation));
+    assertTrue(Files.exists(importFile));
+    assertEquals(1, result.foundationRecords().size());
+    assertEquals(1, result.importRecords().size());
+    assertEquals(
+      result.foundationRecords().get(0).getControlNumber(),
+      result.importRecords().get(0).getControlNumber());
+  }
+
+  @Test
   public void writeFailureDeletesTempsAndStaleFinalFiles() throws IOException {
     Path outputBase = temp.getRoot().toPath().resolve("records");
     Path foundation = outputBase.resolveSibling("records-foundation.mrc");

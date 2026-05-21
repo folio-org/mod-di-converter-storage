@@ -114,8 +114,8 @@ public class ProfileHydration {
           .withIncomingRecordType(EntityType.fromValue(incomingRecordType))
           .withExistingRecordType(EntityType.fromValue(existingRecordType));
 
-        // Add default mappingDetails based on existing record type
-        MappingDetail mappingDetails = MappingDetailsFactory.createMappingDetailsForRecordType(existingRecordType);
+        // Add default mappingDetails based on existing record type and parent action context.
+        MappingDetail mappingDetails = mappingDetailsFor(graph, mappingProfileNode, existingRecordType);
         if (mappingDetails != null) {
           mappingProfile.withMappingDetails(mappingDetails);
         }
@@ -250,6 +250,31 @@ public class ProfileHydration {
       createdObjectsInFolio);
 
     return Optional.ofNullable(createdObjectsInFolio.get(jobProfile.get()));
+  }
+
+  private MappingDetail mappingDetailsFor(
+      Graph<Profile, RegularEdge> graph,
+      MappingProfileNode mappingProfileNode,
+      String existingRecordType) {
+    if (isMarcBibUpdateMapping(graph, mappingProfileNode, existingRecordType)) {
+      return MappingDetailsFactory.createMarcBibliographicUpdateMappingDetails();
+    }
+    return MappingDetailsFactory.createMappingDetailsForRecordType(existingRecordType);
+  }
+
+  private boolean isMarcBibUpdateMapping(
+      Graph<Profile, RegularEdge> graph,
+      MappingProfileNode mappingProfileNode,
+      String existingRecordType) {
+    if (!EntityType.MARC_BIBLIOGRAPHIC.toString().equals(existingRecordType)) {
+      return false;
+    }
+    return graph.incomingEdgesOf(mappingProfileNode).stream()
+      .map(edge -> (Profile) edge.getSource())
+      .filter(ActionProfileNode.class::isInstance)
+      .map(ActionProfileNode.class::cast)
+      .anyMatch(action -> ActionProfile.Action.UPDATE.toString().equals(action.action())
+        && ActionProfile.FolioRecord.MARC_BIBLIOGRAPHIC.toString().equals(action.folioRecord()));
   }
 
   /**

@@ -12,6 +12,8 @@ import org.folio.http.FolioClient;
 import org.folio.rest.jaxrs.model.ActionProfile;
 import org.folio.rest.jaxrs.model.EntityType;
 import org.folio.rest.jaxrs.model.JobProfileUpdateDto;
+import org.folio.rest.jaxrs.model.MappingDetail;
+import org.folio.rest.jaxrs.model.MappingProfileUpdateDto;
 import org.folio.rest.jaxrs.model.ProfileAssociation;
 import org.folio.rest.jaxrs.model.ProfileType;
 import org.jgrapht.Graph;
@@ -120,6 +122,46 @@ public class ProfileHydrationTest {
       .findFirst()
       .orElseThrow();
     assertEquals(Integer.valueOf(2), matchToActionAssociation.getOrder());
+  }
+
+  @Test
+  public void hydrateAddsMarcMappingOptionForMarcBibliographicUpdateMappings() throws IOException {
+    graph = new DefaultDirectedGraph<>(RegularEdge.class);
+
+    Profile jobProfile = new JobProfileNode("1", "MARC", 0);
+    Profile matchProfile = new MatchProfileNode("2", EntityType.MARC_BIBLIOGRAPHIC.toString(),
+      EntityType.INSTANCE.toString(), 0);
+    Profile actionProfile = new ActionProfileNode("3", ActionProfile.Action.UPDATE.toString(),
+      ActionProfile.FolioRecord.MARC_BIBLIOGRAPHIC.toString(), 0);
+    Profile mappingProfile = new MappingProfileNode("4", EntityType.MARC_BIBLIOGRAPHIC.toString(),
+      EntityType.MARC_BIBLIOGRAPHIC.toString(), 0);
+
+    graph.addVertex(jobProfile);
+    graph.addVertex(matchProfile);
+    graph.addVertex(actionProfile);
+    graph.addVertex(mappingProfile);
+    graph.addEdge(jobProfile, matchProfile, new RegularEdge());
+    graph.addEdge(matchProfile, actionProfile, new MatchRelationshipEdge());
+    graph.addEdge(actionProfile, mappingProfile, new RegularEdge());
+
+    String mappingProfileResponse = Resources.toString(Resources.getResource("mapping_profile_response.json"), StandardCharsets.UTF_8);
+    String actionProfileResponse = Resources.toString(Resources.getResource("action_profile_response.json"), StandardCharsets.UTF_8);
+    String matchProfileResponse = Resources.toString(Resources.getResource("match_profile_response.json"), StandardCharsets.UTF_8);
+    String jobProfileResponse = Resources.toString(Resources.getResource("job_profile_response.json"), StandardCharsets.UTF_8);
+    when(folioClient.createMappingProfile(any())).thenReturn(Optional.of(OBJECT_MAPPER.readTree(mappingProfileResponse)));
+    when(folioClient.createActionProfile(any())).thenReturn(Optional.of(OBJECT_MAPPER.readTree(actionProfileResponse)));
+    when(folioClient.createMatchProfile(any())).thenReturn(Optional.of(OBJECT_MAPPER.readTree(matchProfileResponse)));
+    when(folioClient.createJobProfile(any())).thenReturn(Optional.of(OBJECT_MAPPER.readTree(jobProfileResponse)));
+
+    new ProfileHydration(folioClient).hydrate(19, graph);
+
+    ArgumentCaptor<String> requestCaptor = ArgumentCaptor.forClass(String.class);
+    verify(folioClient).createMappingProfile(requestCaptor.capture());
+    MappingProfileUpdateDto request = OBJECT_MAPPER.readValue(requestCaptor.getValue(), MappingProfileUpdateDto.class);
+    MappingDetail mappingDetails = request.getProfile().getMappingDetails();
+
+    assertEquals(MappingDetail.MarcMappingOption.UPDATE, mappingDetails.getMarcMappingOption());
+    assertTrue(mappingDetails.getMarcMappingDetails().isEmpty());
   }
 
   @Test

@@ -377,6 +377,16 @@ public final class MappingDetailsFactory {
   }
 
   /**
+   * Creates mappingDetails for a MARC_BIBLIOGRAPHIC update action.
+   * The stack's MARC modifier requires marcMappingOption even when there are no field-level details.
+   */
+  public static MappingDetail createMarcBibliographicUpdateMappingDetails() {
+    return createMarcBibliographicMappingDetails()
+      .withMarcMappingOption(MappingDetail.MarcMappingOption.UPDATE)
+      .withMarcMappingDetails(Collections.emptyList());
+  }
+
+  /**
    * Returns the appropriate MappingDetail for the given existing record type.
    *
    * @param existingRecordType the record type string (e.g., "INSTANCE", "HOLDINGS", "ITEM")
