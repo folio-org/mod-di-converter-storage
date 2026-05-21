@@ -139,6 +139,65 @@ public class FolioClientTest {
   }
 
   @Test
+  public void getJobProfilesPropagatesPageFailures() {
+    when(baseUrlBuilder.addPathSegments(anyString())).thenReturn(baseUrlBuilder);
+    when(baseUrlBuilder.addQueryParameter(anyString(), anyString())).thenReturn(baseUrlBuilder);
+    when(baseUrlBuilder.build()).thenReturn(HttpUrl.get("http://example.com"));
+    when(response.isSuccessful()).thenReturn(false);
+
+    Stream<JsonNode> jobProfiles = folioClient.getJobProfiles();
+
+    assertThrows(IllegalStateException.class, jobProfiles::count);
+  }
+
+  @Test
+  public void findSourceRecordByMarcControlNumberPagesUntilMatch() throws IOException {
+    when(baseUrlBuilder.addPathSegments(anyString())).thenReturn(baseUrlBuilder);
+    when(baseUrlBuilder.addQueryParameter(anyString(), anyString())).thenReturn(baseUrlBuilder);
+    when(baseUrlBuilder.build()).thenReturn(HttpUrl.get("http://example.com"));
+
+    Call firstCall = mock(Call.class);
+    Call secondCall = mock(Call.class);
+    Response firstResponse = mock(Response.class);
+    Response secondResponse = mock(Response.class);
+    ResponseBody firstBody = mock(ResponseBody.class);
+    ResponseBody secondBody = mock(ResponseBody.class);
+
+    when(httpClient.newCall(any())).thenReturn(firstCall, secondCall);
+    when(firstCall.execute()).thenReturn(firstResponse);
+    when(secondCall.execute()).thenReturn(secondResponse);
+    when(firstResponse.isSuccessful()).thenReturn(true);
+    when(secondResponse.isSuccessful()).thenReturn(true);
+    when(firstResponse.body()).thenReturn(firstBody);
+    when(secondResponse.body()).thenReturn(secondBody);
+    when(firstBody.string()).thenReturn("""
+      {
+        "totalRecords": 1001,
+        "sourceRecords": [{
+          "recordId": "first-page",
+          "parsedRecord": {"content": {"fields": [{"001": "not-it"}]}}
+        }]
+      }
+      """);
+    when(secondBody.string()).thenReturn("""
+      {
+        "totalRecords": 1001,
+        "sourceRecords": [{
+          "recordId": "target-record",
+          "parsedRecord": {"content": "{\\"fields\\":[{\\"001\\":\\"auth-target\\"}]}"}
+        }]
+      }
+      """);
+
+    Optional<JsonNode> result = folioClient.findSourceRecordByMarcControlNumber("MARC_AUTHORITY", "auth-target");
+
+    assertTrue(result.isPresent());
+    assertEquals("target-record", result.get().get("recordId").asText());
+    verify(baseUrlBuilder).addQueryParameter("offset", "0");
+    verify(baseUrlBuilder).addQueryParameter("offset", "1000");
+  }
+
+  @Test
   public void testCreateJobProfile() throws IOException {
     String jobProfile = "{}";
 

@@ -106,15 +106,9 @@ public final class EnrichmentDetector {
       MatchCriteria.NonMarcMatchSpec spec,
       String enrichType) {
 
-    String targetSubfield = normalize(spec.targetSubfield());
-    if (targetSubfield != null && !"a".equals(targetSubfield)) {
-      return "This profile matches on " + spec.targetMarcField() + "$" + targetSubfield
-        + ", which jp-wrangler enrich does not look up by default. See jp-wrangler enrich --help.";
-    }
-
-    String subfield = targetSubfield == null ? "a" : targetSubfield;
+    String subfield = normalize(spec.targetSubfield()) == null ? "a" : normalize(spec.targetSubfield());
     return "Run: jp-wrangler enrich " + outputBase + "-import.mrc"
-      + " --match-field " + spec.targetMarcField()
+      + " --match-field 001"
       + " --enrich-field " + enrichFieldSpec(spec, subfield)
       + " --enrich-type " + enrichType;
   }

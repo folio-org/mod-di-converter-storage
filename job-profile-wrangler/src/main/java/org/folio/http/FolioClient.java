@@ -170,7 +170,7 @@ public class FolioClient {
 
     return Stream.generate(() -> {
 
-        if (queryParamOffset.get() > totalRecords.get()) {
+        if (totalRecords.get() > 0 && queryParamOffset.get() >= totalRecords.get()) {
           return null;
         }
 
@@ -218,8 +218,8 @@ public class FolioClient {
           queryParamOffset.getAndAdd(queryParamLimit);
           return StreamSupport.stream(jsonNode.get("jobProfiles").spliterator(), false);
         } catch (IOException e) {
-          LOGGER.error(e);
-          return null;
+          throw new IllegalStateException("Failed to fetch job profiles page at offset "
+            + queryParamOffset.get(), e);
         }
       }).takeWhile(Objects::nonNull)
       .flatMap(Function.identity());
@@ -623,45 +623,54 @@ public class FolioClient {
    * by the wrangler enrichment step after importing freshly generated foundation records.
    */
   public Optional<JsonNode> findSourceRecordByMarcControlNumber(String recordType, String controlNumber) {
-    HttpUrl url = baseUrlBuilderSupplier.get()
-      .addPathSegments("source-storage/source-records")
-      .addQueryParameter("recordType", recordType)
-      .addQueryParameter("limit", "1000")
-      .build();
+    final int limit = 1000;
+    int offset = 0;
+    int totalRecords = Integer.MAX_VALUE;
 
-    Request request = addFolioHeaders(new Request.Builder()
-      .url(url))
-      .get()
-      .build();
+    while (offset < totalRecords) {
+      HttpUrl url = baseUrlBuilderSupplier.get()
+        .addPathSegments("source-storage/source-records")
+        .addQueryParameter("recordType", recordType)
+        .addQueryParameter("limit", Integer.toString(limit))
+        .addQueryParameter("offset", Integer.toString(offset))
+        .build();
 
-    try (Response response = httpClient.newCall(request).execute()) {
-      if (!response.isSuccessful()) {
-        LOGGER.warn("Failed to find source record by MARC 001: {} - Status: {}", controlNumber, response.code());
-        return Optional.empty();
-      }
-      if (response.body() == null) {
-        return Optional.empty();
-      }
-      String result = response.body().string();
-      JsonNode jsonNode = OBJECT_MAPPER.readTree(result);
-      JsonNode sourceRecords = jsonNode.path("sourceRecords");
-      if (!sourceRecords.isArray()) {
-        return Optional.empty();
-      }
-      for (JsonNode sourceRecord : sourceRecords) {
-        JsonNode parsedContent = sourceRecord.path("parsedRecord").path("content");
-        if (parsedContent.isObject() && controlNumber.equals(extractMarcJsonControlNumber(parsedContent))) {
-          return Optional.of(sourceRecord);
+      Request request = addFolioHeaders(new Request.Builder()
+        .url(url))
+        .get()
+        .build();
+
+      try (Response response = httpClient.newCall(request).execute()) {
+        if (!response.isSuccessful()) {
+          LOGGER.warn("Failed to find source record by MARC 001: {} - Status: {}", controlNumber, response.code());
+          return Optional.empty();
         }
-        if (parsedContent.isTextual() && controlNumber.equals(extractMarcJsonControlNumber(parsedContent.asText()))) {
-          return Optional.of(sourceRecord);
+        if (response.body() == null) {
+          return Optional.empty();
         }
+        String result = response.body().string();
+        JsonNode jsonNode = OBJECT_MAPPER.readTree(result);
+        totalRecords = jsonNode.path("totalRecords").asInt(0);
+        JsonNode sourceRecords = jsonNode.path("sourceRecords");
+        if (!sourceRecords.isArray() || sourceRecords.isEmpty()) {
+          return Optional.empty();
+        }
+        for (JsonNode sourceRecord : sourceRecords) {
+          JsonNode parsedContent = sourceRecord.path("parsedRecord").path("content");
+          if (parsedContent.isObject() && controlNumber.equals(extractMarcJsonControlNumber(parsedContent))) {
+            return Optional.of(sourceRecord);
+          }
+          if (parsedContent.isTextual() && controlNumber.equals(extractMarcJsonControlNumber(parsedContent.asText()))) {
+            return Optional.of(sourceRecord);
+          }
+        }
+        offset += limit;
+      } catch (IOException e) {
+        LOGGER.error("Failed to find source record by MARC 001: {}", controlNumber, e);
+        return Optional.empty();
       }
-      return Optional.empty();
-    } catch (IOException e) {
-      LOGGER.error("Failed to find source record by MARC 001: {}", controlNumber, e);
-      return Optional.empty();
     }
+    return Optional.empty();
   }
 
   private String extractMarcJsonControlNumber(String parsedContent) throws IOException {

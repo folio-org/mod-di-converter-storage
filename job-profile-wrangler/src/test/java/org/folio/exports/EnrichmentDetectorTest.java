@@ -35,7 +35,7 @@ public class EnrichmentDetectorTest {
     assertEquals(0, outcome.pathIndex());
     assertEquals("path-0", outcome.pathId());
     assertEquals("match-1", outcome.matchProfileId());
-    assertEquals("Run: jp-wrangler enrich target/generated/job-profile-import.mrc --match-field 999 "
+    assertEquals("Run: jp-wrangler enrich target/generated/job-profile-import.mrc --match-field 001 "
       + "--enrich-field 999ff$a --enrich-type INSTANCE_HRID", outcome.hint());
   }
 
@@ -100,14 +100,14 @@ public class EnrichmentDetectorTest {
   }
 
   @Test
-  public void nonASubfieldStillClassifiesWithInformationalHint() {
+  public void nonASubfieldStillUsesStableLookupField() {
     CategorizedPath path = path("path-0", matchCriteria(nonMarc("instance.hrid", "035", "z", "f", "f")));
 
     GenerationOutcome.NeedsEnrichment outcome =
       EnrichmentDetector.detect(List.of(path), OUTPUT_BASE).get(0);
 
-    assertEquals("This profile matches on 035$z, which jp-wrangler enrich does not look up by default. "
-      + "See jp-wrangler enrich --help.", outcome.hint());
+    assertEquals("Run: jp-wrangler enrich target/generated/job-profile-import.mrc --match-field 001 "
+      + "--enrich-field 035ff$z --enrich-type INSTANCE_HRID", outcome.hint());
   }
 
   @Test
@@ -118,7 +118,7 @@ public class EnrichmentDetectorTest {
     String secondHint = EnrichmentDetector.detect(List.of(path), OUTPUT_BASE).get(0).hint();
 
     assertEquals(firstHint, secondHint);
-    assertEquals("Run: jp-wrangler enrich target/generated/job-profile-import.mrc --match-field 999 "
+    assertEquals("Run: jp-wrangler enrich target/generated/job-profile-import.mrc --match-field 001 "
       + "--enrich-field 999ff$a --enrich-type INSTANCE_HRID", firstHint);
   }
 

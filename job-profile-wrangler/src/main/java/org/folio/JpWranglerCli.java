@@ -60,6 +60,7 @@ import org.marc4j.marc.ControlField;
 import org.marc4j.marc.DataField;
 import org.marc4j.marc.MarcFactory;
 import org.marc4j.marc.Record;
+import org.marc4j.marc.VariableField;
 
 import com.fasterxml.jackson.databind.JsonNode;
 
@@ -240,11 +241,15 @@ public class JpWranglerCli implements Callable<Integer> {
         System.out.printf("Added: %d, Duplicate: %d, Blocked: %d, Errors: %d%n",
           report.addedCount(), report.duplicateCount(), report.blockedCount(), report.errorCount());
         System.out.println("Report: " + reportPath);
-        return 0;
+        return exitCodeForReport(report);
       } catch (Exception e) {
         LOGGER.error("Import failed: {}", e.getMessage(), e);
         return 1;
       }
+    }
+
+    static int exitCodeForReport(ImportReport report) {
+      return report.blockedCount() > 0 || report.errorCount() > 0 ? 1 : 0;
     }
 
     private Path writeImportReport(ImportReport report) throws IOException {
@@ -288,6 +293,7 @@ public class JpWranglerCli implements Callable<Integer> {
             return 1;
           }
 
+          List<Integer> failedProfileIds = new ArrayList<>();
           for (Integer id : profileIds) {
             try {
               Graph<Profile, RegularEdge> graph = GraphReader.read(repoPath, id);
@@ -296,10 +302,16 @@ public class JpWranglerCli implements Callable<Integer> {
                 LOGGER.info("Exported job profile {}", id);
               } else {
                 LOGGER.error("Failed to export job profile {}", id);
+                failedProfileIds.add(id);
               }
             } catch (Exception e) {
               LOGGER.error("Error exporting job profile {}: {}", id, e.getMessage());
+              failedProfileIds.add(id);
             }
+          }
+          if (!failedProfileIds.isEmpty()) {
+            LOGGER.error("Export failed for job profile repository IDs: {}", failedProfileIds);
+            return 1;
           }
         } else {
           // Export specific profile
@@ -559,16 +571,17 @@ public class JpWranglerCli implements Callable<Integer> {
       // Extract all paths (CREATE and UPDATE)
       PathExtractionResult pathResult = extractAllPaths(snapshot);
 
+      if (!pathResult.unsupportedActionPaths().isEmpty()) {
+        List<PathOutcome> unsupportedOutcomes = unsupportedActionOutcomes(pathResult.unsupportedActionPaths());
+        GenerationOutcome.GeneratorGap outcome =
+          (GenerationOutcome.GeneratorGap) unsupportedOutcomes.get(0).outcome();
+        writeReport(reportWriter, outputBase, snapshot, runTimestamp, outcome, unsupportedOutcomes, refData);
+        LOGGER.error("Generation outcome: {} - {}", outcome.label(), outcome.message());
+        return outcome.exitCode();
+      }
+
       if (pathResult.createPaths().isEmpty() && pathResult.updatePaths().isEmpty()
         && pathResult.deletePaths().isEmpty()) {
-        if (!pathResult.unsupportedActionPaths().isEmpty()) {
-          List<PathOutcome> unsupportedOutcomes = unsupportedActionOutcomes(pathResult.unsupportedActionPaths());
-          GenerationOutcome.GeneratorGap outcome =
-            (GenerationOutcome.GeneratorGap) unsupportedOutcomes.get(0).outcome();
-          writeReport(reportWriter, outputBase, snapshot, runTimestamp, outcome, unsupportedOutcomes, refData);
-          LOGGER.error("Generation outcome: {} - {}", outcome.label(), outcome.message());
-          return outcome.exitCode();
-        }
         GenerationOutcome.InvalidProfileShape outcome = new GenerationOutcome.InvalidProfileShape(
           "EMPTY_PATH", "No CREATE, UPDATE, or DELETE action paths found in job profile");
         writeReport(reportWriter, outputBase, snapshot, runTimestamp, outcome, List.of(), refData);
@@ -1400,7 +1413,7 @@ public class JpWranglerCli implements Callable<Integer> {
     EnrichType enrichType = EnrichType.INSTANCE_ID;
 
     @Option(names = {"--record-type"}, description = "Source record type for SOURCE_RECORD_ID enrichment")
-    String recordType = "MARC_BIBLIOGRAPHIC";
+    String recordType = "MARC_BIB";
 
     @Option(names = {"--skip-missing"}, description = "Skip records where instance is not found (default: fail)")
     boolean skipMissing = false;
@@ -1408,6 +1421,8 @@ public class JpWranglerCli implements Callable<Integer> {
     enum EnrichType { INSTANCE_ID, INSTANCE_HRID, SOURCE_RECORD_ID }
 
     private static final MarcFactory MARC_FACTORY = MarcFactory.newInstance();
+    private static final Set<String> SOURCE_RECORD_TYPES =
+      Set.of("MARC_BIB", "MARC_AUTHORITY", "MARC_HOLDING", "EDIFACT");
 
     @Override
     public Integer call() {
@@ -1435,6 +1450,11 @@ public class JpWranglerCli implements Callable<Integer> {
         EnrichFieldSpec enrichSpec = parseEnrichField(enrichField);
         if (enrichSpec == null) {
           LOGGER.error("Invalid enrich field format: {}. Expected format like '999ff$i' or '035$a'", enrichField);
+          return 1;
+        }
+        if (enrichType == EnrichType.SOURCE_RECORD_ID && !isValidSourceRecordType(recordType)) {
+          LOGGER.error("Invalid source record type for SOURCE_RECORD_ID enrichment: {}. Expected one of {}",
+            recordType, SOURCE_RECORD_TYPES);
           return 1;
         }
 
@@ -1631,6 +1651,8 @@ public class JpWranglerCli implements Callable<Integer> {
      * Enriches a MARC record by adding a field with the specified value.
      */
     private Record enrichRecord(Record original, String value, EnrichFieldSpec spec) {
+      removeExistingEnrichmentField(original, spec);
+
       // Create a new data field with the enrichment value
       DataField dataField = MARC_FACTORY.newDataField(spec.fieldTag, spec.indicator1, spec.indicator2);
       dataField.addSubfield(MARC_FACTORY.newSubfield(spec.subfieldCode, value));
@@ -1639,6 +1661,22 @@ public class JpWranglerCli implements Callable<Integer> {
       original.addVariableField(dataField);
 
       return original;
+    }
+
+    private boolean isValidSourceRecordType(String candidate) {
+      return SOURCE_RECORD_TYPES.contains(candidate);
+    }
+
+    private void removeExistingEnrichmentField(Record record, EnrichFieldSpec spec) {
+      List<VariableField> existingFields = new ArrayList<>(record.getVariableFields(spec.fieldTag));
+      for (VariableField field : existingFields) {
+        if (field instanceof DataField dataField
+          && dataField.getIndicator1() == spec.indicator1
+          && dataField.getIndicator2() == spec.indicator2
+          && dataField.getSubfield(spec.subfieldCode) != null) {
+          record.removeVariableField(dataField);
+        }
+      }
     }
 
     /**

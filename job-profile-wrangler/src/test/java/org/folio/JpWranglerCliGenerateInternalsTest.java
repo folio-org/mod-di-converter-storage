@@ -114,6 +114,42 @@ public class JpWranglerCliGenerateInternalsTest {
     assertTrue(result.deletePaths().get(0).path().getPathId().contains("DELETE_MARC_AUTHORITY"));
   }
 
+  @Test
+  public void extractionKeepsUnsupportedBranchesWhenSupportedBranchesExist() throws Exception {
+    Method method = JpWranglerCli.GenerateCommand.class.getDeclaredMethod("extractAllPaths", JsonNode.class);
+    method.setAccessible(true);
+    JsonNode snapshot = OBJECT_MAPPER.readTree("""
+      {
+        "contentType": "JOB_PROFILE",
+        "content": {"id": "job", "dataType": "MARC", "order": 0},
+        "childSnapshotWrappers": [
+          {
+            "contentType": "ACTION_PROFILE",
+            "content": {"id": "create", "action": "CREATE", "folioRecord": "INSTANCE", "order": 0},
+            "childSnapshotWrappers": [{
+              "contentType": "MAPPING_PROFILE",
+              "content": {"id": "map-create", "incomingRecordType": "MARC_BIBLIOGRAPHIC", "existingRecordType": "INSTANCE"}
+            }]
+          },
+          {
+            "contentType": "ACTION_PROFILE",
+            "content": {"id": "modify", "action": "MODIFY", "folioRecord": "MARC_BIBLIOGRAPHIC", "order": 1},
+            "childSnapshotWrappers": [{
+              "contentType": "MAPPING_PROFILE",
+              "content": {"id": "map-modify", "incomingRecordType": "MARC_BIBLIOGRAPHIC", "existingRecordType": "MARC_BIBLIOGRAPHIC"}
+            }]
+          }
+        ]
+      }
+      """);
+
+    PathExtractionResult result = (PathExtractionResult) method.invoke(new JpWranglerCli.GenerateCommand(), snapshot);
+
+    assertEquals(1, result.createPaths().size());
+    assertEquals(1, result.unsupportedActionPaths().size());
+    assertTrue(result.unsupportedActionPaths().get(0).path().getPathId().contains("MODIFY_MARC_BIBLIOGRAPHIC"));
+  }
+
   private CategorizedPath path(String pathId, ReactTo reactTo, MatchCriteria criteria) {
     List<Profile> profiles = List.of(
       new JobProfileNode("job", "MARC", 0),
