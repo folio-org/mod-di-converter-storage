@@ -2,15 +2,16 @@ package org.folio.hydration;
 
 import org.folio.rest.jaxrs.model.EntityType;
 import org.folio.rest.jaxrs.model.MatchDetail;
+import org.folio.rest.jaxrs.model.StaticValueDetails;
 import org.junit.Test;
 
 import java.util.List;
 
 import static org.folio.rest.jaxrs.model.MatchDetail.MatchCriterion.EXACTLY_MATCHES;
+import static org.folio.rest.jaxrs.model.MatchExpression.DataValueType.STATIC_VALUE;
 import static org.folio.rest.jaxrs.model.MatchExpression.DataValueType.VALUE_FROM_RECORD;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertTrue;
 
 public class MatchDetailsFactoryTest {
 
@@ -225,20 +226,70 @@ public class MatchDetailsFactoryTest {
   }
 
   @Test
-  public void shouldReturnEmptyListForStaticValue() {
+  public void shouldCreateGenericMatchDetailsForStaticValueToInstance() {
     List<MatchDetail> matchDetails = MatchDetailsFactory.createMatchDetailsForRecordTypes(
         "STATIC_VALUE", "INSTANCE");
 
     assertNotNull(matchDetails);
-    assertTrue(matchDetails.isEmpty());
+    assertEquals(1, matchDetails.size());
+
+    MatchDetail detail = matchDetails.get(0);
+    assertEquals(EntityType.STATIC_VALUE, detail.getIncomingRecordType());
+    assertEquals(EntityType.INSTANCE, detail.getExistingRecordType());
+    assertEquals(EXACTLY_MATCHES, detail.getMatchCriterion());
+    assertStaticValueExpression(detail, "false");
+    assertEquals("instance.discoverySuppress", detail.getExistingMatchExpression().getFields().get(0).getValue());
   }
 
   @Test
-  public void shouldReturnEmptyListForStaticValueWithAnyExistingType() {
-    // STATIC_VALUE should return empty list regardless of existing type
-    assertTrue(MatchDetailsFactory.createMatchDetailsForRecordTypes("STATIC_VALUE", "INSTANCE").isEmpty());
-    assertTrue(MatchDetailsFactory.createMatchDetailsForRecordTypes("STATIC_VALUE", "HOLDINGS").isEmpty());
-    assertTrue(MatchDetailsFactory.createMatchDetailsForRecordTypes("STATIC_VALUE", "ITEM").isEmpty());
-    assertTrue(MatchDetailsFactory.createMatchDetailsForRecordTypes("STATIC_VALUE", "MARC_BIBLIOGRAPHIC").isEmpty());
+  public void shouldCreateGenericMatchDetailsForStaticValueToHoldings() {
+    List<MatchDetail> matchDetails = MatchDetailsFactory.createMatchDetailsForRecordTypes(
+        "STATIC_VALUE", "HOLDINGS");
+
+    assertNotNull(matchDetails);
+    assertEquals(1, matchDetails.size());
+
+    MatchDetail detail = matchDetails.get(0);
+    assertEquals(EntityType.STATIC_VALUE, detail.getIncomingRecordType());
+    assertEquals(EntityType.HOLDINGS, detail.getExistingRecordType());
+    assertEquals(EXACTLY_MATCHES, detail.getMatchCriterion());
+    assertStaticValueExpression(detail, "false");
+    assertEquals("holdingsrecord.discoverySuppress", detail.getExistingMatchExpression().getFields().get(0).getValue());
+  }
+
+  @Test
+  public void shouldCreateGenericMatchDetailsForStaticValueToItem() {
+    List<MatchDetail> matchDetails = MatchDetailsFactory.createMatchDetailsForRecordTypes(
+        "STATIC_VALUE", "ITEM");
+
+    assertNotNull(matchDetails);
+    assertEquals(1, matchDetails.size());
+
+    MatchDetail detail = matchDetails.get(0);
+    assertEquals(EntityType.STATIC_VALUE, detail.getIncomingRecordType());
+    assertEquals(EntityType.ITEM, detail.getExistingRecordType());
+    assertEquals(EXACTLY_MATCHES, detail.getMatchCriterion());
+    assertStaticValueExpression(detail, "Available");
+    assertEquals("item.status.name", detail.getExistingMatchExpression().getFields().get(0).getValue());
+  }
+
+  @Test(expected = IllegalArgumentException.class)
+  public void shouldThrowExceptionForUnsupportedStaticValueExistingType() {
+    MatchDetailsFactory.createMatchDetailsForRecordTypes("STATIC_VALUE", "MARC_BIBLIOGRAPHIC");
+  }
+
+  private static void assertStaticValueExpression(MatchDetail detail, String expectedText) {
+    assertNotNull(detail.getIncomingMatchExpression());
+    assertEquals(STATIC_VALUE, detail.getIncomingMatchExpression().getDataValueType());
+    assertEquals(0, detail.getIncomingMatchExpression().getFields().size());
+    assertNotNull(detail.getIncomingMatchExpression().getStaticValueDetails());
+    assertEquals(StaticValueDetails.StaticValueType.TEXT,
+        detail.getIncomingMatchExpression().getStaticValueDetails().getStaticValueType());
+    assertEquals(expectedText, detail.getIncomingMatchExpression().getStaticValueDetails().getText());
+
+    assertNotNull(detail.getExistingMatchExpression());
+    assertEquals(VALUE_FROM_RECORD, detail.getExistingMatchExpression().getDataValueType());
+    assertEquals(1, detail.getExistingMatchExpression().getFields().size());
+    assertEquals("field", detail.getExistingMatchExpression().getFields().get(0).getLabel());
   }
 }

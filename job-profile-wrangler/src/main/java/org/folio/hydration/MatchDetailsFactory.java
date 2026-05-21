@@ -4,13 +4,16 @@ import org.folio.rest.jaxrs.model.EntityType;
 import org.folio.rest.jaxrs.model.Field;
 import org.folio.rest.jaxrs.model.MatchDetail;
 import org.folio.rest.jaxrs.model.MatchExpression;
+import org.folio.rest.jaxrs.model.StaticValueDetails;
 
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
 import static org.folio.rest.jaxrs.model.MatchDetail.MatchCriterion.EXACTLY_MATCHES;
+import static org.folio.rest.jaxrs.model.MatchExpression.DataValueType.STATIC_VALUE;
 import static org.folio.rest.jaxrs.model.MatchExpression.DataValueType.VALUE_FROM_RECORD;
+import static org.folio.rest.jaxrs.model.StaticValueDetails.StaticValueType.TEXT;
 
 /**
  * Factory for creating default matchDetails for different record type combinations.
@@ -79,7 +82,7 @@ public final class MatchDetailsFactory {
       case "MARC_BIBLIOGRAPHIC" -> createMarcBibMatchDetails(existingRecordType, systemControlNumberTypeId);
       case "MARC_HOLDINGS" -> createMarcHoldingsMatchDetails(existingRecordType);
       case "MARC_AUTHORITY" -> createMarcAuthorityMatchDetails(existingRecordType);
-      case "STATIC_VALUE" -> Collections.emptyList(); // Static values don't require match details
+      case "STATIC_VALUE" -> createStaticValueMatchDetails(existingRecordType);
       default -> throw new IllegalArgumentException(
           String.format("Unsupported incoming record type: %s", incomingRecordType));
     };
@@ -142,6 +145,39 @@ public final class MatchDetailsFactory {
           String.format("Unsupported existing record type '%s' for incoming type MARC_AUTHORITY",
               existingRecordType));
     };
+  }
+
+  private static List<MatchDetail> createStaticValueMatchDetails(String existingRecordType) {
+    return switch (existingRecordType) {
+      case "INSTANCE" -> List.of(createStaticValueMatchDetail(
+          EntityType.INSTANCE,
+          "false",
+          "instance.discoverySuppress"));
+      case "HOLDINGS" -> List.of(createStaticValueMatchDetail(
+          EntityType.HOLDINGS,
+          "false",
+          "holdingsrecord.discoverySuppress"));
+      case "ITEM" -> List.of(createStaticValueMatchDetail(
+          EntityType.ITEM,
+          "Available",
+          "item.status.name"));
+      default -> throw new IllegalArgumentException(
+          String.format("Unsupported existing record type '%s' for incoming type STATIC_VALUE",
+              existingRecordType));
+    };
+  }
+
+  private static MatchDetail createStaticValueMatchDetail(
+      EntityType existingRecordType,
+      String staticText,
+      String existingFieldPath) {
+
+    return new MatchDetail()
+        .withIncomingRecordType(EntityType.STATIC_VALUE)
+        .withExistingRecordType(existingRecordType)
+        .withIncomingMatchExpression(createStaticValueMatchExpression(staticText))
+        .withMatchCriterion(EXACTLY_MATCHES)
+        .withExistingMatchExpression(createExistingMatchExpression(existingFieldPath));
   }
 
   private static MatchDetail createMatchDetail(
@@ -277,6 +313,20 @@ public final class MatchDetailsFactory {
             new Field().withLabel("indicator1").withValue("f"),
             new Field().withLabel("indicator2").withValue("f"),
             new Field().withLabel("recordSubfield").withValue("s")));
+  }
+
+  /**
+   * Creates a generic static-value expression. The wrangler stores profile shape,
+   * so the exported value only needs to be syntactically valid for FOLIO import.
+   */
+  private static MatchExpression createStaticValueMatchExpression(String text) {
+    return new MatchExpression()
+        .withDataValueType(STATIC_VALUE)
+        .withFields(Collections.emptyList())
+        .withStaticValueDetails(new StaticValueDetails()
+            .withStaticValueType(TEXT)
+            .withText(text)
+            .withNumber(""));
   }
 
   /**
