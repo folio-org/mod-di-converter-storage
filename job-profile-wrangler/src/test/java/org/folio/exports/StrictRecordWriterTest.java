@@ -179,6 +179,53 @@ public class StrictRecordWriterTest {
   }
 
   @Test
+  public void modifyMarcBibliographicWritesFoundationAndImportRecords() throws IOException {
+    Path outputBase = temp.getRoot().toPath().resolve("records");
+    Path foundation = outputBase.resolveSibling("records-foundation.mrc");
+    Path importFile = outputBase.resolveSibling("records-import.mrc");
+
+    StrictRecordWriter.WriteResult result = new StrictRecordWriter().write(
+      new CategorizedPaths(List.of(), List.of(), List.of(categorized(path("MODIFY", "MARC_BIBLIOGRAPHIC"))), List.of()),
+      new MinimalMarcRecordBuilder.ReferenceDataContext(null, null, null),
+      outputBase);
+
+    assertEquals(GenerationOutcome.GENERATED, result.overallOutcome().label());
+    assertTrue(Files.exists(foundation));
+    assertTrue(Files.exists(importFile));
+    assertEquals(1, result.foundationRecords().size());
+    assertEquals(1, result.importRecords().size());
+    assertEquals(
+      result.foundationRecords().get(0).getControlNumber(),
+      result.importRecords().get(0).getControlNumber());
+  }
+
+  @Test
+  public void rootCreateSiblingsStayGroupedWhenProfileAlsoModifiesMarcBibliographic() throws IOException {
+    Path outputBase = temp.getRoot().toPath().resolve("records");
+
+    StrictRecordWriter.WriteResult result = new StrictRecordWriter().write(
+      new CategorizedPaths(
+        List.of(),
+        List.of(
+          categorized(path("CREATE", "INSTANCE")),
+          categorized(path("CREATE", "HOLDINGS")),
+          categorized(path("CREATE", "ITEM"))),
+        List.of(categorized(path("MODIFY", "MARC_BIBLIOGRAPHIC"))),
+        List.of()),
+      new MinimalMarcRecordBuilder.ReferenceDataContext("location-id", "material-type-id", "loan-type-id"),
+      outputBase);
+
+    assertEquals(GenerationOutcome.GENERATED, result.overallOutcome().label());
+    assertEquals(1, result.foundationRecords().size());
+    assertEquals(2, result.importRecords().size());
+    assertEquals(4, result.pathOutcomes().size());
+    assertHoldingsLocation(result.importRecords().get(0), "location-id");
+    assertItemFields(result.importRecords().get(0));
+    assertHoldingsLocation(result.importRecords().get(1), "location-id");
+    assertItemFields(result.importRecords().get(1));
+  }
+
+  @Test
   public void deleteMarcAuthorityWritesFoundationAndImportRecords() throws IOException {
     Path outputBase = temp.getRoot().toPath().resolve("records");
 
@@ -243,6 +290,14 @@ public class StrictRecordWriterTest {
     DataField field852 = (DataField) record.getVariableField("852");
     assertNotNull(field852);
     assertEquals(locationId, field852.getSubfield('b').getData());
+  }
+
+  private void assertItemFields(Record record) {
+    DataField field945 = (DataField) record.getVariableField("945");
+    assertNotNull(field945);
+    assertEquals("location-id", field945.getSubfield('h').getData());
+    assertEquals("material-type-id", field945.getSubfield('m').getData());
+    assertEquals("loan-type-id", field945.getSubfield('t').getData());
   }
 
   private JobProfilePath path(String action, String folioRecord) {

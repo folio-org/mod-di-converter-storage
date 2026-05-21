@@ -115,7 +115,7 @@ public class JpWranglerCliGenerateInternalsTest {
   }
 
   @Test
-  public void extractionKeepsUnsupportedBranchesWhenSupportedBranchesExist() throws Exception {
+  public void extractionTreatsModifyMarcBibliographicAsUpdateLike() throws Exception {
     Method method = JpWranglerCli.GenerateCommand.class.getDeclaredMethod("extractAllPaths", JsonNode.class);
     method.setAccessible(true);
     JsonNode snapshot = OBJECT_MAPPER.readTree("""
@@ -146,8 +146,36 @@ public class JpWranglerCliGenerateInternalsTest {
     PathExtractionResult result = (PathExtractionResult) method.invoke(new JpWranglerCli.GenerateCommand(), snapshot);
 
     assertEquals(1, result.createPaths().size());
+    assertEquals(1, result.updatePaths().size());
+    assertTrue(result.unsupportedActionPaths().isEmpty());
+    assertTrue(result.updatePaths().get(0).path().getPathId().contains("MODIFY_MARC_BIBLIOGRAPHIC"));
+  }
+
+  @Test
+  public void extractionKeepsUnsupportedModifyForOtherRecordTypes() throws Exception {
+    Method method = JpWranglerCli.GenerateCommand.class.getDeclaredMethod("extractAllPaths", JsonNode.class);
+    method.setAccessible(true);
+    JsonNode snapshot = OBJECT_MAPPER.readTree("""
+      {
+        "contentType": "JOB_PROFILE",
+        "content": {"id": "job", "dataType": "MARC", "order": 0},
+        "childSnapshotWrappers": [{
+          "contentType": "ACTION_PROFILE",
+          "content": {"id": "modify", "action": "MODIFY", "folioRecord": "INSTANCE", "order": 0},
+          "childSnapshotWrappers": [{
+            "contentType": "MAPPING_PROFILE",
+            "content": {"id": "map-modify", "incomingRecordType": "MARC_BIBLIOGRAPHIC", "existingRecordType": "INSTANCE"}
+          }]
+        }]
+      }
+      """);
+
+    PathExtractionResult result = (PathExtractionResult) method.invoke(new JpWranglerCli.GenerateCommand(), snapshot);
+
+    assertTrue(result.createPaths().isEmpty());
+    assertTrue(result.updatePaths().isEmpty());
     assertEquals(1, result.unsupportedActionPaths().size());
-    assertTrue(result.unsupportedActionPaths().get(0).path().getPathId().contains("MODIFY_MARC_BIBLIOGRAPHIC"));
+    assertTrue(result.unsupportedActionPaths().get(0).path().getPathId().contains("MODIFY_INSTANCE"));
   }
 
   private CategorizedPath path(String pathId, ReactTo reactTo, MatchCriteria criteria) {

@@ -853,10 +853,11 @@ public class JpWranglerCli implements Callable<Integer> {
             if (verbose) {
               LOGGER.info("Found CREATE path (reactTo: {}): {}", currentReactTo, path.getPathId());
             }
-          } else if ("UPDATE".equals(action.action())) {
+          } else if (isUpdateLikeAction(action)) {
             updatePaths.add(categorizedPath);
             if (verbose) {
-              LOGGER.info("Found UPDATE path (reactTo: {}): {}", currentReactTo, path.getPathId());
+              LOGGER.info("Found update-like path ({} {}, reactTo: {}): {}",
+                action.action(), action.folioRecord(), currentReactTo, path.getPathId());
             }
           } else if ("DELETE".equals(action.action()) && "MARC_AUTHORITY".equals(action.folioRecord())) {
             deletePaths.add(categorizedPath);
@@ -872,6 +873,11 @@ public class JpWranglerCli implements Callable<Integer> {
           }
         }
       }
+    }
+
+    private boolean isUpdateLikeAction(ActionProfileNode action) {
+      return "UPDATE".equals(action.action())
+        || ("MODIFY".equals(action.action()) && "MARC_BIBLIOGRAPHIC".equals(action.folioRecord()));
     }
 
     private List<PathOutcome> unsupportedActionOutcomes(List<CategorizedPath> unsupportedPaths) {

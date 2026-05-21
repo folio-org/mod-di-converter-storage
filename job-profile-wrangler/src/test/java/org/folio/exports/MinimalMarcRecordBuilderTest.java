@@ -5,11 +5,13 @@ import org.folio.graph.nodes.JobProfileNode;
 import org.folio.graph.nodes.MappingProfileNode;
 import org.folio.graph.nodes.Profile;
 import org.junit.Test;
+import org.marc4j.marc.DataField;
 
 import java.util.List;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 public class MinimalMarcRecordBuilderTest {
@@ -91,13 +93,30 @@ public class MinimalMarcRecordBuilderTest {
   }
 
   @Test
-  public void marcBibliographicModifyPathRemainsUnsupported() {
+  public void marcBibliographicModifyPathBuildsFoundationAndUpdateRecord() {
+    JobProfilePath marcBibModifyPath = path("MODIFY", "MARC_BIBLIOGRAPHIC");
+
+    MinimalMarcRecordBuilder.BuildResult base =
+      MinimalMarcRecordBuilder.buildRecordForPath(marcBibModifyPath, 1, null, null);
+    MinimalMarcRecordBuilder.BuildResult update =
+      MinimalMarcRecordBuilder.buildUpdateRecordFromBase(base.record(), marcBibModifyPath, 2, null, null, null);
+
+    assertNotNull(base.record());
+    assertNotNull(update.record());
+    assertEquals(base.record().getControlNumber(), update.record().getControlNumber());
+    assertNotNull(update.record().getVariableField("500"));
+    DataField title = (DataField) update.record().getVariableField("245");
+    assertTrue(title.getSubfield('a').getData().contains("MODIFY MARC_BIBLIOGRAPHIC"));
+  }
+
+  @Test
+  public void inventoryModifyPathRemainsUnsupported() {
     try {
-      MinimalMarcRecordBuilder.buildRecordForPath(path("MODIFY", "MARC_BIBLIOGRAPHIC"), 1, null, null);
+      MinimalMarcRecordBuilder.buildRecordForPath(path("MODIFY", "INSTANCE"), 1, null, null);
       fail("Expected GeneratorGapException");
     } catch (GeneratorGapException e) {
       assertEquals(GeneratorGapException.Reason.UNSUPPORTED_ACTION, e.reason());
-      assertEquals("MODIFY MARC_BIBLIOGRAPHIC", e.detail());
+      assertEquals("MODIFY INSTANCE", e.detail());
     }
   }
 

@@ -199,7 +199,20 @@ public class StrictRecordWriter {
           importRecords, refData, importFile);
       }
     } else {
-      for (CategorizedPath createPath : directCreate) {
+      List<CategorizedPath> rootCreatePaths = directCreate.stream()
+        .filter(path -> path.reactTo() == ReactTo.NONE)
+        .toList();
+      for (List<CategorizedPath> siblingPaths : groupPathsByParentProfile(rootCreatePaths).values()) {
+        if (siblingPaths.isEmpty()) {
+          continue;
+        }
+        attemptCreateOnlyGroup(siblingPaths, pathIndex, outcomes, hasGap, firstGap, recordNumber,
+          importRecords, refData, importFile);
+      }
+
+      for (CategorizedPath createPath : directCreate.stream()
+          .filter(path -> path.reactTo() != ReactTo.NONE)
+          .toList()) {
         attemptPath(createPath, pathIndex[0]++, List.of(destination(importFile, "import")),
             outcomes, hasGap, firstGap, foundationRecords, importRecords, () -> {
           Set<String> prerequisites = getBranchPrerequisiteEntities(createPath, allCreatePaths);
@@ -215,6 +228,9 @@ public class StrictRecordWriter {
           destination(importFile, "import")), outcomes, hasGap, firstGap, foundationRecords, importRecords, () -> {
         MatchCriteria matchCriteria = updatePath.matchCriteria();
         Set<String> branchPrerequisites = getBranchPrerequisiteEntities(updatePath, allCreatePaths);
+        if (updatePath.reactTo() == ReactTo.NONE) {
+          branchPrerequisites.addAll(getJobCreateEntities(allCreatePaths));
+        }
         MinimalMarcRecordBuilder.BuildResult foundation = MinimalMarcRecordBuilder.buildRecordForPathWithPrerequisites(
           updatePath.path(), ++recordNumber[0], null, refData, matchCriteria, branchPrerequisites);
         foundationRecords.add(foundation.record());
@@ -334,6 +350,18 @@ public class StrictRecordWriter {
 
   private Set<String> getPrerequisiteEntities(String targetEntity) {
     return ENTITY_PREREQUISITES.getOrDefault(targetEntity, Set.of());
+  }
+
+  private Set<String> getJobCreateEntities(List<CategorizedPath> createPaths) {
+    Set<String> entities = new HashSet<>();
+    for (CategorizedPath createPath : createPaths) {
+      String targetEntity = getTargetEntityFromPath(createPath.path());
+      entities.addAll(getPrerequisiteEntities(targetEntity));
+      if ("HOLDINGS".equals(targetEntity) || "ITEM".equals(targetEntity)) {
+        entities.add(targetEntity);
+      }
+    }
+    return entities;
   }
 
   private List<CategorizedPath> allCreatePaths(CategorizedPaths paths) {
