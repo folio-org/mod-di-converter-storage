@@ -386,6 +386,55 @@ public final class MappingDetailsFactory {
       .withMarcMappingDetails(Collections.emptyList());
   }
 
+  public static MappingDetail createMarcAuthorityMappingDetails() {
+    return new MappingDetail()
+      .withName("marcAuthority")
+      .withRecordType(EntityType.MARC_AUTHORITY)
+      .withMappingFields(Collections.emptyList())
+      .withMarcMappingDetails(Collections.emptyList());
+  }
+
+  public static MappingDetail createMarcAuthorityUpdateMappingDetails() {
+    return createMarcAuthorityMappingDetails()
+      .withMarcMappingOption(MappingDetail.MarcMappingOption.UPDATE);
+  }
+
+  /**
+   * Creates default mappingDetails for AUTHORITY record type.
+   * Field list mirrors the data-import authority mapping shape used by mod-entities-links.
+   * The fields are disabled because authority values are derived by the MARC authority mapper.
+   */
+  public static MappingDetail createAuthorityMappingDetails() {
+    return new MappingDetail()
+      .withName("authority")
+      .withRecordType(EntityType.AUTHORITY)
+      .withMappingFields(Arrays.asList(
+        createField("personalName", "authority.personalName", false),
+        createField("sftPersonalName", "authority.sftPersonalName[]", false),
+        createField("saftPersonalName", "authority.saftPersonalName[]", false),
+        createField("corporateName", "authority.corporateName", false),
+        createField("sftCorporateName", "authority.sftCorporateName[]", false),
+        createField("saftCorporateName", "authority.saftCorporateName[]", false),
+        createField("meetingName", "authority.meetingName[]", false),
+        createField("sftMeetingName", "authority.sftMeetingName[]", false),
+        createField("saftMeetingName", "authority.saftMeetingName[]", false),
+        createField("uniformTitle", "authority.uniformTitle", false),
+        createField("sftUniformTitle", "authority.sftUniformTitle[]", false),
+        createField("saftUniformTitle", "authority.saftUniformTitle[]", false),
+        createField("topicalTerm", "authority.topicalTerm", false),
+        createField("sftTopicalTerm", "authority.sftTopicalTerm[]", false),
+        createField("saftTopicalTerm", "authority.saftTopicalTerm[]", false),
+        createField("subjectHeadings", "authority.subjectHeadings", false),
+        createField("geographicName", "authority.geographicName", false),
+        createField("sftGeographicTerm", "authority.sftGeographicTerm[]", false),
+        createField("saftGeographicTerm", "authority.saftGeographicTerm[]", false),
+        createField("genre", "authority.genre", false),
+        createField("identifiers", "authority.identifiers[]", false),
+        createField("notes", "authority.notes[]", false)
+      ))
+      .withMarcMappingDetails(Collections.emptyList());
+  }
+
   /**
    * Returns the appropriate MappingDetail for the given existing record type.
    *
@@ -400,7 +449,9 @@ public final class MappingDetailsFactory {
       case "INSTANCE" -> createInstanceMappingDetails();
       case "HOLDINGS" -> createHoldingsMappingDetails();
       case "ITEM" -> createItemMappingDetails();
+      case "AUTHORITY" -> createAuthorityMappingDetails();
       case "MARC_BIBLIOGRAPHIC" -> createMarcBibliographicMappingDetails();
+      case "MARC_AUTHORITY" -> createMarcAuthorityMappingDetails();
       default -> null;
     };
   }

@@ -259,6 +259,9 @@ public class ProfileHydration {
     if (isMarcBibUpdateMapping(graph, mappingProfileNode, existingRecordType)) {
       return MappingDetailsFactory.createMarcBibliographicUpdateMappingDetails();
     }
+    if (isMarcAuthorityUpdateMapping(graph, mappingProfileNode, existingRecordType)) {
+      return MappingDetailsFactory.createMarcAuthorityUpdateMappingDetails();
+    }
     return MappingDetailsFactory.createMappingDetailsForRecordType(existingRecordType);
   }
 
@@ -275,6 +278,21 @@ public class ProfileHydration {
       .map(ActionProfileNode.class::cast)
       .anyMatch(action -> ActionProfile.Action.UPDATE.toString().equals(action.action())
         && ActionProfile.FolioRecord.MARC_BIBLIOGRAPHIC.toString().equals(action.folioRecord()));
+  }
+
+  private boolean isMarcAuthorityUpdateMapping(
+      Graph<Profile, RegularEdge> graph,
+      MappingProfileNode mappingProfileNode,
+      String existingRecordType) {
+    if (!EntityType.MARC_AUTHORITY.toString().equals(existingRecordType)) {
+      return false;
+    }
+    return graph.incomingEdgesOf(mappingProfileNode).stream()
+      .map(edge -> (Profile) edge.getSource())
+      .filter(ActionProfileNode.class::isInstance)
+      .map(ActionProfileNode.class::cast)
+      .anyMatch(action -> ActionProfile.Action.UPDATE.toString().equals(action.action())
+        && ActionProfile.FolioRecord.MARC_AUTHORITY.toString().equals(action.folioRecord()));
   }
 
   /**

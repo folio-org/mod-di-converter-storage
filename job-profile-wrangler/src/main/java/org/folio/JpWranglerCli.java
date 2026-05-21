@@ -559,7 +559,8 @@ public class JpWranglerCli implements Callable<Integer> {
       // Extract all paths (CREATE and UPDATE)
       PathExtractionResult pathResult = extractAllPaths(snapshot);
 
-      if (pathResult.createPaths().isEmpty() && pathResult.updatePaths().isEmpty()) {
+      if (pathResult.createPaths().isEmpty() && pathResult.updatePaths().isEmpty()
+        && pathResult.deletePaths().isEmpty()) {
         if (!pathResult.unsupportedActionPaths().isEmpty()) {
           List<PathOutcome> unsupportedOutcomes = unsupportedActionOutcomes(pathResult.unsupportedActionPaths());
           GenerationOutcome.GeneratorGap outcome =
@@ -569,15 +570,15 @@ public class JpWranglerCli implements Callable<Integer> {
           return outcome.exitCode();
         }
         GenerationOutcome.InvalidProfileShape outcome = new GenerationOutcome.InvalidProfileShape(
-          "EMPTY_PATH", "No CREATE or UPDATE action paths found in job profile");
+          "EMPTY_PATH", "No CREATE, UPDATE, or DELETE action paths found in job profile");
         writeReport(reportWriter, outputBase, snapshot, runTimestamp, outcome, List.of(), refData);
         LOGGER.warn("No CREATE or UPDATE action paths found in job profile");
         LOGGER.error("Generation outcome: {} - EMPTY_PATH", GenerationOutcome.INVALID_PROFILE_SHAPE);
         return outcome.exitCode();
       }
 
-      LOGGER.info("Found {} CREATE path(s) and {} UPDATE path(s) in job profile",
-        pathResult.createPaths().size(), pathResult.updatePaths().size());
+      LOGGER.info("Found {} CREATE path(s), {} UPDATE path(s), and {} DELETE path(s) in job profile",
+        pathResult.createPaths().size(), pathResult.updatePaths().size(), pathResult.deletePaths().size());
 
       // Categorize paths into paired and unpaired
       CategorizedPaths categorized = categorizePaths(pathResult);
@@ -736,7 +737,7 @@ public class JpWranglerCli implements Callable<Integer> {
         .filter(p -> !pairedUpdatePaths.contains(p))
         .toList();
 
-      return new CategorizedPaths(pairs, unpairedCreate, unpairedUpdate);
+      return new CategorizedPaths(pairs, unpairedCreate, unpairedUpdate, pathResult.deletePaths());
     }
 
 
@@ -747,12 +748,13 @@ public class JpWranglerCli implements Callable<Integer> {
     private PathExtractionResult extractAllPaths(JsonNode snapshot) {
       List<CategorizedPath> createPaths = new ArrayList<>();
       List<CategorizedPath> updatePaths = new ArrayList<>();
+      List<CategorizedPath> deletePaths = new ArrayList<>();
       List<CategorizedPath> unsupportedActionPaths = new ArrayList<>();
 
       extractPathsWithOutcome(snapshot, new ArrayList<>(), ReactTo.NONE, null, MatchCriteria.empty(),
-        createPaths, updatePaths, unsupportedActionPaths);
+        createPaths, updatePaths, deletePaths, unsupportedActionPaths);
 
-      return new PathExtractionResult(createPaths, updatePaths, unsupportedActionPaths);
+      return new PathExtractionResult(createPaths, updatePaths, deletePaths, unsupportedActionPaths);
     }
 
     /**
@@ -767,6 +769,7 @@ public class JpWranglerCli implements Callable<Integer> {
         MatchCriteria currentMatchCriteria,
         List<CategorizedPath> createPaths,
         List<CategorizedPath> updatePaths,
+        List<CategorizedPath> deletePaths,
         List<CategorizedPath> unsupportedActionPaths) {
 
       String contentType = node.path("contentType").asText();
@@ -818,7 +821,7 @@ public class JpWranglerCli implements Callable<Integer> {
           }
 
           extractPathsWithOutcome(child, new ArrayList<>(currentPath), childReactTo, currentMatchProfileId,
-            currentMatchCriteria, createPaths, updatePaths, unsupportedActionPaths);
+            currentMatchCriteria, createPaths, updatePaths, deletePaths, unsupportedActionPaths);
         }
       } else {
         // Leaf node - categorize by action type
@@ -841,6 +844,11 @@ public class JpWranglerCli implements Callable<Integer> {
             updatePaths.add(categorizedPath);
             if (verbose) {
               LOGGER.info("Found UPDATE path (reactTo: {}): {}", currentReactTo, path.getPathId());
+            }
+          } else if ("DELETE".equals(action.action()) && "MARC_AUTHORITY".equals(action.folioRecord())) {
+            deletePaths.add(categorizedPath);
+            if (verbose) {
+              LOGGER.info("Found DELETE MARC_AUTHORITY path (reactTo: {}): {}", currentReactTo, path.getPathId());
             }
           } else {
             unsupportedActionPaths.add(categorizedPath);
@@ -935,7 +943,7 @@ public class JpWranglerCli implements Callable<Integer> {
           JsonNode existingFields = existingExpr.path("fields");
           if (existingFields.isArray() && !existingFields.isEmpty()) {
             String existingField = extractExistingFieldPath(existingFields);
-            if (existingField != null && !existingField.startsWith("marc")) {
+            if (existingField != null && !existingField.startsWith("marc") && !looksLikeMarcField(existingField)) {
               // This is a non-MARC match (e.g., instance.hrid, instance.id)
               // Extract the target MARC field from incoming expression for enrichment
               JsonNode incomingFields = incomingExpr.path("fields");
@@ -961,6 +969,10 @@ public class JpWranglerCli implements Callable<Integer> {
       }
 
       return new MatchCriteria(matchProfileId, matchFields, nonMarcMatches);
+    }
+
+    private boolean looksLikeMarcField(String field) {
+      return field != null && field.matches("\\d{3}([$.].*)?");
     }
 
     /**
@@ -1384,13 +1396,16 @@ public class JpWranglerCli implements Callable<Integer> {
     @Option(names = {"--enrich-field"}, description = "MARC field to add with instance identifier (e.g., 999ff$i)", required = true)
     String enrichField;
 
-    @Option(names = {"--enrich-type"}, description = "Type of value to enrich with: INSTANCE_ID or INSTANCE_HRID")
+    @Option(names = {"--enrich-type"}, description = "Type of value to enrich with: INSTANCE_ID, INSTANCE_HRID, or SOURCE_RECORD_ID")
     EnrichType enrichType = EnrichType.INSTANCE_ID;
+
+    @Option(names = {"--record-type"}, description = "Source record type for SOURCE_RECORD_ID enrichment")
+    String recordType = "MARC_BIBLIOGRAPHIC";
 
     @Option(names = {"--skip-missing"}, description = "Skip records where instance is not found (default: fail)")
     boolean skipMissing = false;
 
-    enum EnrichType { INSTANCE_ID, INSTANCE_HRID }
+    enum EnrichType { INSTANCE_ID, INSTANCE_HRID, SOURCE_RECORD_ID }
 
     private static final MarcFactory MARC_FACTORY = MarcFactory.newInstance();
 
@@ -1453,27 +1468,26 @@ public class JpWranglerCli implements Callable<Integer> {
               }
             }
 
-            // Look up instance in FOLIO
-            Optional<JsonNode> instanceOpt = lookupInstance(client, lookupValue, matchField);
+            Optional<JsonNode> recordOpt = lookupRecord(client, lookupValue, matchField, enrichType);
 
-            if (instanceOpt.isEmpty()) {
-              LOGGER.warn("Instance not found for {} = '{}'", matchField, lookupValue);
+            if (recordOpt.isEmpty()) {
+              LOGGER.warn("Lookup target not found for {} = '{}'", matchField, lookupValue);
               if (skipMissing) {
                 enrichedRecords.add(record);
                 skippedCount++;
                 continue;
               } else {
-                LOGGER.error("Instance not found. Use --skip-missing to continue without this record.");
+                LOGGER.error("Lookup target not found. Use --skip-missing to continue without this record.");
                 return 1;
               }
             }
 
-            JsonNode instance = instanceOpt.get();
+            JsonNode lookupRecord = recordOpt.get();
 
             // Extract the enrichment value
-            String enrichValue = extractEnrichValue(instance, enrichType);
+            String enrichValue = extractEnrichValue(lookupRecord, enrichType);
             if (enrichValue == null) {
-              LOGGER.warn("Could not extract {} from instance", enrichType);
+              LOGGER.warn("Could not extract {} from lookup target", enrichType);
               if (skipMissing) {
                 enrichedRecords.add(record);
                 skippedCount++;
@@ -1586,7 +1600,13 @@ public class JpWranglerCli implements Callable<Integer> {
     /**
      * Looks up an instance in FOLIO based on the match field.
      */
-    private Optional<JsonNode> lookupInstance(FolioClient client, String value, String matchField) {
+    private Optional<JsonNode> lookupRecord(FolioClient client, String value, String matchField, EnrichType enrichType) {
+      if (enrichType == EnrichType.SOURCE_RECORD_ID) {
+        if (!"001".equals(matchField)) {
+          LOGGER.warn("SOURCE_RECORD_ID enrichment currently looks up source records by 001; requested {}", matchField);
+        }
+        return client.findSourceRecordByMarcControlNumber(recordType, value);
+      }
       if ("001".equals(matchField)) {
         // 001 typically maps to HRID
         return client.findInstanceByHrid(value);
@@ -1603,6 +1623,7 @@ public class JpWranglerCli implements Callable<Integer> {
       return switch (type) {
         case INSTANCE_ID -> instance.path("id").asText(null);
         case INSTANCE_HRID -> instance.path("hrid").asText(null);
+        case SOURCE_RECORD_ID -> instance.path("recordId").asText(instance.path("id").asText(null));
       };
     }
 

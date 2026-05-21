@@ -615,6 +615,73 @@ public class FolioClient {
     }
   }
 
+  /**
+   * Finds a source-storage record by MARC 001 control number.
+   *
+   * <p>This intentionally scans a bounded page of source records because SRS does not expose
+   * a simple portable "parsed MARC 001 equals" endpoint through Okapi. It is primarily used
+   * by the wrangler enrichment step after importing freshly generated foundation records.
+   */
+  public Optional<JsonNode> findSourceRecordByMarcControlNumber(String recordType, String controlNumber) {
+    HttpUrl url = baseUrlBuilderSupplier.get()
+      .addPathSegments("source-storage/source-records")
+      .addQueryParameter("recordType", recordType)
+      .addQueryParameter("limit", "1000")
+      .build();
+
+    Request request = addFolioHeaders(new Request.Builder()
+      .url(url))
+      .get()
+      .build();
+
+    try (Response response = httpClient.newCall(request).execute()) {
+      if (!response.isSuccessful()) {
+        LOGGER.warn("Failed to find source record by MARC 001: {} - Status: {}", controlNumber, response.code());
+        return Optional.empty();
+      }
+      if (response.body() == null) {
+        return Optional.empty();
+      }
+      String result = response.body().string();
+      JsonNode jsonNode = OBJECT_MAPPER.readTree(result);
+      JsonNode sourceRecords = jsonNode.path("sourceRecords");
+      if (!sourceRecords.isArray()) {
+        return Optional.empty();
+      }
+      for (JsonNode sourceRecord : sourceRecords) {
+        JsonNode parsedContent = sourceRecord.path("parsedRecord").path("content");
+        if (parsedContent.isObject() && controlNumber.equals(extractMarcJsonControlNumber(parsedContent))) {
+          return Optional.of(sourceRecord);
+        }
+        if (parsedContent.isTextual() && controlNumber.equals(extractMarcJsonControlNumber(parsedContent.asText()))) {
+          return Optional.of(sourceRecord);
+        }
+      }
+      return Optional.empty();
+    } catch (IOException e) {
+      LOGGER.error("Failed to find source record by MARC 001: {}", controlNumber, e);
+      return Optional.empty();
+    }
+  }
+
+  private String extractMarcJsonControlNumber(String parsedContent) throws IOException {
+    return extractMarcJsonControlNumber(OBJECT_MAPPER.readTree(parsedContent));
+  }
+
+  private String extractMarcJsonControlNumber(JsonNode content) {
+    JsonNode fields = content.path("fields");
+    if (!fields.isArray()) {
+      return null;
+    }
+    for (JsonNode field : fields) {
+      JsonNode control001 = field.get("001");
+      if (control001 != null && control001.isTextual()) {
+        return control001.asText();
+      }
+    }
+    return null;
+  }
+
   public static Optional<String> getOkapiToken(OkHttpClient httpClient, HttpUrl.Builder baseUrlBuilder, String tenantId, String username, String password) {
     HttpUrl url = baseUrlBuilder
       .addPathSegments("authn/login-with-expiry")

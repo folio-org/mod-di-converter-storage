@@ -34,20 +34,23 @@ public class MissingMarcMappingOptionRule implements UnsupportedShapeRule {
 
   @Override
   public Optional<BlockedUnsupportedWorkflow> evaluate(JsonNode snapshot) {
-    if (hasMissingMarcMappingOption(snapshot)) {
+    if (hasMissingMarcMappingOption(snapshot, false)) {
       return Optional.of(new BlockedUnsupportedWorkflow(RULE_NAME, MESSAGE));
     }
     return Optional.empty();
   }
 
-  private boolean hasMissingMarcMappingOption(JsonNode node) {
+  private boolean hasMissingMarcMappingOption(JsonNode node, boolean underDeleteMarcAuthority) {
     if (node == null || node.isMissingNode() || node.isNull()) {
       return false;
     }
 
+    boolean currentUnderDeleteMarcAuthority = underDeleteMarcAuthority || isDeleteMarcAuthorityAction(node);
+
     if ("MAPPING_PROFILE".equals(text(node, "contentType", "profileType"))) {
       JsonNode mappingDetails = node.path("content").path("mappingDetails");
-      if (mappingDetails.isObject() && isMarcRecord(mappingDetails, node.path("content"))
+      if (!currentUnderDeleteMarcAuthority
+        && mappingDetails.isObject() && isMarcRecord(mappingDetails, node.path("content"))
         && text(mappingDetails, "marcMappingOption").isBlank()) {
         return true;
       }
@@ -59,11 +62,20 @@ public class MissingMarcMappingOptionRule implements UnsupportedShapeRule {
     }
 
     for (JsonNode child : children) {
-      if (hasMissingMarcMappingOption(child)) {
+      if (hasMissingMarcMappingOption(child, currentUnderDeleteMarcAuthority)) {
         return true;
       }
     }
     return false;
+  }
+
+  private boolean isDeleteMarcAuthorityAction(JsonNode node) {
+    if (!"ACTION_PROFILE".equals(text(node, "contentType", "profileType"))) {
+      return false;
+    }
+    JsonNode content = node.path("content");
+    return "DELETE".equals(text(content, "action"))
+      && "MARC_AUTHORITY".equals(text(content, "folioRecord"));
   }
 
   private boolean isMarcRecord(JsonNode mappingDetails, JsonNode content) {

@@ -21,7 +21,7 @@ public class JobProfileAnalyzer {
   private static final Logger LOGGER = LogManager.getLogger(JobProfileAnalyzer.class);
 
   private static final Set<String> VALID_FOLIO_RECORD_TYPES = Set.of(
-    "INSTANCE", "HOLDINGS", "ITEM", "MARC_BIBLIOGRAPHIC", "MARC_AUTHORITY", "MARC_HOLDINGS"
+    "INSTANCE", "HOLDINGS", "ITEM", "AUTHORITY", "MARC_BIBLIOGRAPHIC", "MARC_AUTHORITY", "MARC_HOLDINGS"
   );
 
   private static final Set<String> CREATE_UPDATE_ACTIONS = Set.of("CREATE", "UPDATE", "MODIFY", "DELETE");

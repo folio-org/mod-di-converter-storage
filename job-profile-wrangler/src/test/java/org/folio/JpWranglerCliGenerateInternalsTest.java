@@ -51,7 +51,8 @@ public class JpWranglerCliGenerateInternalsTest {
     CategorizedPaths categorized = new CategorizedPaths(
       List.of(new MatchedPathPair(create, update, "match-1")),
       List.of(create),
-      List.of(update)
+      List.of(update),
+      List.of()
     );
 
     List<CategorizedPath> ordered = new StrictRecordWriter().pathOrder(categorized);
@@ -64,7 +65,7 @@ public class JpWranglerCliGenerateInternalsTest {
   }
 
   @Test
-  public void extractionKeepsUnsupportedActionPathsSeparateFromEmptyProfiles() throws Exception {
+  public void extractionRecognizesAuthorityDeletePaths() throws Exception {
     Method method = JpWranglerCli.GenerateCommand.class.getDeclaredMethod("extractAllPaths", JsonNode.class);
     method.setAccessible(true);
     JsonNode snapshot = OBJECT_MAPPER.readTree("""
@@ -107,9 +108,10 @@ public class JpWranglerCliGenerateInternalsTest {
 
     assertTrue(result.createPaths().isEmpty());
     assertTrue(result.updatePaths().isEmpty());
-    assertEquals(1, result.unsupportedActionPaths().size());
-    assertEquals(ReactTo.MATCH, result.unsupportedActionPaths().get(0).reactTo());
-    assertTrue(result.unsupportedActionPaths().get(0).path().getPathId().contains("DELETE_MARC_AUTHORITY"));
+    assertTrue(result.unsupportedActionPaths().isEmpty());
+    assertEquals(1, result.deletePaths().size());
+    assertEquals(ReactTo.MATCH, result.deletePaths().get(0).reactTo());
+    assertTrue(result.deletePaths().get(0).path().getPathId().contains("DELETE_MARC_AUTHORITY"));
   }
 
   private CategorizedPath path(String pathId, ReactTo reactTo, MatchCriteria criteria) {

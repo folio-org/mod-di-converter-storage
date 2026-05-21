@@ -99,7 +99,9 @@ public class StrictRecordWriter {
 
   public List<CategorizedPath> pathOrder(CategorizedPaths paths) {
     List<CategorizedPath> ordered = new ArrayList<>();
-    boolean isCreateOnlyProfile = paths.pairedPaths().isEmpty() && paths.unpairedUpdatePaths().isEmpty();
+    boolean isCreateOnlyProfile = paths.pairedPaths().isEmpty()
+      && paths.unpairedUpdatePaths().isEmpty()
+      && paths.deletePaths().isEmpty();
 
     for (MatchedPathPair pair : paths.pairedPaths()) {
       ordered.add(pair.updatePath());
@@ -120,6 +122,7 @@ public class StrictRecordWriter {
       ordered.addAll(directCreate);
     }
     ordered.addAll(paths.unpairedUpdatePaths());
+    ordered.addAll(paths.deletePaths());
     return ordered;
   }
 
@@ -135,7 +138,9 @@ public class StrictRecordWriter {
     int[] pathIndex = {0};
     boolean[] hasGap = {false};
     GenerationOutcome.GeneratorGap[] firstGap = {null};
-    boolean isCreateOnlyProfile = paths.pairedPaths().isEmpty() && paths.unpairedUpdatePaths().isEmpty();
+    boolean isCreateOnlyProfile = paths.pairedPaths().isEmpty()
+      && paths.unpairedUpdatePaths().isEmpty()
+      && paths.deletePaths().isEmpty();
 
     for (MatchedPathPair pair : paths.pairedPaths()) {
       attemptPath(pair.updatePath(), pathIndex[0]++, List.of(destination(foundationFile, "foundation"),
@@ -208,6 +213,19 @@ public class StrictRecordWriter {
         MinimalMarcRecordBuilder.BuildResult update = MinimalMarcRecordBuilder.buildUpdateRecordFromBase(
           foundation.record(), updatePath.path(), ++recordNumber[0], null, refData, matchCriteria);
         importRecords.add(update.record());
+      });
+    }
+
+    for (CategorizedPath deletePath : paths.deletePaths()) {
+      attemptPath(deletePath, pathIndex[0]++, List.of(destination(foundationFile, "foundation"),
+          destination(importFile, "import")), outcomes, hasGap, firstGap, foundationRecords, importRecords, () -> {
+        MatchCriteria matchCriteria = deletePath.matchCriteria();
+        MinimalMarcRecordBuilder.BuildResult foundation = MinimalMarcRecordBuilder.buildRecordForPath(
+          deletePath.path(), ++recordNumber[0], null, refData, null);
+        foundationRecords.add(foundation.record());
+        MinimalMarcRecordBuilder.BuildResult delete = MinimalMarcRecordBuilder.buildDeleteRecordFromBase(
+          foundation.record(), deletePath.path(), ++recordNumber[0], null, refData, matchCriteria);
+        importRecords.add(delete.record());
       });
     }
 

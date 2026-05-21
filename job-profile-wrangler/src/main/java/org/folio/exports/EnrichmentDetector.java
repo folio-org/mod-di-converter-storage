@@ -33,6 +33,12 @@ public final class EnrichmentDetector {
     for (int pathIndex = 0; pathIndex < paths.size(); pathIndex++) {
       CategorizedPath path = paths.get(pathIndex);
       MatchCriteria matchCriteria = path.matchCriteria();
+      GenerationOutcome.NeedsEnrichment authorityDeleteEnrichment =
+        authorityDeleteEnrichment(pathIndex, path, outputBase);
+      if (authorityDeleteEnrichment != null) {
+        outcomes.put(pathIndex, authorityDeleteEnrichment);
+        continue;
+      }
       if (matchCriteria == null || !matchCriteria.hasNonMarcMatches()) {
         continue;
       }
@@ -52,6 +58,37 @@ public final class EnrichmentDetector {
     }
 
     return outcomes;
+  }
+
+  private static GenerationOutcome.NeedsEnrichment authorityDeleteEnrichment(
+      int pathIndex,
+      CategorizedPath path,
+      String outputBase) {
+    if (!deletesMarcAuthority(path) || path.matchCriteria() == null || !path.matchCriteria().hasMarcMatches()) {
+      return null;
+    }
+    boolean matchesSrsSourceRecordId = path.matchCriteria().matchFields().stream()
+      .anyMatch(spec -> "999".equals(spec.fieldTag())
+        && "f".equals(spec.indicator1())
+        && "f".equals(spec.indicator2())
+        && "s".equals(spec.subfieldCode()));
+    if (!matchesSrsSourceRecordId) {
+      return null;
+    }
+    return new GenerationOutcome.NeedsEnrichment(
+      pathIndex,
+      path.path().getPathId(),
+      path.matchProfileId(),
+      "Run: jp-wrangler enrich " + outputBase + "-import.mrc"
+        + " --match-field 001 --enrich-field 999ff$s --enrich-type SOURCE_RECORD_ID"
+        + " --record-type MARC_AUTHORITY");
+  }
+
+  private static boolean deletesMarcAuthority(CategorizedPath path) {
+    return path.path().getProfiles().stream()
+      .filter(org.folio.graph.nodes.ActionProfileNode.class::isInstance)
+      .map(org.folio.graph.nodes.ActionProfileNode.class::cast)
+      .anyMatch(action -> "DELETE".equals(action.action()) && "MARC_AUTHORITY".equals(action.folioRecord()));
   }
 
   private static String enrichTypeFor(String existingField) {

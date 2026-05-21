@@ -68,6 +68,7 @@ public final class MinimalMarcRecordBuilder {
   // Pos 22: Length of the implementation-defined portion '0'
   // Pos 23: Undefined entry map character '0'
   private static final String DEFAULT_LEADER = "00000nam a22000007i 4500";
+  private static final String DEFAULT_AUTHORITY_LEADER = "00000nz  a2200000n  4500";
 
   // Default 008 field template (40 characters)
   // Pos 00-05: Date entered on file (YYMMDD)
@@ -196,6 +197,10 @@ public final class MinimalMarcRecordBuilder {
     boolean verbose = reportBuilder != null;
     validateSupportedActions(path);
 
+    if (pathUsesAuthorityRecord(path)) {
+      return buildAuthorityRecordForPath(path, recordNumber, reportBuilder, matchCriteria);
+    }
+
     Record record = FACTORY.newRecord();
 
     // Generate unique identifier for this record
@@ -287,6 +292,75 @@ public final class MinimalMarcRecordBuilder {
     return new BuildResult(record, recordNumber);
   }
 
+  private static BuildResult buildAuthorityRecordForPath(
+      JobProfilePath path,
+      int recordNumber,
+      GenerationReport.Builder reportBuilder,
+      MatchCriteria matchCriteria) {
+
+    String pathId = path.getPathId();
+    boolean verbose = reportBuilder != null;
+    Record record = FACTORY.newRecord();
+
+    String uuid = UUID.randomUUID().toString();
+    String shortId = uuid.substring(0, 8);
+
+    Leader leader = FACTORY.newLeader(DEFAULT_AUTHORITY_LEADER);
+    record.setLeader(leader);
+    if (verbose) {
+      reportBuilder.addFieldGeneration(pathId, "Leader", DEFAULT_AUTHORITY_LEADER, "authority leader");
+    }
+
+    ControlField field001 = FACTORY.newControlField("001", "auth-" + shortId);
+    record.addVariableField(field001);
+    if (verbose) {
+      reportBuilder.addFieldGeneration(pathId, "001", field001.getData(), "authority.hrid");
+    }
+
+    ControlField field005 = FACTORY.newControlField("005", "20260101000000.0");
+    record.addVariableField(field005);
+    if (verbose) {
+      reportBuilder.addFieldGeneration(pathId, "005", field005.getData(), "authority timestamp");
+    }
+
+    String field008Value = generateAuthority008Field();
+    ControlField field008 = FACTORY.newControlField("008", field008Value);
+    record.addVariableField(field008);
+    if (verbose) {
+      reportBuilder.addFieldGeneration(pathId, "008", field008Value, "authority fixed data");
+    }
+
+    DataField field010 = FACTORY.newDataField("010", ' ', ' ');
+    field010.addSubfield(FACTORY.newSubfield('a', "wr" + shortId));
+    record.addVariableField(field010);
+    if (verbose) {
+      reportBuilder.addFieldGeneration(pathId, "010$a", "wr" + shortId, "authority identifier");
+    }
+
+    DataField field040 = FACTORY.newDataField("040", ' ', ' ');
+    field040.addSubfield(FACTORY.newSubfield('a', "Wrangler"));
+    field040.addSubfield(FACTORY.newSubfield('b', "eng"));
+    field040.addSubfield(FACTORY.newSubfield('c', "Wrangler"));
+    record.addVariableField(field040);
+    if (verbose) {
+      reportBuilder.addFieldGeneration(pathId, "040$a", "Wrangler", "authority source");
+    }
+
+    DataField field150 = FACTORY.newDataField("150", ' ', ' ');
+    field150.addSubfield(FACTORY.newSubfield('a', generateAuthorityHeading(path, shortId)));
+    record.addVariableField(field150);
+    if (verbose) {
+      reportBuilder.addFieldGeneration(pathId, "150$a", generateAuthorityHeading(path, shortId), "authority heading");
+    }
+
+    if (matchCriteria != null && !matchCriteria.isEmpty()) {
+      addAuthoritySafeMatchFields(record, matchCriteria, pathId, reportBuilder);
+    }
+
+    LOGGER.info("Generated minimal MARC authority record {} for path: {}", recordNumber, summarizePath(path));
+    return new BuildResult(record, recordNumber);
+  }
+
   /**
    * Builds an UPDATE variant of a MARC record based on an existing base record.
    * The UPDATE record preserves the 001 (control number) from the base record so it will
@@ -356,6 +430,10 @@ public final class MinimalMarcRecordBuilder {
     boolean verbose = reportBuilder != null;
     boolean updatesMarcBib = pathUpdatesRecordType(path, "MARC_BIBLIOGRAPHIC");
     validateSupportedActions(path);
+
+    if (pathUsesAuthorityRecord(path)) {
+      return buildAuthorityVariantFromBase(baseRecord, path, recordNumber, reportBuilder, matchCriteria, true);
+    }
 
     Record record = FACTORY.newRecord();
 
@@ -440,6 +518,63 @@ public final class MinimalMarcRecordBuilder {
     return new BuildResult(record, recordNumber);
   }
 
+  public static BuildResult buildDeleteRecordFromBase(
+      Record baseRecord,
+      JobProfilePath path,
+      int recordNumber,
+      GenerationReport.Builder reportBuilder,
+      ReferenceDataContext refData,
+      MatchCriteria matchCriteria) {
+    validateSupportedActions(path);
+    if (!pathDeletesRecordType(path, "MARC_AUTHORITY")) {
+      throw GeneratorGapException.unsupportedAction("DELETE", lastActionRecordType(path));
+    }
+    return buildAuthorityVariantFromBase(baseRecord, path, recordNumber, reportBuilder, matchCriteria, false);
+  }
+
+  private static BuildResult buildAuthorityVariantFromBase(
+      Record baseRecord,
+      JobProfilePath path,
+      int recordNumber,
+      GenerationReport.Builder reportBuilder,
+      MatchCriteria matchCriteria,
+      boolean updateHeading) {
+
+    String pathId = path.getPathId();
+    boolean verbose = reportBuilder != null;
+    Record record = FACTORY.newRecord();
+    record.setLeader(FACTORY.newLeader(DEFAULT_AUTHORITY_LEADER));
+
+    String originalControlNumber = baseRecord.getControlNumber();
+    String shortId = originalControlNumber.length() > 8
+      ? originalControlNumber.substring(originalControlNumber.length() - 8)
+      : originalControlNumber;
+
+    record.addVariableField(FACTORY.newControlField("001", originalControlNumber));
+    record.addVariableField(FACTORY.newControlField("005", "20260101000000.0"));
+    record.addVariableField(FACTORY.newControlField("008", generateAuthority008Field()));
+
+    copyDataField(baseRecord, record, "010");
+    copyDataField(baseRecord, record, "040");
+
+    DataField heading = FACTORY.newDataField("150", ' ', ' ');
+    heading.addSubfield(FACTORY.newSubfield('a',
+      updateHeading ? "Updated authority heading " + shortId : "Authority heading " + shortId));
+    record.addVariableField(heading);
+
+    if (matchCriteria != null && !matchCriteria.isEmpty()) {
+      preserveMatchFields(baseRecord, record, matchCriteria, pathId, reportBuilder);
+    }
+
+    if (verbose) {
+      reportBuilder.addFieldGeneration(pathId, "001", originalControlNumber, "authority.hrid (PRESERVED for MATCH)");
+    }
+
+    LOGGER.info("Generated MARC authority {} variant record {} for path: {}",
+      updateHeading ? "UPDATE" : "DELETE", recordNumber, summarizePath(path));
+    return new BuildResult(record, recordNumber);
+  }
+
   /**
    * Generates the 008 fixed-length data element field.
    *
@@ -456,6 +591,12 @@ public final class MinimalMarcRecordBuilder {
     String date1 = String.valueOf(now.getYear());
 
     return String.format(FIELD_008_TEMPLATE, dateEntered, typeOfDate, date1);
+  }
+
+  private static String generateAuthority008Field() {
+    LocalDate now = LocalDate.now();
+    String dateEntered = now.format(DateTimeFormatter.ofPattern("yyMMdd"));
+    return dateEntered + "n| acannaabn          |a ana     c";
   }
 
   /**
@@ -499,6 +640,14 @@ public final class MinimalMarcRecordBuilder {
     }
 
     return title.toString();
+  }
+
+  private static String generateAuthorityHeading(JobProfilePath path, String shortId) {
+    List<String> actions = extractActions(path);
+    if (actions.isEmpty()) {
+      return "Wrangler authority heading " + shortId;
+    }
+    return "Wrangler authority heading " + shortId + " - " + String.join("/", actions);
   }
 
   /**
@@ -559,6 +708,39 @@ public final class MinimalMarcRecordBuilder {
     return false;
   }
 
+  private static boolean pathDeletesRecordType(JobProfilePath path, String recordType) {
+    for (Profile profile : path.getProfiles()) {
+      if (profile instanceof ActionProfileNode actionProfile) {
+        if ("DELETE".equals(actionProfile.action()) && recordType.equals(actionProfile.folioRecord())) {
+          return true;
+        }
+      }
+    }
+    return false;
+  }
+
+  private static boolean pathUsesAuthorityRecord(JobProfilePath path) {
+    for (Profile profile : path.getProfiles()) {
+      if (profile instanceof ActionProfileNode actionProfile) {
+        String folioRecord = actionProfile.folioRecord();
+        if ("AUTHORITY".equals(folioRecord) || "MARC_AUTHORITY".equals(folioRecord)) {
+          return true;
+        }
+      }
+    }
+    return false;
+  }
+
+  private static String lastActionRecordType(JobProfilePath path) {
+    for (int i = path.getProfiles().size() - 1; i >= 0; i--) {
+      Profile profile = path.getProfiles().get(i);
+      if (profile instanceof ActionProfileNode actionProfile) {
+        return actionProfile.folioRecord();
+      }
+    }
+    return "UNKNOWN";
+  }
+
   private static void validateSupportedActions(JobProfilePath path) {
     for (Profile profile : path.getProfiles()) {
       if (profile instanceof ActionProfileNode actionProfile) {
@@ -577,7 +759,11 @@ public final class MinimalMarcRecordBuilder {
           || "ITEM".equals(actionProfile.folioRecord()));
     boolean supportedMarcBibUpdate =
       "UPDATE".equals(actionProfile.action()) && "MARC_BIBLIOGRAPHIC".equals(actionProfile.folioRecord());
-    return supportedInventoryAction || supportedMarcBibUpdate;
+    boolean supportedAuthorityCreate =
+      "CREATE".equals(actionProfile.action()) && "AUTHORITY".equals(actionProfile.folioRecord());
+    boolean supportedAuthorityDelete =
+      "DELETE".equals(actionProfile.action()) && "MARC_AUTHORITY".equals(actionProfile.folioRecord());
+    return supportedInventoryAction || supportedMarcBibUpdate || supportedAuthorityCreate || supportedAuthorityDelete;
   }
 
   private static ReferenceDataContext requireRefData(ReferenceDataContext refData) {
@@ -736,6 +922,24 @@ public final class MinimalMarcRecordBuilder {
     }
   }
 
+  private static void addAuthoritySafeMatchFields(Record record, MatchCriteria matchCriteria,
+      String pathId, GenerationReport.Builder reportBuilder) {
+    if (matchCriteria == null || !matchCriteria.hasMarcMatches()) {
+      return;
+    }
+    List<MatchCriteria.MatchFieldSpec> safeSpecs = matchCriteria.matchFields().stream()
+      .filter(spec -> !isForbiddenAuthorityCreateMatchField(spec))
+      .toList();
+    if (safeSpecs.isEmpty()) {
+      return;
+    }
+    addMatchFields(record, new MatchCriteria(matchCriteria.matchProfileId(), safeSpecs, List.of()), pathId, reportBuilder);
+  }
+
+  private static boolean isForbiddenAuthorityCreateMatchField(MatchCriteria.MatchFieldSpec spec) {
+    return "999".equals(spec.fieldTag());
+  }
+
   /**
    * Preserves match fields from a base record to an update record.
    * Copies values from the base record so the update record will match.
@@ -793,6 +997,17 @@ public final class MinimalMarcRecordBuilder {
 
       LOGGER.debug("Preserved match field {} from base record: {}", spec.fieldTag(), value);
     }
+  }
+
+  private static void copyDataField(Record source, Record target, String tag) {
+    var field = source.getVariableField(tag);
+    if (!(field instanceof DataField sourceDataField)) {
+      return;
+    }
+    DataField copy = FACTORY.newDataField(tag, sourceDataField.getIndicator1(), sourceDataField.getIndicator2());
+    sourceDataField.getSubfields().forEach(subfield ->
+      copy.addSubfield(FACTORY.newSubfield(subfield.getCode(), subfield.getData())));
+    target.addVariableField(copy);
   }
 
   /**

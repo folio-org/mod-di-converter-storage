@@ -50,6 +50,24 @@ public class EnrichmentDetectorTest {
   }
 
   @Test
+  public void authorityDeleteBySrsIdNeedsSourceRecordEnrichment() {
+    CategorizedPath path = authorityDeletePath("delete-auth", new MatchCriteria(
+      "match-auth",
+      List.of(new MatchCriteria.MatchFieldSpec("999", "f", "f", "s", null)),
+      List.of()
+    ));
+
+    GenerationOutcome.NeedsEnrichment outcome =
+      EnrichmentDetector.detect(List.of(path), OUTPUT_BASE).get(0);
+
+    assertEquals("delete-auth", outcome.pathId());
+    assertEquals("match-auth", outcome.matchProfileId());
+    assertEquals("Run: jp-wrangler enrich target/generated/job-profile-import.mrc --match-field 001 "
+      + "--enrich-field 999ff$s --enrich-type SOURCE_RECORD_ID --record-type MARC_AUTHORITY", outcome.hint());
+  }
+
+
+  @Test
   public void multiplePathsClassifiesOnlyMatchingPathByListIndex() {
     List<CategorizedPath> paths = List.of(
       path("path-0", marcOnlyCriteria("match-0")),
@@ -113,6 +131,17 @@ public class EnrichmentDetectorTest {
       pathId
     );
     return new CategorizedPath(path, ReactTo.MATCH, "match-1", matchCriteria);
+  }
+
+  private CategorizedPath authorityDeletePath(String pathId, MatchCriteria matchCriteria) {
+    JobProfilePath path = new JobProfilePath(
+      List.of(
+        new JobProfileNode("job-1", "MARC", 0),
+        new ActionProfileNode("action-1", "DELETE", "MARC_AUTHORITY", 1)
+      ),
+      pathId
+    );
+    return new CategorizedPath(path, ReactTo.MATCH, matchCriteria.matchProfileId(), matchCriteria);
   }
 
   private MatchCriteria matchCriteria(MatchCriteria.NonMarcMatchSpec nonMarcMatch) {

@@ -8,5 +8,6 @@ import java.util.List;
 public record CategorizedPaths(
   List<MatchedPathPair> pairedPaths,
   List<CategorizedPath> unpairedCreatePaths,
-  List<CategorizedPath> unpairedUpdatePaths
+  List<CategorizedPath> unpairedUpdatePaths,
+  List<CategorizedPath> deletePaths
 ) {}

@@ -30,7 +30,7 @@ public class StrictRecordWriterTest {
     Files.writeString(foundation, "stale");
 
     StrictRecordWriter.WriteResult result = new StrictRecordWriter().write(
-      new CategorizedPaths(List.of(), List.of(categorized(path("CREATE", "INSTANCE"))), List.of()),
+      new CategorizedPaths(List.of(), List.of(categorized(path("CREATE", "INSTANCE"))), List.of(), List.of()),
       new MinimalMarcRecordBuilder.ReferenceDataContext(null, null, null),
       outputBase);
 
@@ -49,7 +49,7 @@ public class StrictRecordWriterTest {
     Path importFile = outputBase.resolveSibling("records-import.mrc");
 
     StrictRecordWriter.WriteResult result = new StrictRecordWriter().write(
-      new CategorizedPaths(List.of(), List.of(categorized(path("CREATE", "HOLDINGS"))), List.of()),
+      new CategorizedPaths(List.of(), List.of(categorized(path("CREATE", "HOLDINGS"))), List.of(), List.of()),
       new MinimalMarcRecordBuilder.ReferenceDataContext(null, "material-type-id", "loan-type-id"),
       outputBase);
 
@@ -70,7 +70,7 @@ public class StrictRecordWriterTest {
     Path importFile = outputBase.resolveSibling("records-import.mrc");
 
     StrictRecordWriter.WriteResult result = new StrictRecordWriter().write(
-      new CategorizedPaths(List.of(), List.of(), List.of(categorized(path("UPDATE", "MARC_BIBLIOGRAPHIC")))),
+      new CategorizedPaths(List.of(), List.of(), List.of(categorized(path("UPDATE", "MARC_BIBLIOGRAPHIC"))), List.of()),
       new MinimalMarcRecordBuilder.ReferenceDataContext(null, null, null),
       outputBase);
 
@@ -83,6 +83,25 @@ public class StrictRecordWriterTest {
       result.foundationRecords().get(0).getControlNumber(),
       result.importRecords().get(0).getControlNumber());
   }
+
+  @Test
+  public void deleteMarcAuthorityWritesFoundationAndImportRecords() throws IOException {
+    Path outputBase = temp.getRoot().toPath().resolve("records");
+
+    StrictRecordWriter.WriteResult result = new StrictRecordWriter().write(
+      new CategorizedPaths(List.of(), List.of(), List.of(), List.of(categorized(path("DELETE", "MARC_AUTHORITY")))),
+      new MinimalMarcRecordBuilder.ReferenceDataContext(null, null, null),
+      outputBase);
+
+    assertEquals(GenerationOutcome.GENERATED, result.overallOutcome().label());
+    assertEquals(1, result.foundationRecords().size());
+    assertEquals(1, result.importRecords().size());
+    assertEquals(
+      result.foundationRecords().get(0).getControlNumber(),
+      result.importRecords().get(0).getControlNumber());
+    assertEquals('z', result.importRecords().get(0).getLeader().getTypeOfRecord());
+  }
+
 
   @Test
   public void writeFailureDeletesTempsAndStaleFinalFiles() throws IOException {
@@ -103,7 +122,7 @@ public class StrictRecordWriterTest {
 
     try {
       writer.write(
-        new CategorizedPaths(List.of(), List.of(), List.of(categorized(path("UPDATE", "INSTANCE")))),
+        new CategorizedPaths(List.of(), List.of(), List.of(categorized(path("UPDATE", "INSTANCE"))), List.of()),
         new MinimalMarcRecordBuilder.ReferenceDataContext(null, null, null),
         outputBase);
       fail("Expected IOException");

@@ -20,7 +20,7 @@ The v1 validator walks live job-profile snapshot JSON, not repository DOT files.
 ### `marc-mapping-option-missing`
 
 - Predicate: block any MARC-targeting `MAPPING_PROFILE` snapshot whose `content.mappingDetails.recordType` or `content.existingRecordType` is a `MARC_*` record type and whose `content.mappingDetails.marcMappingOption` is absent, null, or blank.
-- Allowed variants: inventory mapping profiles may consume MARC input without a `marcMappingOption`; the target record must be MARC for this rule to fire.
+- Allowed variants: inventory mapping profiles may consume MARC input without a `marcMappingOption`; `DELETE MARC_AUTHORITY` mapping profiles also omit it because the stack enum has no delete mapping option and rejects `UPDATE` on delete actions.
 - Stack behavior: `MarcRecordModifier` switches on `mappingDetails.marcMappingOption`, so missing options fail at runtime with a null-pointer error.
 - Sweep examples: `jp-009`, `jp-022`, `jp-028`, `jp-040`, `jp-052`, and `jp-060`.
 
