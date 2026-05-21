@@ -381,8 +381,16 @@ public final class MappingDetailsFactory {
    * The stack's MARC modifier requires marcMappingOption even when there are no field-level details.
    */
   public static MappingDetail createMarcBibliographicUpdateMappingDetails() {
+    return createMarcBibliographicMappingDetails(MappingDetail.MarcMappingOption.UPDATE);
+  }
+
+  public static MappingDetail createMarcBibliographicModifyMappingDetails() {
+    return createMarcBibliographicMappingDetails(MappingDetail.MarcMappingOption.MODIFY);
+  }
+
+  public static MappingDetail createMarcBibliographicMappingDetails(MappingDetail.MarcMappingOption option) {
     return createMarcBibliographicMappingDetails()
-      .withMarcMappingOption(MappingDetail.MarcMappingOption.UPDATE)
+      .withMarcMappingOption(option)
       .withMarcMappingDetails(Collections.emptyList());
   }
 
@@ -395,8 +403,29 @@ public final class MappingDetailsFactory {
   }
 
   public static MappingDetail createMarcAuthorityUpdateMappingDetails() {
+    return createMarcAuthorityMappingDetails(MappingDetail.MarcMappingOption.UPDATE);
+  }
+
+  public static MappingDetail createMarcAuthorityMappingDetails(MappingDetail.MarcMappingOption option) {
     return createMarcAuthorityMappingDetails()
-      .withMarcMappingOption(MappingDetail.MarcMappingOption.UPDATE);
+      .withMarcMappingOption(option);
+  }
+
+  public static MappingDetail createMarcHoldingsMappingDetails() {
+    return new MappingDetail()
+      .withName("marcHoldings")
+      .withRecordType(EntityType.MARC_HOLDINGS)
+      .withMappingFields(Collections.emptyList())
+      .withMarcMappingDetails(Collections.emptyList());
+  }
+
+  public static MappingDetail createMarcHoldingsUpdateMappingDetails() {
+    return createMarcHoldingsMappingDetails(MappingDetail.MarcMappingOption.UPDATE);
+  }
+
+  public static MappingDetail createMarcHoldingsMappingDetails(MappingDetail.MarcMappingOption option) {
+    return createMarcHoldingsMappingDetails()
+      .withMarcMappingOption(option);
   }
 
   /**
@@ -452,6 +481,7 @@ public final class MappingDetailsFactory {
       case "AUTHORITY" -> createAuthorityMappingDetails();
       case "MARC_BIBLIOGRAPHIC" -> createMarcBibliographicMappingDetails();
       case "MARC_AUTHORITY" -> createMarcAuthorityMappingDetails();
+      case "MARC_HOLDINGS" -> createMarcHoldingsMappingDetails();
       default -> null;
     };
   }

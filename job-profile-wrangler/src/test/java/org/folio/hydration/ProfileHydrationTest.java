@@ -126,15 +126,42 @@ public class ProfileHydrationTest {
 
   @Test
   public void hydrateAddsMarcMappingOptionForMarcBibliographicUpdateMappings() throws IOException {
+    MappingDetail mappingDetails = hydrateMarcMapping(ActionProfile.Action.UPDATE,
+      ActionProfile.FolioRecord.MARC_BIBLIOGRAPHIC,
+      EntityType.MARC_BIBLIOGRAPHIC);
+
+    assertEquals(MappingDetail.MarcMappingOption.UPDATE, mappingDetails.getMarcMappingOption());
+    assertTrue(mappingDetails.getMarcMappingDetails().isEmpty());
+  }
+
+  @Test
+  public void hydrateAddsMarcMappingOptionForMarcBibliographicModifyMappings() throws IOException {
+    MappingDetail mappingDetails = hydrateMarcMapping(ActionProfile.Action.MODIFY,
+      ActionProfile.FolioRecord.MARC_BIBLIOGRAPHIC,
+      EntityType.MARC_BIBLIOGRAPHIC);
+
+    assertEquals(MappingDetail.MarcMappingOption.MODIFY, mappingDetails.getMarcMappingOption());
+    assertTrue(mappingDetails.getMarcMappingDetails().isEmpty());
+  }
+
+  @Test
+  public void hydrateAddsMarcMappingOptionForMarcHoldingsUpdateMappings() throws IOException {
+    MappingDetail mappingDetails = hydrateMarcMapping(ActionProfile.Action.UPDATE,
+      ActionProfile.FolioRecord.MARC_HOLDINGS,
+      EntityType.MARC_HOLDINGS);
+
+    assertEquals(MappingDetail.MarcMappingOption.UPDATE, mappingDetails.getMarcMappingOption());
+    assertTrue(mappingDetails.getMarcMappingDetails().isEmpty());
+  }
+
+  private MappingDetail hydrateMarcMapping(ActionProfile.Action action, ActionProfile.FolioRecord folioRecord,
+                                           EntityType recordType) throws IOException {
     graph = new DefaultDirectedGraph<>(RegularEdge.class);
 
     Profile jobProfile = new JobProfileNode("1", "MARC", 0);
-    Profile matchProfile = new MatchProfileNode("2", EntityType.MARC_BIBLIOGRAPHIC.toString(),
-      EntityType.INSTANCE.toString(), 0);
-    Profile actionProfile = new ActionProfileNode("3", ActionProfile.Action.UPDATE.toString(),
-      ActionProfile.FolioRecord.MARC_BIBLIOGRAPHIC.toString(), 0);
-    Profile mappingProfile = new MappingProfileNode("4", EntityType.MARC_BIBLIOGRAPHIC.toString(),
-      EntityType.MARC_BIBLIOGRAPHIC.toString(), 0);
+    Profile matchProfile = new MatchProfileNode("2", recordType.toString(), recordType.toString(), 0);
+    Profile actionProfile = new ActionProfileNode("3", action.toString(), folioRecord.toString(), 0);
+    Profile mappingProfile = new MappingProfileNode("4", recordType.toString(), recordType.toString(), 0);
 
     graph.addVertex(jobProfile);
     graph.addVertex(matchProfile);
@@ -158,10 +185,7 @@ public class ProfileHydrationTest {
     ArgumentCaptor<String> requestCaptor = ArgumentCaptor.forClass(String.class);
     verify(folioClient).createMappingProfile(requestCaptor.capture());
     MappingProfileUpdateDto request = OBJECT_MAPPER.readValue(requestCaptor.getValue(), MappingProfileUpdateDto.class);
-    MappingDetail mappingDetails = request.getProfile().getMappingDetails();
-
-    assertEquals(MappingDetail.MarcMappingOption.UPDATE, mappingDetails.getMarcMappingOption());
-    assertTrue(mappingDetails.getMarcMappingDetails().isEmpty());
+    return request.getProfile().getMappingDetails();
   }
 
   @Test

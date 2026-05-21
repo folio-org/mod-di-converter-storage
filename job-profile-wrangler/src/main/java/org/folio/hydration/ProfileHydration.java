@@ -256,43 +256,55 @@ public class ProfileHydration {
       Graph<Profile, RegularEdge> graph,
       MappingProfileNode mappingProfileNode,
       String existingRecordType) {
-    if (isMarcBibUpdateMapping(graph, mappingProfileNode, existingRecordType)) {
-      return MappingDetailsFactory.createMarcBibliographicUpdateMappingDetails();
-    }
-    if (isMarcAuthorityUpdateMapping(graph, mappingProfileNode, existingRecordType)) {
-      return MappingDetailsFactory.createMarcAuthorityUpdateMappingDetails();
+    Optional<ActionProfileNode> marcAction = parentMarcAction(graph, mappingProfileNode, existingRecordType);
+    if (marcAction.isPresent()) {
+      return marcMappingDetailsFor(existingRecordType, marcAction.get().action());
     }
     return MappingDetailsFactory.createMappingDetailsForRecordType(existingRecordType);
   }
 
-  private boolean isMarcBibUpdateMapping(
+  private Optional<ActionProfileNode> parentMarcAction(
       Graph<Profile, RegularEdge> graph,
       MappingProfileNode mappingProfileNode,
       String existingRecordType) {
-    if (!EntityType.MARC_BIBLIOGRAPHIC.toString().equals(existingRecordType)) {
-      return false;
+    if (!isMarcRecordType(existingRecordType)) {
+      return Optional.empty();
     }
     return graph.incomingEdgesOf(mappingProfileNode).stream()
       .map(edge -> (Profile) edge.getSource())
       .filter(ActionProfileNode.class::isInstance)
       .map(ActionProfileNode.class::cast)
-      .anyMatch(action -> ActionProfile.Action.UPDATE.toString().equals(action.action())
-        && ActionProfile.FolioRecord.MARC_BIBLIOGRAPHIC.toString().equals(action.folioRecord()));
+      .filter(action -> existingRecordType.equals(action.folioRecord()))
+      .filter(action -> ActionProfile.Action.UPDATE.toString().equals(action.action())
+        || ActionProfile.Action.MODIFY.toString().equals(action.action()))
+      .findFirst();
   }
 
-  private boolean isMarcAuthorityUpdateMapping(
-      Graph<Profile, RegularEdge> graph,
-      MappingProfileNode mappingProfileNode,
-      String existingRecordType) {
-    if (!EntityType.MARC_AUTHORITY.toString().equals(existingRecordType)) {
-      return false;
+  private boolean isMarcRecordType(String existingRecordType) {
+    return EntityType.MARC_BIBLIOGRAPHIC.toString().equals(existingRecordType)
+      || EntityType.MARC_AUTHORITY.toString().equals(existingRecordType)
+      || EntityType.MARC_HOLDINGS.toString().equals(existingRecordType);
+  }
+
+  private MappingDetail marcMappingDetailsFor(String existingRecordType, String action) {
+    MappingDetail.MarcMappingOption option = marcMappingOptionFor(action);
+    if (EntityType.MARC_BIBLIOGRAPHIC.toString().equals(existingRecordType)) {
+      return MappingDetailsFactory.createMarcBibliographicMappingDetails(option);
     }
-    return graph.incomingEdgesOf(mappingProfileNode).stream()
-      .map(edge -> (Profile) edge.getSource())
-      .filter(ActionProfileNode.class::isInstance)
-      .map(ActionProfileNode.class::cast)
-      .anyMatch(action -> ActionProfile.Action.UPDATE.toString().equals(action.action())
-        && ActionProfile.FolioRecord.MARC_AUTHORITY.toString().equals(action.folioRecord()));
+    if (EntityType.MARC_AUTHORITY.toString().equals(existingRecordType)) {
+      return MappingDetailsFactory.createMarcAuthorityMappingDetails(option);
+    }
+    if (EntityType.MARC_HOLDINGS.toString().equals(existingRecordType)) {
+      return MappingDetailsFactory.createMarcHoldingsMappingDetails(option);
+    }
+    return MappingDetailsFactory.createMappingDetailsForRecordType(existingRecordType);
+  }
+
+  private MappingDetail.MarcMappingOption marcMappingOptionFor(String action) {
+    if (ActionProfile.Action.MODIFY.toString().equals(action)) {
+      return MappingDetail.MarcMappingOption.MODIFY;
+    }
+    return MappingDetail.MarcMappingOption.UPDATE;
   }
 
   /**
