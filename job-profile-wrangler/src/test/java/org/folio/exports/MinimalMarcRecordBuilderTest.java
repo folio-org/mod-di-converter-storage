@@ -165,6 +165,25 @@ public class MinimalMarcRecordBuilderTest {
     assertEquals(null, delete.record().getVariableField("999"));
   }
 
+  @Test
+  public void updateMarcAuthorityPathBuildsAuthorityFoundationAndUpdateVariant() {
+    JobProfilePath updatePath = authorityPath("UPDATE", "MARC_AUTHORITY");
+
+    MinimalMarcRecordBuilder.BuildResult base =
+      MinimalMarcRecordBuilder.buildRecordForPath(updatePath, 1, null, null);
+    MinimalMarcRecordBuilder.BuildResult update =
+      MinimalMarcRecordBuilder.buildUpdateRecordFromBase(base.record(), updatePath, 2, null, null, null);
+
+    assertEquals(base.record().getControlNumber(), update.record().getControlNumber());
+    assertEquals('z', update.record().getLeader().getTypeOfRecord());
+    assertNotNull(update.record().getVariableField("010"));
+    assertNotNull(update.record().getVariableField("040"));
+    assertEquals(null, update.record().getVariableField("245"));
+    assertEquals(null, update.record().getVariableField("336"));
+    DataField heading = (DataField) update.record().getVariableField("150");
+    assertTrue(heading.getSubfield('a').getData().contains("Updated authority heading"));
+  }
+
   private JobProfilePath path(String action, String folioRecord) {
     List<Profile> profiles = List.of(
       new JobProfileNode("job-1", "MARC", 0),

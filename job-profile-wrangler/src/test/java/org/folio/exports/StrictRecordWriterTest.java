@@ -243,6 +243,38 @@ public class StrictRecordWriterTest {
     assertEquals('z', result.importRecords().get(0).getLeader().getTypeOfRecord());
   }
 
+  @Test
+  public void matchMarcAuthorityUpdateWritesFoundationAndImportRecords() throws IOException {
+    Path outputBase = temp.getRoot().toPath().resolve("records");
+    Path foundation = outputBase.resolveSibling("records-foundation.mrc");
+    Path importFile = outputBase.resolveSibling("records-import.mrc");
+
+    JobProfileNode job = new JobProfileNode("job-1", "MARC", 0);
+    MatchProfileNode match = new MatchProfileNode("match-1", "MARC_AUTHORITY", "MARC_AUTHORITY", 0);
+    CategorizedPath updatePath = categorized(
+      authorityPathWithPrefix(job, match, "UPDATE", "MARC_AUTHORITY"),
+      ReactTo.MATCH,
+      "match-1");
+
+    StrictRecordWriter.WriteResult result = new StrictRecordWriter().write(
+      new CategorizedPaths(List.of(), List.of(), List.of(updatePath), List.of()),
+      new MinimalMarcRecordBuilder.ReferenceDataContext(null, null, null),
+      outputBase);
+
+    assertEquals(GenerationOutcome.GENERATED, result.overallOutcome().label());
+    assertTrue(Files.exists(foundation));
+    assertTrue(Files.exists(importFile));
+    assertEquals(1, result.foundationRecords().size());
+    assertEquals(1, result.importRecords().size());
+    assertEquals(
+      result.foundationRecords().get(0).getControlNumber(),
+      result.importRecords().get(0).getControlNumber());
+    assertEquals('z', result.foundationRecords().get(0).getLeader().getTypeOfRecord());
+    assertEquals('z', result.importRecords().get(0).getLeader().getTypeOfRecord());
+    DataField heading = (DataField) result.importRecords().get(0).getVariableField("150");
+    assertTrue(heading.getSubfield('a').getData().contains("Updated authority heading"));
+  }
+
 
   @Test
   public void writeFailureDeletesTempsAndStaleFinalFiles() throws IOException {
@@ -319,6 +351,19 @@ public class StrictRecordWriterTest {
       match,
       new ActionProfileNode("action-" + action + "-" + folioRecord, action, folioRecord, 1),
       new MappingProfileNode("mapping-" + folioRecord, "MARC_BIBLIOGRAPHIC", folioRecord, 2)
+    );
+  }
+
+  private JobProfilePath authorityPathWithPrefix(
+      JobProfileNode job,
+      MatchProfileNode match,
+      String action,
+      String folioRecord) {
+    return pathOf(
+      job,
+      match,
+      new ActionProfileNode("action-" + action + "-" + folioRecord, action, folioRecord, 1),
+      new MappingProfileNode("mapping-" + folioRecord, "MARC_AUTHORITY", folioRecord, 2)
     );
   }
 }

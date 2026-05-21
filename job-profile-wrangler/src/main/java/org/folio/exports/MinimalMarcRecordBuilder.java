@@ -790,9 +790,12 @@ public final class MinimalMarcRecordBuilder {
     boolean supportedMarcBibChange = isMarcBibliographicChangeAction(actionProfile);
     boolean supportedAuthorityCreate =
       "CREATE".equals(actionProfile.action()) && "AUTHORITY".equals(actionProfile.folioRecord());
+    boolean supportedAuthorityUpdate =
+      "UPDATE".equals(actionProfile.action()) && "MARC_AUTHORITY".equals(actionProfile.folioRecord());
     boolean supportedAuthorityDelete =
       "DELETE".equals(actionProfile.action()) && "MARC_AUTHORITY".equals(actionProfile.folioRecord());
-    return supportedInventoryAction || supportedMarcBibChange || supportedAuthorityCreate || supportedAuthorityDelete;
+    return supportedInventoryAction || supportedMarcBibChange || supportedAuthorityCreate || supportedAuthorityUpdate
+      || supportedAuthorityDelete;
   }
 
   private static boolean isMarcBibliographicChangeAction(ActionProfileNode actionProfile) {

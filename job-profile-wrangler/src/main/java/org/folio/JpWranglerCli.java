@@ -1525,6 +1525,7 @@ public class JpWranglerCli implements Callable<Integer> {
 
             // Enrich the record
             Record enrichedRecord = enrichRecord(record, enrichValue, enrichSpec);
+            addAuthorityIdForAuthoritySourceRecord(enrichedRecord, lookupRecord, enrichSpec);
             enrichedRecords.add(enrichedRecord);
             enrichedCount++;
 
@@ -1667,6 +1668,32 @@ public class JpWranglerCli implements Callable<Integer> {
       original.addVariableField(dataField);
 
       return original;
+    }
+
+    private void addAuthorityIdForAuthoritySourceRecord(Record record, JsonNode sourceRecord, EnrichFieldSpec spec) {
+      if (enrichType != EnrichType.SOURCE_RECORD_ID
+        || !"MARC_AUTHORITY".equals(recordType)
+        || !"999".equals(spec.fieldTag)
+        || spec.indicator1 != 'f'
+        || spec.indicator2 != 'f'
+        || spec.subfieldCode != 's') {
+        return;
+      }
+
+      String authorityId = sourceRecord.path("externalIdsHolder").path("authorityId").asText(null);
+      if (authorityId == null || authorityId.isBlank()) {
+        return;
+      }
+
+      VariableField field = record.getVariableFields("999").stream()
+        .filter(DataField.class::isInstance)
+        .map(DataField.class::cast)
+        .filter(dataField -> dataField.getIndicator1() == 'f' && dataField.getIndicator2() == 'f')
+        .findFirst()
+        .orElse(null);
+      if (field instanceof DataField dataField && dataField.getSubfield('i') == null) {
+        dataField.addSubfield(MARC_FACTORY.newSubfield('i', authorityId));
+      }
     }
 
     private boolean isValidSourceRecordType(String candidate) {

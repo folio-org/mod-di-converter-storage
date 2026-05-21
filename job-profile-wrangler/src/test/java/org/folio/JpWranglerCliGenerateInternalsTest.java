@@ -115,6 +115,57 @@ public class JpWranglerCliGenerateInternalsTest {
   }
 
   @Test
+  public void extractionRecognizesMatchMarcAuthorityUpdatePaths() throws Exception {
+    Method method = JpWranglerCli.GenerateCommand.class.getDeclaredMethod("extractAllPaths", JsonNode.class);
+    method.setAccessible(true);
+    JsonNode snapshot = OBJECT_MAPPER.readTree("""
+      {
+        "contentType": "JOB_PROFILE",
+        "content": {"id": "job", "dataType": "MARC", "order": 0},
+        "childSnapshotWrappers": [{
+          "contentType": "MATCH_PROFILE",
+          "reactTo": "MATCH",
+          "content": {
+            "id": "match",
+            "incomingRecordType": "MARC_AUTHORITY",
+            "existingRecordType": "MARC_AUTHORITY",
+            "order": 0,
+            "matchDetails": []
+          },
+          "childSnapshotWrappers": [{
+            "contentType": "ACTION_PROFILE",
+            "content": {
+              "id": "update",
+              "action": "UPDATE",
+              "folioRecord": "MARC_AUTHORITY",
+              "order": 0
+            },
+            "childSnapshotWrappers": [{
+              "contentType": "MAPPING_PROFILE",
+              "content": {
+                "id": "mapping",
+                "incomingRecordType": "MARC_AUTHORITY",
+                "existingRecordType": "MARC_AUTHORITY",
+                "order": 0,
+                "mappingDetails": {"recordType": "MARC_AUTHORITY", "marcMappingOption": "UPDATE"}
+              }
+            }]
+          }]
+        }]
+      }
+      """);
+
+    PathExtractionResult result = (PathExtractionResult) method.invoke(new JpWranglerCli.GenerateCommand(), snapshot);
+
+    assertTrue(result.createPaths().isEmpty());
+    assertEquals(1, result.updatePaths().size());
+    assertTrue(result.deletePaths().isEmpty());
+    assertTrue(result.unsupportedActionPaths().isEmpty());
+    assertEquals(ReactTo.MATCH, result.updatePaths().get(0).reactTo());
+    assertTrue(result.updatePaths().get(0).path().getPathId().contains("UPDATE_MARC_AUTHORITY"));
+  }
+
+  @Test
   public void extractionTreatsModifyMarcBibliographicAsUpdateLike() throws Exception {
     Method method = JpWranglerCli.GenerateCommand.class.getDeclaredMethod("extractAllPaths", JsonNode.class);
     method.setAccessible(true);

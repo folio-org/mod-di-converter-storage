@@ -34,7 +34,7 @@ public final class EnrichmentDetector {
       CategorizedPath path = paths.get(pathIndex);
       MatchCriteria matchCriteria = path.matchCriteria();
       GenerationOutcome.NeedsEnrichment authorityDeleteEnrichment =
-        authorityDeleteEnrichment(pathIndex, path, outputBase);
+        authoritySourceRecordIdEnrichment(pathIndex, path, outputBase);
       if (authorityDeleteEnrichment != null) {
         outcomes.put(pathIndex, authorityDeleteEnrichment);
         continue;
@@ -60,11 +60,11 @@ public final class EnrichmentDetector {
     return outcomes;
   }
 
-  private static GenerationOutcome.NeedsEnrichment authorityDeleteEnrichment(
+  private static GenerationOutcome.NeedsEnrichment authoritySourceRecordIdEnrichment(
       int pathIndex,
       CategorizedPath path,
       String outputBase) {
-    if (!deletesMarcAuthority(path) || path.matchCriteria() == null || !path.matchCriteria().hasMarcMatches()) {
+    if (!changesMarcAuthority(path) || path.matchCriteria() == null || !path.matchCriteria().hasMarcMatches()) {
       return null;
     }
     boolean matchesSrsSourceRecordId = path.matchCriteria().matchFields().stream()
@@ -81,14 +81,15 @@ public final class EnrichmentDetector {
       path.matchProfileId(),
       "Run: jp-wrangler enrich " + outputBase + "-import.mrc"
         + " --match-field 001 --enrich-field 999ff$s --enrich-type SOURCE_RECORD_ID"
-        + " --record-type MARC_AUTHORITY");
+        + " --record-type MARC_AUTHORITY --skip-missing");
   }
 
-  private static boolean deletesMarcAuthority(CategorizedPath path) {
+  private static boolean changesMarcAuthority(CategorizedPath path) {
     return path.path().getProfiles().stream()
       .filter(org.folio.graph.nodes.ActionProfileNode.class::isInstance)
       .map(org.folio.graph.nodes.ActionProfileNode.class::cast)
-      .anyMatch(action -> "DELETE".equals(action.action()) && "MARC_AUTHORITY".equals(action.folioRecord()));
+      .anyMatch(action -> ("UPDATE".equals(action.action()) || "DELETE".equals(action.action()))
+        && "MARC_AUTHORITY".equals(action.folioRecord()));
   }
 
   private static String enrichTypeFor(String existingField) {

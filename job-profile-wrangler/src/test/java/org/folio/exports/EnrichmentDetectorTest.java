@@ -63,7 +63,24 @@ public class EnrichmentDetectorTest {
     assertEquals("delete-auth", outcome.pathId());
     assertEquals("match-auth", outcome.matchProfileId());
     assertEquals("Run: jp-wrangler enrich target/generated/job-profile-import.mrc --match-field 001 "
-      + "--enrich-field 999ff$s --enrich-type SOURCE_RECORD_ID --record-type MARC_AUTHORITY", outcome.hint());
+      + "--enrich-field 999ff$s --enrich-type SOURCE_RECORD_ID --record-type MARC_AUTHORITY --skip-missing", outcome.hint());
+  }
+
+  @Test
+  public void authorityUpdateBySrsIdNeedsSourceRecordEnrichment() {
+    CategorizedPath path = authorityPath("update-auth", "UPDATE", new MatchCriteria(
+      "match-auth",
+      List.of(new MatchCriteria.MatchFieldSpec("999", "f", "f", "s", null)),
+      List.of()
+    ));
+
+    GenerationOutcome.NeedsEnrichment outcome =
+      EnrichmentDetector.detect(List.of(path), OUTPUT_BASE).get(0);
+
+    assertEquals("update-auth", outcome.pathId());
+    assertEquals("match-auth", outcome.matchProfileId());
+    assertEquals("Run: jp-wrangler enrich target/generated/job-profile-import.mrc --match-field 001 "
+      + "--enrich-field 999ff$s --enrich-type SOURCE_RECORD_ID --record-type MARC_AUTHORITY --skip-missing", outcome.hint());
   }
 
 
@@ -134,10 +151,14 @@ public class EnrichmentDetectorTest {
   }
 
   private CategorizedPath authorityDeletePath(String pathId, MatchCriteria matchCriteria) {
+    return authorityPath(pathId, "DELETE", matchCriteria);
+  }
+
+  private CategorizedPath authorityPath(String pathId, String action, MatchCriteria matchCriteria) {
     JobProfilePath path = new JobProfilePath(
       List.of(
         new JobProfileNode("job-1", "MARC", 0),
-        new ActionProfileNode("action-1", "DELETE", "MARC_AUTHORITY", 1)
+        new ActionProfileNode("action-1", action, "MARC_AUTHORITY", 1)
       ),
       pathId
     );
