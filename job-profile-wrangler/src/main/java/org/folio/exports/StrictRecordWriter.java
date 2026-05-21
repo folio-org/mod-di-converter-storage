@@ -2,6 +2,7 @@ package org.folio.exports;
 
 import org.folio.graph.nodes.ActionProfileNode;
 import org.folio.graph.nodes.MappingProfileNode;
+import org.folio.graph.nodes.MatchProfileNode;
 import org.folio.graph.nodes.Profile;
 import org.marc4j.MarcStreamWriter;
 import org.marc4j.marc.Record;
@@ -141,16 +142,20 @@ public class StrictRecordWriter {
     boolean isCreateOnlyProfile = paths.pairedPaths().isEmpty()
       && paths.unpairedUpdatePaths().isEmpty()
       && paths.deletePaths().isEmpty();
+    List<CategorizedPath> allCreatePaths = allCreatePaths(paths);
 
     for (MatchedPathPair pair : paths.pairedPaths()) {
       attemptPath(pair.updatePath(), pathIndex[0]++, List.of(destination(foundationFile, "foundation"),
           destination(importFile, "import")), outcomes, hasGap, firstGap, foundationRecords, importRecords, () -> {
         MatchCriteria matchCriteria = pair.updatePath().matchCriteria();
-        MinimalMarcRecordBuilder.BuildResult foundation = MinimalMarcRecordBuilder.buildRecordForPath(
-          pair.updatePath().path(), ++recordNumber[0], null, refData, matchCriteria);
+        Set<String> branchPrerequisites = getBranchPrerequisiteEntities(pair.updatePath(), allCreatePaths);
+        MinimalMarcRecordBuilder.BuildResult foundation = MinimalMarcRecordBuilder.buildRecordForPathWithPrerequisites(
+          pair.updatePath().path(), ++recordNumber[0], null, refData, matchCriteria, branchPrerequisites);
         foundationRecords.add(foundation.record());
-        MinimalMarcRecordBuilder.BuildResult update = MinimalMarcRecordBuilder.buildUpdateRecordFromBase(
-          foundation.record(), pair.updatePath().path(), ++recordNumber[0], null, refData, matchCriteria);
+        MinimalMarcRecordBuilder.BuildResult update =
+          MinimalMarcRecordBuilder.buildUpdateRecordFromBaseWithPrerequisites(
+            foundation.record(), pair.updatePath().path(), ++recordNumber[0], null, refData, matchCriteria,
+            branchPrerequisites);
         importRecords.add(update.record());
       });
 
@@ -174,7 +179,8 @@ public class StrictRecordWriter {
           destination(importFile, "import")), outcomes, hasGap, firstGap, foundationRecords, importRecords, () -> {
         MatchCriteria matchCriteria = createPath.matchCriteria();
         String targetEntity = getTargetEntityFromPath(createPath.path());
-        Set<String> prerequisites = getPrerequisiteEntities(targetEntity);
+        Set<String> prerequisites = new HashSet<>(getPrerequisiteEntities(targetEntity));
+        prerequisites.addAll(getBranchPrerequisiteEntities(createPath, allCreatePaths));
         MinimalMarcRecordBuilder.BuildResult foundation = MinimalMarcRecordBuilder.buildRecordForPathWithPrerequisites(
           createPath.path(), ++recordNumber[0], null, refData, matchCriteria, prerequisites);
         foundationRecords.add(foundation.record());
@@ -196,8 +202,9 @@ public class StrictRecordWriter {
       for (CategorizedPath createPath : directCreate) {
         attemptPath(createPath, pathIndex[0]++, List.of(destination(importFile, "import")),
             outcomes, hasGap, firstGap, foundationRecords, importRecords, () -> {
-          MinimalMarcRecordBuilder.BuildResult result = MinimalMarcRecordBuilder.buildRecordForPath(
-            createPath.path(), ++recordNumber[0], null, refData, createPath.matchCriteria());
+          Set<String> prerequisites = getBranchPrerequisiteEntities(createPath, allCreatePaths);
+          MinimalMarcRecordBuilder.BuildResult result = MinimalMarcRecordBuilder.buildRecordForPathWithPrerequisites(
+            createPath.path(), ++recordNumber[0], null, refData, createPath.matchCriteria(), prerequisites);
           importRecords.add(result.record());
         });
       }
@@ -207,11 +214,14 @@ public class StrictRecordWriter {
       attemptPath(updatePath, pathIndex[0]++, List.of(destination(foundationFile, "foundation"),
           destination(importFile, "import")), outcomes, hasGap, firstGap, foundationRecords, importRecords, () -> {
         MatchCriteria matchCriteria = updatePath.matchCriteria();
-        MinimalMarcRecordBuilder.BuildResult foundation = MinimalMarcRecordBuilder.buildRecordForPath(
-          updatePath.path(), ++recordNumber[0], null, refData, matchCriteria);
+        Set<String> branchPrerequisites = getBranchPrerequisiteEntities(updatePath, allCreatePaths);
+        MinimalMarcRecordBuilder.BuildResult foundation = MinimalMarcRecordBuilder.buildRecordForPathWithPrerequisites(
+          updatePath.path(), ++recordNumber[0], null, refData, matchCriteria, branchPrerequisites);
         foundationRecords.add(foundation.record());
-        MinimalMarcRecordBuilder.BuildResult update = MinimalMarcRecordBuilder.buildUpdateRecordFromBase(
-          foundation.record(), updatePath.path(), ++recordNumber[0], null, refData, matchCriteria);
+        MinimalMarcRecordBuilder.BuildResult update =
+          MinimalMarcRecordBuilder.buildUpdateRecordFromBaseWithPrerequisites(
+            foundation.record(), updatePath.path(), ++recordNumber[0], null, refData, matchCriteria,
+            branchPrerequisites);
         importRecords.add(update.record());
       });
     }
@@ -326,6 +336,47 @@ public class StrictRecordWriter {
     return ENTITY_PREREQUISITES.getOrDefault(targetEntity, Set.of());
   }
 
+  private List<CategorizedPath> allCreatePaths(CategorizedPaths paths) {
+    List<CategorizedPath> createPaths = new ArrayList<>(paths.unpairedCreatePaths());
+    paths.pairedPaths().forEach(pair -> createPaths.add(pair.createPath()));
+    return createPaths;
+  }
+
+  private Set<String> getBranchPrerequisiteEntities(
+      CategorizedPath targetPath,
+      List<CategorizedPath> createPaths) {
+    Set<String> prerequisites = new HashSet<>();
+    for (CategorizedPath createPath : createPaths) {
+      if (createPath == targetPath) {
+        continue;
+      }
+      if (createPath.reactTo() == ReactTo.NON_MATCH
+          && pathCreatesRecordType(createPath.path(), "HOLDINGS")
+          && !pathCreatesRecordType(targetPath.path(), "HOLDINGS")
+          && sharesMatchAncestor(targetPath.path(), createPath.path())) {
+        prerequisites.add("HOLDINGS");
+      }
+    }
+    return prerequisites;
+  }
+
+  private boolean sharesMatchAncestor(JobProfilePath targetPath, JobProfilePath createPath) {
+    List<Profile> targetProfiles = targetPath.getProfiles();
+    List<Profile> createProfiles = createPath.getProfiles();
+    int commonLength = Math.min(targetProfiles.size(), createProfiles.size());
+    boolean hasCommonMatch = false;
+
+    for (int i = 0; i < commonLength; i++) {
+      if (!targetProfiles.get(i).equals(createProfiles.get(i))) {
+        break;
+      }
+      if (targetProfiles.get(i) instanceof MatchProfileNode) {
+        hasCommonMatch = true;
+      }
+    }
+    return hasCommonMatch;
+  }
+
   private String getTargetEntityFromPath(JobProfilePath path) {
     for (int i = path.getProfiles().size() - 1; i >= 0; i--) {
       Profile profile = path.getProfiles().get(i);
@@ -334,6 +385,14 @@ public class StrictRecordWriter {
       }
     }
     return null;
+  }
+
+  private boolean pathCreatesRecordType(JobProfilePath path, String recordType) {
+    return path.getProfiles().stream()
+      .filter(ActionProfileNode.class::isInstance)
+      .map(ActionProfileNode.class::cast)
+      .anyMatch(actionProfile -> "CREATE".equals(actionProfile.action())
+        && recordType.equals(actionProfile.folioRecord()));
   }
 
   private Map<String, List<CategorizedPath>> groupPathsByParentProfile(List<CategorizedPath> createPaths) {

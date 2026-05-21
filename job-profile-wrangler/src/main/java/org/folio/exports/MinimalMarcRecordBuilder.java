@@ -425,6 +425,31 @@ public final class MinimalMarcRecordBuilder {
       GenerationReport.Builder reportBuilder,
       ReferenceDataContext refData,
       MatchCriteria matchCriteria) {
+    return buildUpdateRecordFromBaseWithPrerequisites(
+      baseRecord, path, recordNumber, reportBuilder, refData, matchCriteria, java.util.Set.of());
+  }
+
+  /**
+   * Builds an UPDATE variant of a MARC record, including fields for prerequisite entities
+   * that may be created later in the same executable branch.
+   *
+   * @param baseRecord the foundation record whose 001 should be preserved
+   * @param path the job profile execution path (for UPDATE action)
+   * @param recordNumber the record number (1-based)
+   * @param reportBuilder optional report builder for verbose output (may be null)
+   * @param refData optional reference data context for Holdings/Item fields (may be null)
+   * @param matchCriteria optional match criteria for preserving match fields (may be null)
+   * @param additionalEntities entities that must be included beyond what the path explicitly creates
+   * @return a BuildResult containing the update variant MARC record
+   */
+  public static BuildResult buildUpdateRecordFromBaseWithPrerequisites(
+      Record baseRecord,
+      JobProfilePath path,
+      int recordNumber,
+      GenerationReport.Builder reportBuilder,
+      ReferenceDataContext refData,
+      MatchCriteria matchCriteria,
+      java.util.Set<String> additionalEntities) {
 
     String pathId = path.getPathId();
     boolean verbose = reportBuilder != null;
@@ -496,13 +521,17 @@ public final class MinimalMarcRecordBuilder {
 
     boolean createsHoldings = pathCreatesRecordType(path, "HOLDINGS");
     boolean createsItems = pathCreatesRecordType(path, "ITEM");
+    boolean needsHoldingsFields = createsHoldings || createsItems ||
+      (additionalEntities != null && additionalEntities.contains("HOLDINGS"));
+    boolean needsItemFields = createsItems ||
+      (additionalEntities != null && additionalEntities.contains("ITEM"));
 
-    if (createsHoldings || createsItems) {
+    if (needsHoldingsFields) {
       String callNumber = "TEST " + shortId + " UPDATED";
       addHoldingsFields(record, requireRefData(refData), callNumber, pathId, reportBuilder);
     }
 
-    if (createsItems) {
+    if (needsItemFields) {
       String barcode = "TEST-" + shortId + "-UPD";
       addItemFields(record, requireRefData(refData), barcode, pathId, reportBuilder);
     }
