@@ -198,6 +198,22 @@ public class FolioClientTest {
   }
 
   @Test
+  public void findInstanceByIdentifierEscapesCqlStringValues() throws IOException {
+    when(baseUrlBuilder.addPathSegments(anyString())).thenReturn(baseUrlBuilder);
+    when(baseUrlBuilder.addQueryParameter(anyString(), anyString())).thenReturn(baseUrlBuilder);
+    when(baseUrlBuilder.build()).thenReturn(HttpUrl.get("http://example.com"));
+    when(body.string()).thenReturn("{\"instances\":[]}");
+
+    folioClient.findInstanceByIdentifier("abc\"\\def", "type\"\\id");
+
+    ArgumentCaptor<String> queryCaptor = ArgumentCaptor.forClass(String.class);
+    verify(baseUrlBuilder).addQueryParameter(eq("query"), queryCaptor.capture());
+    assertEquals(
+      "(identifiers=\\\"*\\\"abc\\\"\\\\def\\\"*\\\" and identifiers=\\\"*\\\"type\\\"\\\\id\\\"*\\\")",
+      queryCaptor.getValue());
+  }
+
+  @Test
   public void testCreateJobProfile() throws IOException {
     String jobProfile = "{}";
 

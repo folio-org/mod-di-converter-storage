@@ -500,8 +500,7 @@ public class FolioClient {
    * @return optional JsonNode containing the instance data, or empty if not found
    */
   public Optional<JsonNode> findInstanceByHrid(String hrid) {
-    // Escape CQL special characters in HRID to prevent injection
-    String escapedHrid = hrid.replace("\\", "\\\\").replace("\"", "\\\"");
+    String escapedHrid = escapeCqlString(hrid);
     HttpUrl url = baseUrlBuilderSupplier.get()
       .addPathSegments("instance-storage/instances")
       .addQueryParameter("query", "hrid==\"" + escapedHrid + "\"")
@@ -542,10 +541,12 @@ public class FolioClient {
    */
   public Optional<JsonNode> findInstanceByIdentifier(String value, String identifierTypeId) {
     // CQL query to match identifier value within the identifiers array
-    String query = String.format("identifiers=\\\"*\\\"%s\\\"*\\\"", value);
+    String escapedValue = escapeCqlString(value);
+    String query = String.format("identifiers=\\\"*\\\"%s\\\"*\\\"", escapedValue);
     if (identifierTypeId != null && !identifierTypeId.isBlank()) {
+      String escapedIdentifierTypeId = escapeCqlString(identifierTypeId);
       query = String.format("(identifiers=\\\"*\\\"%s\\\"*\\\" and identifiers=\\\"*\\\"%s\\\"*\\\")",
-        value, identifierTypeId);
+        escapedValue, escapedIdentifierTypeId);
     }
 
     HttpUrl url = baseUrlBuilderSupplier.get()
@@ -577,6 +578,10 @@ public class FolioClient {
       LOGGER.error("Failed to find instance by identifier: {}", value, e);
       return Optional.empty();
     }
+  }
+
+  private static String escapeCqlString(String value) {
+    return value.replace("\\", "\\\\").replace("\"", "\\\"");
   }
 
   /**
