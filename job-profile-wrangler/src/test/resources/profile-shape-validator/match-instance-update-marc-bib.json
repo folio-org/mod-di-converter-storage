@@ -1,0 +1,50 @@
+{
+  "contentType": "JOB_PROFILE",
+  "content": {
+    "id": "job-1",
+    "name": "Unsupported match instance update MARC bib",
+    "dataType": "MARC"
+  },
+  "childSnapshotWrappers": [
+    {
+      "contentType": "MATCH_PROFILE",
+      "content": {
+        "id": "match-instance-1",
+        "name": "Match existing instance",
+        "matchDetails": [
+          {
+            "incomingRecordType": "MARC_BIBLIOGRAPHIC",
+            "existingRecordType": "INSTANCE"
+          }
+        ]
+      },
+      "childSnapshotWrappers": [
+        {
+          "contentType": "ACTION_PROFILE",
+          "reactTo": "MATCH",
+          "content": {
+            "id": "update-marc-bib-1",
+            "name": "Update MARC bib",
+            "action": "UPDATE",
+            "folioRecord": "MARC_BIBLIOGRAPHIC"
+          },
+          "childSnapshotWrappers": [
+            {
+              "contentType": "MAPPING_PROFILE",
+              "content": {
+                "id": "mapping-marc-bib-1",
+                "name": "MARC bib to MARC bib",
+                "incomingRecordType": "MARC_BIBLIOGRAPHIC",
+                "existingRecordType": "MARC_BIBLIOGRAPHIC",
+                "mappingDetails": {
+                  "recordType": "MARC_BIBLIOGRAPHIC",
+                  "marcMappingOption": "UPDATE"
+                }
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

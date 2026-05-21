@@ -5,6 +5,7 @@ import org.folio.exports.GenerationOutcome.BlockedUnsupportedWorkflow;
 import org.folio.validation.rules.CreateHoldingsWithoutInstanceContextRule;
 import org.folio.validation.rules.EmptyMatchDetailsRule;
 import org.folio.validation.rules.MatchInstanceCreateItemRule;
+import org.folio.validation.rules.MatchInstanceUpdateMarcBibRule;
 import org.folio.validation.rules.MissingMarcMappingOptionRule;
 
 import java.util.List;
@@ -17,6 +18,7 @@ import java.util.Optional;
 public class ProfileShapeValidator {
   private static final List<UnsupportedShapeRule> DEFAULT_RULES = List.of(
     new MatchInstanceCreateItemRule(),
+    new MatchInstanceUpdateMarcBibRule(),
     new EmptyMatchDetailsRule(),
     new MissingMarcMappingOptionRule(),
     new CreateHoldingsWithoutInstanceContextRule()

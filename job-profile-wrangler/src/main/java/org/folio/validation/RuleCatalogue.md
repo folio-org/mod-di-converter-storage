@@ -17,6 +17,12 @@ The v1 validator walks live job-profile snapshot JSON, not repository DOT files.
 - Stack behavior: `data-import-processing-core` expects `matchProfile.matchDetails[0]` when matching, so an empty array fails at runtime with `NoSuchElementException`.
 - Sweep examples: `jp-021`, `jp-027`, `jp-029`, `jp-039`, and `jp-054`.
 
+### `match-instance-update-marc-bib`
+
+- Predicate: block a path where a `MATCH_PROFILE` matches incoming `MARC_BIBLIOGRAPHIC` records to existing `INSTANCE` records and a direct child `ACTION_PROFILE` updates `MARC_BIBLIOGRAPHIC` with a `MARC_BIBLIOGRAPHIC -> MARC_BIBLIOGRAPHIC` mapping.
+- Stack behavior: `mod-source-record-manager` rejects this shape in `AbstractChunkProcessingService.isNotSupportedJobProfileExists` before raw record chunk processing starts.
+- Sweep examples: `jp-019`.
+
 ### `marc-mapping-option-missing`
 
 - Predicate: block any MARC-targeting `MAPPING_PROFILE` snapshot whose `content.mappingDetails.recordType` or `content.existingRecordType` is a `MARC_*` record type and whose `content.mappingDetails.marcMappingOption` is absent, null, or blank.
