@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.folio.exports.GenerationOutcome.BlockedUnsupportedWorkflow;
 import org.folio.graph.ProfileDepthFirstIterator;
 import org.folio.graph.edges.MatchRelationshipEdge;
 import org.folio.graph.edges.NonMatchRelationshipEdge;
@@ -29,6 +30,7 @@ import org.folio.rest.jaxrs.model.MatchProfileUpdateDto;
 import org.folio.rest.jaxrs.model.ProfileAssociation;
 import org.folio.rest.jaxrs.model.ProfileType;
 import org.folio.rest.jaxrs.model.ReactToType;
+import org.folio.validation.GraphProfileShapeValidator;
 import org.jgrapht.Graph;
 import org.jgrapht.traverse.DepthFirstIterator;
 
@@ -78,6 +80,12 @@ public class ProfileHydration {
    * @param graph  The graph representing the profiles and their relationships.
    */
   public Optional<Object> hydrate(int repoId, Graph<Profile, RegularEdge> graph) {
+    Optional<BlockedUnsupportedWorkflow> blocked = new GraphProfileShapeValidator().validate(graph);
+    if (blocked.isPresent()) {
+      LOGGER.error("Export blocked by rule {}: {}", blocked.get().rule(), blocked.get().message());
+      return Optional.empty();
+    }
+
     // Generate a unique epoch for the profile names
     LocalDateTime currentDateTime = LocalDateTime.now();
     DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyyMMddHHmm");

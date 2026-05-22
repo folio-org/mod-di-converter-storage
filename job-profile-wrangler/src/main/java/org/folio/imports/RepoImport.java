@@ -16,6 +16,7 @@ import org.folio.graph.nodes.MappingProfileNode;
 import org.folio.graph.nodes.MatchProfileNode;
 import org.folio.graph.nodes.Profile;
 import org.folio.http.FolioClient;
+import org.folio.validation.GraphProfileShapeValidator;
 import org.folio.validation.ProfileShapeValidator;
 import org.jgrapht.Graph;
 import org.jgrapht.graph.SimpleDirectedGraph;
@@ -100,6 +101,12 @@ public class RepoImport implements Runnable {
 
     Graph<Profile, RegularEdge> g = new SimpleDirectedGraph<>(RegularEdge.class);
     buildGraph(g, jsonNode);
+    var graphBlocked = new GraphProfileShapeValidator().validate(g);
+    if (graphBlocked.isPresent()) {
+      return new ImportReport.Entry(profileId, profileName,
+        new ImportOutcome.BlockedUnsupported(graphBlocked.get().rule(), graphBlocked.get().message()));
+    }
+
     var searched = GraphReader.search(repoPath, g);
     if (searched.isEmpty()) {
       Optional<Integer> repoId = GraphWriter.writeGraph(repoPath, g);

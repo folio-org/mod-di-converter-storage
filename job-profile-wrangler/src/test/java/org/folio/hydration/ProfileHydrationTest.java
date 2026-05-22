@@ -35,6 +35,7 @@ import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 import org.mockito.ArgumentCaptor;
 
@@ -201,6 +202,28 @@ public class ProfileHydrationTest {
     var jobProfile = new ProfileHydration(folioClient).hydrate(26, graph);
 
     assertTrue(jobProfile.isEmpty());
+  }
+
+  @Test
+  public void hydrateRejectsActionProfileWithoutMappingBeforeCreatingObjects() {
+    graph = new DefaultDirectedGraph<>(RegularEdge.class);
+
+    Profile jobProfile = new JobProfileNode("1", "MARC", 0);
+    Profile matchProfile = new MatchProfileNode("2", EntityType.MARC_BIBLIOGRAPHIC.toString(),
+      EntityType.HOLDINGS.toString(), 0);
+    Profile actionProfile = new ActionProfileNode("3", ActionProfile.Action.CREATE.toString(),
+      ActionProfile.FolioRecord.HOLDINGS.toString(), 0);
+
+    graph.addVertex(jobProfile);
+    graph.addVertex(matchProfile);
+    graph.addVertex(actionProfile);
+    graph.addEdge(jobProfile, matchProfile, new RegularEdge());
+    graph.addEdge(matchProfile, actionProfile, new MatchRelationshipEdge());
+
+    var result = new ProfileHydration(folioClient).hydrate(17, graph);
+
+    assertTrue(result.isEmpty());
+    verifyNoInteractions(folioClient);
   }
 
   @Test

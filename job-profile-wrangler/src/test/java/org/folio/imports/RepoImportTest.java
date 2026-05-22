@@ -97,6 +97,20 @@ public class RepoImportTest {
   }
 
   @Test
+  public void importSnapshotRejectsActionWithoutMappingBeforeRepositoryImport() throws IOException {
+    String repoPath = tempDir.getRoot().toString();
+    JsonNode snapshot = OBJECT_MAPPER.readTree(getClass().getClassLoader()
+      .getResourceAsStream("profile-shape-validator/action-profile-mapping-missing.json"));
+
+    ImportReport.Entry entry = RepoImport.importSnapshot(repoPath, "profile-1", "Blocked profile", snapshot);
+
+    assertTrue(entry.outcome() instanceof ImportOutcome.BlockedUnsupported);
+    assertEquals("action-profile-mapping-missing",
+      ((ImportOutcome.BlockedUnsupported) entry.outcome()).rule());
+    assertTrue(GraphReader.readAll(repoPath).isEmpty());
+  }
+
+  @Test
   public void fromStringRejectsBlockedSnapshotBeforeRepositoryImport() throws IOException {
     String repoPath = tempDir.getRoot().toString();
     String content = Resources.toString(

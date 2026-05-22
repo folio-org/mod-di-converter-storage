@@ -1,0 +1,47 @@
+{
+  "contentType": "JOB_PROFILE",
+  "profileWrapperId": "job-wrapper-1",
+  "content": {
+    "id": "job-1",
+    "name": "Action without mapping",
+    "dataType": "MARC"
+  },
+  "childSnapshotWrappers": [
+    {
+      "contentType": "MATCH_PROFILE",
+      "profileWrapperId": "match-instance-wrapper-1",
+      "content": {
+        "id": "match-instance-1",
+        "name": "Match instance",
+        "incomingRecordType": "MARC_BIBLIOGRAPHIC",
+        "existingRecordType": "INSTANCE"
+      },
+      "childSnapshotWrappers": [
+        {
+          "contentType": "MATCH_PROFILE",
+          "reactTo": "MATCH",
+          "profileWrapperId": "match-holdings-wrapper-1",
+          "content": {
+            "id": "match-holdings-1",
+            "name": "Match holdings",
+            "incomingRecordType": "MARC_BIBLIOGRAPHIC",
+            "existingRecordType": "HOLDINGS"
+          },
+          "childSnapshotWrappers": [
+            {
+              "contentType": "ACTION_PROFILE",
+              "reactTo": "NON_MATCH",
+              "profileWrapperId": "action-wrapper-1",
+              "content": {
+                "id": "action-1",
+                "name": "Create holdings without mapping",
+                "action": "CREATE",
+                "folioRecord": "HOLDINGS"
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
