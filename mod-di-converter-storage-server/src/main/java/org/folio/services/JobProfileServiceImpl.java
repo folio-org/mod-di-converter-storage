@@ -5,7 +5,6 @@ import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.folio.okapi.common.GenericCompositeFuture;
 import org.folio.rest.impl.util.OkapiConnectionParams;
 import org.folio.rest.jaxrs.model.ActionProfile;
 import org.folio.rest.jaxrs.model.ActionProfileCollection;
@@ -277,7 +276,7 @@ public class JobProfileServiceImpl extends AbstractProfileService<JobProfile, Jo
       .map(id -> actionProfileService.getProfileById(id, false, tenantId))
       .toList();
 
-    return GenericCompositeFuture.all(getProfileFutures)
+    return Future.all(getProfileFutures)
       .compose(actionProfiles -> {
         List<ActionProfile> existingActionProfiles = actionProfiles.result().<Optional<ActionProfile>>list().stream()
           .filter(Optional::isPresent).map(Optional::get).toList();
@@ -369,7 +368,7 @@ public class JobProfileServiceImpl extends AbstractProfileService<JobProfile, Jo
       .map(id -> matchProfileService.getProfileById(id, false, tenantId))
       .toList();
 
-    return GenericCompositeFuture.all(futures)
+    return Future.all(futures)
       .compose(matchProfiles -> {
         List<MatchProfile> existingMatchProfiles = matchProfiles.result().<Optional<MatchProfile>>list().stream()
           .filter(Optional::isPresent).map(Optional::get).toList();

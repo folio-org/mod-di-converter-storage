@@ -1,7 +1,6 @@
 package org.folio.dao.association;
 
 import io.vertx.core.Future;
-import io.vertx.core.Promise;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.sqlclient.Row;
@@ -99,18 +98,13 @@ public class MasterDetailAssociationDaoImpl implements MasterDetailAssociationDa
    * @return a profile instance.
    */
   private Object mapProfile(JsonObject object, ProfileType contentType) {
-    switch (contentType) {
-      case JOB_PROFILE:
-        return object.mapTo(JobProfile.class);
-      case MATCH_PROFILE:
-        return object.mapTo(MatchProfile.class);
-      case ACTION_PROFILE:
-        return object.mapTo(ActionProfile.class);
-      case MAPPING_PROFILE:
-        return object.mapTo(MappingProfile.class);
-      default:
-        throw new IllegalStateException("Can not find profile by content type: " + contentType.toString());
-    }
+    return switch (contentType) {
+      case JOB_PROFILE -> object.mapTo(JobProfile.class);
+      case MATCH_PROFILE -> object.mapTo(MatchProfile.class);
+      case ACTION_PROFILE -> object.mapTo(ActionProfile.class);
+      case MAPPING_PROFILE -> object.mapTo(MappingProfile.class);
+      default -> throw new IllegalStateException("Can not find profile by content type: " + contentType.toString());
+    };
   }
 
 
@@ -161,13 +155,8 @@ public class MasterDetailAssociationDaoImpl implements MasterDetailAssociationDa
    * @return a result set of a query.
    */
   private Future<RowSet<Row>> select(String tenantId, String sql) {
-    Promise<RowSet<Row>> promise = Promise.promise();
-    try {
-      pgClientFactory.createInstance(tenantId).select(sql, promise);
-    } catch (Exception e) {
-      LOGGER.debug("select:: Could not perform the sql query {} for the tenant {}", sql, tenantId, e);
-      promise.fail(e);
-    }
-    return promise.future();
+    return pgClientFactory.createInstance(tenantId)
+      .execute(sql)
+      .onFailure(e -> LOGGER.warn("select:: Could not perform the sql query {} for the tenant {}", sql, tenantId, e));
   }
 }

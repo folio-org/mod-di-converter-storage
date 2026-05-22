@@ -11,7 +11,6 @@ import org.folio.dao.ProfileDao;
 import org.folio.dao.association.MasterDetailAssociationDao;
 import org.folio.dao.association.ProfileAssociationDao;
 import org.folio.dao.association.ProfileWrapperDao;
-import org.folio.okapi.common.GenericCompositeFuture;
 import org.folio.rest.impl.util.OkapiConnectionParams;
 import org.folio.rest.jaxrs.model.ActionProfile;
 import org.folio.rest.jaxrs.model.ActionProfileCollection;
@@ -83,7 +82,7 @@ public class CommonProfileAssociationService implements ProfileAssociationServic
       .onSuccess(wrappedAssociations -> {
         List<Future<ProfileAssociation>> futureList = new ArrayList<>();
         profileAssociations.forEach(association -> futureList.add(profileAssociationDao.save(association, tenantId).map(association)));
-        GenericCompositeFuture.all(futureList).onComplete(ar -> {
+        Future.all(futureList).onComplete(ar -> {
           if (ar.succeeded()) {
             result.complete(profileAssociations);
           } else {

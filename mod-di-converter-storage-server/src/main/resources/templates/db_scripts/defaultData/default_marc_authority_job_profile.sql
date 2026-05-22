@@ -210,30 +210,6 @@ INSERT INTO ${myuniversity}_${mymodule}.mapping_profiles (id, jsonb) values
 }')
 ON CONFLICT DO NOTHING;
 
-INSERT INTO ${myuniversity}_${mymodule}.job_to_action_profiles (id, jsonb) values
-  ('06914a99-9b58-493d-828b-4ff104ba7e49', '{
-  "id": "06914a99-9b58-493d-828b-4ff104ba7e49",
-  "order": 0,
-  "triggered": false,
-  "detailProfileId": "7915c72e-c6af-4962-969d-403c7238b051",
-  "masterProfileId": "6eefa4c6-bbf7-4845-ad82-de7fc5abd0e3",
-  "detailProfileType": "ACTION_PROFILE",
-  "masterProfileType": "JOB_PROFILE"
-}')
-ON CONFLICT DO NOTHING;
-
-INSERT INTO ${myuniversity}_${mymodule}.action_to_mapping_profiles (id, jsonb) values
-  ('329911fb-2835-476e-b85e-a7fcdc900f87', '{
-  "id": "329911fb-2835-476e-b85e-a7fcdc900f87",
-  "order": 0,
-  "triggered": false,
-  "detailProfileId": "6a0ec1de-68eb-4833-bdbf-0741db25c314",
-  "masterProfileId": "7915c72e-c6af-4962-969d-403c7238b051",
-  "detailProfileType": "MAPPING_PROFILE",
-  "masterProfileType": "ACTION_PROFILE"
-}')
-ON CONFLICT DO NOTHING;
-
 DO
 $$
 DECLARE

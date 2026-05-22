@@ -1,7 +1,6 @@
 package org.folio.dao.association;
 
 import io.vertx.core.Future;
-import io.vertx.core.Promise;
 import io.vertx.sqlclient.Row;
 import io.vertx.sqlclient.RowIterator;
 import io.vertx.sqlclient.RowSet;
@@ -48,16 +47,16 @@ public class ProfileWrapperDaoImpl implements ProfileWrapperDao {
 
   @Override
   public Future<Optional<ProfileWrapper>> getProfileWrapperById(String id, String tenantId) {
-    Promise<RowSet<Row>> promise = Promise.promise();
     String query = format(SELECT_QUERY, convertToPsqlStandard(tenantId), TABLE_NAME);
     Tuple queryParams = Tuple.of(id);
-    pgClientFactory.createInstance(tenantId).execute(query, queryParams, promise);
-    return promise.future().map(this::mapResultSetToOptionalProfileWrapper);
+    return pgClientFactory.createInstance(tenantId)
+      .execute(query, queryParams)
+      .map(this::mapResultSetToOptionalProfileWrapper)
+      .onFailure(e -> LOGGER.warn("getProfileWrapperById:: Error getting profile wrapper by id {}", id, e));
   }
 
   @Override
   public Future<String> save(ProfileWrapper entity, String tenantId) {
-    Promise<RowSet<Row>> promise = Promise.promise();
     LOGGER.trace("save:: Saving profile wrapper, tenant id {}", tenantId);
     if (entity.getProfileType() == null) {
       return Future.failedFuture("save:: Error saving profile wrapper - profile type is empty");
@@ -67,40 +66,40 @@ public class ProfileWrapperDaoImpl implements ProfileWrapperDao {
       entity.getId(),
       entity.getProfileType(),
       entity.getProfileId());
-    pgClientFactory.createInstance(tenantId).execute(query, queryParams, promise);
-    return promise.future().map(entity.getId()).onFailure(e -> LOGGER.warn("save:: Error saving profile wrapper", e));
+    return pgClientFactory.createInstance(tenantId)
+      .execute(query, queryParams)
+      .map(entity.getId())
+      .onFailure(e -> LOGGER.warn("save:: Error saving profile wrapper", e));
   }
 
   @Override
   public Future<Boolean> deleteById(String id, String tenantId) {
-    Promise<RowSet<Row>> promise = Promise.promise();
-    pgClientFactory.createInstance(tenantId).delete(TABLE_NAME, id, promise);
-    return promise.future().map(updateResult -> updateResult.rowCount() == 1);
+    return pgClientFactory.createInstance(tenantId)
+      .delete(TABLE_NAME, id)
+      .map(updateResult -> updateResult.rowCount() == 1)
+      .onFailure(e -> LOGGER.warn("deleteById:: Error deleting profile wrapper by id {}", id, e));
   }
 
   @Override
   public Future<Boolean> checkIfDataInTableExists(String tenantId) {
-    Promise<RowSet<Row>> promise = Promise.promise();
     String query = format(SELECT_ON_EMPTY_TABLE_QUERY, convertToPsqlStandard(tenantId), TABLE_NAME);
-
-    pgClientFactory.createInstance(tenantId).execute(query, promise);
-    return promise.future().map(this::mapResultSetIfExists);
-
+    return pgClientFactory.createInstance(tenantId)
+      .execute(query)
+      .map(this::mapResultSetIfExists)
+      .onFailure(e -> LOGGER.warn("checkIfDataInTableExists:: Error checking data existence in table {}", TABLE_NAME, e));
   }
 
   @Override
   public Future<Integer> getLinesCount(String tenantId, String tableName) {
-    Promise<RowSet<Row>> promise = Promise.promise();
     String query = format(SQL_LINES_COUNT, convertToPsqlStandard(tenantId), tableName);
-
-    pgClientFactory.createInstance(tenantId).execute(query, promise);
-    return promise.future().map(resultSet -> resultSet.iterator().next().getInteger(0));
-
+    return pgClientFactory.createInstance(tenantId)
+      .execute(query)
+      .map(resultSet -> resultSet.iterator().next().getInteger(0))
+      .onFailure(e -> LOGGER.warn("getLinesCount:: Error getting lines count in table {}", tableName, e));
   }
 
   @Override
   public Future<List<ProfileWrapper>> getWrapperByProfileId(String profileId, ProfileType profileType, String tenantId) {
-    Promise<RowSet<Row>> promise = Promise.promise();
     LOGGER.trace("get:: Getting profile wrapper, tenant id {}", tenantId);
     if (profileId == null) {
       return Future.failedFuture("get:: Getting profile wrapper - profile id is empty");
@@ -109,8 +108,10 @@ public class ProfileWrapperDaoImpl implements ProfileWrapperDao {
       TABLE_NAME, profileTypeToColumn.get(profileType.value()));
 
     Tuple queryParams = Tuple.of(profileId);
-    pgClientFactory.createInstance(tenantId).execute(query, queryParams, promise);
-    return promise.future().map(this::mapResultSetToListProfileWrappers);
+    return pgClientFactory.createInstance(tenantId)
+      .execute(query, queryParams)
+      .map(this::mapResultSetToListProfileWrappers)
+      .onFailure(e -> LOGGER.warn("get:: Error getting profile wrapper by profile id {}", profileId, e));
   }
 
   private Optional<ProfileWrapper> mapResultSetToOptionalProfileWrapper(RowSet<Row> resultSet) {

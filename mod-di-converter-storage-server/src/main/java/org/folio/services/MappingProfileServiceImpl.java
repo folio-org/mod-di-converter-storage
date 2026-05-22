@@ -7,7 +7,6 @@ import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.folio.okapi.common.GenericCompositeFuture;
 import org.folio.rest.impl.util.OkapiConnectionParams;
 import org.folio.rest.jaxrs.model.ActionProfile;
 import org.folio.rest.jaxrs.model.ActionProfileCollection;
@@ -187,7 +186,7 @@ public class MappingProfileServiceImpl extends AbstractProfileService<MappingPro
         ProfileType.MAPPING_PROFILE, tenantId))
       .collect(Collectors.toList());
 
-    return GenericCompositeFuture.all(futures)
+    return Future.all(futures)
       .onFailure(th -> LOGGER.warn("deleteExistingActionToMappingAssociations:: Failed to delete existing action-to-mapping associations", th))
       .map(true);
   }
@@ -210,7 +209,7 @@ public class MappingProfileServiceImpl extends AbstractProfileService<MappingPro
           String.format(INVALID_RECORD_TYPE_LINKED_ACTION_PROFILE_TO_MAPPING_PROFILE, actionProfile.getName())))
       ))
       .toList();
-    GenericCompositeFuture.all(futures)
+    Future.all(futures)
       .onSuccess(handler -> promise.complete(new Errors().withErrors(errors)))
       .onFailure(promise::fail);
 

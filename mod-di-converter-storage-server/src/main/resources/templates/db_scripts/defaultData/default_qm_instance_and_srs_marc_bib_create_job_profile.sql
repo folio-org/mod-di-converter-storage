@@ -269,30 +269,6 @@ INSERT INTO ${myuniversity}_${mymodule}.mapping_profiles (id, jsonb) values
 }
 ') ON CONFLICT DO NOTHING;
 
-INSERT INTO ${myuniversity}_${mymodule}.job_to_action_profiles (id, jsonb) values
-    ('b168efb3-1443-400b-9bc6-bc7dc2d3050a',
-'{
-	"id": "b168efb3-1443-400b-9bc6-bc7dc2d3050a",
-	"order": 0,
-	"triggered": false,
-	"detailProfileId": "f8e58651-f651-485d-aead-d2fa8700e2d1",
-	"masterProfileId": "6409dcff-71fa-433a-bc6a-e70ad38a9604",
-	"detailProfileType": "ACTION_PROFILE",
-	"masterProfileType": "JOB_PROFILE"
-}') ON CONFLICT DO NOTHING;
-
-INSERT INTO ${myuniversity}_${mymodule}.action_to_mapping_profiles (id, jsonb) values
-    ('85375360-9430-4bb1-a64a-197aee7c9400',
-'{
-	"id": "85375360-9430-4bb1-a64a-197aee7c9400",
-	"order": 0,
-	"triggered": false,
-	"detailProfileId": "991c0300-44a6-47e3-8ea2-b01bb56a38cc",
-	"masterProfileId": "f8e58651-f651-485d-aead-d2fa8700e2d1",
-	"detailProfileType": "MAPPING_PROFILE",
-	"masterProfileType": "ACTION_PROFILE"
-}') ON CONFLICT DO NOTHING;
-
 DO $$
 DECLARE
     job_wrapper_id UUID;

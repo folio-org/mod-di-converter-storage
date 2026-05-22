@@ -9,6 +9,7 @@ import io.restassured.builder.RequestSpecBuilder;
 import io.restassured.http.ContentType;
 import io.restassured.specification.RequestSpecification;
 import io.vertx.core.DeploymentOptions;
+import io.vertx.core.Future;
 import io.vertx.core.Vertx;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
@@ -92,31 +93,44 @@ public abstract class AbstractRestVerticleTest {
     TenantClient tenantClient = new TenantClient(OKAPI_URL, TENANT_ID, "dummy-token");
     DeploymentOptions restVerticleDeploymentOptions = new DeploymentOptions()
       .setConfig(new JsonObject().put("http.port", PORT));
-    vertx.deployVerticle(RestVerticle.class.getName(), restVerticleDeploymentOptions, res -> {
-      try {
+
+    vertx.deployVerticle(RestVerticle.class.getName(), restVerticleDeploymentOptions)
+      .compose(deploymentId -> {
         TenantAttributes tenantAttributes = new TenantAttributes();
         tenantAttributes.setModuleTo(ModuleName.getModuleName() + "-1.0.0");
-        tenantClient.postTenant(tenantAttributes, res2 -> {
-          if (res2.result().statusCode() == 204) {
-            return;
-          }
-          if (res2.result().statusCode() == 201) {
-            tenantClient.getTenantByOperationId(res2.result().bodyAsJson(TenantJob.class).getId(), 60000, context.asyncAssertSuccess(res3 -> {
-              context.assertTrue(res3.bodyAsJson(TenantJob.class).getComplete());
-              String error = res3.bodyAsJson(TenantJob.class).getError();
+
+        return tenantClient.postTenant(tenantAttributes);
+      })
+      .compose(postTenantResponse -> {
+        int statusCode = postTenantResponse.statusCode();
+
+        if (statusCode == 204) {
+          return Future.succeededFuture().mapEmpty();
+        }
+
+        if (statusCode == 201) {
+          TenantJob tenantJob = postTenantResponse.bodyAsJson(TenantJob.class);
+          return tenantClient.getTenantByOperationId(tenantJob.getId(), 60000)
+            .onSuccess(jobStatusResponse -> {
+              TenantJob completedJob = jobStatusResponse.bodyAsJson(TenantJob.class);
+              context.assertTrue(completedJob.getComplete(), "Tenant job should be complete");
+
+              String error = completedJob.getError();
               if (error != null) {
                 context.assertEquals("Failed to make post tenant. Received status code 400", error);
               }
-            }));
-          } else {
-            context.assertEquals("Failed to make post tenant. Received status code 400", res2.result().bodyAsString());
-          }
-          async.complete();
-        });
-      } catch (Exception e) {
-        e.printStackTrace();
-      }
-    });
+            })
+            .mapEmpty();
+        }
+
+        String errorMessage = "Failed to make post tenant. Received status code " + statusCode;
+        context.fail(errorMessage + ". Body: " + postTenantResponse.bodyAsString());
+        return Future.failedFuture(errorMessage); // Проваливаем Future
+      })
+      .onSuccess(v -> {
+        async.complete();
+      })
+      .onFailure(context::fail);
 
     spec = new RequestSpecBuilder()
       .setContentType(ContentType.JSON)
@@ -130,12 +144,14 @@ public abstract class AbstractRestVerticleTest {
   @AfterClass
   public static void tearDownClass(final TestContext context) {
     Async async = context.async();
-    vertx.close(context.asyncAssertSuccess(res -> {
-      if (useExternalDatabase.equals("embedded")) {
-        PostgresClient.stopPostgresTester();
-      }
-      async.complete();
-    }));
+    vertx.close()
+      .onSuccess(v -> {
+        if (useExternalDatabase.equals("embedded")) {
+          PostgresClient.stopPostgresTester();
+        }
+        async.complete();
+      })
+      .onFailure(context::fail);
   }
 
   @Before

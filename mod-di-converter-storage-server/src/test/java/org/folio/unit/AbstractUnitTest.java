@@ -2,6 +2,7 @@ package org.folio.unit;
 
 import io.vertx.core.Context;
 import io.vertx.core.DeploymentOptions;
+import io.vertx.core.Future;
 import io.vertx.core.Vertx;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.unit.Async;
@@ -35,7 +36,7 @@ public abstract class AbstractUnitTest {
   }
 
   @BeforeClass
-  public static void beforeClass(TestContext context) throws Exception {
+  public static void beforeClass(TestContext context) {
     Async async = context.async();
     int port = NetworkUtils.nextFreePort();
     String okapiUrl = "http://localhost:" + port;
@@ -44,31 +45,42 @@ public abstract class AbstractUnitTest {
     TenantClient tenantClient = new TenantClient(okapiUrl, TENANT_ID, TOKEN);
 
     final DeploymentOptions options = new DeploymentOptions().setConfig(new JsonObject().put(HTTP_PORT, port));
-    vertx.deployVerticle(RestVerticle.class.getName(), options, res -> {
-      try {
+    vertx.deployVerticle(RestVerticle.class.getName(), options)
+      .compose(deploymentId -> {
         TenantAttributes tenantAttributes = new TenantAttributes();
         tenantAttributes.setModuleTo(constructModuleName());
-        tenantClient.postTenant(tenantAttributes, res2 -> {
-          if (res2.result().statusCode() == 204) {
-            return;
-          }
-          if (res2.result().statusCode() == 201) {
-            tenantClient.getTenantByOperationId(res2.result().bodyAsJson(TenantJob.class).getId(), 60000, context.asyncAssertSuccess(res3 -> {
-              context.assertTrue(res3.bodyAsJson(TenantJob.class).getComplete());
-              String error = res3.bodyAsJson(TenantJob.class).getError();
+
+        return tenantClient.postTenant(tenantAttributes);
+      })
+      .compose(postTenantResponse -> {
+        int statusCode = postTenantResponse.statusCode();
+
+        if (statusCode == 204) {
+          return Future.succeededFuture();
+        }
+
+        if (statusCode == 201) {
+          TenantJob tenantJob = postTenantResponse.bodyAsJson(TenantJob.class);
+          return tenantClient.getTenantByOperationId(tenantJob.getId(), 60000)
+            .onSuccess(jobStatusResponse -> {
+              TenantJob completedJob = jobStatusResponse.bodyAsJson(TenantJob.class);
+              context.assertTrue(completedJob.getComplete(), "Tenant job should be complete");
+
+              String error = completedJob.getError();
               if (error != null) {
                 context.assertEquals("Failed to make post tenant. Received status code 400", error);
               }
-            }));
-          } else {
-            context.assertEquals("Failed to make post tenant. Received status code 400", res2.result().bodyAsString());
-          }
-          async.complete();
-        });
-      } catch (Exception e) {
-        throw new RuntimeException(e);
-      }
-    });
+            });
+        }
+
+        String errorMessage = "Failed to make post tenant. Received status code " + statusCode;
+        context.fail(errorMessage + ". Body: " + postTenantResponse.bodyAsString());
+        return Future.failedFuture(errorMessage);
+      })
+      .onSuccess(v -> {
+        async.complete();
+      })
+      .onFailure(context::fail);
   }
 
   private static String constructModuleName() {

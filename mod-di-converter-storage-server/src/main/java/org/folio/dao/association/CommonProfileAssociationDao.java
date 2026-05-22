@@ -70,8 +70,6 @@ public class CommonProfileAssociationDao implements ProfileAssociationDao {
   @Override
   public Future<String> save(ProfileAssociation entity, String tenantId) {
     if (entity.getId() == null) entity.setId(UUID.randomUUID().toString());
-    Promise<RowSet<Row>> promise = Promise.promise();
-
     LOGGER.trace("save:: Saving profile association, tenant id {}, masterType {}, detailType {}",
       tenantId, entity.getMasterProfileType(), entity.getDetailProfileType());
 
@@ -87,35 +85,30 @@ public class CommonProfileAssociationDao implements ProfileAssociationDao {
       entity.getDetailProfileType(),
       entity.getOrder(),
       entity.getReactTo());
-    pgClientFactory.createInstance(tenantId).execute(query, queryParams, promise);
-    return promise.future().map(entity.getId()).onFailure(e -> LOGGER.warn("save:: Error saving profile association", e));
+    return pgClientFactory.createInstance(tenantId)
+      .execute(query, queryParams)
+      .map(entity.getId())
+      .onFailure(e -> LOGGER.warn("save:: Error saving profile association", e));
   }
 
   @Override
   public Future<ProfileAssociationCollection> getAll(ProfileType masterType, ProfileType detailType, String tenantId) {
-    Promise<RowSet<Row>> promise = Promise.promise();
-    // return by master profile type
     String query = format(SELECT_BY_MASTER_AND_DETAIL_TYPE_QUERY, convertToPsqlStandard(tenantId), ASSOCIATION_TABLE);
     Tuple queryParams = Tuple.of(masterType, detailType);
-    pgClientFactory.createInstance(tenantId).execute(query, queryParams, result -> {
-      if (result.failed()) {
-        LOGGER.warn("getAll:: Error while searching for ProfileAssociations", result.cause());
-        promise.fail(result.cause());
-      } else {
-        promise.complete(result.result());
-      }
-    });
-    return promise.future().map(this::mapResultSetToProfileAssociationCollection);
+    return pgClientFactory.createInstance(tenantId)
+      .execute(query, queryParams)
+      .map(this::mapResultSetToProfileAssociationCollection)
+      .onFailure(e -> LOGGER.warn("getAll:: Error while searching for ProfileAssociations with masterType {} and detailType {}", masterType, detailType, e));
   }
 
   @Override
   public Future<Optional<ProfileAssociation>> getById(String id, String tenantId) {
-    Promise<RowSet<Row>> promise = Promise.promise();
-
     String query = format(SELECT_BY_ID_QUERY, convertToPsqlStandard(tenantId), ASSOCIATION_TABLE);
     Tuple queryParams = Tuple.of(getValidUUIDOrNull(id));
-    pgClientFactory.createInstance(tenantId).execute(query, queryParams, promise);
-    return promise.future().map(this::mapResultSetToOptionalProfileAssociation);
+    return pgClientFactory.createInstance(tenantId)
+      .execute(query, queryParams)
+      .map(this::mapResultSetToOptionalProfileAssociation)
+      .onFailure(e -> LOGGER.warn("getById:: Error while searching for ProfileAssociation with id {}", id, e));
   }
 
   @Override
@@ -134,18 +127,17 @@ public class CommonProfileAssociationDao implements ProfileAssociationDao {
         entity.getDetailProfileType(),
         entity.getOrder(),
         entity.getReactTo());
-      pgClientFactory.createInstance(tenantId).execute(query, queryParams,  updateResult -> {
-        if (updateResult.failed()) {
-          LOGGER.warn("update:: Could not update {} with id {}", ProfileAssociation.class, entity.getId(), updateResult.cause());
-          promise.fail(updateResult.cause());
-        } else if (updateResult.result().rowCount() != 1) {
-          String errorMessage = format("update:: %s with id '%s' was not found", ProfileAssociation.class, entity.getId());
-          LOGGER.warn(errorMessage);
-          promise.fail(new NotFoundException(errorMessage));
-        } else {
-          promise.complete(entity);
-        }
-      });
+      return pgClientFactory.createInstance(tenantId)
+        .execute(query, queryParams)
+        .compose(updateResult -> {
+          if (updateResult.rowCount() != 1) {
+            String errorMessage = format("update:: %s with id '%s' was not found", ProfileAssociation.class, entity.getId());
+            LOGGER.warn(errorMessage);
+            return Future.failedFuture(new NotFoundException(errorMessage));
+          }
+          return Future.succeededFuture(entity);
+        })
+        .onFailure(e -> LOGGER.warn("update:: Could not update {} with id {}", ProfileAssociation.class, entity.getId(), e));
     } catch (Exception e) {
       LOGGER.warn("update:: Error updating {} with id {}", ProfileAssociation.class, entity.getId(), e);
       promise.fail(e);
@@ -155,9 +147,10 @@ public class CommonProfileAssociationDao implements ProfileAssociationDao {
 
   @Override
   public Future<Boolean> delete(String id, String tenantId) {
-    Promise<RowSet<Row>> promise = Promise.promise();
-    pgClientFactory.createInstance(tenantId).delete(ASSOCIATION_TABLE, id, promise);
-    return promise.future().map(updateResult -> updateResult.rowCount() == 1);
+    return pgClientFactory.createInstance(tenantId)
+      .delete(ASSOCIATION_TABLE, id)
+      .map(updateResult -> updateResult.rowCount() == 1)
+      .onFailure(e -> LOGGER.warn("delete:: Error deleting {} with id {}", ProfileAssociation.class, id, e));
   }
 
   @Override
@@ -181,7 +174,15 @@ public class CommonProfileAssociationDao implements ProfileAssociationDao {
       }
 
       String query = queryBuilder.toString();
-      pgClientFactory.createInstance(tenantId).execute(query, queryParams, promise);
+      pgClientFactory.createInstance(tenantId).execute(query, queryParams, result -> {
+        if (result.failed()) {
+          LOGGER.warn("delete:: Error deleting by master wrapper id {}, detail wrapper id {} and order {}",
+            masterWrapperId, detailWrapperId, order, result.cause());
+          promise.fail(result.cause());
+        } else {
+          promise.complete(result.result());
+        }
+      });
     } catch (Exception e) {
       LOGGER.warn("delete:: Error deleting by master wrapper id {}, detail wrapper id {} and order {}",
         masterWrapperId, detailWrapperId, order, e);
@@ -193,16 +194,17 @@ public class CommonProfileAssociationDao implements ProfileAssociationDao {
   @Override
   public Future<Boolean> deleteByMasterWrapperId(String wrapperId, ProfileType masterType, ProfileType detailType, String tenantId) {
     LOGGER.debug("deleteByMasterWrapperId : wrapperId={}, masterType={}, detailType={}", wrapperId, masterType.value(), detailType.value());
-    Promise<RowSet<Row>> promise = Promise.promise();
     try {
       String query = format(DELETE_BY_MASTER_WRAPPER_ID_QUERY, convertToPsqlStandard(tenantId), ASSOCIATION_TABLE);
       Tuple queryParams = Tuple.of(getValidUUIDOrNull(wrapperId));
-      pgClientFactory.createInstance(tenantId).execute(query, queryParams, promise);
+      return pgClientFactory.createInstance(tenantId)
+        .execute(query, queryParams)
+        .map(updateResult -> updateResult.rowCount() > 0)
+        .onFailure(e -> LOGGER.warn("deleteByMasterWrapperId:: Error deleting by master wrapper id {}", wrapperId, e));
     } catch (Exception e) {
       LOGGER.warn("deleteByMasterWrapperId:: Error deleting by master wrapper id {}", wrapperId, e);
       return Future.failedFuture(e);
     }
-    return promise.future().map(updateResult -> updateResult.rowCount() > 0);
   }
 
   @Override
@@ -210,16 +212,17 @@ public class CommonProfileAssociationDao implements ProfileAssociationDao {
                                                      ProfileType detailType, String tenantId) {
     LOGGER.debug("deleteByMasterIdAndDetailId : masterId={}, detailId={}, masterType={}, detailType={}",
       masterId, detailId, masterType.value(), detailType.value());
-    Promise<RowSet<Row>> promise = Promise.promise();
     try {
       String query = format(DELETE_BY_MASTER_AND_DETAIL_PROFILES_IDS_QUERY, convertToPsqlStandard(tenantId), ASSOCIATION_TABLE);
       Tuple queryParams = Tuple.of(getValidUUIDOrNull(masterId), getValidUUIDOrNull(detailId));
-      pgClientFactory.createInstance(tenantId).execute(query, queryParams, promise);
+      return pgClientFactory.createInstance(tenantId)
+        .execute(query, queryParams)
+        .map(updateResult -> updateResult.rowCount() == 1)
+        .onFailure(e -> LOGGER.warn("deleteByMasterIdAndDetailId:: Error deleting by master id {} and detail id {}", masterId, detailId, e));
     } catch (Exception e) {
       LOGGER.warn("deleteByMasterIdAndDetailId:: Error deleting by master id {} and detail id {}", masterId, detailId, e);
       return Future.failedFuture(e);
     }
-    return promise.future().map(updateResult -> updateResult.rowCount() == 1);
   }
 
   private UUID getValidUUIDOrNull(String input) {

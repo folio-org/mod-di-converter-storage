@@ -1,10 +1,7 @@
 package org.folio.dao.snapshot;
 
 import io.vertx.core.Future;
-import io.vertx.core.Promise;
 import io.vertx.core.json.JsonObject;
-import io.vertx.sqlclient.Row;
-import io.vertx.sqlclient.RowSet;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -36,58 +33,63 @@ public class ProfileSnapshotDaoImpl implements ProfileSnapshotDao {
 
   @Override
   public Future<Optional<ProfileSnapshotWrapper>> getById(String id, String tenantId) {
-    Promise<ProfileSnapshotWrapper> promise = Promise.promise();
     try {
-      pgClientFactory.createInstance(tenantId).getById(TABLE_NAME, id, ProfileSnapshotWrapper.class, promise);
+      return pgClientFactory.createInstance(tenantId)
+        .getById(TABLE_NAME, id, ProfileSnapshotWrapper.class)
+        .map(Optional::ofNullable)
+        .onFailure(e -> logger.warn("getById:: Error querying {} by id", ProfileSnapshotWrapper.class.getSimpleName(), e));
     } catch (Exception e) {
       logger.warn("getById:: Error querying {} by id", ProfileSnapshotWrapper.class.getSimpleName(), e);
-      promise.fail(e);
+      return Future.failedFuture(e);
     }
-    return promise.future()
-      .map(wrapper -> wrapper == null ? Optional.empty() : Optional.of(wrapper));
   }
 
   @Override
   public Future<String> save(ProfileSnapshotWrapper entity, String tenantId) {
-    Promise<String> promise = Promise.promise();
-    pgClientFactory.createInstance(tenantId).save(TABLE_NAME, entity.getId(), entity, promise);
-    return promise.future();
+    try {
+      return pgClientFactory.createInstance(tenantId)
+        .save(TABLE_NAME, entity.getId(), entity)
+        .onFailure(e -> logger.warn("save:: Error saving {} with id {}", ProfileSnapshotWrapper.class.getSimpleName(), entity.getId(), e));
+    } catch (Exception e) {
+      logger.warn("save:: Error saving {} with id {}", ProfileSnapshotWrapper.class.getSimpleName(), entity.getId(), e);
+      return Future.failedFuture(e);
+    }
   }
 
   public Future<List<ProfileAssociation>> getSnapshotAssociations(String profileId, ProfileType profileType, String jobProfileId, String tenantId) {
-    Promise<RowSet<Row>> promise = Promise.promise();
+
     try {
       SnapshotProfileType snapshotProfileType = SnapshotProfileType.valueOf(profileType.value());
       String createSnapshotQuery = String.format(GET_PROFILE_SNAPSHOT, profileId, profileType.value(), snapshotProfileType.getTableName(), jobProfileId);
-      pgClientFactory.createInstance(tenantId).select(createSnapshotQuery, promise);
+      return pgClientFactory.createInstance(tenantId).select(createSnapshotQuery)
+        .map(rows -> {
+          List<ProfileAssociation> snapshotAssociations = new ArrayList<>();
+          rows.forEach(row -> {
+            JsonObject jsonItem = row.get(JsonObject.class, 0);
+            ProfileAssociation snapshotAssociation = new ProfileAssociation();
+            snapshotAssociation.setId(jsonItem.getString("association_id"));
+            snapshotAssociation.setMasterProfileId(jsonItem.getString("master_id"));
+            snapshotAssociation.setDetailProfileId(jsonItem.getString("detail_id"));
+            snapshotAssociation.setMasterWrapperId(jsonItem.getString("masterwrapperid"));
+            snapshotAssociation.setDetailWrapperId(jsonItem.getString("detailwrapperid"));
+            snapshotAssociation.setDetailProfileType(ProfileType.fromValue(jsonItem.getString("detail_type")));
+            snapshotAssociation.setOrder(jsonItem.getInteger("detail_order"));
+            snapshotAssociation.setDetail(jsonItem.getJsonArray("detail").getList().getFirst());
+            snapshotAssociation.setJobProfileId(jsonItem.getString("job_profile_id"));
+            if (StringUtils.isNotEmpty(jsonItem.getString("react_to"))) {
+              snapshotAssociation.setReactTo(ReactToType.fromValue(jsonItem.getString("react_to")));
+            }
+            if (StringUtils.isNotEmpty(jsonItem.getString("master_type"))) {
+              snapshotAssociation.setMasterProfileType(ProfileType.fromValue(jsonItem.getString("master_type")));
+            }
+            snapshotAssociations.add(snapshotAssociation);
+          });
+          return snapshotAssociations;
+        })
+        .onFailure(e -> logger.warn("getSnapshotItems:: Error while getSnapshotItems", e));
     } catch (Exception e) {
       logger.warn("getSnapshotItems:: Error while getSnapshotItems", e);
-      promise.fail(e);
+      return Future.failedFuture(e);
     }
-    return promise.future()
-      .map(rows -> {
-        List<ProfileAssociation> snapshotAssociations = new ArrayList<>();
-        rows.forEach(row -> {
-          JsonObject jsonItem = row.get(JsonObject.class, 0);
-          ProfileAssociation snapshotAssociation = new ProfileAssociation();
-          snapshotAssociation.setId(jsonItem.getString("association_id"));
-          snapshotAssociation.setMasterProfileId(jsonItem.getString("master_id"));
-          snapshotAssociation.setDetailProfileId(jsonItem.getString("detail_id"));
-          snapshotAssociation.setMasterWrapperId(jsonItem.getString("masterwrapperid"));
-          snapshotAssociation.setDetailWrapperId(jsonItem.getString("detailwrapperid"));
-          snapshotAssociation.setDetailProfileType(ProfileType.fromValue(jsonItem.getString("detail_type")));
-          snapshotAssociation.setOrder(jsonItem.getInteger("detail_order"));
-          snapshotAssociation.setDetail(jsonItem.getJsonArray("detail").getList().get(0));
-          snapshotAssociation.setJobProfileId(jsonItem.getString("job_profile_id"));
-          if (StringUtils.isNotEmpty(jsonItem.getString("react_to"))) {
-            snapshotAssociation.setReactTo(ReactToType.fromValue(jsonItem.getString("react_to")));
-          }
-          if (StringUtils.isNotEmpty(jsonItem.getString("master_type"))) {
-            snapshotAssociation.setMasterProfileType(ProfileType.fromValue(jsonItem.getString("master_type")));
-          }
-          snapshotAssociations.add(snapshotAssociation);
-        });
-        return snapshotAssociations;
-      });
   }
 }
