@@ -405,6 +405,9 @@ public class StrictRecordWriter {
     if (targetPath.matchProfileId() != null && createPath.matchProfileId() != null) {
       return targetPath.matchProfileId().equals(createPath.matchProfileId());
     }
+    if (targetPath.matchProfileId() != null || createPath.matchProfileId() != null) {
+      return false;
+    }
     return sharesMatchAncestor(targetPath.path(), createPath.path());
   }
 

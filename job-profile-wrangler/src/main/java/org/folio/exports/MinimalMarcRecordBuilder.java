@@ -253,10 +253,11 @@ public final class MinimalMarcRecordBuilder {
     // Determine what entities need fields: path-created entities + additional prerequisites
     boolean createsHoldings = pathCreatesRecordType(path, "HOLDINGS");
     boolean createsItems = pathCreatesRecordType(path, "ITEM");
-    boolean needsHoldingsFields = createsHoldings ||
-        (additionalEntities != null && additionalEntities.contains("HOLDINGS"));
-    boolean needsItemFields = createsItems ||
-        (additionalEntities != null && additionalEntities.contains("ITEM"));
+    boolean additionalHoldings = additionalEntities != null && additionalEntities.contains("HOLDINGS");
+    boolean additionalItems = additionalEntities != null && additionalEntities.contains("ITEM");
+    boolean needsHoldingsFields = createsHoldings || createsItems ||
+        additionalHoldings || additionalItems;
+    boolean needsItemFields = createsItems || additionalItems;
 
     String callNumber = "TEST " + shortId;
 
@@ -521,10 +522,11 @@ public final class MinimalMarcRecordBuilder {
 
     boolean createsHoldings = pathCreatesRecordType(path, "HOLDINGS");
     boolean createsItems = pathCreatesRecordType(path, "ITEM");
+    boolean additionalHoldings = additionalEntities != null && additionalEntities.contains("HOLDINGS");
+    boolean additionalItems = additionalEntities != null && additionalEntities.contains("ITEM");
     boolean needsHoldingsFields = createsHoldings || createsItems ||
-      (additionalEntities != null && additionalEntities.contains("HOLDINGS"));
-    boolean needsItemFields = createsItems ||
-      (additionalEntities != null && additionalEntities.contains("ITEM"));
+      additionalHoldings || additionalItems;
+    boolean needsItemFields = createsItems || additionalItems;
 
     if (needsHoldingsFields) {
       String callNumber = "TEST " + shortId + " UPDATED";

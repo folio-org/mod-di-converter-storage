@@ -2,6 +2,7 @@ package org.folio.validation;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.folio.exports.GenerationOutcome.BlockedUnsupportedWorkflow;
 import org.folio.validation.rules.AuthorityNonMatchCreateWith999sRule;
 import org.folio.validation.rules.CreateHoldingsWithoutInstanceContextRule;
@@ -52,6 +53,22 @@ public class ProfileShapeValidatorTest {
 
     assertTrue(outcome.isPresent());
     assertEquals(MatchInstanceUpdateMarcBibRule.RULE_NAME, outcome.get().rule());
+  }
+
+  @Test
+  public void matchInstanceUpdateMarcBibDoesNotInferExistingTypeFromMappingRecordType() throws Exception {
+    JsonNode snapshot = fixture("match-instance-update-marc-bib.json").deepCopy();
+    ObjectNode mappingContent = (ObjectNode) snapshot
+      .path("childSnapshotWrappers").path(0)
+      .path("childSnapshotWrappers").path(0)
+      .path("childSnapshotWrappers").path(0)
+      .path("content");
+    mappingContent.remove("incomingRecordType");
+    mappingContent.remove("existingRecordType");
+
+    Optional<BlockedUnsupportedWorkflow> outcome = new MatchInstanceUpdateMarcBibRule().evaluate(snapshot);
+
+    assertFalse(outcome.isPresent());
   }
 
   @Test

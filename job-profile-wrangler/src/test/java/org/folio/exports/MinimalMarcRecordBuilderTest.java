@@ -78,6 +78,36 @@ public class MinimalMarcRecordBuilderTest {
   }
 
   @Test
+  public void itemPrerequisiteAddsHoldingsFieldsEvenWhenHoldingsIsNotExplicitlyRequested() {
+    MinimalMarcRecordBuilder.ReferenceDataContext refData =
+      new MinimalMarcRecordBuilder.ReferenceDataContext("location-id", "material-type-id", "loan-type-id");
+    JobProfilePath instancePath = path("CREATE", "INSTANCE");
+
+    MinimalMarcRecordBuilder.BuildResult result =
+      MinimalMarcRecordBuilder.buildRecordForPathWithPrerequisites(instancePath, 1, null, refData, null,
+        java.util.Set.of("ITEM"));
+
+    assertNotNull(result.record().getVariableField("852"));
+    assertNotNull(result.record().getVariableField("945"));
+  }
+
+  @Test
+  public void itemUpdatePrerequisiteAddsHoldingsFieldsEvenWhenHoldingsIsNotExplicitlyRequested() {
+    MinimalMarcRecordBuilder.ReferenceDataContext refData =
+      new MinimalMarcRecordBuilder.ReferenceDataContext("location-id", "material-type-id", "loan-type-id");
+    JobProfilePath updatePath = path("UPDATE", "INSTANCE");
+    MinimalMarcRecordBuilder.BuildResult base =
+      MinimalMarcRecordBuilder.buildRecordForPath(path("CREATE", "INSTANCE"), 1, null, null);
+
+    MinimalMarcRecordBuilder.BuildResult update =
+      MinimalMarcRecordBuilder.buildUpdateRecordFromBaseWithPrerequisites(
+        base.record(), updatePath, 2, null, refData, null, java.util.Set.of("ITEM"));
+
+    assertNotNull(update.record().getVariableField("852"));
+    assertNotNull(update.record().getVariableField("945"));
+  }
+
+  @Test
   public void marcBibliographicUpdatePathBuildsFoundationAndUpdateRecord() {
     JobProfilePath marcBibUpdatePath = path("UPDATE", "MARC_BIBLIOGRAPHIC");
 

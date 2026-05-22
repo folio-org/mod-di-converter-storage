@@ -142,6 +142,36 @@ public class StrictRecordWriterTest {
   }
 
   @Test
+  public void explicitMatchIdDoesNotShareBranchWithNullMatchIdEvenWithCommonAncestor() throws IOException {
+    Path outputBase = temp.getRoot().toPath().resolve("records");
+    JobProfileNode job = new JobProfileNode("job-1", "MARC", 0);
+    MatchProfileNode outerMatch = new MatchProfileNode("match-outer", "MARC_BIBLIOGRAPHIC", "INSTANCE", 0);
+    MatchProfileNode innerMatch = new MatchProfileNode("match-inner", "STATIC_VALUE", "HOLDINGS", 0);
+    CategorizedPath updateInstance = categorized(pathOf(
+      job,
+      outerMatch,
+      innerMatch,
+      new ActionProfileNode("action-update-instance", "UPDATE", "INSTANCE", 0),
+      new MappingProfileNode("mapping-update-instance", "MARC_BIBLIOGRAPHIC", "INSTANCE", 0)
+    ), ReactTo.MATCH, "match-inner");
+    CategorizedPath createHoldings = categorized(pathOf(
+      job,
+      outerMatch,
+      new ActionProfileNode("action-create-holdings", "CREATE", "HOLDINGS", 0),
+      new MappingProfileNode("mapping-holdings", "MARC_BIBLIOGRAPHIC", "HOLDINGS", 0)
+    ), ReactTo.MATCH, null);
+
+    StrictRecordWriter.WriteResult result = new StrictRecordWriter().write(
+      new CategorizedPaths(List.of(), List.of(createHoldings), List.of(updateInstance), List.of()),
+      new MinimalMarcRecordBuilder.ReferenceDataContext("location-id", "material-type-id", "loan-type-id"),
+      outputBase);
+
+    assertEquals(GenerationOutcome.GENERATED, result.overallOutcome().label());
+    assertEquals(null, result.foundationRecords().get(1).getVariableField("852"));
+    assertEquals(null, result.importRecords().get(1).getVariableField("852"));
+  }
+
+  @Test
   public void pairedMatchBranchReportsGeneratorGapWhenHoldingsBranchNeedsLocation() throws IOException {
     Path outputBase = temp.getRoot().toPath().resolve("records");
     JobProfileNode job = new JobProfileNode("job-1", "MARC", 0);

@@ -112,9 +112,6 @@ public class MatchInstanceUpdateMarcBibRule implements UnsupportedShapeRule {
         if (incomingRecordType.isBlank()) {
           incomingRecordType = text(mappingDetails, "recordType");
         }
-        if (existingRecordType.isBlank()) {
-          existingRecordType = text(mappingDetails, "recordType");
-        }
 
         if ("MARC_BIBLIOGRAPHIC".equals(incomingRecordType) && "MARC_BIBLIOGRAPHIC".equals(existingRecordType)) {
           return true;
