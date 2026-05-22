@@ -209,7 +209,7 @@ public class FolioClientTest {
     ArgumentCaptor<String> queryCaptor = ArgumentCaptor.forClass(String.class);
     verify(baseUrlBuilder).addQueryParameter(eq("query"), queryCaptor.capture());
     assertEquals(
-      "(identifiers=\\\"*\\\"abc\\\"\\\\def\\\"*\\\" and identifiers=\\\"*\\\"type\\\"\\\\id\\\"*\\\")",
+      "(identifiers=\"*abc\\\"\\\\def*\" and identifiers=\"*type\\\"\\\\id*\")",
       queryCaptor.getValue());
   }
 

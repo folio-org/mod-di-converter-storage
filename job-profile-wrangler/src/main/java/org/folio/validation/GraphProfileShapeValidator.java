@@ -29,6 +29,7 @@ public class GraphProfileShapeValidator {
     Optional<BlockedUnsupportedWorkflow> actionWithoutMapping = graph.vertexSet().stream()
       .filter(ActionProfileNode.class::isInstance)
       .map(ActionProfileNode.class::cast)
+      .filter(this::requiresMappingChild)
       .filter(action -> !hasMappingChild(graph, action))
       .findFirst()
       .map(action -> new BlockedUnsupportedWorkflow(ACTION_MAPPING_MISSING_RULE,
@@ -49,6 +50,10 @@ public class GraphProfileShapeValidator {
     return graph.outgoingEdgesOf(action).stream()
       .map(graph::getEdgeTarget)
       .anyMatch(MappingProfileNode.class::isInstance);
+  }
+
+  private boolean requiresMappingChild(ActionProfileNode action) {
+    return !"DELETE".equals(action.action());
   }
 
   private boolean hasDirectModifyMarcBibChild(Graph<Profile, RegularEdge> graph, Profile match) {

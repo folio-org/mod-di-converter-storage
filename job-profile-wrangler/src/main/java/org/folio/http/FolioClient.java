@@ -541,12 +541,9 @@ public class FolioClient {
    */
   public Optional<JsonNode> findInstanceByIdentifier(String value, String identifierTypeId) {
     // CQL query to match identifier value within the identifiers array
-    String escapedValue = escapeCqlString(value);
-    String query = String.format("identifiers=\\\"*\\\"%s\\\"*\\\"", escapedValue);
+    String query = cqlWildcardMatch("identifiers", value);
     if (identifierTypeId != null && !identifierTypeId.isBlank()) {
-      String escapedIdentifierTypeId = escapeCqlString(identifierTypeId);
-      query = String.format("(identifiers=\\\"*\\\"%s\\\"*\\\" and identifiers=\\\"*\\\"%s\\\"*\\\")",
-        escapedValue, escapedIdentifierTypeId);
+      query = String.format("(%s and %s)", query, cqlWildcardMatch("identifiers", identifierTypeId));
     }
 
     HttpUrl url = baseUrlBuilderSupplier.get()
@@ -582,6 +579,10 @@ public class FolioClient {
 
   private static String escapeCqlString(String value) {
     return value.replace("\\", "\\\\").replace("\"", "\\\"");
+  }
+
+  private static String cqlWildcardMatch(String field, String value) {
+    return String.format("%s=\"*%s*\"", field, escapeCqlString(value));
   }
 
   /**
