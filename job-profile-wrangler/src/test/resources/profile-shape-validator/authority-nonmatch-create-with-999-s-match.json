@@ -1,0 +1,54 @@
+{
+  "contentType": "JOB_PROFILE",
+  "content": {
+    "id": "job-1",
+    "name": "Authority non-match create with 999 s match",
+    "dataType": "MARC"
+  },
+  "childSnapshotWrappers": [
+    {
+      "contentType": "MATCH_PROFILE",
+      "content": {
+        "id": "match-authority-1",
+        "name": "Match existing authority",
+        "incomingRecordType": "MARC_AUTHORITY",
+        "existingRecordType": "MARC_AUTHORITY",
+        "matchDetails": [
+          {
+            "incomingMatchExpression": {
+              "dataValueType": "VALUE_FROM_RECORD",
+              "fields": [
+                { "label": "field", "value": "999" },
+                { "label": "indicator1", "value": "f" },
+                { "label": "indicator2", "value": "f" },
+                { "label": "recordSubfield", "value": "s" }
+              ]
+            },
+            "existingMatchExpression": {
+              "dataValueType": "VALUE_FROM_RECORD",
+              "fields": [
+                { "label": "field", "value": "999" },
+                { "label": "indicator1", "value": "f" },
+                { "label": "indicator2", "value": "f" },
+                { "label": "recordSubfield", "value": "s" }
+              ]
+            }
+          }
+        ]
+      },
+      "childSnapshotWrappers": [
+        {
+          "contentType": "ACTION_PROFILE",
+          "reactTo": "NON_MATCH",
+          "content": {
+            "id": "create-authority-1",
+            "name": "Create authority",
+            "action": "CREATE",
+            "folioRecord": "AUTHORITY",
+            "order": 0
+          }
+        }
+      ]
+    }
+  ]
+}

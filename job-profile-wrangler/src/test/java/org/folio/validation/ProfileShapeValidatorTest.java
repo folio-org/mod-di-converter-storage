@@ -3,11 +3,13 @@ package org.folio.validation;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.folio.exports.GenerationOutcome.BlockedUnsupportedWorkflow;
+import org.folio.validation.rules.AuthorityNonMatchCreateWith999sRule;
 import org.folio.validation.rules.CreateHoldingsWithoutInstanceContextRule;
 import org.folio.validation.rules.EmptyMatchDetailsRule;
 import org.folio.validation.rules.MatchInstanceCreateItemRule;
 import org.folio.validation.rules.MatchInstanceUpdateMarcBibRule;
 import org.folio.validation.rules.MissingMarcMappingOptionRule;
+import org.folio.validation.rules.MultipleRootUpdateBranchesRule;
 import org.folio.validation.rules.PairedAuthorityUpdateCreateRule;
 import org.junit.Test;
 
@@ -77,6 +79,24 @@ public class ProfileShapeValidatorTest {
 
     assertTrue(outcome.isPresent());
     assertEquals(PairedAuthorityUpdateCreateRule.RULE_NAME, outcome.get().rule());
+  }
+
+  @Test
+  public void multipleRootUpdateBranchesFires() throws Exception {
+    Optional<BlockedUnsupportedWorkflow> outcome = ProfileShapeValidator.defaultValidator()
+      .validate(fixture("multiple-root-update-branches.json"));
+
+    assertTrue(outcome.isPresent());
+    assertEquals(MultipleRootUpdateBranchesRule.RULE_NAME, outcome.get().rule());
+  }
+
+  @Test
+  public void authorityNonMatchCreateWith999sFires() throws Exception {
+    Optional<BlockedUnsupportedWorkflow> outcome = ProfileShapeValidator.defaultValidator()
+      .validate(fixture("authority-nonmatch-create-with-999-s-match.json"));
+
+    assertTrue(outcome.isPresent());
+    assertEquals(AuthorityNonMatchCreateWith999sRule.RULE_NAME, outcome.get().rule());
   }
 
   @Test

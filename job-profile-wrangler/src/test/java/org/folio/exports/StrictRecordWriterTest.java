@@ -92,6 +92,56 @@ public class StrictRecordWriterTest {
   }
 
   @Test
+  public void matchSiblingCreateHoldingsRecordIncludesLaterItemFields() throws IOException {
+    Path outputBase = temp.getRoot().toPath().resolve("records");
+    JobProfileNode job = new JobProfileNode("job-1", "MARC", 0);
+    MatchProfileNode match = new MatchProfileNode("match-1", "MARC_BIBLIOGRAPHIC", "INSTANCE", 0);
+    CategorizedPath createHoldings = categorized(
+      pathWithPrefix(job, match, "CREATE", "HOLDINGS"), ReactTo.MATCH, "match-1");
+    CategorizedPath createItem = categorized(
+      pathWithPrefix(job, match, "CREATE", "ITEM"), ReactTo.MATCH, "match-1");
+
+    StrictRecordWriter.WriteResult result = new StrictRecordWriter().write(
+      new CategorizedPaths(List.of(), List.of(createHoldings, createItem), List.of(), List.of()),
+      new MinimalMarcRecordBuilder.ReferenceDataContext("location-id", "material-type-id", "loan-type-id"),
+      outputBase);
+
+    assertEquals(GenerationOutcome.GENERATED, result.overallOutcome().label());
+    assertEquals(2, result.foundationRecords().size());
+    assertEquals(2, result.importRecords().size());
+    assertHoldingsLocation(result.importRecords().get(0), "location-id");
+    assertItemFields(result.importRecords().get(0));
+    assertHoldingsLocation(result.importRecords().get(1), "location-id");
+    assertItemFields(result.importRecords().get(1));
+  }
+
+  @Test
+  public void matchUpdateRecordIncludesSameBranchCreateHoldingsAndItemFields() throws IOException {
+    Path outputBase = temp.getRoot().toPath().resolve("records");
+    JobProfileNode job = new JobProfileNode("job-1", "MARC", 0);
+    MatchProfileNode match = new MatchProfileNode("match-1", "MARC_BIBLIOGRAPHIC", "INSTANCE", 0);
+    CategorizedPath updateInstance = categorized(
+      pathWithPrefix(job, match, "UPDATE", "INSTANCE"), ReactTo.MATCH, "match-1");
+    CategorizedPath createHoldings = categorized(
+      pathWithPrefix(job, match, "CREATE", "HOLDINGS"), ReactTo.MATCH, "match-1");
+    CategorizedPath createItem = categorized(
+      pathWithPrefix(job, match, "CREATE", "ITEM"), ReactTo.MATCH, "match-1");
+
+    StrictRecordWriter.WriteResult result = new StrictRecordWriter().write(
+      new CategorizedPaths(List.of(), List.of(createHoldings, createItem), List.of(updateInstance), List.of()),
+      new MinimalMarcRecordBuilder.ReferenceDataContext("location-id", "material-type-id", "loan-type-id"),
+      outputBase);
+
+    assertEquals(GenerationOutcome.GENERATED, result.overallOutcome().label());
+    assertEquals(3, result.foundationRecords().size());
+    assertEquals(3, result.importRecords().size());
+    assertHoldingsLocation(result.foundationRecords().get(2), "location-id");
+    assertItemFields(result.foundationRecords().get(2));
+    assertHoldingsLocation(result.importRecords().get(2), "location-id");
+    assertItemFields(result.importRecords().get(2));
+  }
+
+  @Test
   public void pairedMatchBranchReportsGeneratorGapWhenHoldingsBranchNeedsLocation() throws IOException {
     Path outputBase = temp.getRoot().toPath().resolve("records");
     JobProfileNode job = new JobProfileNode("job-1", "MARC", 0);

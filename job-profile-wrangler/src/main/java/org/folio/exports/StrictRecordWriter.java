@@ -161,8 +161,9 @@ public class StrictRecordWriter {
 
       attemptPath(pair.createPath(), pathIndex[0]++, List.of(destination(importFile, "import")),
           outcomes, hasGap, firstGap, foundationRecords, importRecords, () -> {
-        MinimalMarcRecordBuilder.BuildResult create = MinimalMarcRecordBuilder.buildRecordForPath(
-          pair.createPath().path(), ++recordNumber[0], null, refData, null);
+        Set<String> branchPrerequisites = getBranchPrerequisiteEntities(pair.createPath(), allCreatePaths);
+        MinimalMarcRecordBuilder.BuildResult create = MinimalMarcRecordBuilder.buildRecordForPathWithPrerequisites(
+          pair.createPath().path(), ++recordNumber[0], null, refData, null, branchPrerequisites);
         importRecords.add(create.record());
       });
     }
@@ -184,8 +185,9 @@ public class StrictRecordWriter {
         MinimalMarcRecordBuilder.BuildResult foundation = MinimalMarcRecordBuilder.buildRecordForPathWithPrerequisites(
           createPath.path(), ++recordNumber[0], null, refData, matchCriteria, prerequisites);
         foundationRecords.add(foundation.record());
-        MinimalMarcRecordBuilder.BuildResult update = MinimalMarcRecordBuilder.buildUpdateRecordFromBase(
-          foundation.record(), createPath.path(), ++recordNumber[0], null, refData, matchCriteria);
+        MinimalMarcRecordBuilder.BuildResult update =
+          MinimalMarcRecordBuilder.buildUpdateRecordFromBaseWithPrerequisites(
+            foundation.record(), createPath.path(), ++recordNumber[0], null, refData, matchCriteria, prerequisites);
         importRecords.add(update.record());
       });
     }
@@ -378,14 +380,32 @@ public class StrictRecordWriter {
       if (createPath == targetPath) {
         continue;
       }
-      if (createPath.reactTo() == ReactTo.NON_MATCH
-          && pathCreatesRecordType(createPath.path(), "HOLDINGS")
-          && !pathCreatesRecordType(targetPath.path(), "HOLDINGS")
-          && sharesMatchAncestor(targetPath.path(), createPath.path())) {
-        prerequisites.add("HOLDINGS");
+      if (!sameExecutableBranch(targetPath, createPath)) {
+        if (createPath.reactTo() == ReactTo.NON_MATCH
+            && pathCreatesRecordType(createPath.path(), "HOLDINGS")
+            && !pathCreatesRecordType(targetPath.path(), "HOLDINGS")
+            && sharesMatchAncestor(targetPath.path(), createPath.path())) {
+          prerequisites.add("HOLDINGS");
+        }
+        continue;
+      }
+      String targetEntity = getTargetEntityFromPath(createPath.path());
+      if ("HOLDINGS".equals(targetEntity) || "ITEM".equals(targetEntity)) {
+        prerequisites.add(targetEntity);
+        prerequisites.addAll(getPrerequisiteEntities(targetEntity));
       }
     }
     return prerequisites;
+  }
+
+  private boolean sameExecutableBranch(CategorizedPath targetPath, CategorizedPath createPath) {
+    if (targetPath.reactTo() != createPath.reactTo()) {
+      return false;
+    }
+    if (targetPath.matchProfileId() != null && createPath.matchProfileId() != null) {
+      return targetPath.matchProfileId().equals(createPath.matchProfileId());
+    }
+    return sharesMatchAncestor(targetPath.path(), createPath.path());
   }
 
   private boolean sharesMatchAncestor(JobProfilePath targetPath, JobProfilePath createPath) {

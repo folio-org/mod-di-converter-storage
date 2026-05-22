@@ -4,9 +4,11 @@ import com.fasterxml.jackson.databind.JsonNode;
 import org.folio.exports.GenerationOutcome.BlockedUnsupportedWorkflow;
 import org.folio.validation.rules.CreateHoldingsWithoutInstanceContextRule;
 import org.folio.validation.rules.EmptyMatchDetailsRule;
+import org.folio.validation.rules.AuthorityNonMatchCreateWith999sRule;
 import org.folio.validation.rules.MatchInstanceCreateItemRule;
 import org.folio.validation.rules.MatchInstanceUpdateMarcBibRule;
 import org.folio.validation.rules.MissingMarcMappingOptionRule;
+import org.folio.validation.rules.MultipleRootUpdateBranchesRule;
 import org.folio.validation.rules.PairedAuthorityUpdateCreateRule;
 
 import java.util.List;
@@ -23,7 +25,9 @@ public class ProfileShapeValidator {
     new EmptyMatchDetailsRule(),
     new MissingMarcMappingOptionRule(),
     new CreateHoldingsWithoutInstanceContextRule(),
-    new PairedAuthorityUpdateCreateRule()
+    new PairedAuthorityUpdateCreateRule(),
+    new MultipleRootUpdateBranchesRule(),
+    new AuthorityNonMatchCreateWith999sRule()
   );
 
   private final List<UnsupportedShapeRule> rules;

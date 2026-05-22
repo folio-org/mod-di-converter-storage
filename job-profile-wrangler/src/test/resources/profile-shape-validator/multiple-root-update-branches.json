@@ -1,0 +1,102 @@
+{
+  "contentType": "JOB_PROFILE",
+  "content": {
+    "id": "job-1",
+    "name": "Multiple root update branches",
+    "dataType": "MARC"
+  },
+  "childSnapshotWrappers": [
+    {
+      "contentType": "MATCH_PROFILE",
+      "content": {
+        "id": "match-instance-1",
+        "name": "Match existing instance",
+        "incomingRecordType": "MARC_BIBLIOGRAPHIC",
+        "existingRecordType": "INSTANCE",
+        "matchDetails": [
+          {
+            "incomingMatchExpression": {
+              "dataValueType": "VALUE_FROM_RECORD",
+              "fields": [
+                { "label": "field", "value": "001" }
+              ]
+            },
+            "existingMatchExpression": {
+              "dataValueType": "VALUE_FROM_RECORD",
+              "fields": [
+                { "label": "field", "value": "instance" },
+                { "label": "field", "value": "hrid" }
+              ]
+            }
+          }
+        ]
+      },
+      "childSnapshotWrappers": [
+        {
+          "contentType": "ACTION_PROFILE",
+          "reactTo": "MATCH",
+          "content": {
+            "id": "update-instance-1",
+            "name": "Update instance",
+            "action": "UPDATE",
+            "folioRecord": "INSTANCE",
+            "order": 0
+          }
+        }
+      ]
+    },
+    {
+      "contentType": "MATCH_PROFILE",
+      "content": {
+        "id": "match-marc-1",
+        "name": "Match existing SRS",
+        "incomingRecordType": "MARC_BIBLIOGRAPHIC",
+        "existingRecordType": "MARC_BIBLIOGRAPHIC",
+        "matchDetails": [
+          {
+            "incomingMatchExpression": {
+              "dataValueType": "VALUE_FROM_RECORD",
+              "fields": [
+                { "label": "field", "value": "001" }
+              ]
+            },
+            "existingMatchExpression": {
+              "dataValueType": "VALUE_FROM_RECORD",
+              "fields": [
+                { "label": "field", "value": "001" }
+              ]
+            }
+          }
+        ]
+      },
+      "childSnapshotWrappers": [
+        {
+          "contentType": "ACTION_PROFILE",
+          "reactTo": "MATCH",
+          "content": {
+            "id": "update-marc-1",
+            "name": "Update MARC",
+            "action": "UPDATE",
+            "folioRecord": "MARC_BIBLIOGRAPHIC",
+            "order": 0
+          },
+          "childSnapshotWrappers": [
+            {
+              "contentType": "MAPPING_PROFILE",
+              "content": {
+                "id": "mapping-marc-1",
+                "name": "MARC mapping",
+                "incomingRecordType": "MARC_BIBLIOGRAPHIC",
+                "existingRecordType": "MARC_BIBLIOGRAPHIC",
+                "mappingDetails": {
+                  "recordType": "MARC_BIBLIOGRAPHIC",
+                  "marcMappingOption": "MODIFY"
+                }
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
