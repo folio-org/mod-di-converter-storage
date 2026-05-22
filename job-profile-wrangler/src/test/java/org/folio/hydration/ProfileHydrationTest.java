@@ -89,7 +89,7 @@ public class ProfileHydrationTest {
 
     Profile jobProfile = new JobProfileNode("1", "MARC", 0);
     Profile matchProfile = new MatchProfileNode("2", EntityType.MARC_BIBLIOGRAPHIC.toString(), EntityType.INSTANCE.toString(), 0);
-    Profile actionProfile = new ActionProfileNode("3", ActionProfile.Action.MODIFY.toString(),
+    Profile actionProfile = new ActionProfileNode("3", ActionProfile.Action.UPDATE.toString(),
       ActionProfile.FolioRecord.MARC_BIBLIOGRAPHIC.toString(), 2);
     Profile mappingProfile = new MappingProfileNode("4", EntityType.MARC_BIBLIOGRAPHIC.toString(),
       EntityType.MARC_BIBLIOGRAPHIC.toString(), 0);
@@ -168,8 +168,12 @@ public class ProfileHydrationTest {
     graph.addVertex(matchProfile);
     graph.addVertex(actionProfile);
     graph.addVertex(mappingProfile);
-    graph.addEdge(jobProfile, matchProfile, new RegularEdge());
-    graph.addEdge(matchProfile, actionProfile, new MatchRelationshipEdge());
+    if (action == ActionProfile.Action.MODIFY) {
+      graph.addEdge(jobProfile, actionProfile, new RegularEdge());
+    } else {
+      graph.addEdge(jobProfile, matchProfile, new RegularEdge());
+      graph.addEdge(matchProfile, actionProfile, new MatchRelationshipEdge());
+    }
     graph.addEdge(actionProfile, mappingProfile, new RegularEdge());
 
     String mappingProfileResponse = Resources.toString(Resources.getResource("mapping_profile_response.json"), StandardCharsets.UTF_8);
@@ -221,6 +225,32 @@ public class ProfileHydrationTest {
     graph.addEdge(matchProfile, actionProfile, new MatchRelationshipEdge());
 
     var result = new ProfileHydration(folioClient).hydrate(17, graph);
+
+    assertTrue(result.isEmpty());
+    verifyNoInteractions(folioClient);
+  }
+
+  @Test
+  public void hydrateRejectsMatchModifyMarcBibBeforeCreatingObjects() {
+    graph = new DefaultDirectedGraph<>(RegularEdge.class);
+
+    Profile jobProfile = new JobProfileNode("1", "MARC", 0);
+    Profile matchProfile = new MatchProfileNode("2", EntityType.MARC_BIBLIOGRAPHIC.toString(),
+      EntityType.MARC_BIBLIOGRAPHIC.toString(), 0);
+    Profile actionProfile = new ActionProfileNode("3", ActionProfile.Action.MODIFY.toString(),
+      ActionProfile.FolioRecord.MARC_BIBLIOGRAPHIC.toString(), 0);
+    Profile mappingProfile = new MappingProfileNode("4", EntityType.MARC_BIBLIOGRAPHIC.toString(),
+      EntityType.MARC_BIBLIOGRAPHIC.toString(), 0);
+
+    graph.addVertex(jobProfile);
+    graph.addVertex(matchProfile);
+    graph.addVertex(actionProfile);
+    graph.addVertex(mappingProfile);
+    graph.addEdge(jobProfile, matchProfile, new RegularEdge());
+    graph.addEdge(matchProfile, actionProfile, new MatchRelationshipEdge());
+    graph.addEdge(actionProfile, mappingProfile, new RegularEdge());
+
+    var result = new ProfileHydration(folioClient).hydrate(30, graph);
 
     assertTrue(result.isEmpty());
     verifyNoInteractions(folioClient);

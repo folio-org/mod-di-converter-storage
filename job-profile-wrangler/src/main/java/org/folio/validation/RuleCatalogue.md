@@ -30,6 +30,13 @@ The v1 validator walks live job-profile snapshot JSON, not repository DOT files.
 - Stack behavior: `MarcRecordModifier` switches on `mappingDetails.marcMappingOption`, so missing options fail at runtime with a null-pointer error.
 - Sweep examples: `jp-009`, `jp-022`, `jp-028`, `jp-040`, `jp-052`, and `jp-060`.
 
+### `match-modify-marc-bib`
+
+- Predicate: block a direct `MATCH_PROFILE -> ACTION_PROFILE` edge where the action is `MODIFY` and the target record is `MARC_BIBLIOGRAPHIC`.
+- Allowed variants: root-level `MODIFY MARC_BIBLIOGRAPHIC` profiles and non-direct modify branches that DICS accepts.
+- Stack behavior: `mod-di-converter-storage` rejects job-profile creation with `Modify action cannot be used right after a Match`.
+- Sweep examples: `jp-030`.
+
 ### `create-holdings-without-instance-context`
 
 - Predicate: block `ACTION_PROFILE action = CREATE, folioRecord = HOLDINGS` unless the same execution branch already has `CREATE INSTANCE` or a `MATCH INSTANCE` match branch.

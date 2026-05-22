@@ -9,6 +9,7 @@ import org.folio.validation.rules.CreateHoldingsWithoutInstanceContextRule;
 import org.folio.validation.rules.EmptyMatchDetailsRule;
 import org.folio.validation.rules.MatchInstanceCreateItemRule;
 import org.folio.validation.rules.MatchInstanceUpdateMarcBibRule;
+import org.folio.validation.rules.MatchModifyMarcBibRule;
 import org.folio.validation.rules.MissingMarcMappingOptionRule;
 import org.folio.validation.rules.MultipleRootUpdateBranchesRule;
 import org.folio.validation.rules.PairedAuthorityUpdateCreateRule;
@@ -78,6 +79,15 @@ public class ProfileShapeValidatorTest {
 
     assertTrue(outcome.isPresent());
     assertEquals(MissingMarcMappingOptionRule.RULE_NAME, outcome.get().rule());
+  }
+
+  @Test
+  public void matchModifyMarcBibFires() throws Exception {
+    Optional<BlockedUnsupportedWorkflow> outcome = ProfileShapeValidator.defaultValidator()
+      .validate(fixture("match-modify-marc-bib.json"));
+
+    assertTrue(outcome.isPresent());
+    assertEquals(MatchModifyMarcBibRule.RULE_NAME, outcome.get().rule());
   }
 
   @Test
