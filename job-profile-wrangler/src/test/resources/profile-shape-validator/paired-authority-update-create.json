@@ -1,0 +1,73 @@
+{
+  "contentType": "JOB_PROFILE",
+  "content": {
+    "id": "job-1",
+    "name": "Unsupported paired authority update create",
+    "dataType": "MARC"
+  },
+  "childSnapshotWrappers": [
+    {
+      "contentType": "MATCH_PROFILE",
+      "content": {
+        "id": "match-authority-1",
+        "name": "Match existing authority",
+        "incomingRecordType": "MARC_AUTHORITY",
+        "existingRecordType": "MARC_AUTHORITY",
+        "matchDetails": [
+          {
+            "incomingRecordType": "MARC_AUTHORITY",
+            "existingRecordType": "MARC_AUTHORITY"
+          }
+        ]
+      },
+      "childSnapshotWrappers": [
+        {
+          "contentType": "ACTION_PROFILE",
+          "reactTo": "MATCH",
+          "content": {
+            "id": "update-authority-1",
+            "name": "Update MARC authority",
+            "action": "UPDATE",
+            "folioRecord": "MARC_AUTHORITY"
+          },
+          "childSnapshotWrappers": [
+            {
+              "contentType": "MAPPING_PROFILE",
+              "content": {
+                "id": "mapping-marc-authority-1",
+                "name": "MARC authority to MARC authority",
+                "incomingRecordType": "MARC_AUTHORITY",
+                "existingRecordType": "MARC_AUTHORITY",
+                "mappingDetails": {
+                  "recordType": "MARC_AUTHORITY",
+                  "marcMappingOption": "UPDATE"
+                }
+              }
+            }
+          ]
+        },
+        {
+          "contentType": "ACTION_PROFILE",
+          "reactTo": "NON_MATCH",
+          "content": {
+            "id": "create-authority-1",
+            "name": "Create authority",
+            "action": "CREATE",
+            "folioRecord": "AUTHORITY"
+          },
+          "childSnapshotWrappers": [
+            {
+              "contentType": "MAPPING_PROFILE",
+              "content": {
+                "id": "mapping-authority-1",
+                "name": "MARC authority to authority",
+                "incomingRecordType": "MARC_AUTHORITY",
+                "existingRecordType": "AUTHORITY"
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

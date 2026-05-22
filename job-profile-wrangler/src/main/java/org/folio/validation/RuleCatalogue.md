@@ -36,3 +36,9 @@ The v1 validator walks live job-profile snapshot JSON, not repository DOT files.
 - Allowed variants: `CREATE INSTANCE -> CREATE HOLDINGS` and `MATCH INSTANCE` match branches that create holdings after an instance match.
 - Stack behavior: `mod-inventory` needs an Instance id from event context or MARC additional subfield `$i` before creating Holdings.
 - Sweep examples: `jp-035` and `jp-036`.
+
+### `paired-authority-update-create`
+
+- Predicate: block a `MATCH_PROFILE` for `MARC_AUTHORITY -> MARC_AUTHORITY` that has both a `MATCH -> UPDATE MARC_AUTHORITY` child and a `NON_MATCH -> CREATE AUTHORITY` child.
+- Stack behavior: update records must carry `999 ff $s/$i` so the MARC authority matcher can find the foundation SRS record, but `mod-source-record-manager` rejects any incoming authority record with `999 ff $s` or `$i` when the profile contains a `CREATE AUTHORITY` action anywhere in the snapshot.
+- Sweep examples: `jp-006` and `jp-042`.

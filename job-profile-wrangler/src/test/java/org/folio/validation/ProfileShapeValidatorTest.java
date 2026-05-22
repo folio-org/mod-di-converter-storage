@@ -8,6 +8,7 @@ import org.folio.validation.rules.EmptyMatchDetailsRule;
 import org.folio.validation.rules.MatchInstanceCreateItemRule;
 import org.folio.validation.rules.MatchInstanceUpdateMarcBibRule;
 import org.folio.validation.rules.MissingMarcMappingOptionRule;
+import org.folio.validation.rules.PairedAuthorityUpdateCreateRule;
 import org.junit.Test;
 
 import java.io.IOException;
@@ -67,6 +68,15 @@ public class ProfileShapeValidatorTest {
 
     assertTrue(outcome.isPresent());
     assertEquals(CreateHoldingsWithoutInstanceContextRule.RULE_NAME, outcome.get().rule());
+  }
+
+  @Test
+  public void pairedAuthorityUpdateCreateFires() throws Exception {
+    Optional<BlockedUnsupportedWorkflow> outcome = ProfileShapeValidator.defaultValidator()
+      .validate(fixture("paired-authority-update-create.json"));
+
+    assertTrue(outcome.isPresent());
+    assertEquals(PairedAuthorityUpdateCreateRule.RULE_NAME, outcome.get().rule());
   }
 
   @Test

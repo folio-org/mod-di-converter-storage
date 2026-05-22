@@ -7,6 +7,7 @@ import org.folio.validation.rules.EmptyMatchDetailsRule;
 import org.folio.validation.rules.MatchInstanceCreateItemRule;
 import org.folio.validation.rules.MatchInstanceUpdateMarcBibRule;
 import org.folio.validation.rules.MissingMarcMappingOptionRule;
+import org.folio.validation.rules.PairedAuthorityUpdateCreateRule;
 
 import java.util.List;
 import java.util.Objects;
@@ -21,7 +22,8 @@ public class ProfileShapeValidator {
     new MatchInstanceUpdateMarcBibRule(),
     new EmptyMatchDetailsRule(),
     new MissingMarcMappingOptionRule(),
-    new CreateHoldingsWithoutInstanceContextRule()
+    new CreateHoldingsWithoutInstanceContextRule(),
+    new PairedAuthorityUpdateCreateRule()
   );
 
   private final List<UnsupportedShapeRule> rules;
