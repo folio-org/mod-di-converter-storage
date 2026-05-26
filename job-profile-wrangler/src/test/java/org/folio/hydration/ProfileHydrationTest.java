@@ -14,6 +14,7 @@ import org.folio.rest.jaxrs.model.EntityType;
 import org.folio.rest.jaxrs.model.JobProfileUpdateDto;
 import org.folio.rest.jaxrs.model.MappingDetail;
 import org.folio.rest.jaxrs.model.MappingProfileUpdateDto;
+import org.folio.rest.jaxrs.model.MatchProfileUpdateDto;
 import org.folio.rest.jaxrs.model.ProfileAssociation;
 import org.folio.rest.jaxrs.model.ProfileType;
 import org.jgrapht.Graph;
@@ -82,6 +83,28 @@ public class ProfileHydrationTest {
     var jobProfile = profileHydration.hydrate(1, graph);
     assertTrue(jobProfile.isPresent());
     assertTrue(jobProfile.get() instanceof JobProfileUpdateDto);
+  }
+
+  @Test
+  public void hydrateUsesTenantSystemControlNumberIdentifierType() throws IOException {
+    String mappingProfileResponse = Resources.toString(Resources.getResource("mapping_profile_response.json"), StandardCharsets.UTF_8);
+    String actionProfileResponse = Resources.toString(Resources.getResource("action_profile_response.json"), StandardCharsets.UTF_8);
+    String matchProfileResponse = Resources.toString(Resources.getResource("match_profile_response.json"), StandardCharsets.UTF_8);
+    String jobProfileResponse = Resources.toString(Resources.getResource("job_profile_response.json"), StandardCharsets.UTF_8);
+    when(folioClient.getReferenceDataIdByName("identifier-types", MatchDetailsFactory.SYSTEM_CONTROL_NUMBER_TYPE_NAME))
+      .thenReturn(Optional.of("tenant-system-control-number-id"));
+    when(folioClient.createMappingProfile(any())).thenReturn(Optional.of(OBJECT_MAPPER.readTree(mappingProfileResponse)));
+    when(folioClient.createActionProfile(any())).thenReturn(Optional.of(OBJECT_MAPPER.readTree(actionProfileResponse)));
+    when(folioClient.createMatchProfile(any())).thenReturn(Optional.of(OBJECT_MAPPER.readTree(matchProfileResponse)));
+    when(folioClient.createJobProfile(any())).thenReturn(Optional.of(OBJECT_MAPPER.readTree(jobProfileResponse)));
+
+    new ProfileHydration(folioClient).hydrate(1, graph);
+
+    ArgumentCaptor<String> requestCaptor = ArgumentCaptor.forClass(String.class);
+    verify(folioClient).createMatchProfile(requestCaptor.capture());
+    MatchProfileUpdateDto request = OBJECT_MAPPER.readValue(requestCaptor.getValue(), MatchProfileUpdateDto.class);
+    String matchDetailsJson = OBJECT_MAPPER.writeValueAsString(request.getProfile().getMatchDetails());
+    assertTrue(matchDetailsJson.contains("tenant-system-control-number-id"));
   }
 
   @Test
@@ -225,6 +248,40 @@ public class ProfileHydrationTest {
     verify(folioClient, never()).createActionProfile(any());
     verify(folioClient, never()).createMatchProfile(any());
     verify(folioClient, never()).createJobProfile(any());
+  }
+
+  @Test
+  public void hydrateRejectsUnsupportedMatchDetailsBeforeCreatingMatchProfile() throws IOException {
+    graph = new DefaultDirectedGraph<>(RegularEdge.class);
+
+    Profile jobProfile = new JobProfileNode("1", "MARC", 0);
+    Profile matchProfile = new MatchProfileNode("2", EntityType.INSTANCE.toString(), EntityType.INSTANCE.toString(), 0);
+    Profile actionProfile = new ActionProfileNode("3", ActionProfile.Action.CREATE.toString(),
+      ActionProfile.FolioRecord.INSTANCE.toString(), 0);
+    Profile mappingProfile = new MappingProfileNode("4", EntityType.MARC_BIBLIOGRAPHIC.toString(),
+      EntityType.INSTANCE.toString(), 0);
+
+    graph.addVertex(jobProfile);
+    graph.addVertex(matchProfile);
+    graph.addVertex(actionProfile);
+    graph.addVertex(mappingProfile);
+    graph.addEdge(jobProfile, matchProfile, new RegularEdge());
+    graph.addEdge(matchProfile, actionProfile, new MatchRelationshipEdge());
+    graph.addEdge(actionProfile, mappingProfile, new RegularEdge());
+
+    String mappingProfileResponse = Resources.toString(Resources.getResource("mapping_profile_response.json"), StandardCharsets.UTF_8);
+    String actionProfileResponse = Resources.toString(Resources.getResource("action_profile_response.json"), StandardCharsets.UTF_8);
+    when(folioClient.createMappingProfile(any())).thenReturn(Optional.of(OBJECT_MAPPER.readTree(mappingProfileResponse)));
+    when(folioClient.createActionProfile(any())).thenReturn(Optional.of(OBJECT_MAPPER.readTree(actionProfileResponse)));
+    when(folioClient.deleteMappingProfile("82de8419-688a-4594-97a9-a881aa27e8de")).thenReturn(true);
+    when(folioClient.deleteActionProfile("29f0b8a9-422d-4e6d-9963-2357d7c3e28d")).thenReturn(true);
+
+    var result = new ProfileHydration(folioClient).hydrate(26, graph);
+
+    assertTrue(result.isEmpty());
+    verify(folioClient, never()).createMatchProfile(any());
+    verify(folioClient).deleteActionProfile("29f0b8a9-422d-4e6d-9963-2357d7c3e28d");
+    verify(folioClient).deleteMappingProfile("82de8419-688a-4594-97a9-a881aa27e8de");
   }
 
   @Test

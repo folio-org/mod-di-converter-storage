@@ -209,14 +209,23 @@ public class FolioClient {
           JsonNode jsonNode = OBJECT_MAPPER.readTree(result);
 
           if (queryParamOffset.get() == 0) {
-            totalRecords.set(jsonNode.get("totalRecords").asInt());
+            JsonNode totalRecordsNode = jsonNode.get("totalRecords");
+            if (totalRecordsNode == null || !totalRecordsNode.canConvertToInt()) {
+              throw new IOException("Job profiles response is missing numeric totalRecords");
+            }
+            totalRecords.set(totalRecordsNode.asInt());
             if (totalRecords.get() == 0) {
               return null;
             }
           }
 
+          JsonNode jobProfilesNode = jsonNode.get("jobProfiles");
+          if (jobProfilesNode == null || !jobProfilesNode.isArray()) {
+            throw new IOException("Job profiles response is missing jobProfiles array");
+          }
+
           queryParamOffset.getAndAdd(queryParamLimit);
-          return StreamSupport.stream(jsonNode.get("jobProfiles").spliterator(), false);
+          return StreamSupport.stream(jobProfilesNode.spliterator(), false);
         } catch (IOException e) {
           throw new IllegalStateException("Failed to fetch job profiles page at offset "
             + queryParamOffset.get(), e);
@@ -578,11 +587,20 @@ public class FolioClient {
   }
 
   private static String escapeCqlString(String value) {
-    return value.replace("\\", "\\\\").replace("\"", "\\\"");
+    return value
+      .replace("\\", "\\\\")
+      .replace("\"", "\\\"")
+      .replace("*", "\\*")
+      .replace("?", "\\?");
   }
 
   private static String cqlWildcardMatch(String field, String value) {
     return String.format("%s=\"*%s*\"", field, escapeCqlString(value));
+  }
+
+  public Optional<String> getReferenceDataIdByName(String referenceType, String name) {
+    return new ReferenceDataManager(httpClient, baseUrlBuilderSupplier, token, tenantId, okapiUrl)
+      .getIdByName(referenceType, name);
   }
 
   /**

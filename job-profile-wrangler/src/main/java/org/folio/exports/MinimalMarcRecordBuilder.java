@@ -11,6 +11,7 @@ import org.marc4j.marc.MarcFactory;
 import org.marc4j.marc.Record;
 
 import java.time.LocalDate;
+import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
@@ -612,7 +613,7 @@ public final class MinimalMarcRecordBuilder {
    * @return 40-character string for 008 field
    */
   private static String generate008Field() {
-    LocalDate now = LocalDate.now();
+    LocalDate now = LocalDate.now(ZoneOffset.UTC);
 
     // Date entered on file (YYMMDD)
     String dateEntered = now.format(DateTimeFormatter.ofPattern("yyMMdd"));
@@ -625,7 +626,7 @@ public final class MinimalMarcRecordBuilder {
   }
 
   private static String generateAuthority008Field() {
-    LocalDate now = LocalDate.now();
+    LocalDate now = LocalDate.now(ZoneOffset.UTC);
     String dateEntered = now.format(DateTimeFormatter.ofPattern("yyMMdd"));
     return dateEntered + "n| acannaabn          |a ana     c";
   }

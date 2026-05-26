@@ -82,8 +82,12 @@ public class MarcCircularStream implements AutoCloseable {
    * @param repositoryPath Path to repository for storing currentId
    */
   public MarcCircularStream(String baseUrl, String token, String repositoryPath) {
+    this(baseUrl, token, null, null, repositoryPath);
+  }
+
+  public MarcCircularStream(String baseUrl, String token, String tenantId, String okapiUrl, String repositoryPath) {
     this.repositoryPath = repositoryPath;
-    this.folioClient = new FolioMarcClient(baseUrl, token, repositoryPath);
+    this.folioClient = new FolioMarcClient(baseUrl, token, tenantId, okapiUrl, repositoryPath);
     this.usingFolio = true;
   }
 

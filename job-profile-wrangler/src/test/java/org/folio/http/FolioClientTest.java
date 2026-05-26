@@ -151,6 +151,19 @@ public class FolioClientTest {
   }
 
   @Test
+  public void getJobProfilesFailsClearlyWhenTotalRecordsIsMissing() throws IOException {
+    when(baseUrlBuilder.addPathSegments(anyString())).thenReturn(baseUrlBuilder);
+    when(baseUrlBuilder.addQueryParameter(anyString(), anyString())).thenReturn(baseUrlBuilder);
+    when(baseUrlBuilder.build()).thenReturn(HttpUrl.get("http://example.com"));
+    when(body.string()).thenReturn("{\"jobProfiles\":[]}");
+
+    Stream<JsonNode> jobProfiles = folioClient.getJobProfiles();
+
+    IllegalStateException error = assertThrows(IllegalStateException.class, jobProfiles::count);
+    assertTrue(error.getCause().getMessage().contains("totalRecords"));
+  }
+
+  @Test
   public void findSourceRecordByMarcControlNumberPagesUntilMatch() throws IOException {
     when(baseUrlBuilder.addPathSegments(anyString())).thenReturn(baseUrlBuilder);
     when(baseUrlBuilder.addQueryParameter(anyString(), anyString())).thenReturn(baseUrlBuilder);
@@ -204,12 +217,12 @@ public class FolioClientTest {
     when(baseUrlBuilder.build()).thenReturn(HttpUrl.get("http://example.com"));
     when(body.string()).thenReturn("{\"instances\":[]}");
 
-    folioClient.findInstanceByIdentifier("abc\"\\def", "type\"\\id");
+    folioClient.findInstanceByIdentifier("abc\"\\def*", "type\"\\id?");
 
     ArgumentCaptor<String> queryCaptor = ArgumentCaptor.forClass(String.class);
     verify(baseUrlBuilder).addQueryParameter(eq("query"), queryCaptor.capture());
     assertEquals(
-      "(identifiers=\"*abc\\\"\\\\def*\" and identifiers=\"*type\\\"\\\\id*\")",
+      "(identifiers=\"*abc\\\"\\\\def\\**\" and identifiers=\"*type\\\"\\\\id\\?*\")",
       queryCaptor.getValue());
   }
 

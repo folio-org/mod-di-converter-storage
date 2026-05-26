@@ -179,17 +179,21 @@ public class ProfileHydration {
           .withIncomingRecordType(EntityType.fromValue(matchIncomingRecordType))
           .withExistingRecordType(EntityType.fromValue(matchExistingRecordType));
 
-        // Add default matchDetails based on record types
+        List<MatchDetail> matchDetails;
         try {
-          List<MatchDetail> matchDetails = MatchDetailsFactory.createMatchDetailsForRecordTypes(
-            matchIncomingRecordType, matchExistingRecordType);
-          if (matchDetails != null && !matchDetails.isEmpty()) {
-            matchProfile.withMatchDetails(matchDetails);
-          }
+          matchDetails = MatchDetailsFactory.createMatchDetailsForRecordTypes(
+            matchIncomingRecordType, matchExistingRecordType, systemControlNumberTypeId());
         } catch (IllegalArgumentException e) {
-          LOGGER.warn("Could not create default match details for {} -> {}: {}",
+          LOGGER.error("Could not create default match details for {} -> {}: {}",
             matchIncomingRecordType, matchExistingRecordType, e.getMessage());
+          return rollbackAndEmpty(createdObjectsInFolio, createdProfiles);
         }
+        if (matchDetails == null || matchDetails.isEmpty()) {
+          LOGGER.error("Could not create default match details for {} -> {}; refusing to create empty matchDetails",
+            matchIncomingRecordType, matchExistingRecordType);
+          return rollbackAndEmpty(createdObjectsInFolio, createdProfiles);
+        }
+        matchProfile.withMatchDetails(matchDetails);
 
         boolean created = createProfileInFolio(matchProfileNode, new MatchProfileUpdateDto().withProfile(matchProfile),
           MatchProfileUpdateDto.class, client::createMatchProfile, createdObjectsInFolio, createdProfiles);
@@ -275,6 +279,16 @@ public class ProfileHydration {
     }
 
     return Optional.ofNullable(createdObjectsInFolio.get(jobProfile.get()));
+  }
+
+  private String systemControlNumberTypeId() {
+    return client.getReferenceDataIdByName("identifier-types", MatchDetailsFactory.SYSTEM_CONTROL_NUMBER_TYPE_NAME)
+      .orElseGet(() -> {
+        LOGGER.warn("Could not resolve tenant identifier type '{}'; falling back to default UUID {}",
+          MatchDetailsFactory.SYSTEM_CONTROL_NUMBER_TYPE_NAME,
+          MatchDetailsFactory.DEFAULT_SYSTEM_CONTROL_NUMBER_TYPE_ID);
+        return MatchDetailsFactory.DEFAULT_SYSTEM_CONTROL_NUMBER_TYPE_ID;
+      });
   }
 
   private MappingDetail mappingDetailsFor(

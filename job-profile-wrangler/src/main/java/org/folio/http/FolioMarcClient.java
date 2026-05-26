@@ -22,7 +22,9 @@ import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 
 import static org.folio.Constants.OBJECT_MAPPER;
+import static org.folio.Constants.OKAPI_TENANT_HEADER;
 import static org.folio.Constants.OKAPI_TOKEN_HEADER;
+import static org.folio.Constants.OKAPI_URL_HEADER;
 
 /**
  * Client for retrieving MARC records from a FOLIO instance.
@@ -36,6 +38,8 @@ public class FolioMarcClient {
 
   private final String baseUrl;
   private final String token;
+  private final String tenantId;
+  private final String okapiUrl;
   private final OkHttpClient httpClient;
   private final String repositoryPath;
 
@@ -64,8 +68,14 @@ public class FolioMarcClient {
    * @param repositoryPath Path to repository for storing currentOffset
    */
   public FolioMarcClient(String baseUrl, String token, String repositoryPath) {
+    this(baseUrl, token, null, null, repositoryPath);
+  }
+
+  public FolioMarcClient(String baseUrl, String token, String tenantId, String okapiUrl, String repositoryPath) {
     this.baseUrl = baseUrl.endsWith("/") ? baseUrl.substring(0, baseUrl.length() - 1) : baseUrl;
     this.token = token;
+    this.tenantId = tenantId;
+    this.okapiUrl = okapiUrl;
     this.repositoryPath = repositoryPath;
 
     this.httpClient = new OkHttpClient.Builder()
@@ -148,10 +158,9 @@ public class FolioMarcClient {
       .addQueryParameter("limit", String.valueOf(PAGE_SIZE))
       .build();
 
-    Request request = new Request.Builder()
+    Request request = addFolioHeaders(new Request.Builder()
       .url(url)
-      .header("Accept", "application/json")
-      .header(OKAPI_TOKEN_HEADER, token)
+      .header("Accept", "application/json"))
       .get()
       .build();
 
@@ -317,10 +326,9 @@ public class FolioMarcClient {
         .addQueryParameter("idType", "RECORD")
         .build();
 
-      Request request = new Request.Builder()
+      Request request = addFolioHeaders(new Request.Builder()
         .url(url)
-        .header("Accept", "application/json")
-        .header(OKAPI_TOKEN_HEADER, token)
+        .header("Accept", "application/json"))
         .get()
         .build();
 
@@ -389,6 +397,17 @@ public class FolioMarcClient {
    */
   public int getTotalRecords() {
     return totalRecords;
+  }
+
+  private Request.Builder addFolioHeaders(Request.Builder builder) {
+    builder.addHeader(OKAPI_TOKEN_HEADER, token);
+    if (tenantId != null) {
+      builder.addHeader(OKAPI_TENANT_HEADER, tenantId);
+    }
+    if (okapiUrl != null) {
+      builder.addHeader(OKAPI_URL_HEADER, okapiUrl);
+    }
+    return builder;
   }
 
   /**
