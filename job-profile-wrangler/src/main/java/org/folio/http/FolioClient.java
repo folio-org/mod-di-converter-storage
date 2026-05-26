@@ -650,6 +650,10 @@ public class FolioClient {
     final int limit = 1000;
     int offset = 0;
     int totalRecords = Integer.MAX_VALUE;
+    JsonNode match001 = null;
+    boolean multiple001Matches = false;
+    JsonNode fallback035Match = null;
+    boolean multiple035Matches = false;
 
     while (offset < totalRecords) {
       HttpUrl url = baseUrlBuilderSupplier.get()
@@ -681,11 +685,24 @@ public class FolioClient {
         }
         for (JsonNode sourceRecord : sourceRecords) {
           JsonNode parsedContent = sourceRecord.path("parsedRecord").path("content");
-          if (parsedContent.isObject() && controlNumber.equals(extractMarcJsonControlNumber(parsedContent))) {
-            return Optional.of(sourceRecord);
+          JsonNode parsedRecord = parsedMarcContent(parsedContent);
+          if (parsedRecord == null) {
+            continue;
           }
-          if (parsedContent.isTextual() && controlNumber.equals(extractMarcJsonControlNumber(parsedContent.asText()))) {
-            return Optional.of(sourceRecord);
+
+          if (marcJsonHas001(parsedRecord, controlNumber)) {
+            if (match001 == null) {
+              match001 = sourceRecord;
+            } else {
+              multiple001Matches = true;
+            }
+          }
+          if (marcJsonHas035a(parsedRecord, controlNumber)) {
+            if (fallback035Match == null) {
+              fallback035Match = sourceRecord;
+            } else {
+              multiple035Matches = true;
+            }
           }
         }
         offset += limit;
@@ -694,25 +711,85 @@ public class FolioClient {
         return Optional.empty();
       }
     }
+
+    if (multiple001Matches) {
+      LOGGER.warn("Found multiple source records with MARC 001 '{}'; refusing ambiguous enrichment", controlNumber);
+      return Optional.empty();
+    }
+    if (multiple035Matches) {
+      LOGGER.warn("Found multiple source records with MARC 035$a '{}'; refusing ambiguous enrichment", controlNumber);
+      return Optional.empty();
+    }
+    if (match001 != null && fallback035Match != null && !sameSourceRecord(match001, fallback035Match)) {
+      LOGGER.warn("Found conflicting MARC 001 and 035$a source records for '{}'; refusing ambiguous enrichment", controlNumber);
+      return Optional.empty();
+    }
+    if (fallback035Match != null) {
+      return Optional.of(fallback035Match);
+    }
+    if (match001 != null) {
+      return Optional.of(match001);
+    }
     return Optional.empty();
   }
 
-  private String extractMarcJsonControlNumber(String parsedContent) throws IOException {
-    return extractMarcJsonControlNumber(OBJECT_MAPPER.readTree(parsedContent));
+  private JsonNode parsedMarcContent(JsonNode parsedContent) {
+    try {
+      if (parsedContent.isObject()) {
+        return parsedContent;
+      }
+      if (parsedContent.isTextual()) {
+        return OBJECT_MAPPER.readTree(parsedContent.asText());
+      }
+    } catch (IOException e) {
+      LOGGER.warn("Skipping malformed textual parsed MARC content during source-record lookup: {}", e.getMessage());
+    }
+    return null;
   }
 
-  private String extractMarcJsonControlNumber(JsonNode content) {
+  private boolean sameSourceRecord(JsonNode first, JsonNode second) {
+    JsonNode firstRecordId = first.path("recordId");
+    JsonNode secondRecordId = second.path("recordId");
+    if (firstRecordId.isTextual() && secondRecordId.isTextual()) {
+      return firstRecordId.asText().equals(secondRecordId.asText());
+    }
+    return first.equals(second);
+  }
+
+  private boolean marcJsonHas001(JsonNode content, String controlNumber) {
     JsonNode fields = content.path("fields");
     if (!fields.isArray()) {
-      return null;
+      return false;
     }
     for (JsonNode field : fields) {
       JsonNode control001 = field.get("001");
-      if (control001 != null && control001.isTextual()) {
-        return control001.asText();
+      if (control001 != null && control001.isTextual() && controlNumber.equals(control001.asText())) {
+        return true;
       }
     }
-    return null;
+    return false;
+  }
+
+  private boolean marcJsonHas035a(JsonNode content, String controlNumber) {
+    JsonNode fields = content.path("fields");
+    if (!fields.isArray()) {
+      return false;
+    }
+    for (JsonNode field : fields) {
+      JsonNode field035 = field.get("035");
+      JsonNode subfields = field035 == null ? null : field035.path("subfields");
+      if (subfields != null && subfields.isArray()) {
+        for (JsonNode subfield : subfields) {
+          JsonNode subfieldA = subfield.get("a");
+          // Exact-only fallback for wrangler-generated former 001 values moved into 035$a by FOLIO.
+          // Do not normalize OCLC-style 035 values here; broad identifier matching risks wrong-record enrichment.
+          if (subfieldA != null && subfieldA.isTextual() && controlNumber.equals(subfieldA.asText())) {
+            return true;
+          }
+        }
+      }
+    }
+    return false;
   }
 
   public static Optional<String> getOkapiToken(OkHttpClient httpClient, HttpUrl.Builder baseUrlBuilder, String tenantId, String username, String password) {

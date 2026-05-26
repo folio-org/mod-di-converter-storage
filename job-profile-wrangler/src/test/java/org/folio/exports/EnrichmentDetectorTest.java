@@ -24,6 +24,39 @@ public class EnrichmentDetectorTest {
   }
 
   @Test
+  public void marcBibUpdateBySrsIdNeedsSourceRecordEnrichment() {
+    CategorizedPath path = marcPath("update-bib", "UPDATE", new MatchCriteria(
+      "match-bib",
+      List.of(new MatchCriteria.MatchFieldSpec("999", "f", "f", "s", null)),
+      List.of()
+    ));
+
+    GenerationOutcome.NeedsEnrichment outcome =
+      EnrichmentDetector.detect(List.of(path), OUTPUT_BASE).get(0);
+
+    assertEquals("update-bib", outcome.pathId());
+    assertEquals("match-bib", outcome.matchProfileId());
+    assertEquals("Run: jp-wrangler enrich target/generated/job-profile-import.mrc --match-field 001 "
+      + "--enrich-field 999ff$s --enrich-type SOURCE_RECORD_ID --record-type MARC_BIB --skip-missing", outcome.hint());
+  }
+
+  @Test
+  public void marcBibModifyBySrsIdNeedsSourceRecordEnrichment() {
+    CategorizedPath path = marcPath("modify-bib", "MODIFY", new MatchCriteria(
+      "match-bib",
+      List.of(new MatchCriteria.MatchFieldSpec("999", "f", "f", "s", null)),
+      List.of()
+    ));
+
+    GenerationOutcome.NeedsEnrichment outcome =
+      EnrichmentDetector.detect(List.of(path), OUTPUT_BASE).get(0);
+
+    assertEquals("modify-bib", outcome.pathId());
+    assertTrue(outcome.hint().contains("--record-type MARC_BIB"));
+  }
+
+
+  @Test
   public void instanceHridNeedsEnrichmentWithRunnableHint() {
     CategorizedPath path = path("path-0", matchCriteria(nonMarc("instance.hrid", "999", "a", "f", "f")));
 
@@ -83,6 +116,19 @@ public class EnrichmentDetectorTest {
       + "--enrich-field 999ff$s --enrich-type SOURCE_RECORD_ID --record-type MARC_AUTHORITY --skip-missing", outcome.hint());
   }
 
+  @Test
+  public void mixedSrsSourceRecordTypesDoNotGuessRecordType() {
+    CategorizedPath path = mixedSourceRecordPath("mixed", new MatchCriteria(
+      "match-mixed",
+      List.of(new MatchCriteria.MatchFieldSpec("999", "f", "f", "s", null)),
+      List.of()
+    ));
+
+    Map<Integer, GenerationOutcome.NeedsEnrichment> result =
+      EnrichmentDetector.detect(List.of(path), OUTPUT_BASE);
+
+    assertTrue(result.isEmpty());
+  }
 
   @Test
   public void multiplePathsClassifiesOnlyMatchingPathByListIndex() {
@@ -155,10 +201,34 @@ public class EnrichmentDetectorTest {
   }
 
   private CategorizedPath authorityPath(String pathId, String action, MatchCriteria matchCriteria) {
+    return marcSourceRecordPath(pathId, action, "MARC_AUTHORITY", matchCriteria);
+  }
+
+  private CategorizedPath marcPath(String pathId, String action, MatchCriteria matchCriteria) {
+    return marcSourceRecordPath(pathId, action, "MARC_BIBLIOGRAPHIC", matchCriteria);
+  }
+
+  private CategorizedPath marcSourceRecordPath(
+      String pathId,
+      String action,
+      String folioRecord,
+      MatchCriteria matchCriteria) {
     JobProfilePath path = new JobProfilePath(
       List.of(
         new JobProfileNode("job-1", "MARC", 0),
-        new ActionProfileNode("action-1", action, "MARC_AUTHORITY", 1)
+        new ActionProfileNode("action-1", action, folioRecord, 1)
+      ),
+      pathId
+    );
+    return new CategorizedPath(path, ReactTo.MATCH, matchCriteria.matchProfileId(), matchCriteria);
+  }
+
+  private CategorizedPath mixedSourceRecordPath(String pathId, MatchCriteria matchCriteria) {
+    JobProfilePath path = new JobProfilePath(
+      List.of(
+        new JobProfileNode("job-1", "MARC", 0),
+        new ActionProfileNode("action-1", "UPDATE", "MARC_BIBLIOGRAPHIC", 1),
+        new ActionProfileNode("action-2", "DELETE", "MARC_AUTHORITY", 2)
       ),
       pathId
     );

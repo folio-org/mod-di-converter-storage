@@ -58,18 +58,18 @@ public class MatchDetailsFactoryTest {
     assertEquals(EntityType.MARC_BIBLIOGRAPHIC, detail.getExistingRecordType());
     assertEquals(EXACTLY_MATCHES, detail.getMatchCriterion());
 
-    // Verify 001 field on both incoming and existing (MARC-to-MARC matching)
+    // Verify SRS source record id matching on 999 ff $s for MARC-to-MARC matching.
     var incomingFields = detail.getIncomingMatchExpression().getFields();
-    assertEquals("001", incomingFields.get(0).getValue());
-    assertEquals("", incomingFields.get(1).getValue()); // indicator1
-    assertEquals("", incomingFields.get(2).getValue()); // indicator2
-    assertEquals("", incomingFields.get(3).getValue()); // recordSubfield
+    assertEquals("999", incomingFields.get(0).getValue());
+    assertEquals("f", incomingFields.get(1).getValue()); // indicator1
+    assertEquals("f", incomingFields.get(2).getValue()); // indicator2
+    assertEquals("s", incomingFields.get(3).getValue()); // recordSubfield
 
     var existingFields = detail.getExistingMatchExpression().getFields();
-    assertEquals("001", existingFields.get(0).getValue());
-    assertEquals("", existingFields.get(1).getValue()); // indicator1
-    assertEquals("", existingFields.get(2).getValue()); // indicator2
-    assertEquals("", existingFields.get(3).getValue()); // recordSubfield
+    assertEquals("999", existingFields.get(0).getValue());
+    assertEquals("f", existingFields.get(1).getValue()); // indicator1
+    assertEquals("f", existingFields.get(2).getValue()); // indicator2
+    assertEquals("s", existingFields.get(3).getValue()); // recordSubfield
   }
 
   @Test

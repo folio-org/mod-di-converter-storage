@@ -3,11 +3,15 @@ package org.folio.exports;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Detects paths whose match criteria need post-import enrichment.
  */
 public final class EnrichmentDetector {
+  private static final Logger LOGGER = LoggerFactory.getLogger(EnrichmentDetector.class);
+
   public static final String INSTANCE_ID = "INSTANCE_ID";
   public static final String INSTANCE_HRID = "INSTANCE_HRID";
 
@@ -33,10 +37,10 @@ public final class EnrichmentDetector {
     for (int pathIndex = 0; pathIndex < paths.size(); pathIndex++) {
       CategorizedPath path = paths.get(pathIndex);
       MatchCriteria matchCriteria = path.matchCriteria();
-      GenerationOutcome.NeedsEnrichment authorityDeleteEnrichment =
-        authoritySourceRecordIdEnrichment(pathIndex, path, outputBase);
-      if (authorityDeleteEnrichment != null) {
-        outcomes.put(pathIndex, authorityDeleteEnrichment);
+      GenerationOutcome.NeedsEnrichment sourceRecordIdEnrichment =
+        sourceRecordIdEnrichment(pathIndex, path, outputBase);
+      if (sourceRecordIdEnrichment != null) {
+        outcomes.put(pathIndex, sourceRecordIdEnrichment);
         continue;
       }
       if (matchCriteria == null || !matchCriteria.hasNonMarcMatches()) {
@@ -60,11 +64,11 @@ public final class EnrichmentDetector {
     return outcomes;
   }
 
-  private static GenerationOutcome.NeedsEnrichment authoritySourceRecordIdEnrichment(
+  private static GenerationOutcome.NeedsEnrichment sourceRecordIdEnrichment(
       int pathIndex,
       CategorizedPath path,
       String outputBase) {
-    if (!changesMarcAuthority(path) || path.matchCriteria() == null || !path.matchCriteria().hasMarcMatches()) {
+    if (path.matchCriteria() == null || !path.matchCriteria().hasMarcMatches()) {
       return null;
     }
     boolean matchesSrsSourceRecordId = path.matchCriteria().matchFields().stream()
@@ -75,21 +79,40 @@ public final class EnrichmentDetector {
     if (!matchesSrsSourceRecordId) {
       return null;
     }
+    List<String> sourceRecordTypes = sourceRecordTypesFor(path);
+    if (sourceRecordTypes.size() > 1) {
+      LOGGER.warn("Path '{}' mixes SRS source record types {}; skipping source-record-id enrichment hint",
+        path.path().getPathId(), sourceRecordTypes);
+      return null;
+    }
+    if (sourceRecordTypes.isEmpty()) {
+      return null;
+    }
+    String recordType = sourceRecordTypes.get(0);
+    // 999 ff $s is assigned by SRS when foundation records are imported, so generated
+    // import records must be enriched before the final update/delete import.
     return new GenerationOutcome.NeedsEnrichment(
       pathIndex,
       path.path().getPathId(),
       path.matchProfileId(),
       "Run: jp-wrangler enrich " + outputBase + "-import.mrc"
         + " --match-field 001 --enrich-field 999ff$s --enrich-type SOURCE_RECORD_ID"
-        + " --record-type MARC_AUTHORITY --skip-missing");
+        + " --record-type " + recordType + " --skip-missing");
   }
 
-  private static boolean changesMarcAuthority(CategorizedPath path) {
+  private static List<String> sourceRecordTypesFor(CategorizedPath path) {
     return path.path().getProfiles().stream()
       .filter(org.folio.graph.nodes.ActionProfileNode.class::isInstance)
       .map(org.folio.graph.nodes.ActionProfileNode.class::cast)
-      .anyMatch(action -> ("UPDATE".equals(action.action()) || "DELETE".equals(action.action()))
-        && "MARC_AUTHORITY".equals(action.folioRecord()));
+      .filter(action -> "UPDATE".equals(action.action()) || "MODIFY".equals(action.action()) || "DELETE".equals(action.action()))
+      .map(action -> switch (action.folioRecord()) {
+        case "MARC_BIBLIOGRAPHIC" -> "MARC_BIB";
+        case "MARC_AUTHORITY" -> "MARC_AUTHORITY";
+        default -> null;
+      })
+      .filter(java.util.Objects::nonNull)
+      .distinct()
+      .toList();
   }
 
   private static String enrichTypeFor(String existingField) {

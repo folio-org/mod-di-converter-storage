@@ -211,6 +211,157 @@ public class FolioClientTest {
   }
 
   @Test
+  public void findSourceRecordByMarcControlNumberMatchesFormerControlNumberIn035() throws IOException {
+    when(baseUrlBuilder.addPathSegments(anyString())).thenReturn(baseUrlBuilder);
+    when(baseUrlBuilder.addQueryParameter(anyString(), anyString())).thenReturn(baseUrlBuilder);
+    when(baseUrlBuilder.build()).thenReturn(HttpUrl.get("http://example.com"));
+    when(body.string()).thenReturn("""
+      {
+        "totalRecords": 1,
+        "sourceRecords": [{
+          "recordId": "target-record",
+          "parsedRecord": {
+            "content": {
+              "fields": [
+                {"001": "in00000000004"},
+                {"035": {"subfields": [{"a": "original-control-number"}]}}
+              ]
+            }
+          }
+        }]
+      }
+      """);
+
+    Optional<JsonNode> result = folioClient.findSourceRecordByMarcControlNumber("MARC_BIB", "original-control-number");
+
+    assertTrue(result.isPresent());
+    assertEquals("target-record", result.get().get("recordId").asText());
+  }
+
+  @Test
+  public void findSourceRecordByMarcControlNumberRefusesConflicting001And035Matches() throws IOException {
+    when(baseUrlBuilder.addPathSegments(anyString())).thenReturn(baseUrlBuilder);
+    when(baseUrlBuilder.addQueryParameter(anyString(), anyString())).thenReturn(baseUrlBuilder);
+    when(baseUrlBuilder.build()).thenReturn(HttpUrl.get("http://example.com"));
+    when(body.string()).thenReturn("""
+      {
+        "totalRecords": 2,
+        "sourceRecords": [
+          {
+            "recordId": "035-fallback",
+            "parsedRecord": {"content": {"fields": [
+              {"001": "in00000000004"},
+              {"035": {"subfields": [{"a": "shared-control-number"}]}}
+            ]}}
+          },
+          {
+            "recordId": "exact-001",
+            "parsedRecord": {"content": {"fields": [
+              {"001": "shared-control-number"}
+            ]}}
+          }
+        ]
+      }
+      """);
+
+    Optional<JsonNode> result = folioClient.findSourceRecordByMarcControlNumber("MARC_BIB", "shared-control-number");
+
+    assertTrue(result.isEmpty());
+  }
+
+  @Test
+  public void findSourceRecordByMarcControlNumberRefusesAmbiguous001Matches() throws IOException {
+    when(baseUrlBuilder.addPathSegments(anyString())).thenReturn(baseUrlBuilder);
+    when(baseUrlBuilder.addQueryParameter(anyString(), anyString())).thenReturn(baseUrlBuilder);
+    when(baseUrlBuilder.build()).thenReturn(HttpUrl.get("http://example.com"));
+    when(body.string()).thenReturn("""
+      {
+        "totalRecords": 2,
+        "sourceRecords": [
+          {
+            "recordId": "first-001",
+            "parsedRecord": {"content": {"fields": [
+              {"001": "shared-control-number"}
+            ]}}
+          },
+          {
+            "recordId": "second-001",
+            "parsedRecord": {"content": {"fields": [
+              {"001": "shared-control-number"}
+            ]}}
+          }
+        ]
+      }
+      """);
+
+    Optional<JsonNode> result = folioClient.findSourceRecordByMarcControlNumber("MARC_BIB", "shared-control-number");
+
+    assertTrue(result.isEmpty());
+  }
+
+  @Test
+  public void findSourceRecordByMarcControlNumberRefusesAmbiguous035Fallbacks() throws IOException {
+    when(baseUrlBuilder.addPathSegments(anyString())).thenReturn(baseUrlBuilder);
+    when(baseUrlBuilder.addQueryParameter(anyString(), anyString())).thenReturn(baseUrlBuilder);
+    when(baseUrlBuilder.build()).thenReturn(HttpUrl.get("http://example.com"));
+    when(body.string()).thenReturn("""
+      {
+        "totalRecords": 2,
+        "sourceRecords": [
+          {
+            "recordId": "first-035",
+            "parsedRecord": {"content": {"fields": [
+              {"001": "in00000000004"},
+              {"035": {"subfields": [{"a": "shared-control-number"}]}}
+            ]}}
+          },
+          {
+            "recordId": "second-035",
+            "parsedRecord": {"content": {"fields": [
+              {"001": "in00000000005"},
+              {"035": {"subfields": [{"a": "shared-control-number"}]}}
+            ]}}
+          }
+        ]
+      }
+      """);
+
+    Optional<JsonNode> result = folioClient.findSourceRecordByMarcControlNumber("MARC_BIB", "shared-control-number");
+
+    assertTrue(result.isEmpty());
+  }
+
+  @Test
+  public void findSourceRecordByMarcControlNumberSkipsMalformedParsedRecordAndKeepsFallback() throws IOException {
+    when(baseUrlBuilder.addPathSegments(anyString())).thenReturn(baseUrlBuilder);
+    when(baseUrlBuilder.addQueryParameter(anyString(), anyString())).thenReturn(baseUrlBuilder);
+    when(baseUrlBuilder.build()).thenReturn(HttpUrl.get("http://example.com"));
+    when(body.string()).thenReturn("""
+      {
+        "totalRecords": 2,
+        "sourceRecords": [
+          {
+            "recordId": "035-fallback",
+            "parsedRecord": {"content": {"fields": [
+              {"001": "in00000000004"},
+              {"035": {"subfields": [{"a": "original-control-number"}]}}
+            ]}}
+          },
+          {
+            "recordId": "malformed-record",
+            "parsedRecord": {"content": "{not-json"}
+          }
+        ]
+      }
+      """);
+
+    Optional<JsonNode> result = folioClient.findSourceRecordByMarcControlNumber("MARC_BIB", "original-control-number");
+
+    assertTrue(result.isPresent());
+    assertEquals("035-fallback", result.get().get("recordId").asText());
+  }
+
+  @Test
   public void findInstanceByIdentifierEscapesCqlStringValues() throws IOException {
     when(baseUrlBuilder.addPathSegments(anyString())).thenReturn(baseUrlBuilder);
     when(baseUrlBuilder.addQueryParameter(anyString(), anyString())).thenReturn(baseUrlBuilder);

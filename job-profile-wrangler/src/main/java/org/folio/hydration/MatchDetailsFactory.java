@@ -95,10 +95,11 @@ public final class MatchDetailsFactory {
           EntityType.MARC_BIBLIOGRAPHIC,
           EntityType.INSTANCE,
           systemControlNumberTypeId));
-      case "MARC_BIBLIOGRAPHIC" -> List.of(createMarcToMarcMatchDetail(
+      // SRS rewrites stored bib 001 to the Instance HRID during create-instance imports.
+      // Match bib-to-bib updates on the stable SRS source record id instead.
+      case "MARC_BIBLIOGRAPHIC" -> List.of(createSrsMatchDetail(
           EntityType.MARC_BIBLIOGRAPHIC,
-          EntityType.MARC_BIBLIOGRAPHIC,
-          "001"));
+          EntityType.MARC_BIBLIOGRAPHIC));
       case "HOLDINGS" -> List.of(createFormerIdsMatchDetail(
           EntityType.MARC_BIBLIOGRAPHIC,
           EntityType.HOLDINGS,
@@ -247,26 +248,6 @@ public final class MatchDetailsFactory {
         .withIncomingMatchExpression(srsMatchExpression)
         .withMatchCriterion(EXACTLY_MATCHES)
         .withExistingMatchExpression(srsMatchExpression);
-  }
-
-  /**
-   * Creates a MatchDetail for MARC-to-MARC matching using the same field on both sides.
-   * This is used for UPDATE scenarios where the same MARC field (e.g., 001) is matched
-   * between incoming and existing MARC records.
-   */
-  private static MatchDetail createMarcToMarcMatchDetail(
-      EntityType incomingRecordType,
-      EntityType existingRecordType,
-      String marcField) {
-
-    MatchExpression marcExpression = createMarcMatchExpression(marcField);
-
-    return new MatchDetail()
-        .withIncomingRecordType(incomingRecordType)
-        .withExistingRecordType(existingRecordType)
-        .withIncomingMatchExpression(marcExpression)
-        .withMatchCriterion(EXACTLY_MATCHES)
-        .withExistingMatchExpression(marcExpression);
   }
 
   /**
