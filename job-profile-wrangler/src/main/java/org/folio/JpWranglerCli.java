@@ -1891,7 +1891,7 @@ public class JpWranglerCli implements Callable<Integer> {
       return switch (type) {
         case INSTANCE_ID -> instance.path("id").asText(null);
         case INSTANCE_HRID -> instance.path("hrid").asText(null);
-        case SOURCE_RECORD_ID -> instance.path("recordId").asText(instance.path("id").asText(null));
+        case SOURCE_RECORD_ID -> instance.path("recordId").asText(null);
       };
     }
 

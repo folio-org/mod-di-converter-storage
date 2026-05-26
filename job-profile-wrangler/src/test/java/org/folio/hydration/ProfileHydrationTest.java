@@ -203,10 +203,16 @@ public class ProfileHydrationTest {
     when(folioClient.createActionProfile(any())).thenReturn(Optional.of(OBJECT_MAPPER.readTree(actionProfileResponse)));
     when(folioClient.createMatchProfile(any())).thenReturn(Optional.of(OBJECT_MAPPER.readTree(matchProfileResponse)));
     when(folioClient.createJobProfile(any())).thenReturn(Optional.empty());
+    when(folioClient.deleteMappingProfile("82de8419-688a-4594-97a9-a881aa27e8de")).thenReturn(true);
+    when(folioClient.deleteActionProfile("29f0b8a9-422d-4e6d-9963-2357d7c3e28d")).thenReturn(true);
+    when(folioClient.deleteMatchProfile("92e8aa6b-bdb8-4f19-b3e2-29de0d55d995")).thenReturn(true);
 
     var jobProfile = new ProfileHydration(folioClient).hydrate(26, graph);
 
     assertTrue(jobProfile.isEmpty());
+    verify(folioClient).deleteMatchProfile("92e8aa6b-bdb8-4f19-b3e2-29de0d55d995");
+    verify(folioClient).deleteActionProfile("29f0b8a9-422d-4e6d-9963-2357d7c3e28d");
+    verify(folioClient).deleteMappingProfile("82de8419-688a-4594-97a9-a881aa27e8de");
   }
 
   @Test

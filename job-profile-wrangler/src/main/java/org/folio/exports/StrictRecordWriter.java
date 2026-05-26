@@ -87,7 +87,7 @@ public class StrictRecordWriter {
         deleteIfExists(importFile);
       }
     } catch (IOException | RuntimeException e) {
-      cleanup(tempFiles, foundationFile, importFile);
+      cleanup(tempFiles);
       throw e;
     }
 
@@ -511,10 +511,8 @@ public class StrictRecordWriter {
     }
   }
 
-  private static void cleanup(List<Path> tempFiles, Path foundationFile, Path importFile) {
+  private static void cleanup(List<Path> tempFiles) {
     tempFiles.forEach(StrictRecordWriter::deleteQuietly);
-    deleteQuietly(foundationFile);
-    deleteQuietly(importFile);
   }
 
   private static void deleteIfExists(Path path) throws IOException {

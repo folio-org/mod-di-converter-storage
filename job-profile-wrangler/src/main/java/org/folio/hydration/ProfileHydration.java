@@ -96,6 +96,7 @@ public class ProfileHydration {
 
     // Create match, action, and mapping profiles individually
     Map<Profile, Object> createdObjectsInFolio = new HashMap<>();
+    List<Profile> createdProfiles = new ArrayList<>();
     List<Profile> vertexSet = new ArrayList<>(graph.vertexSet());
     vertexSet.sort((v1, v2) -> {
       // Sort vertices based on their type in a specific order
@@ -130,9 +131,9 @@ public class ProfileHydration {
 
         boolean created = createProfileInFolio(mappingProfileNode,
           new MappingProfileUpdateDto().withProfile(mappingProfile),
-          MappingProfileUpdateDto.class, client::createMappingProfile, createdObjectsInFolio);
+          MappingProfileUpdateDto.class, client::createMappingProfile, createdObjectsInFolio, createdProfiles);
         if (!created) {
-          return Optional.empty();
+          return rollbackAndEmpty(createdObjectsInFolio, createdProfiles);
         }
       } else if (node instanceof ActionProfileNode actionProfileNode) {
         String action = getAttributeOrThrow(actionProfileNode, "action");
@@ -155,7 +156,7 @@ public class ProfileHydration {
           if (mappingProfile == null) {
             LOGGER.error("Action profile {} references mapping profile {} that was not created", actionProfileNode.id(),
               target);
-            return Optional.empty();
+            return rollbackAndEmpty(createdObjectsInFolio, createdProfiles);
           }
           actionProfileUpdateDto = actionProfileUpdateDto
             .withAddedRelations(List.of(new ProfileAssociation()
@@ -165,9 +166,9 @@ public class ProfileHydration {
         }
 
         boolean created = createProfileInFolio(actionProfileNode, actionProfileUpdateDto,
-          ActionProfileUpdateDto.class, client::createActionProfile, createdObjectsInFolio);
+          ActionProfileUpdateDto.class, client::createActionProfile, createdObjectsInFolio, createdProfiles);
         if (!created) {
-          return Optional.empty();
+          return rollbackAndEmpty(createdObjectsInFolio, createdProfiles);
         }
       } else if (node instanceof MatchProfileNode matchProfileNode) {
         String matchIncomingRecordType = getAttributeOrThrow(matchProfileNode, "incomingRecordType");
@@ -191,9 +192,9 @@ public class ProfileHydration {
         }
 
         boolean created = createProfileInFolio(matchProfileNode, new MatchProfileUpdateDto().withProfile(matchProfile),
-          MatchProfileUpdateDto.class, client::createMatchProfile, createdObjectsInFolio);
+          MatchProfileUpdateDto.class, client::createMatchProfile, createdObjectsInFolio, createdProfiles);
         if (!created) {
-          return Optional.empty();
+          return rollbackAndEmpty(createdObjectsInFolio, createdProfiles);
         }
       }
     }
@@ -215,7 +216,7 @@ public class ProfileHydration {
 
     if (jobProfile.isEmpty() || jobProfileUpdateDto.getProfile() == null) {
       LOGGER.error("No Job Profile found");
-      return Optional.empty();
+      return rollbackAndEmpty(createdObjectsInFolio, createdProfiles);
     }
 
     List<ProfileAssociation> profileAssociations = new ArrayList<>();
@@ -268,9 +269,9 @@ public class ProfileHydration {
 
     boolean jobCreated = createProfileInFolio(jobProfile.get(), jobProfileUpdateDto, JobProfileUpdateDto.class,
       client::createJobProfile,
-      createdObjectsInFolio);
+      createdObjectsInFolio, createdProfiles);
     if (!jobCreated) {
-      return Optional.empty();
+      return rollbackAndEmpty(createdObjectsInFolio, createdProfiles);
     }
 
     return Optional.ofNullable(createdObjectsInFolio.get(jobProfile.get()));
@@ -343,7 +344,8 @@ public class ProfileHydration {
    */
   private <U> boolean createProfileInFolio(Profile node, U updateDto, Class<U> updateDtoClassType,
                                            Function<String, Optional<JsonNode>> creator,
-                                           Map<Profile, Object> correspondingObjectsInFolio) {
+                                           Map<Profile, Object> correspondingObjectsInFolio,
+                                           List<Profile> createdProfiles) {
     try {
       String bodyAsString = OBJECT_MAPPER.writeValueAsString(updateDto);
       Optional<JsonNode> jsonNodeOptional = creator.apply(bodyAsString);
@@ -354,11 +356,53 @@ public class ProfileHydration {
 
       U createdUpdateDto = OBJECT_MAPPER.treeToValue(jsonNodeOptional.get(), updateDtoClassType);
       correspondingObjectsInFolio.put(node, createdUpdateDto);
+      createdProfiles.add(node);
       return true;
     } catch (JsonProcessingException e) {
       LOGGER.error(e.getMessage(), e);
       return false;
     }
+  }
+
+  private Optional<Object> rollbackAndEmpty(Map<Profile, Object> createdObjectsInFolio, List<Profile> createdProfiles) {
+    rollbackCreatedProfiles(createdObjectsInFolio, createdProfiles);
+    return Optional.empty();
+  }
+
+  private void rollbackCreatedProfiles(Map<Profile, Object> createdObjectsInFolio, List<Profile> createdProfiles) {
+    for (int i = createdProfiles.size() - 1; i >= 0; i--) {
+      Profile profile = createdProfiles.get(i);
+      Object createdObject = createdObjectsInFolio.get(profile);
+      if (createdObject == null) {
+        continue;
+      }
+      String id = invokeGetId(createdObject);
+      if (id == null || id.isBlank()) {
+        LOGGER.warn("Cannot roll back {} because created profile id is blank", profile);
+        continue;
+      }
+
+      boolean deleted = deleteCreatedProfile(profile, id);
+      if (!deleted) {
+        LOGGER.warn("Failed to roll back {} with id {}", profile, id);
+      }
+    }
+  }
+
+  private boolean deleteCreatedProfile(Profile profile, String id) {
+    if (profile instanceof JobProfileNode) {
+      return client.deleteJobProfile(id);
+    }
+    if (profile instanceof MatchProfileNode) {
+      return client.deleteMatchProfile(id);
+    }
+    if (profile instanceof ActionProfileNode) {
+      return client.deleteActionProfile(id);
+    }
+    if (profile instanceof MappingProfileNode) {
+      return client.deleteMappingProfile(id);
+    }
+    return false;
   }
 
   /**

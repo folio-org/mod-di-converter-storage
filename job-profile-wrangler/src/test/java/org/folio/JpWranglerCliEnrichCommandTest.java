@@ -1,5 +1,6 @@
 package org.folio;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.Test;
 import org.marc4j.MarcStreamReader;
 import org.marc4j.marc.DataField;
@@ -16,6 +17,7 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 public class JpWranglerCliEnrichCommandTest {
+  private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
   private static final MarcFactory MARC_FACTORY = MarcFactory.newInstance();
 
   @Test
@@ -69,6 +71,21 @@ public class JpWranglerCliEnrichCommandTest {
       assertEquals("wrangler-test", reader.next().getControlNumber());
       assertFalse(reader.hasNext());
     }
+  }
+
+  @Test
+  public void sourceRecordIdEnrichmentDoesNotFallbackToEnvelopeId() throws Exception {
+    JpWranglerCli.EnrichCommand command = new JpWranglerCli.EnrichCommand();
+    Method extractEnrichValue = JpWranglerCli.EnrichCommand.class
+      .getDeclaredMethod("extractEnrichValue", com.fasterxml.jackson.databind.JsonNode.class,
+        JpWranglerCli.EnrichCommand.EnrichType.class);
+    extractEnrichValue.setAccessible(true);
+
+    Object value = extractEnrichValue.invoke(command,
+      OBJECT_MAPPER.readTree("{\"id\":\"source-record-wrapper-id\"}"),
+      JpWranglerCli.EnrichCommand.EnrichType.SOURCE_RECORD_ID);
+
+    assertEquals(null, value);
   }
 
   private Object parseEnrichField(JpWranglerCli.EnrichCommand command, String fieldSpec) throws Exception {

@@ -182,7 +182,7 @@ public final class MappingDetailsFactory {
       .withRecordType(EntityType.HOLDINGS)
       .withMappingFields(Arrays.asList(
         createField("discoverySuppress", "holdings.discoverySuppress", true),
-        createField("hrid", "holdings.discoverySuppress", false),
+        createField("hrid", "holdings.hrid", false),
 
         // Former IDs
         createFieldWithSubfields("formerIds", "holdings.formerIds[]", true,

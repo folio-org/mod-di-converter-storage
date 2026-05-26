@@ -89,14 +89,12 @@ public class FolioMarcClient {
    */
   public synchronized Record getNextRecord() throws IOException {
     // If we've reached the end of the cache, fetch more records
-    if (currentRecordIndex >= recordCache.size() && !endOfRecords) {
-      // Before fetching, make sure currentOffset reflects our position
-      currentOffset = currentOffset - currentRecordIndex + recordCache.size();
+    if ((recordCache.isEmpty() || currentRecordIndex >= recordCache.size()) && !endOfRecords) {
       fetchMoreRecords();
     }
 
-    // If the cache is still empty, we've exhausted all records - start over
-    if (recordCache.isEmpty()) {
+    // If the cache is still empty or exhausted, we've exhausted all records - start over
+    if (recordCache.isEmpty() || currentRecordIndex >= recordCache.size()) {
       resetPagination();
       fetchMoreRecords();
 
@@ -120,6 +118,7 @@ public class FolioMarcClient {
 
     // If we've gone through the current batch, prepare for the next one
     if (currentRecordIndex >= recordCache.size()) {
+      recordCache.clear();
       currentRecordIndex = 0;
 
       // If we've reached the maximum, start back at the beginning

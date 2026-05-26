@@ -123,6 +123,38 @@ public class RepoImportTest {
   }
 
   @Test
+  public void fromStringIgnoresChildrenUnderMappingProfiles() throws IOException {
+    String repoPath = tempDir.getRoot().toString();
+    String content = """
+      {
+        "contentType": "JOB_PROFILE",
+        "content": {"id": "job-1", "dataType": "MARC"},
+        "childSnapshotWrappers": [{
+          "contentType": "ACTION_PROFILE",
+          "content": {"id": "action-1", "action": "CREATE", "folioRecord": "INSTANCE"},
+          "childSnapshotWrappers": [{
+            "contentType": "MAPPING_PROFILE",
+            "content": {
+              "id": "mapping-1",
+              "incomingRecordType": "MARC_BIBLIOGRAPHIC",
+              "existingRecordType": "INSTANCE"
+            },
+            "childSnapshotWrappers": [{
+              "contentType": "ACTION_PROFILE",
+              "content": {"id": "action-under-mapping", "action": "CREATE", "folioRecord": "ITEM"}
+            }]
+          }]
+        }]
+      }
+      """;
+
+    Optional<RepoObject> repoObject = RepoImport.fromString(repoPath, content);
+
+    assertTrue(repoObject.isPresent());
+    assertEquals(3, repoObject.get().graph().vertexSet().size());
+  }
+
+  @Test
   public void importReportSerializesOutcomeDiscriminators() throws Exception {
     ImportReport report = new ImportReport("2026-05-19T20:00:00Z", List.of(
       new ImportReport.Entry("profile-1", "Profile 1", new ImportOutcome.Added(1)),

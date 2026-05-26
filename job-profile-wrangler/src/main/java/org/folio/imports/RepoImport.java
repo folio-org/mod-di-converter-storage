@@ -171,6 +171,9 @@ public class RepoImport implements Runnable {
       .ifPresent(children -> {
         if (node instanceof MatchProfileNode matchNode) {
           addMatchChildren(graph, children, matchNode);
+        } else if (node instanceof MappingProfileNode) {
+          LOGGER.warn("Ignoring childSnapshotWrappers under mapping profile {}; mapping profiles must be leaves",
+            node.getName());
         } else {
           addRegularChildren(graph, children, node);
         }

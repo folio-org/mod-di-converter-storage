@@ -357,7 +357,7 @@ public class StrictRecordWriterTest {
 
 
   @Test
-  public void writeFailureDeletesTempsAndStaleFinalFiles() throws IOException {
+  public void writeFailureDeletesTempsAndPreservesFinalFiles() throws IOException {
     Path outputBase = temp.getRoot().toPath().resolve("records");
     Path foundation = outputBase.resolveSibling("records-foundation.mrc");
     Path importFile = outputBase.resolveSibling("records-import.mrc");
@@ -383,10 +383,30 @@ public class StrictRecordWriterTest {
       assertTrue(e.getMessage().contains("simulated"));
     }
 
-    assertFalse(Files.exists(foundation));
-    assertFalse(Files.exists(importFile));
+    assertEquals("stale foundation", Files.readString(foundation));
+    assertEquals("stale import", Files.readString(importFile));
     try (var files = Files.list(temp.getRoot().toPath())) {
       assertFalse(files.anyMatch(path -> path.getFileName().toString().contains(".tmp.")));
+    }
+  }
+
+  @Test
+  public void importMoveFailurePreservesMovedFoundationFile() throws IOException {
+    Path outputBase = temp.getRoot().toPath().resolve("records");
+    Path foundation = outputBase.resolveSibling("records-foundation.mrc");
+    Path importFile = outputBase.resolveSibling("records-import.mrc");
+    Files.createDirectory(importFile);
+    Files.writeString(importFile.resolve("block-replace"), "directory is not replaceable by a file");
+
+    try {
+      new StrictRecordWriter().write(
+        new CategorizedPaths(List.of(), List.of(), List.of(categorized(path("UPDATE", "INSTANCE"))), List.of()),
+        new MinimalMarcRecordBuilder.ReferenceDataContext(null, null, null),
+        outputBase);
+      fail("Expected IOException");
+    } catch (IOException e) {
+      assertTrue(Files.exists(foundation));
+      assertTrue(Files.isDirectory(importFile));
     }
   }
 
