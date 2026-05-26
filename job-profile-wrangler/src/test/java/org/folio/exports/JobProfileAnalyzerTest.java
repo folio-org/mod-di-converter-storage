@@ -1,6 +1,7 @@
 package org.folio.exports;
 
 import org.folio.graph.ProfileDepthFirstIterator;
+import org.folio.graph.edges.MatchRelationshipEdge;
 import org.folio.graph.edges.RegularEdge;
 import org.folio.graph.nodes.*;
 import org.folio.http.FolioClient;
@@ -203,6 +204,83 @@ public class JobProfileAnalyzerTest {
     // Should account for all paths
     List<JobProfilePath> paths = result.allPaths();
     assertTrue("Should have multiple paths", paths.size() >= 2);
+  }
+
+  @Test
+  public void testAnalyzeJobProfile_CollapsesSiblingMatchActionsIntoOneExecutionStack() {
+    Graph<Profile, RegularEdge> graph = new DefaultDirectedGraph<>(RegularEdge.class);
+
+    JobProfileNode jobProfile = new JobProfileNode("job9", "Sibling match actions", 0);
+    MatchProfileNode matchProfile = new MatchProfileNode("match9", "MARC_BIBLIOGRAPHIC", "INSTANCE", 1);
+    ActionProfileNode holdingsAction = new ActionProfileNode("action-holdings", "CREATE", "HOLDINGS", 2);
+    MappingProfileNode holdingsMapping = new MappingProfileNode("mapping-holdings", "MARC_BIBLIOGRAPHIC", "HOLDINGS", 3);
+    ActionProfileNode itemAction = new ActionProfileNode("action-item", "CREATE", "ITEM", 4);
+    MappingProfileNode itemMapping = new MappingProfileNode("mapping-item", "MARC_BIBLIOGRAPHIC", "ITEM", 5);
+
+    graph.addVertex(jobProfile);
+    graph.addVertex(matchProfile);
+    graph.addVertex(holdingsAction);
+    graph.addVertex(holdingsMapping);
+    graph.addVertex(itemAction);
+    graph.addVertex(itemMapping);
+
+    graph.addEdge(jobProfile, matchProfile, new RegularEdge(jobProfile, matchProfile));
+    graph.addEdge(matchProfile, holdingsAction, new MatchRelationshipEdge());
+    graph.addEdge(holdingsAction, holdingsMapping, new RegularEdge(holdingsAction, holdingsMapping));
+    graph.addEdge(matchProfile, itemAction, new MatchRelationshipEdge());
+    graph.addEdge(itemAction, itemMapping, new RegularEdge(itemAction, itemMapping));
+
+    JobProfileAnalysisResult result = analyzer.analyzeJobProfile(graph);
+
+    assertEquals("Sibling MATCH actions should execute as one stack", 1, result.allPaths().size());
+    JobProfilePath path = result.allPaths().get(0);
+    assertTrue(path.createsHoldings());
+    assertTrue(path.createsItems());
+    assertEquals(
+      "JobProfile->MatchProfile->CREATE_HOLDINGS->Map_HOLDINGS->CREATE_ITEM->Map_ITEM",
+      path.getPathId());
+  }
+
+  @Test
+  public void testAnalyzeJobProfile_PreservesDownstreamBranchAlternativesWhenCollapsingSiblingActions() {
+    Graph<Profile, RegularEdge> graph = new DefaultDirectedGraph<>(RegularEdge.class);
+
+    JobProfileNode jobProfile = new JobProfileNode("job10", "Sibling match actions with branch", 0);
+    MatchProfileNode matchProfile = new MatchProfileNode("match10", "MARC_BIBLIOGRAPHIC", "INSTANCE", 1);
+    ActionProfileNode holdingsAction = new ActionProfileNode("action-holdings", "CREATE", "HOLDINGS", 2);
+    MappingProfileNode holdingsMappingA = new MappingProfileNode("mapping-holdings-a", "MARC_BIBLIOGRAPHIC", "HOLDINGS", 3);
+    MappingProfileNode holdingsMappingB = new MappingProfileNode("mapping-holdings-b", "MARC_BIBLIOGRAPHIC", "HOLDINGS", 4);
+    ActionProfileNode itemAction = new ActionProfileNode("action-item", "CREATE", "ITEM", 5);
+    MappingProfileNode itemMapping = new MappingProfileNode("mapping-item", "MARC_BIBLIOGRAPHIC", "ITEM", 6);
+
+    graph.addVertex(jobProfile);
+    graph.addVertex(matchProfile);
+    graph.addVertex(holdingsAction);
+    graph.addVertex(holdingsMappingA);
+    graph.addVertex(holdingsMappingB);
+    graph.addVertex(itemAction);
+    graph.addVertex(itemMapping);
+
+    graph.addEdge(jobProfile, matchProfile, new RegularEdge(jobProfile, matchProfile));
+    graph.addEdge(matchProfile, holdingsAction, new MatchRelationshipEdge());
+    graph.addEdge(holdingsAction, holdingsMappingA, new RegularEdge(holdingsAction, holdingsMappingA));
+    graph.addEdge(holdingsAction, holdingsMappingB, new RegularEdge(holdingsAction, holdingsMappingB));
+    graph.addEdge(matchProfile, itemAction, new MatchRelationshipEdge());
+    graph.addEdge(itemAction, itemMapping, new RegularEdge(itemAction, itemMapping));
+
+    JobProfileAnalysisResult result = analyzer.analyzeJobProfile(graph);
+
+    assertEquals("Two downstream holdings alternatives should remain two stacked paths", 2, result.allPaths().size());
+    assertEquals(1, result.allPaths().stream()
+      .filter(path -> path.getProfiles().contains(holdingsMappingA))
+      .filter(path -> !path.getProfiles().contains(holdingsMappingB))
+      .filter(path -> path.getProfiles().contains(itemMapping))
+      .count());
+    assertEquals(1, result.allPaths().stream()
+      .filter(path -> path.getProfiles().contains(holdingsMappingB))
+      .filter(path -> !path.getProfiles().contains(holdingsMappingA))
+      .filter(path -> path.getProfiles().contains(itemMapping))
+      .count());
   }
 
   @Test

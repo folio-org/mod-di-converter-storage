@@ -198,16 +198,79 @@ public class JobProfileAnalyzer {
       // End of path - create JobProfilePath with copy of current path
       allPaths.add(new JobProfilePath(new ArrayList<>(currentPath)));
     } else {
-      // Traverse all outgoing edges (handles both single and multiple paths)
-      for (RegularEdge edge : outgoingEdges) {
-        Profile nextNode = (Profile) edge.getTarget();
-        discoverAllPaths(graph, nextNode, currentPath, allPaths, visited);
+      for (List<RegularEdge> edgeGroup : groupOutgoingEdges(outgoingEdges)) {
+        if (shouldCollapseSiblingActionGroup(edgeGroup)) {
+          // FOLIO executes sibling actions with the same MATCH/NON_MATCH relationship as one stack
+          // for the same incoming record, not as mutually exclusive branches.
+          List<List<JobProfilePath>> siblingBranchPaths = edgeGroup.stream()
+            .map(edge -> discoverBranchPaths(graph, (Profile) edge.getTarget(), visited))
+            .toList();
+          addCollapsedBranchCombinations(currentPath, siblingBranchPaths, 0,
+            new ArrayList<>(currentPath), allPaths);
+        } else {
+          for (RegularEdge edge : edgeGroup) {
+            Profile nextNode = (Profile) edge.getTarget();
+            discoverAllPaths(graph, nextNode, currentPath, allPaths, visited);
+          }
+        }
       }
     }
 
     // Backtrack: remove current node from path and visited set
     currentPath.remove(currentPath.size() - 1);
     visited.remove(currentNode);
+  }
+
+  private List<List<RegularEdge>> groupOutgoingEdges(Set<RegularEdge> outgoingEdges) {
+    return outgoingEdges.stream()
+      .sorted(Comparator.comparing(edge -> ((Profile) edge.getTarget()).getOrder()))
+      .collect(Collectors.groupingBy(
+        RegularEdge::getLabel,
+        LinkedHashMap::new,
+        Collectors.toList()))
+      .values()
+      .stream()
+      .toList();
+  }
+
+  private boolean shouldCollapseSiblingActionGroup(List<RegularEdge> edgeGroup) {
+    if (edgeGroup.size() < 2) {
+      return false;
+    }
+    String label = edgeGroup.get(0).getLabel();
+    boolean sameOutcome = "MATCH".equals(label) || "NON_MATCH".equals(label);
+    return sameOutcome && edgeGroup.stream()
+      .map(edge -> (Profile) edge.getTarget())
+      .allMatch(ActionProfileNode.class::isInstance);
+  }
+
+  private List<JobProfilePath> discoverBranchPaths(Graph<Profile, RegularEdge> graph, Profile startNode,
+      Set<Profile> visited) {
+    List<JobProfilePath> branchPaths = new ArrayList<>();
+    discoverAllPaths(graph, startNode, new ArrayList<>(), branchPaths, new HashSet<>(visited));
+    return branchPaths;
+  }
+
+  private void addCollapsedBranchCombinations(List<Profile> basePath, List<List<JobProfilePath>> siblingBranchPaths,
+      int branchIndex, List<Profile> stackedPath, List<JobProfilePath> allPaths) {
+    if (branchIndex == siblingBranchPaths.size()) {
+      allPaths.add(new JobProfilePath(stackedPath));
+      return;
+    }
+
+    for (JobProfilePath branchPath : siblingBranchPaths.get(branchIndex)) {
+      List<Profile> nextStackedPath = new ArrayList<>(stackedPath);
+      appendBranchPath(basePath, branchPath, nextStackedPath);
+      addCollapsedBranchCombinations(basePath, siblingBranchPaths, branchIndex + 1, nextStackedPath, allPaths);
+    }
+  }
+
+  private void appendBranchPath(List<Profile> basePath, JobProfilePath branchPath, List<Profile> stackedPath) {
+    for (Profile profile : branchPath.getProfiles()) {
+      if (!basePath.contains(profile) && !stackedPath.contains(profile)) {
+        stackedPath.add(profile);
+      }
+    }
   }
 
   /**

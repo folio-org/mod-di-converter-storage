@@ -455,6 +455,9 @@ public final class MinimalMarcRecordBuilder {
 
     String pathId = path.getPathId();
     boolean verbose = reportBuilder != null;
+    // A MARC bib update/modify is expected to cascade into an Instance update in Data Import
+    // when the modified SRS record carries 999 ff $i. A create-stack journal entry is different:
+    // it means the record did not exercise the SRS modify/update path.
     boolean updatesMarcBib = pathUpdatesOrModifiesRecordType(path, "MARC_BIBLIOGRAPHIC");
     validateSupportedActions(path);
 

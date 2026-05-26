@@ -49,6 +49,9 @@ import org.folio.graph.GraphWriter;
 import org.folio.graph.GraphWriterEnhanced;
 import org.folio.graph.edges.RegularEdge;
 import org.folio.graph.nodes.ActionProfileNode;
+import org.folio.graph.nodes.JobProfileNode;
+import org.folio.graph.nodes.MappingProfileNode;
+import org.folio.graph.nodes.MatchProfileNode;
 import org.folio.graph.nodes.Profile;
 import org.folio.http.FolioClient;
 import org.folio.http.ReferenceDataManager;
@@ -728,8 +731,8 @@ public class JpWranglerCli implements Callable<Integer> {
       // Categorize paths into paired and unpaired
       CategorizedPaths categorized = categorizePaths(pathResult);
 
-      LOGGER.info("Found {} matched path pair(s) (CREATE + UPDATE sharing same match profile)",
-        categorized.pairedPaths().size());
+      LOGGER.info("Found {} matched path pair(s) and {} unpaired CREATE stack(s) after categorization",
+        categorized.pairedPaths().size(), categorized.unpairedCreatePaths().size());
 
       StrictRecordWriter writer = new StrictRecordWriter();
       List<CategorizedPath> allPaths = writer.pathOrder(categorized);
@@ -874,15 +877,75 @@ public class JpWranglerCli implements Callable<Integer> {
         pairedUpdatePaths.add(pair.updatePath());
       }
 
-      List<CategorizedPath> unpairedCreate = pathResult.createPaths().stream()
+      List<CategorizedPath> unpairedCreate = coalesceSiblingCreateStacks(pathResult.createPaths().stream()
         .filter(p -> !pairedCreatePaths.contains(p))
-        .toList();
+        .toList());
 
       List<CategorizedPath> unpairedUpdate = pathResult.updatePaths().stream()
         .filter(p -> !pairedUpdatePaths.contains(p))
         .toList();
 
       return new CategorizedPaths(pairs, unpairedCreate, unpairedUpdate, pathResult.deletePaths());
+    }
+
+    private List<CategorizedPath> coalesceSiblingCreateStacks(List<CategorizedPath> createPaths) {
+      Map<String, List<CategorizedPath>> groups = new java.util.LinkedHashMap<>();
+      List<CategorizedPath> passthrough = new ArrayList<>();
+      for (CategorizedPath path : createPaths) {
+        if ((path.reactTo() == ReactTo.MATCH || path.reactTo() == ReactTo.NON_MATCH)
+            && path.matchProfileId() != null && !path.matchProfileId().isBlank()) {
+          groups.computeIfAbsent(path.reactTo() + ":" + path.matchProfileId(), key -> new ArrayList<>()).add(path);
+        } else {
+          passthrough.add(path);
+        }
+      }
+
+      List<CategorizedPath> coalesced = new ArrayList<>();
+      for (List<CategorizedPath> group : groups.values()) {
+        if (group.size() == 1) {
+          coalesced.add(group.get(0));
+        } else {
+          // Sibling CREATE actions under the same MATCH/NON_MATCH outcome execute as one FOLIO
+          // stack for a single incoming record, so generate one record with the union of fields.
+          coalesced.add(consolidateCategorizedCreatePaths(group));
+        }
+      }
+      coalesced.addAll(passthrough);
+      return coalesced;
+    }
+
+    private CategorizedPath consolidateCategorizedCreatePaths(List<CategorizedPath> paths) {
+      CategorizedPath first = paths.get(0);
+      List<Profile> consolidatedProfiles = new ArrayList<>();
+      Set<String> seenProfileIds = new HashSet<>();
+      for (CategorizedPath path : paths) {
+        for (Profile profile : path.path().getProfiles()) {
+          if (seenProfileIds.add(profileKey(profile))) {
+            consolidatedProfiles.add(profile);
+          }
+        }
+      }
+      return new CategorizedPath(
+        new JobProfilePath(consolidatedProfiles),
+        first.reactTo(),
+        first.matchProfileId(),
+        first.matchCriteria());
+    }
+
+    private String profileKey(Profile profile) {
+      if (profile instanceof JobProfileNode jobProfile) {
+        return "JobProfile-" + jobProfile.id();
+      }
+      if (profile instanceof MatchProfileNode matchProfile) {
+        return "MatchProfile-" + matchProfile.id();
+      }
+      if (profile instanceof ActionProfileNode actionProfile) {
+        return "ActionProfile-" + actionProfile.id();
+      }
+      if (profile instanceof MappingProfileNode mappingProfile) {
+        return "MappingProfile-" + mappingProfile.id();
+      }
+      return profile.getClass().getSimpleName() + "-" + profile.getName();
     }
 
 

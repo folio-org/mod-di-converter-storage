@@ -96,7 +96,8 @@ public final class MatchDetailsFactory {
           EntityType.INSTANCE,
           systemControlNumberTypeId));
       // SRS rewrites stored bib 001 to the Instance HRID during create-instance imports.
-      // Match bib-to-bib updates on the stable SRS source record id instead.
+      // Match bib-to-bib updates on the stable SRS source record id instead; when this
+      // update succeeds, Data Import intentionally post-processes the related Instance.
       case "MARC_BIBLIOGRAPHIC" -> List.of(createSrsMatchDetail(
           EntityType.MARC_BIBLIOGRAPHIC,
           EntityType.MARC_BIBLIOGRAPHIC));

@@ -12,6 +12,8 @@ import org.folio.exports.ReactTo;
 import org.folio.exports.StrictRecordWriter;
 import org.folio.graph.nodes.ActionProfileNode;
 import org.folio.graph.nodes.JobProfileNode;
+import org.folio.graph.nodes.MappingProfileNode;
+import org.folio.graph.nodes.MatchProfileNode;
 import org.folio.graph.nodes.Profile;
 import org.junit.Test;
 
@@ -229,12 +231,89 @@ public class JpWranglerCliGenerateInternalsTest {
     assertTrue(result.unsupportedActionPaths().get(0).path().getPathId().contains("MODIFY_INSTANCE"));
   }
 
+  @Test
+  public void categorizationCoalescesSiblingMatchCreateActionsIntoOneImportRecord() throws Exception {
+    Method method = JpWranglerCli.GenerateCommand.class.getDeclaredMethod("categorizePaths", PathExtractionResult.class);
+    method.setAccessible(true);
+
+    CategorizedPath holdingsPath = matchCreatePath(
+      "CREATE",
+      "HOLDINGS",
+      "MARC_BIBLIOGRAPHIC",
+      "HOLDINGS",
+      2
+    );
+    CategorizedPath itemPath = matchCreatePath(
+      "CREATE",
+      "ITEM",
+      "MARC_BIBLIOGRAPHIC",
+      "ITEM",
+      4
+    );
+    PathExtractionResult extraction = new PathExtractionResult(
+      List.of(holdingsPath, itemPath),
+      List.of(),
+      List.of(),
+      List.of()
+    );
+
+    CategorizedPaths result = (CategorizedPaths) method.invoke(new JpWranglerCli.GenerateCommand(), extraction);
+
+    assertEquals("Sibling CREATE actions under one MATCH outcome share one incoming record",
+      1, result.unpairedCreatePaths().size());
+    JobProfilePath path = result.unpairedCreatePaths().get(0).path();
+    assertTrue(path.createsHoldings());
+    assertTrue(path.createsItems());
+    assertEquals(
+      "JobProfile->MatchProfile->CREATE_HOLDINGS->Map_HOLDINGS->CREATE_ITEM->Map_ITEM",
+      path.getPathId());
+  }
+
+  @Test
+  public void categorizationDoesNotCoalesceCreateActionsWhenMatchProfileIdIsBlank() throws Exception {
+    Method method = JpWranglerCli.GenerateCommand.class.getDeclaredMethod("categorizePaths", PathExtractionResult.class);
+    method.setAccessible(true);
+
+    CategorizedPath holdingsPath = new CategorizedPath(
+      matchCreatePath("CREATE", "HOLDINGS", "MARC_BIBLIOGRAPHIC", "HOLDINGS", 2).path(),
+      ReactTo.MATCH,
+      "",
+      MatchCriteria.empty());
+    CategorizedPath itemPath = new CategorizedPath(
+      matchCreatePath("CREATE", "ITEM", "MARC_BIBLIOGRAPHIC", "ITEM", 4).path(),
+      ReactTo.MATCH,
+      "",
+      MatchCriteria.empty());
+    PathExtractionResult extraction = new PathExtractionResult(
+      List.of(holdingsPath, itemPath),
+      List.of(),
+      List.of(),
+      List.of()
+    );
+
+    CategorizedPaths result = (CategorizedPaths) method.invoke(new JpWranglerCli.GenerateCommand(), extraction);
+
+    assertEquals("Blank match profile ids are malformed and should not be grouped together",
+      2, result.unpairedCreatePaths().size());
+  }
+
   private CategorizedPath path(String pathId, ReactTo reactTo, MatchCriteria criteria) {
     List<Profile> profiles = List.of(
       new JobProfileNode("job", "MARC", 0),
       new ActionProfileNode("action-" + pathId, "UPDATE", "INSTANCE", 0)
     );
     return new CategorizedPath(new JobProfilePath(profiles, pathId), reactTo, "match-1", criteria);
+  }
+
+  private CategorizedPath matchCreatePath(String action, String folioRecord, String incomingRecordType,
+      String existingRecordType, int actionOrder) {
+    List<Profile> profiles = List.of(
+      new JobProfileNode("job", "MARC", 0),
+      new MatchProfileNode("match-1", incomingRecordType, "INSTANCE", 1),
+      new ActionProfileNode("action-" + folioRecord, action, folioRecord, actionOrder),
+      new MappingProfileNode("mapping-" + folioRecord, incomingRecordType, existingRecordType, actionOrder + 1)
+    );
+    return new CategorizedPath(new JobProfilePath(profiles), ReactTo.MATCH, "match-1", MatchCriteria.empty());
   }
 
   private MatchCriteria nonMarcCriteria() {

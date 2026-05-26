@@ -139,13 +139,17 @@ import.
 
 **Only run this step if `test-records-foundation.mrc` was generated and is non-empty.**
 
-**Profile Selection:** Foundation records may contain Holdings/Item fields (852, 945) when the test profile requires prerequisite entities. The import profile must be selected accordingly:
+**Profile Selection:** Choose the foundation import profile by the prerequisite entities
+the test profile must match, not only by the MARC fields present in the generated
+foundation file. Some generated foundation records contain `852` so the later test import
+can create Holdings, but the foundation seed still only needs an Instance when the test
+profile is `MATCH INSTANCE -> CREATE HOLDINGS`.
 
-| Foundation Record Contains | Use Profile | Profile UUID |
-|---------------------------|-------------|--------------|
-| Instance only (no 852/945) | Default System Profile | `e34d7b92-9b83-11eb-a8b3-0242ac130003` |
-| Instance + Holdings (852) | jp-001 | Query via API |
-| Instance + Holdings + Item (852 + 945) | jp-001 | Query via API |
+| Test Profile Needs To Match | Typical Shape | Use Profile | Profile UUID |
+|----------------------------|---------------|-------------|--------------|
+| Instance only | `MATCH INSTANCE -> CREATE HOLDINGS` | Default System Profile | `e34d7b92-9b83-11eb-a8b3-0242ac130003` |
+| Holdings context already present | `MATCH INSTANCE -> MATCH/UPDATE HOLDINGS` or `MATCH HOLDINGS -> ...` | jp-001 | Query via API |
+| Item context already present | `MATCH ITEM -> ...` | jp-001 | Query via API |
 
 ```bash
 # Check if foundation records file exists and has content
@@ -156,13 +160,13 @@ else
   # Skip to Step 8
 fi
 
-# 7.0: Determine appropriate import profile based on foundation record content
-# Check for Holdings (852) and Item (945) fields using strings command
-HAS_HOLDINGS=$(strings test-records-foundation.mrc | grep -c "852" || true)
-HAS_ITEMS=$(strings test-records-foundation.mrc | grep -c "945" || true)
+# 7.0: Determine appropriate import profile based on required prerequisites.
+# Default to seeding only the Instance. Use jp-001 only when the test profile must match
+# or update existing Holdings/Items, not merely because 852 exists in the MARC.
+NEEDS_EXISTING_HOLDINGS_OR_ITEMS=false
 
-if [ "$HAS_HOLDINGS" -gt 0 ] || [ "$HAS_ITEMS" -gt 0 ]; then
-  echo "Foundation records contain Holdings/Item fields - using jp-001 for import"
+if [ "$NEEDS_EXISTING_HOLDINGS_OR_ITEMS" = "true" ]; then
+  echo "Test profile needs existing Holdings/Items - using jp-001 for foundation import"
   # Get jp-001 UUID
   FOUNDATION_PROFILE_UUID=$(curl -s "http://localhost:8000/data-import-profiles/jobProfiles?query=name==jp-001*" \
     -H "x-okapi-token: $TOKEN" \
@@ -170,12 +174,12 @@ if [ "$HAS_HOLDINGS" -gt 0 ] || [ "$HAS_ITEMS" -gt 0 ]; then
   FOUNDATION_PROFILE_NAME="jp-001 (Instance + Holdings + Item)"
 
   if [ "$FOUNDATION_PROFILE_UUID" = "null" ] || [ -z "$FOUNDATION_PROFILE_UUID" ]; then
-    echo "WARNING: jp-001 not found in FOLIO. Foundation records contain Holdings/Item fields but no appropriate profile exists."
+    echo "WARNING: jp-001 not found in FOLIO. The test profile needs existing Holdings/Items but no appropriate profile exists."
     echo "Please export jp-001 first: java -jar target/job-profile-wrangler-2.4.0-SNAPSHOT.jar export -u http://localhost:8000 --tenant diku --username diku_admin --password admin -i 1 -r src/main/resources/repository"
     exit 1
   fi
 else
-  echo "Foundation records contain Instance only - using default system profile"
+  echo "Test profile only needs an existing Instance - using default system profile"
   FOUNDATION_PROFILE_UUID="e34d7b92-9b83-11eb-a8b3-0242ac130003"
   FOUNDATION_PROFILE_NAME="Default - Create instance and SRS MARC Bib"
 fi

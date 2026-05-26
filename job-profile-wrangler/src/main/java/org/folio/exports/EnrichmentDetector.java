@@ -90,7 +90,8 @@ public final class EnrichmentDetector {
     }
     String recordType = sourceRecordTypes.get(0);
     // 999 ff $s is assigned by SRS when foundation records are imported, so generated
-    // import records must be enriched before the final update/delete import.
+    // import records must be enriched before the final update/delete import. For MARC bibs,
+    // successful SRS update/modify events also update the related Instance via 999 ff $i.
     return new GenerationOutcome.NeedsEnrichment(
       pathIndex,
       path.path().getPathId(),
