@@ -2,15 +2,17 @@ package org.folio;
 
 import java.io.Console;
 import java.io.FileInputStream;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.BufferedReader;
+import java.io.OutputStream;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.nio.file.Files;
+import java.nio.file.AtomicMoveNotSupportedException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -185,7 +187,8 @@ public class JpWranglerCli implements Callable<Integer> {
       }
       environmentDefaultsApplied = true;
 
-      Map<String, String> dotenv = loadDotenv(envFile == null || envFile.isBlank() ? DEFAULT_ENV_FILE : envFile);
+      boolean explicitEnvFile = envFile != null && !envFile.isBlank();
+      Map<String, String> dotenv = loadDotenv(explicitEnvFile ? envFile : DEFAULT_ENV_FILE, explicitEnvFile);
       Map<String, String> environment = System.getenv();
 
       baseUrl = firstPresent(baseUrl, environment, dotenv,
@@ -233,8 +236,15 @@ public class JpWranglerCli implements Callable<Integer> {
     }
 
     static Map<String, String> loadDotenv(String dotenvPath) {
+      return loadDotenv(dotenvPath, false);
+    }
+
+    static Map<String, String> loadDotenv(String dotenvPath, boolean required) {
       Path path = Paths.get(dotenvPath);
       if (!Files.exists(path)) {
+        if (required) {
+          throw new IllegalArgumentException("Dotenv file does not exist: " + dotenvPath);
+        }
         return Map.of();
       }
 
@@ -245,6 +255,9 @@ public class JpWranglerCli implements Callable<Integer> {
           parseDotenvLine(line).ifPresent(entry -> values.put(entry.name(), entry.value()));
         }
       } catch (IOException e) {
+        if (required) {
+          throw new IllegalArgumentException("Could not read dotenv file " + dotenvPath + ": " + e.getMessage(), e);
+        }
         LOGGER.warn("Could not read dotenv file {}: {}", dotenvPath, e.getMessage());
       }
       return values;
@@ -1319,34 +1332,51 @@ public class JpWranglerCli implements Callable<Integer> {
         int totalActionProfiles = 0;
         int totalMappingProfiles = 0;
 
-        // Store profile data for deletion phase
+        Set<String> selectedJobProfileIds = matchingProfiles.stream()
+          .map(profile -> profile.path("id").asText())
+          .collect(java.util.stream.Collectors.toSet());
         List<ProfileDeletionData> deletionDataList = new ArrayList<>();
+        ProfileReferences selectedReferences = ProfileReferences.empty();
 
         for (JsonNode profile : matchingProfiles) {
           String id = profile.path("id").asText();
           String name = profile.path("name").asText();
 
-          // Fetch snapshot to get sub-profile counts
           Optional<JsonNode> snapshotOpt = client.getJobProfileSnapshot(id);
-
-          Set<String> matchIds = new HashSet<>();
-          Set<String> actionIds = new HashSet<>();
-          Set<String> mappingIds = new HashSet<>();
-
-          if (snapshotOpt.isPresent()) {
-            collectProfileIds(snapshotOpt.get(), matchIds, actionIds, mappingIds);
+          if (snapshotOpt.isEmpty()) {
+            LOGGER.error("Could not fetch job profile snapshot for {} ({}); refusing to delete because child "
+              + "profile references are unknown.", name, id);
+            return 1;
           }
+          ProfileReferences references = collectProfileIds(snapshotOpt.get());
+          selectedReferences.addAll(references);
 
           System.out.println("  - " + name + " (ID: " + id + ")");
-          System.out.println("    - " + matchIds.size() + " match profile(s)");
-          System.out.println("    - " + actionIds.size() + " action profile(s)");
-          System.out.println("    - " + mappingIds.size() + " mapping profile(s)");
+          System.out.println("    - " + references.matchIds().size() + " match profile(s)");
+          System.out.println("    - " + references.actionIds().size() + " action profile(s)");
+          System.out.println("    - " + references.mappingIds().size() + " mapping profile(s)");
 
-          totalMatchProfiles += matchIds.size();
-          totalActionProfiles += actionIds.size();
-          totalMappingProfiles += mappingIds.size();
+          totalMatchProfiles += references.matchIds().size();
+          totalActionProfiles += references.actionIds().size();
+          totalMappingProfiles += references.mappingIds().size();
 
-          deletionDataList.add(new ProfileDeletionData(id, name, matchIds, actionIds, mappingIds));
+          deletionDataList.add(new ProfileDeletionData(id, name, references.matchIds(), references.actionIds(),
+            references.mappingIds()));
+        }
+
+        ProfileReferences sharedReferences = sharedReferencesFromNonSelectedProfiles(client, allProfiles,
+          selectedJobProfileIds, selectedReferences);
+        if (!sharedReferences.isEmpty()) {
+          System.out.println("\nSkipping shared sub-profiles that are still referenced by non-selected job profiles:");
+          System.out.println("  Match profiles:   " + sharedReferences.matchIds().size());
+          System.out.println("  Action profiles:  " + sharedReferences.actionIds().size());
+          System.out.println("  Mapping profiles: " + sharedReferences.mappingIds().size());
+          deletionDataList = deletionDataList.stream()
+            .map(data -> data.without(sharedReferences))
+            .toList();
+          totalMatchProfiles -= sharedReferences.matchIds().size();
+          totalActionProfiles -= sharedReferences.actionIds().size();
+          totalMappingProfiles -= sharedReferences.mappingIds().size();
         }
 
         int totalSubProfiles = totalMatchProfiles + totalActionProfiles + totalMappingProfiles;
@@ -1382,16 +1412,21 @@ public class JpWranglerCli implements Callable<Integer> {
     /**
      * Recursively collects profile IDs from a job profile snapshot.
      */
-    private void collectProfileIds(JsonNode node, Set<String> matchIds,
-                                   Set<String> actionIds, Set<String> mappingIds) {
+    static ProfileReferences collectProfileIds(JsonNode node) {
+      ProfileReferences references = ProfileReferences.empty();
+      collectProfileIds(node, references);
+      return references;
+    }
+
+    private static void collectProfileIds(JsonNode node, ProfileReferences references) {
       String contentType = node.path("contentType").asText();
       String id = node.path("content").path("id").asText();
 
       if (!id.isEmpty()) {
         switch (contentType) {
-          case "MAPPING_PROFILE" -> mappingIds.add(id);
-          case "ACTION_PROFILE" -> actionIds.add(id);
-          case "MATCH_PROFILE" -> matchIds.add(id);
+          case "MAPPING_PROFILE" -> references.mappingIds().add(id);
+          case "ACTION_PROFILE" -> references.actionIds().add(id);
+          case "MATCH_PROFILE" -> references.matchIds().add(id);
           // JOB_PROFILE is handled separately
         }
       }
@@ -1400,21 +1435,89 @@ public class JpWranglerCli implements Callable<Integer> {
       JsonNode children = node.path("childSnapshotWrappers");
       if (children.isArray()) {
         for (JsonNode child : children) {
-          collectProfileIds(child, matchIds, actionIds, mappingIds);
+          collectProfileIds(child, references);
         }
+      }
+    }
+
+    static ProfileReferences sharedReferencesFromNonSelectedProfiles(FolioClient client,
+                                                                     List<JsonNode> allProfiles,
+                                                                     Set<String> selectedJobProfileIds,
+                                                                     ProfileReferences selectedReferences) {
+      ProfileReferences sharedReferences = ProfileReferences.empty();
+      if (selectedReferences.isEmpty()) {
+        return sharedReferences;
+      }
+
+      for (JsonNode profile : allProfiles) {
+        String id = profile.path("id").asText();
+        if (selectedJobProfileIds.contains(id)) {
+          continue;
+        }
+        Optional<JsonNode> snapshotOpt = client.getJobProfileSnapshot(id);
+        if (snapshotOpt.isEmpty()) {
+          throw new IllegalStateException("Could not fetch job profile snapshot for non-selected profile " + id
+            + "; refusing to delete because shared profile references cannot be verified.");
+        }
+        sharedReferences.addAll(collectProfileIds(snapshotOpt.get()).intersection(selectedReferences));
+      }
+      return sharedReferences;
+    }
+
+    record ProfileReferences(
+      Set<String> matchIds,
+      Set<String> actionIds,
+      Set<String> mappingIds
+    ) {
+      static ProfileReferences empty() {
+        return new ProfileReferences(new HashSet<>(), new HashSet<>(), new HashSet<>());
+      }
+
+      boolean isEmpty() {
+        return matchIds.isEmpty() && actionIds.isEmpty() && mappingIds.isEmpty();
+      }
+
+      void addAll(ProfileReferences other) {
+        matchIds.addAll(other.matchIds);
+        actionIds.addAll(other.actionIds);
+        mappingIds.addAll(other.mappingIds);
+      }
+
+      ProfileReferences intersection(ProfileReferences other) {
+        return new ProfileReferences(intersection(matchIds, other.matchIds),
+          intersection(actionIds, other.actionIds),
+          intersection(mappingIds, other.mappingIds));
+      }
+
+      private static Set<String> intersection(Set<String> first, Set<String> second) {
+        Set<String> result = new HashSet<>(first);
+        result.retainAll(second);
+        return result;
       }
     }
 
     /**
      * Holds data needed for cascade deletion of a job profile and its sub-profiles.
      */
-    private record ProfileDeletionData(
+    record ProfileDeletionData(
       String id,
       String name,
       Set<String> matchIds,
       Set<String> actionIds,
       Set<String> mappingIds
-    ) {}
+    ) {
+      ProfileDeletionData without(ProfileReferences references) {
+        return new ProfileDeletionData(id, name, without(matchIds, references.matchIds()),
+          without(actionIds, references.actionIds()),
+          without(mappingIds, references.mappingIds()));
+      }
+
+      private static Set<String> without(Set<String> ids, Set<String> exclusions) {
+        Set<String> result = new HashSet<>(ids);
+        result.removeAll(exclusions);
+        return result;
+      }
+    }
 
     /**
      * Holds the result of deletion operations with success/fail counts for each profile type.
@@ -1653,17 +1756,7 @@ public class JpWranglerCli implements Callable<Integer> {
           }
         }
 
-        // Write enriched records to output file
-        try (FileOutputStream fos = new FileOutputStream(outputPath)) {
-          MarcStreamWriter writer = new MarcStreamWriter(fos, "UTF-8");
-          try {
-            for (Record record : enrichedRecords) {
-              writer.write(record);
-            }
-          } finally {
-            writer.close();
-          }
-        }
+        writeEnrichedRecordsAtomically(enrichedRecords, Paths.get(outputPath));
 
         LOGGER.info("Enrichment complete:");
         LOGGER.info("  Total records: {}", totalRecords);
@@ -1676,6 +1769,35 @@ public class JpWranglerCli implements Callable<Integer> {
       } catch (Exception e) {
         LOGGER.error("Enrichment failed: {}", e.getMessage(), e);
         return 1;
+      }
+    }
+
+    private void writeEnrichedRecordsAtomically(List<Record> records, Path output) throws IOException {
+      output = output.toAbsolutePath();
+      Path parent = output.getParent();
+      if (parent == null) {
+        parent = Paths.get(".").toAbsolutePath();
+      }
+      Files.createDirectories(parent);
+      Path temp = Files.createTempFile(parent, output.getFileName().toString(), ".tmp");
+      try {
+        try (OutputStream outputStream = Files.newOutputStream(temp)) {
+          MarcStreamWriter writer = new MarcStreamWriter(outputStream, "UTF-8");
+          try {
+            for (Record record : records) {
+              writer.write(record);
+            }
+          } finally {
+            writer.close();
+          }
+        }
+        try {
+          Files.move(temp, output, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
+        } catch (AtomicMoveNotSupportedException e) {
+          Files.move(temp, output, StandardCopyOption.REPLACE_EXISTING);
+        }
+      } finally {
+        Files.deleteIfExists(temp);
       }
     }
 

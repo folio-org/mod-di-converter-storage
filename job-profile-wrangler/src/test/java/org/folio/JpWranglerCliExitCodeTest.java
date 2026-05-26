@@ -1,5 +1,8 @@
 package org.folio;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.folio.http.FolioClient;
 import org.folio.imports.ImportOutcome;
 import org.folio.imports.ImportReport;
 import org.junit.Test;
@@ -10,11 +13,18 @@ import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertThrows;
+import static org.junit.Assert.assertTrue;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 public class JpWranglerCliExitCodeTest {
+  private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+
   @Test
   public void generateUsageErrorsReturnOneInsteadOfNeedsEnrichmentCode() {
     int exitCode = new CommandLine(new JpWranglerCli()).execute("generate", "profile-id");
@@ -102,5 +112,86 @@ public class JpWranglerCliExitCodeTest {
     assertEquals("FOLIO_PASSWORD", exported.orElseThrow().name());
     assertEquals("secret value", exported.orElseThrow().value());
     assertEquals(Map.of(), loaded);
+  }
+
+  @Test
+  public void explicitDotenvFileMustExist() {
+    IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
+      () -> JpWranglerCli.FolioConnectionOptions.loadDotenv("missing-dotenv-file", true));
+
+    assertTrue(exception.getMessage().contains("Dotenv file does not exist"));
+  }
+
+  @Test
+  public void collectProfileIdsFindsNestedSubProfiles() throws Exception {
+    JsonNode snapshot = snapshot("job-1", "match-1", "action-1", "mapping-1");
+
+    JpWranglerCli.DeleteCommand.ProfileReferences references =
+      JpWranglerCli.DeleteCommand.collectProfileIds(snapshot);
+
+    assertEquals(Set.of("match-1"), references.matchIds());
+    assertEquals(Set.of("action-1"), references.actionIds());
+    assertEquals(Set.of("mapping-1"), references.mappingIds());
+  }
+
+  @Test
+  public void sharedReferencesFindsChildrenReferencedByNonSelectedProfiles() throws Exception {
+    FolioClient client = mock(FolioClient.class);
+    JsonNode selectedProfile = profile("selected");
+    JsonNode otherProfile = profile("other");
+    JpWranglerCli.DeleteCommand.ProfileReferences selectedReferences =
+      new JpWranglerCli.DeleteCommand.ProfileReferences(
+        new java.util.HashSet<>(Set.of("match-selected")),
+        new java.util.HashSet<>(Set.of("action-selected")),
+        new java.util.HashSet<>(Set.of("mapping-selected", "mapping-shared")));
+
+    when(client.getJobProfileSnapshot("other"))
+      .thenReturn(Optional.of(snapshot("other", "match-other", "action-other", "mapping-shared")));
+
+    JpWranglerCli.DeleteCommand.ProfileReferences shared =
+      JpWranglerCli.DeleteCommand.sharedReferencesFromNonSelectedProfiles(client,
+        List.of(selectedProfile, otherProfile), Set.of("selected"), selectedReferences);
+
+    assertEquals(Set.of("mapping-shared"), shared.mappingIds());
+    assertTrue(shared.matchIds().isEmpty());
+    assertTrue(shared.actionIds().isEmpty());
+  }
+
+  @Test
+  public void sharedReferencesAbortWhenNonSelectedSnapshotCannotBeChecked() {
+    FolioClient client = mock(FolioClient.class);
+    JpWranglerCli.DeleteCommand.ProfileReferences selectedReferences =
+      new JpWranglerCli.DeleteCommand.ProfileReferences(
+        new java.util.HashSet<>(), new java.util.HashSet<>(), new java.util.HashSet<>(Set.of("mapping-selected")));
+    when(client.getJobProfileSnapshot("other")).thenReturn(Optional.empty());
+
+    assertThrows(IllegalStateException.class,
+      () -> JpWranglerCli.DeleteCommand.sharedReferencesFromNonSelectedProfiles(client,
+        List.of(profile("other")), Set.of(), selectedReferences));
+  }
+
+  private JsonNode profile(String id) {
+    return OBJECT_MAPPER.createObjectNode().put("id", id).put("name", id);
+  }
+
+  private JsonNode snapshot(String jobId, String matchId, String actionId, String mappingId) throws Exception {
+    return OBJECT_MAPPER.readTree("""
+      {
+        "contentType": "JOB_PROFILE",
+        "content": {"id": "%s"},
+        "childSnapshotWrappers": [{
+          "contentType": "MATCH_PROFILE",
+          "content": {"id": "%s"},
+          "childSnapshotWrappers": [{
+            "contentType": "ACTION_PROFILE",
+            "content": {"id": "%s"},
+            "childSnapshotWrappers": [{
+              "contentType": "MAPPING_PROFILE",
+              "content": {"id": "%s"}
+            }]
+          }]
+        }]
+      }
+      """.formatted(jobId, matchId, actionId, mappingId));
   }
 }

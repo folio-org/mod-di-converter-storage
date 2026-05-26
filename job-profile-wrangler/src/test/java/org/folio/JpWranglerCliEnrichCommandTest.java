@@ -1,11 +1,15 @@
 package org.folio;
 
 import org.junit.Test;
+import org.marc4j.MarcStreamReader;
 import org.marc4j.marc.DataField;
 import org.marc4j.marc.MarcFactory;
 import org.marc4j.marc.Record;
 
 import java.lang.reflect.Method;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.List;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -45,6 +49,26 @@ public class JpWranglerCliEnrichCommandTest {
     assertTrue((Boolean) isValidSourceRecordType.invoke(command, "MARC_BIB"));
     assertTrue((Boolean) isValidSourceRecordType.invoke(command, "MARC_AUTHORITY"));
     assertFalse((Boolean) isValidSourceRecordType.invoke(command, "MARC_BIBLIOGRAPHIC"));
+  }
+
+  @Test
+  public void writeEnrichedRecordsAtomicallyWritesReadableMarcFile() throws Exception {
+    JpWranglerCli.EnrichCommand command = new JpWranglerCli.EnrichCommand();
+    Path output = Files.createTempFile("jp-wrangler-enrich", ".mrc");
+    Record record = MARC_FACTORY.newRecord();
+    record.addVariableField(MARC_FACTORY.newControlField("001", "wrangler-test"));
+
+    Method writeRecords = JpWranglerCli.EnrichCommand.class
+      .getDeclaredMethod("writeEnrichedRecordsAtomically", List.class, Path.class);
+    writeRecords.setAccessible(true);
+    writeRecords.invoke(command, List.of(record), output);
+
+    try (var input = Files.newInputStream(output)) {
+      MarcStreamReader reader = new MarcStreamReader(input);
+      assertTrue(reader.hasNext());
+      assertEquals("wrangler-test", reader.next().getControlNumber());
+      assertFalse(reader.hasNext());
+    }
   }
 
   private Object parseEnrichField(JpWranglerCli.EnrichCommand command, String fieldSpec) throws Exception {

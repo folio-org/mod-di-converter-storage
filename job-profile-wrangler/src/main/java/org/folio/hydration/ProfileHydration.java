@@ -112,7 +112,7 @@ public class ProfileHydration {
     });
 
     // Create profiles in FOLIO based on their type
-    vertexSet.forEach(node -> {
+    for (Profile node : vertexSet) {
       if (node instanceof MappingProfileNode mappingProfileNode) {
         String incomingRecordType = getAttributeOrThrow(mappingProfileNode, "incomingRecordType");
         String existingRecordType = getAttributeOrThrow(mappingProfileNode, "existingRecordType");
@@ -128,9 +128,12 @@ public class ProfileHydration {
           mappingProfile.withMappingDetails(mappingDetails);
         }
 
-        createProfileInFolio(mappingProfileNode, new MappingProfileUpdateDto().withProfile(mappingProfile),
-          MappingProfileUpdateDto.class,
-          client::createMappingProfile, createdObjectsInFolio);
+        boolean created = createProfileInFolio(mappingProfileNode,
+          new MappingProfileUpdateDto().withProfile(mappingProfile),
+          MappingProfileUpdateDto.class, client::createMappingProfile, createdObjectsInFolio);
+        if (!created) {
+          return Optional.empty();
+        }
       } else if (node instanceof ActionProfileNode actionProfileNode) {
         String action = getAttributeOrThrow(actionProfileNode, "action");
         String folioRecord = getAttributeOrThrow(actionProfileNode, "folioRecord");
@@ -149,6 +152,11 @@ public class ProfileHydration {
           // Add relation to mapping profile if it exists
           Profile target = (Profile) edge.get().getTarget();
           MappingProfileUpdateDto mappingProfile = (MappingProfileUpdateDto) createdObjectsInFolio.get(target);
+          if (mappingProfile == null) {
+            LOGGER.error("Action profile {} references mapping profile {} that was not created", actionProfileNode.id(),
+              target);
+            return Optional.empty();
+          }
           actionProfileUpdateDto = actionProfileUpdateDto
             .withAddedRelations(List.of(new ProfileAssociation()
               .withMasterProfileType(ProfileType.ACTION_PROFILE)
@@ -156,9 +164,11 @@ public class ProfileHydration {
               .withDetailProfileId(mappingProfile.getId())));
         }
 
-        createProfileInFolio(actionProfileNode, actionProfileUpdateDto,
-          ActionProfileUpdateDto.class,
-          client::createActionProfile, createdObjectsInFolio);
+        boolean created = createProfileInFolio(actionProfileNode, actionProfileUpdateDto,
+          ActionProfileUpdateDto.class, client::createActionProfile, createdObjectsInFolio);
+        if (!created) {
+          return Optional.empty();
+        }
       } else if (node instanceof MatchProfileNode matchProfileNode) {
         String matchIncomingRecordType = getAttributeOrThrow(matchProfileNode, "incomingRecordType");
         String matchExistingRecordType = getAttributeOrThrow(matchProfileNode, "existingRecordType");
@@ -180,10 +190,13 @@ public class ProfileHydration {
             matchIncomingRecordType, matchExistingRecordType, e.getMessage());
         }
 
-        createProfileInFolio(matchProfileNode, new MatchProfileUpdateDto().withProfile(matchProfile), MatchProfileUpdateDto.class,
-          client::createMatchProfile, createdObjectsInFolio);
+        boolean created = createProfileInFolio(matchProfileNode, new MatchProfileUpdateDto().withProfile(matchProfile),
+          MatchProfileUpdateDto.class, client::createMatchProfile, createdObjectsInFolio);
+        if (!created) {
+          return Optional.empty();
+        }
       }
-    });
+    }
 
     // Create job profile with relations
     JobProfileUpdateDto jobProfileUpdateDto = new JobProfileUpdateDto();
@@ -253,9 +266,12 @@ public class ProfileHydration {
 
     jobProfileUpdateDto.setAddedRelations(profileAssociations);
 
-    createProfileInFolio(jobProfile.get(), jobProfileUpdateDto, JobProfileUpdateDto.class,
+    boolean jobCreated = createProfileInFolio(jobProfile.get(), jobProfileUpdateDto, JobProfileUpdateDto.class,
       client::createJobProfile,
       createdObjectsInFolio);
+    if (!jobCreated) {
+      return Optional.empty();
+    }
 
     return Optional.ofNullable(createdObjectsInFolio.get(jobProfile.get()));
   }
@@ -325,18 +341,23 @@ public class ProfileHydration {
    * @param correspondingObjectsInFolio The map to store the created objects in FOLIO.
    * @param <U>                         The type of the update DTO.
    */
-  private <U> void createProfileInFolio(Profile node, U updateDto, Class<U> updateDtoClassType,
-                                        Function<String, Optional<JsonNode>> creator,
-                                        Map<Profile, Object> correspondingObjectsInFolio) {
+  private <U> boolean createProfileInFolio(Profile node, U updateDto, Class<U> updateDtoClassType,
+                                           Function<String, Optional<JsonNode>> creator,
+                                           Map<Profile, Object> correspondingObjectsInFolio) {
     try {
       String bodyAsString = OBJECT_MAPPER.writeValueAsString(updateDto);
       Optional<JsonNode> jsonNodeOptional = creator.apply(bodyAsString);
-      if (jsonNodeOptional.isEmpty()) return;
+      if (jsonNodeOptional.isEmpty()) {
+        LOGGER.error("Failed to create {} in FOLIO", node);
+        return false;
+      }
 
       U createdUpdateDto = OBJECT_MAPPER.treeToValue(jsonNodeOptional.get(), updateDtoClassType);
       correspondingObjectsInFolio.put(node, createdUpdateDto);
+      return true;
     } catch (JsonProcessingException e) {
       LOGGER.error(e.getMessage(), e);
+      return false;
     }
   }
 
