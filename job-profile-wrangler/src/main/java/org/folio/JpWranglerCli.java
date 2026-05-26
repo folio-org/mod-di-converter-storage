@@ -4,6 +4,7 @@ import java.io.Console;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.BufferedReader;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
@@ -11,6 +12,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -101,7 +103,11 @@ public class JpWranglerCli implements Callable<Integer> {
   }
 
   // Common options for FOLIO connection
-  private static class FolioConnectionOptions {
+  static class FolioConnectionOptions {
+    private static final String DEFAULT_ENV_FILE = ".env";
+
+    private boolean environmentDefaultsApplied;
+
     @Option(names = {"-u", "--url"}, description = "FOLIO base URL")
     String baseUrl;
 
@@ -120,7 +126,11 @@ public class JpWranglerCli implements Callable<Integer> {
     @Option(names = {"--password"}, description = "FOLIO password", interactive = true, arity = "0..1", showDefaultValue = Visibility.NEVER)
     String password;
 
+    @Option(names = {"--env-file"}, description = "Path to dotenv file for FOLIO connection options")
+    String envFile;
+
     void ensurePassword() {
+      applyEnvironmentDefaults();
       if (password == null && token == null) {
         Console console = System.console();
         if (console != null) {
@@ -138,6 +148,7 @@ public class JpWranglerCli implements Callable<Integer> {
      * Get token either directly from options or by authenticating with credentials
      */
     public String getToken() {
+      applyEnvironmentDefaults();
       if (token != null) {
         return token;
       } else if (tenant != null && username != null && password != null && baseUrl != null) {
@@ -154,6 +165,7 @@ public class JpWranglerCli implements Callable<Integer> {
     }
 
     FolioClient createFolioClient() {
+      applyEnvironmentDefaults();
       if (baseUrl == null) {
         throw new IllegalArgumentException("FOLIO base URL is required");
       }
@@ -166,6 +178,113 @@ public class JpWranglerCli implements Callable<Integer> {
         throw new IllegalArgumentException("Either token or tenant, username, and password must be provided");
       }
     }
+
+    void applyEnvironmentDefaults() {
+      if (environmentDefaultsApplied) {
+        return;
+      }
+      environmentDefaultsApplied = true;
+
+      Map<String, String> dotenv = loadDotenv(envFile == null || envFile.isBlank() ? DEFAULT_ENV_FILE : envFile);
+      Map<String, String> environment = System.getenv();
+
+      baseUrl = firstPresent(baseUrl, environment, dotenv,
+        List.of("JP_WRANGLER_URL", "FOLIO_URL"),
+        List.of("OKAPI", "OKAPI_URL", "URL"));
+      token = firstPresent(token, environment, dotenv,
+        List.of("JP_WRANGLER_TOKEN", "FOLIO_TOKEN", "OKAPI_TOKEN"),
+        List.of("TOKEN"));
+      tenant = firstPresent(tenant, environment, dotenv,
+        List.of("JP_WRANGLER_TENANT", "FOLIO_TENANT"),
+        List.of("TENANT"));
+      okapiUrl = firstPresent(okapiUrl, environment, dotenv,
+        List.of("JP_WRANGLER_OKAPI_URL", "JP_WRANGLER_X_OKAPI_URL", "FOLIO_OKAPI_URL"),
+        List.of("X_OKAPI_URL"));
+      username = firstPresent(username, environment, dotenv,
+        List.of("JP_WRANGLER_USERNAME", "FOLIO_USERNAME", "FOLIO_USER"),
+        List.of("USERNAME", "USER"));
+      password = firstPresent(password, environment, dotenv,
+        List.of("JP_WRANGLER_PASSWORD", "FOLIO_PASSWORD", "FOLIO_PASS"),
+        List.of("PASSWORD", "PASS"));
+    }
+
+    private static String firstPresent(String explicitValue, Map<String, String> environment, Map<String, String> dotenv,
+                                       List<String> scopedNames, List<String> genericNames) {
+      if (explicitValue != null && !explicitValue.isBlank()) {
+        return explicitValue;
+      }
+      return firstPresent(environment, scopedNames)
+        .or(() -> firstPresent(dotenv, concat(scopedNames, genericNames)))
+        .or(() -> firstPresent(environment, genericNames))
+        .orElse(explicitValue);
+    }
+
+    private static Optional<String> firstPresent(Map<String, String> values, List<String> names) {
+      return names.stream()
+        .map(values::get)
+        .filter(value -> value != null && !value.isBlank())
+        .findFirst();
+    }
+
+    private static List<String> concat(List<String> first, List<String> second) {
+      List<String> combined = new ArrayList<>(first);
+      combined.addAll(second);
+      return combined;
+    }
+
+    static Map<String, String> loadDotenv(String dotenvPath) {
+      Path path = Paths.get(dotenvPath);
+      if (!Files.exists(path)) {
+        return Map.of();
+      }
+
+      Map<String, String> values = new HashMap<>();
+      try (BufferedReader reader = Files.newBufferedReader(path)) {
+        String line;
+        while ((line = reader.readLine()) != null) {
+          parseDotenvLine(line).ifPresent(entry -> values.put(entry.name(), entry.value()));
+        }
+      } catch (IOException e) {
+        LOGGER.warn("Could not read dotenv file {}: {}", dotenvPath, e.getMessage());
+      }
+      return values;
+    }
+
+    static Optional<DotenvEntry> parseDotenvLine(String line) {
+      String trimmed = line.trim();
+      if (trimmed.isEmpty() || trimmed.startsWith("#")) {
+        return Optional.empty();
+      }
+      if (trimmed.startsWith("export ")) {
+        trimmed = trimmed.substring("export ".length()).trim();
+      }
+
+      int separator = trimmed.indexOf('=');
+      if (separator <= 0) {
+        return Optional.empty();
+      }
+
+      String name = trimmed.substring(0, separator).trim();
+      String value = trimmed.substring(separator + 1).trim();
+      if (name.isEmpty()) {
+        return Optional.empty();
+      }
+      return Optional.of(new DotenvEntry(name, stripDotenvQuotes(value)));
+    }
+
+    private static String stripDotenvQuotes(String value) {
+      if (value.length() < 2) {
+        return value;
+      }
+      char first = value.charAt(0);
+      char last = value.charAt(value.length() - 1);
+      if ((first == '"' && last == '"') || (first == '\'' && last == '\'')) {
+        return value.substring(1, value.length() - 1);
+      }
+      return value;
+    }
+
+    record DotenvEntry(String name, String value) { }
   }
 
   // Helper class for repository operations

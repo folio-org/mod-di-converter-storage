@@ -2,6 +2,8 @@
 *.iml
 *.svg
 node_modules/
+.env
+.env.*
 /target
 /src/main/java/org/folio/rest/client/*
 /src/main/java/org/folio/rest/jaxrs/*

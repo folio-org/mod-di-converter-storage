@@ -19,6 +19,31 @@ metadata.
 | `enrich` | Populate generated import records with Instance identifiers/HRIDs after foundation import. |
 | `delete` | Delete tenant profiles by name pattern. |
 
+## Connection Defaults
+
+FOLIO connection options can be passed as flags, environment variables, or a dotenv
+file. CLI flags win over environment defaults. Wrangler reads `.env` from the current
+working directory by default; pass `--env-file <path>` to use a different file.
+
+```env
+OKAPI=http://localhost:8000
+TENANT=diku
+USER=diku_admin
+PASS=admin
+```
+
+Scoped names are also supported and are safer in shared shells:
+
+```env
+FOLIO_URL=http://localhost:8000
+FOLIO_TENANT=diku
+FOLIO_USERNAME=diku_admin
+FOLIO_PASSWORD=admin
+```
+
+The same names can be exported in the shell. Token-based auth can use `FOLIO_TOKEN`
+or `OKAPI_TOKEN`.
+
 ## Generate Outcomes
 
 `generate` always writes `<output>-report.json` after it has fetched the snapshot,
