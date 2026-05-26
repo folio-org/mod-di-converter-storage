@@ -68,7 +68,7 @@ public final class MinimalMarcRecordBuilder {
   // Pos 21: Length of the starting-character-position portion '5'
   // Pos 22: Length of the implementation-defined portion '0'
   // Pos 23: Undefined entry map character '0'
-  private static final String DEFAULT_LEADER = "00000nam a22000007i 4500";
+  private static final String DEFAULT_LEADER = "00000nam a2200000 i 4500";
   private static final String DEFAULT_AUTHORITY_LEADER = "00000nz  a2200000n  4500";
 
   // Default 008 field template (40 characters)
@@ -999,8 +999,8 @@ public final class MinimalMarcRecordBuilder {
     boolean verbose = reportBuilder != null;
 
     for (MatchCriteria.MatchFieldSpec spec : matchCriteria.matchFields()) {
-      // Skip 001 - already handled separately
-      if ("001".equals(spec.fieldTag())) {
+      // Skip control fields that update records generate unconditionally.
+      if ("001".equals(spec.fieldTag()) || "008".equals(spec.fieldTag())) {
         continue;
       }
 

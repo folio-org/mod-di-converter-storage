@@ -189,7 +189,7 @@ public final class MappingDetailsFactory {
           createSubfield(0, "holdings.formerIds[]",
             createSubfieldField("formerId", "holdings.formerIds[]", true, "004"))),
 
-        createField("holdingsTypeId", "holdings.holdingsTypeId", true, "\"Monograph\""),
+        createField("holdingsTypeId", "holdings.holdingsTypeId", false),
 
         // Statistical codes
         createFieldWithSubfields("statisticalCodeIds", "holdings.statisticalCodeIds[]", true,

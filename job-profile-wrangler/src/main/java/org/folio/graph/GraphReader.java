@@ -44,6 +44,9 @@ public class GraphReader {
     DOT_IMPORTER.setVertexWithAttributesFactory((id, attrs) -> {
       Map<String, String> normalAttrs = normalizeAttributes(attrs);
       String name = normalAttrs.get("name");
+      if (name == null || name.isBlank()) {
+        throw new IllegalArgumentException("DOT vertex '%s' is missing required name attribute".formatted(id));
+      }
       switch (name) {
         case "Job Profile" -> {
           return JobProfileNode.fromAttributes(id, normalAttrs);
@@ -58,8 +61,7 @@ public class GraphReader {
           return MappingProfileNode.fromAttributes(id, normalAttrs);
         }
         default -> {
-          LOGGER.warn("Unrecognized profile: '{}' id={}", normalAttrs, id);
-          return null;
+          throw new IllegalArgumentException("DOT vertex '%s' has unrecognized profile name '%s'".formatted(id, name));
         }
       }
     });
@@ -111,9 +113,13 @@ public class GraphReader {
         .filter(Files::isRegularFile)
         .filter(GraphReader::isDotFile)
         .forEach(filePath -> {
-          Graph<Profile, RegularEdge> g = new SimpleDirectedGraph<>(RegularEdge.class);
-          DOT_IMPORTER.importGraph(g, filePath.toFile());
-          graphs.add(g);
+          try {
+            Graph<Profile, RegularEdge> g = new SimpleDirectedGraph<>(RegularEdge.class);
+            DOT_IMPORTER.importGraph(g, filePath.toFile());
+            graphs.add(g);
+          } catch (RuntimeException e) {
+            LOGGER.warn("Skipping malformed DOT graph {}: {}", filePath, e.getMessage());
+          }
         });
     } catch (IOException e) {
       LOGGER.error("readAll: An error occurred while reading the directory.", e);
@@ -135,10 +141,15 @@ public class GraphReader {
       return stream
         .filter(Files::isRegularFile)
         .filter(GraphReader::isDotFile)
-        .map(filePath -> {
+        .flatMap(filePath -> {
           Graph<Profile, RegularEdge> g = new SimpleDirectedGraph<>(RegularEdge.class);
-          DOT_IMPORTER.importGraph(g, filePath.toFile());
-          return Pair.of(filePath, g);
+          try {
+            DOT_IMPORTER.importGraph(g, filePath.toFile());
+            return Stream.of(Pair.of(filePath, g));
+          } catch (RuntimeException e) {
+            LOGGER.warn("Skipping malformed DOT graph {}: {}", filePath, e.getMessage());
+            return Stream.empty();
+          }
         })
         .filter(pair -> isShapeEquivalent(graph, pair.getRight()))
         .findFirst()

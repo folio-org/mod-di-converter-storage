@@ -5,6 +5,7 @@ import org.folio.graph.nodes.JobProfileNode;
 import org.folio.graph.nodes.MappingProfileNode;
 import org.folio.graph.nodes.Profile;
 import org.junit.Test;
+import org.marc4j.marc.ControlField;
 import org.marc4j.marc.DataField;
 
 import java.util.List;
@@ -120,6 +121,36 @@ public class MinimalMarcRecordBuilderTest {
     assertNotNull(update.record());
     assertEquals(base.record().getControlNumber(), update.record().getControlNumber());
     assertNotNull(update.record().getVariableField("500"));
+  }
+
+  @Test
+  public void generatedBibLeaderUsesFullEncodingLevel() {
+    MinimalMarcRecordBuilder.BuildResult result =
+      MinimalMarcRecordBuilder.buildRecordForPath(path("CREATE", "INSTANCE"), 1, null, null);
+
+    assertEquals(' ', result.record().getLeader().toString().charAt(17));
+  }
+
+  @Test
+  public void updateRecordDoesNotDuplicateGenerated008WhenMatchCriteriaIncludes008() {
+    JobProfilePath updatePath = path("UPDATE", "MARC_BIBLIOGRAPHIC");
+    MinimalMarcRecordBuilder.BuildResult base =
+      MinimalMarcRecordBuilder.buildRecordForPath(updatePath, 1, null, null);
+    MatchCriteria matchCriteria = new MatchCriteria(
+      "match-1",
+      List.of(new MatchCriteria.MatchFieldSpec("008", "", "", "", null)),
+      List.of()
+    );
+
+    MinimalMarcRecordBuilder.BuildResult update =
+      MinimalMarcRecordBuilder.buildUpdateRecordFromBase(base.record(), updatePath, 2, null, null, matchCriteria);
+
+    long field008Count = update.record().getVariableFields().stream()
+      .filter(ControlField.class::isInstance)
+      .map(ControlField.class::cast)
+      .filter(field -> "008".equals(field.getTag()))
+      .count();
+    assertEquals(1, field008Count);
   }
 
   @Test

@@ -18,4 +18,18 @@ public class MappingDetailsFactoryTest {
 
     assertEquals("holdings.hrid", hridField.getPath());
   }
+
+  @Test
+  public void holdingsTypeDoesNotUseLiteralNameForUuidField() {
+    MappingDetail mappingDetail = MappingDetailsFactory.createHoldingsMappingDetails();
+
+    MappingRule holdingsTypeField = mappingDetail.getMappingFields().stream()
+      .filter(field -> "holdingsTypeId".equals(field.getName()))
+      .findFirst()
+      .orElseThrow();
+
+    assertEquals("holdings.holdingsTypeId", holdingsTypeField.getPath());
+    assertEquals("false", holdingsTypeField.getEnabled());
+    assertEquals("", holdingsTypeField.getValue());
+  }
 }

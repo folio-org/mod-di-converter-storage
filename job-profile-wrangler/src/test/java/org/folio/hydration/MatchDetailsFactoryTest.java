@@ -222,7 +222,7 @@ public class MatchDetailsFactoryTest {
     assertEquals(EntityType.AUTHORITY, detail.getExistingRecordType());
     assertEquals(EXACTLY_MATCHES, detail.getMatchCriterion());
     assertEquals("001", detail.getIncomingMatchExpression().getFields().get(0).getValue());
-    assertEquals("authority.id", detail.getExistingMatchExpression().getFields().get(0).getValue());
+    assertEquals("authority.naturalId", detail.getExistingMatchExpression().getFields().get(0).getValue());
   }
 
   @Test

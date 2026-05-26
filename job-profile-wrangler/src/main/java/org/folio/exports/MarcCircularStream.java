@@ -38,8 +38,7 @@ public class MarcCircularStream implements AutoCloseable {
    * @throws IOException If there's an error reading the file
    */
   public MarcCircularStream(String marcFilePath) throws IOException {
-    this.marcFilePath = marcFilePath;
-    this.usingFolio = false;
+    this(marcFilePath, null);
   }
 
   /**

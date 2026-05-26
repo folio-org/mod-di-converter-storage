@@ -13,6 +13,8 @@ import org.junit.rules.TemporaryFolder;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.List;
 import java.util.Optional;
 
@@ -64,6 +66,17 @@ public class GraphReaderTest {
     List<Graph<Profile, RegularEdge>> graphs = GraphReader.readAll(REPO_PATH);
     assertNotNull(graphs);
     assertFalse(graphs.isEmpty());
+  }
+
+  @Test
+  public void readAllSkipsMalformedDotWithoutDiscardingValidGraphs() throws IOException {
+    int before = GraphReader.readAll(REPO_PATH).size();
+    Path malformed = Path.of(REPO_PATH, "jp-999.dot");
+    Files.writeString(malformed, "digraph G { bad [dataType=\"MARC\"]; }");
+
+    List<Graph<Profile, RegularEdge>> graphs = GraphReader.readAll(REPO_PATH);
+
+    assertEquals(before, graphs.size());
   }
 
   @Test

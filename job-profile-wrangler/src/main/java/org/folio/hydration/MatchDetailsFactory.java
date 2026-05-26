@@ -140,7 +140,7 @@ public final class MatchDetailsFactory {
           EntityType.MARC_AUTHORITY,
           EntityType.AUTHORITY,
           "001",
-          "authority.id"));
+          "authority.naturalId"));
       default -> throw new IllegalArgumentException(
           String.format("Unsupported existing record type '%s' for incoming type MARC_AUTHORITY",
               existingRecordType));

@@ -4,11 +4,15 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.folio.rest.jaxrs.model.MatchExpression;
 import org.folio.rest.jaxrs.model.MatchDetail;
+import org.folio.rest.jaxrs.model.StaticValueDetails;
 import org.marc4j.marc.ControlField;
 import org.marc4j.marc.DataField;
 import org.marc4j.marc.Record;
 import org.marc4j.marc.Subfield;
 
+import java.time.ZoneOffset;
+import java.time.format.DateTimeFormatter;
+import java.util.Date;
 import java.util.List;
 
 /**
@@ -63,10 +67,24 @@ public class MatchExpressionHandler {
    * @return The static value
    */
   private String handleStaticValue(MatchExpression expression) {
-    if (expression.getStaticValueDetails() != null) {
-      return expression.getStaticValueDetails().toString();
+    StaticValueDetails details = expression.getStaticValueDetails();
+    if (details == null || details.getStaticValueType() == null) {
+      return generateRandomValue();
     }
-    return generateRandomValue();
+
+    return switch (details.getStaticValueType()) {
+      case TEXT -> details.getText() != null ? details.getText() : generateRandomValue();
+      case NUMBER -> details.getNumber() != null ? details.getNumber() : generateRandomValue();
+      case EXACT_DATE -> formatDate(details.getExactDate());
+      case DATE_RANGE -> formatDate(details.getFromDate()) + ".." + formatDate(details.getToDate());
+    };
+  }
+
+  private String formatDate(Date date) {
+    if (date == null) {
+      return generateRandomValue();
+    }
+    return DateTimeFormatter.ISO_LOCAL_DATE.format(date.toInstant().atZone(ZoneOffset.UTC));
   }
 
   /**
@@ -136,8 +154,8 @@ public class MatchExpressionHandler {
         List<DataField> matchingFields = record.getDataFields()
           .stream()
           .filter(df -> df.getTag().equals(finalFieldTag))
-          .filter(df -> finalIndicator1 == null || String.valueOf(df.getIndicator1()).equals(finalIndicator1))
-          .filter(df -> finalIndicator2 == null || String.valueOf(df.getIndicator2()).equals(finalIndicator2))
+          .filter(df -> isAnyIndicator(finalIndicator1) || String.valueOf(df.getIndicator1()).equals(finalIndicator1))
+          .filter(df -> isAnyIndicator(finalIndicator2) || String.valueOf(df.getIndicator2()).equals(finalIndicator2))
           .toList();
 
         // If we found matching fields, extract the subfield data
@@ -154,6 +172,10 @@ public class MatchExpressionHandler {
     }
 
     return generateAppropriateValue(expression);
+  }
+
+  private boolean isAnyIndicator(String indicator) {
+    return indicator == null || indicator.isEmpty();
   }
 
   /**

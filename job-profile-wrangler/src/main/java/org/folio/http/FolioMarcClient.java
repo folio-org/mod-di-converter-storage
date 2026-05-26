@@ -13,6 +13,7 @@ import org.marc4j.marc.Record;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -237,7 +238,7 @@ public class FolioMarcClient {
         String marcJsonString = OBJECT_MAPPER.writeValueAsString(marcJson);
 
         // Use MarcJsonReader to convert JSON to MARC record
-        try (ByteArrayInputStream inputStream = new ByteArrayInputStream(marcJsonString.getBytes())) {
+        try (ByteArrayInputStream inputStream = new ByteArrayInputStream(marcJsonString.getBytes(StandardCharsets.UTF_8))) {
           MarcJsonReader reader = new MarcJsonReader(inputStream);
           if (reader.hasNext()) {
             Record record = reader.next();

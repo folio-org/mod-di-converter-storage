@@ -189,8 +189,15 @@ public class RepoImport implements Runnable {
 
   private static void addMatchChildren(Graph<Profile, RegularEdge> graph, JsonNode children, MatchProfileNode parent) {
     StreamSupport.stream(children.spliterator(), false)
-      .forEach(child -> addProfileToGraph(graph, child)
-        .ifPresent(profile -> addMatchEdge(graph, parent, profile, child.path("reactTo").asText())));
+      .forEach(child -> {
+        String reactTo = child.path("reactTo").asText();
+        if (!isValidReactTo(reactTo)) {
+          LOGGER.warn("Skipping child profile due to invalid reactTo value '{}' for parent: {}", reactTo, parent);
+          return;
+        }
+        addProfileToGraph(graph, child)
+          .ifPresent(profile -> addMatchEdge(graph, parent, profile, reactTo));
+      });
   }
 
   private static void addMatchEdge(Graph<Profile, RegularEdge> graph, Profile parent, Profile child, String reactTo) {
@@ -199,5 +206,9 @@ public class RepoImport implements Runnable {
       case "MATCH" -> graph.addEdge(parent, child, new MatchRelationshipEdge());
       default -> LOGGER.warn("Skipping child profile due to invalid reactTo value '{}' for parent: {}", reactTo, parent);
     }
+  }
+
+  private static boolean isValidReactTo(String reactTo) {
+    return "NON_MATCH".equals(reactTo) || "MATCH".equals(reactTo);
   }
 }
