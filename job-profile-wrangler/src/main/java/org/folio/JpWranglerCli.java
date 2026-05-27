@@ -811,7 +811,10 @@ public class JpWranglerCli implements Callable<Integer> {
 
       if (!result.foundationRecords().isEmpty()) {
         LOGGER.info("Generated {} foundation record(s) written to {}",
-          result.foundationRecords().size(), outputPath + "-foundation.mrc");
+          result.foundationRecords().size(),
+          result.foundationFiles().stream()
+            .map(Path::toString)
+            .toList());
       }
       if (!result.importRecords().isEmpty()) {
         LOGGER.info("Generated {} record(s) for import written to {}",

@@ -206,6 +206,39 @@ public class StrictRecordWriterTest {
   }
 
   @Test
+  public void mixedFoundationRecordsAreSplitBySeedProfile() throws IOException {
+    Path outputBase = temp.getRoot().toPath().resolve("records");
+    Path legacyFoundation = outputBase.resolveSibling("records-foundation.mrc");
+    Path instanceFoundation = outputBase.resolveSibling("records-foundation-instance.mrc");
+    Path itemFoundation = outputBase.resolveSibling("records-foundation-item.mrc");
+    Path holdingsFoundation = outputBase.resolveSibling("records-foundation-holdings.mrc");
+
+    StrictRecordWriter.WriteResult result = new StrictRecordWriter().write(
+      new CategorizedPaths(
+        List.of(),
+        List.of(),
+        List.of(
+          categorized(path("UPDATE", "INSTANCE")),
+          categorized(path("UPDATE", "HOLDINGS")),
+          categorized(path("UPDATE", "ITEM"))),
+        List.of()),
+      new MinimalMarcRecordBuilder.ReferenceDataContext("location-id", "material-type-id", "loan-type-id"),
+      outputBase);
+
+    assertEquals(GenerationOutcome.GENERATED, result.overallOutcome().label());
+    assertEquals(3, result.foundationRecords().size());
+    assertEquals(2, result.foundationFiles().size());
+    assertTrue(Files.exists(instanceFoundation));
+    assertTrue(Files.exists(itemFoundation));
+    assertFalse(Files.exists(legacyFoundation));
+    assertFalse(Files.exists(holdingsFoundation));
+    assertTrue(result.pathOutcomes().get(0).destinationFiles().stream()
+      .anyMatch(destination -> "records-foundation-instance.mrc".equals(destination.file())));
+    assertTrue(result.pathOutcomes().get(0).destinationFiles().stream()
+      .anyMatch(destination -> "records-foundation-item.mrc".equals(destination.file())));
+  }
+
+  @Test
   public void siblingMatchUpdatesCollapseIntoOneExecutableRecordShape() throws IOException {
     Path outputBase = temp.getRoot().toPath().resolve("records");
     JobProfileNode job = new JobProfileNode("job-1", "MARC", 0);

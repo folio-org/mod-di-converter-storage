@@ -1,5 +1,6 @@
 package org.folio.exports;
 
+import org.folio.foundation.FoundationSeedProfile;
 import org.folio.graph.nodes.ActionProfileNode;
 import org.folio.graph.nodes.MappingProfileNode;
 import org.folio.graph.nodes.MatchProfileNode;
@@ -49,25 +50,31 @@ public class StrictRecordWriter {
     Path foundationFile = outputFile(outputBase, "-foundation.mrc");
     Path importFile = outputFile(outputBase, "-import.mrc");
     GeneratedRecords generated = buildRecords(paths, refData, foundationFile, importFile);
+    Map<Path, List<Record>> foundationOutputs = foundationOutputs(outputBase, foundationFile, generated.foundationRecords());
+    List<Path> foundationOutputFiles = new ArrayList<>(foundationOutputs.keySet());
+    List<PathOutcome> pathOutcomes = rewriteFoundationDestinations(generated.pathOutcomes(), foundationOutputFiles);
 
     if (generated.overallOutcome() instanceof GenerationOutcome.GeneratorGap) {
       deleteIfExists(foundationFile);
+      deleteFoundationBucketFiles(outputBase);
       deleteIfExists(importFile);
       return new WriteResult(
         generated.foundationRecords(),
         generated.importRecords(),
-        generated.pathOutcomes(),
+        foundationOutputFiles,
+        pathOutcomes,
         generated.overallOutcome());
     }
 
     List<Path> tempFiles = new ArrayList<>();
     try {
-      Path foundationTemp = null;
       Path importTemp = null;
-      if (!generated.foundationRecords().isEmpty()) {
-        foundationTemp = tempPath(foundationFile);
+      Map<Path, Path> foundationTemps = new LinkedHashMap<>();
+      for (Map.Entry<Path, List<Record>> foundationOutput : foundationOutputs.entrySet()) {
+        Path foundationTemp = tempPath(foundationOutput.getKey());
         tempFiles.add(foundationTemp);
-        marcFileSink.write(foundationTemp, generated.foundationRecords());
+        foundationTemps.put(foundationOutput.getKey(), foundationTemp);
+        marcFileSink.write(foundationTemp, foundationOutput.getValue());
       }
       if (!generated.importRecords().isEmpty()) {
         importTemp = tempPath(importFile);
@@ -75,11 +82,18 @@ public class StrictRecordWriter {
         marcFileSink.write(importTemp, generated.importRecords());
       }
 
-      if (foundationTemp != null) {
-        moveToFinal(foundationTemp, foundationFile);
-        tempFiles.remove(foundationTemp);
-      } else {
+      for (Map.Entry<Path, Path> foundationTemp : foundationTemps.entrySet()) {
+        moveToFinal(foundationTemp.getValue(), foundationTemp.getKey());
+        tempFiles.remove(foundationTemp.getValue());
+      }
+      cleanupStaleFoundationFiles(outputBase, foundationFile, foundationOutputFiles);
+      if (foundationTemps.isEmpty()) {
         deleteIfExists(foundationFile);
+        deleteFoundationBucketFiles(outputBase);
+      } else if (!foundationOutputs.containsKey(foundationFile)) {
+        deleteIfExists(foundationFile);
+      } else {
+        deleteFoundationBucketFiles(outputBase);
       }
 
       if (importTemp != null) {
@@ -96,8 +110,69 @@ public class StrictRecordWriter {
     return new WriteResult(
       generated.foundationRecords(),
       generated.importRecords(),
-      generated.pathOutcomes(),
+      foundationOutputFiles,
+      pathOutcomes,
       generated.overallOutcome());
+  }
+
+  private Map<Path, List<Record>> foundationOutputs(
+      Path outputBase,
+      Path legacyFoundationFile,
+      List<Record> foundationRecords) {
+    if (foundationRecords.isEmpty()) {
+      return Map.of();
+    }
+
+    Map<FoundationSeedProfile, List<Record>> bucketed = new LinkedHashMap<>();
+    List<Record> unbucketed = new ArrayList<>();
+    for (Record record : foundationRecords) {
+      FoundationSeedProfile.forInventoryRecord(record)
+        .ifPresentOrElse(
+          seedProfile -> bucketed.computeIfAbsent(seedProfile, ignored -> new ArrayList<>()).add(record),
+          () -> unbucketed.add(record));
+    }
+
+    if (!unbucketed.isEmpty() || bucketed.size() <= 1) {
+      return Map.of(legacyFoundationFile, foundationRecords);
+    }
+
+    Map<Path, List<Record>> outputs = new LinkedHashMap<>();
+    for (Map.Entry<FoundationSeedProfile, List<Record>> bucket : bucketed.entrySet()) {
+      outputs.put(foundationBucketFile(outputBase, bucket.getKey()), bucket.getValue());
+    }
+    return outputs;
+  }
+
+  private List<PathOutcome> rewriteFoundationDestinations(
+      List<PathOutcome> outcomes,
+      List<Path> foundationOutputFiles) {
+    if (foundationOutputFiles.size() <= 1) {
+      return outcomes;
+    }
+    List<PathOutcome> rewritten = new ArrayList<>();
+    for (PathOutcome outcome : outcomes) {
+      if (outcome.destinationFiles().stream().noneMatch(destination -> "foundation".equals(destination.role()))) {
+        rewritten.add(outcome);
+        continue;
+      }
+      List<PathOutcome.DestinationFile> destinations = new ArrayList<>();
+      for (PathOutcome.DestinationFile destination : outcome.destinationFiles()) {
+        if ("foundation".equals(destination.role())) {
+          foundationOutputFiles.forEach(file -> destinations.add(destination(file, "foundation")));
+        } else {
+          destinations.add(destination);
+        }
+      }
+      rewritten.add(new PathOutcome(
+        outcome.pathIndex(),
+        outcome.pathId(),
+        outcome.reactTo(),
+        outcome.matchProfileId(),
+        destinations,
+        outcome.fieldsWritten(),
+        outcome.outcome()));
+    }
+    return rewritten;
   }
 
   public List<CategorizedPath> pathOrder(CategorizedPaths paths) {
@@ -798,6 +873,33 @@ public class StrictRecordWriter {
     return outputBase.resolveSibling(outputBase.getFileName() + suffix);
   }
 
+  private static Path foundationBucketFile(Path outputBase, FoundationSeedProfile seedProfile) {
+    return outputFile(outputBase, "-foundation-" + seedProfile.name().toLowerCase() + ".mrc");
+  }
+
+  private static void cleanupStaleFoundationFiles(
+      Path outputBase,
+      Path legacyFoundationFile,
+      List<Path> activeFoundationFiles) throws IOException {
+    if (activeFoundationFiles.contains(legacyFoundationFile)) {
+      deleteFoundationBucketFiles(outputBase);
+      return;
+    }
+    deleteIfExists(legacyFoundationFile);
+    for (FoundationSeedProfile seedProfile : FoundationSeedProfile.values()) {
+      Path bucketFile = foundationBucketFile(outputBase, seedProfile);
+      if (!activeFoundationFiles.contains(bucketFile)) {
+        deleteIfExists(bucketFile);
+      }
+    }
+  }
+
+  private static void deleteFoundationBucketFiles(Path outputBase) throws IOException {
+    for (FoundationSeedProfile seedProfile : FoundationSeedProfile.values()) {
+      deleteIfExists(foundationBucketFile(outputBase, seedProfile));
+    }
+  }
+
   private Path tempPath(Path finalPath) {
     return finalPath.resolveSibling(finalPath.getFileName() + ".tmp." + ProcessHandle.current().pid()
         + "." + System.nanoTime());
@@ -856,6 +958,7 @@ public class StrictRecordWriter {
   public record WriteResult(
     List<Record> foundationRecords,
     List<Record> importRecords,
+    List<Path> foundationFiles,
     List<PathOutcome> pathOutcomes,
     GenerationOutcome overallOutcome
   ) {}
