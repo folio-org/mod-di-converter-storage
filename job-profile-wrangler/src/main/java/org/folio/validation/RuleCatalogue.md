@@ -44,10 +44,10 @@ The v1 validator walks live job-profile snapshot JSON, not repository DOT files.
 - Stack behavior: `mod-inventory` needs an Instance id from event context or MARC additional subfield `$i` before creating Holdings.
 - Sweep examples: `jp-035` and `jp-036`.
 
-### `paired-authority-update-create`
+### `authority-upsert-requires-branch-specific-records`
 
 - Predicate: block a `MATCH_PROFILE` for `MARC_AUTHORITY -> MARC_AUTHORITY` that has both a `MATCH -> UPDATE MARC_AUTHORITY` child and a `NON_MATCH -> CREATE AUTHORITY` child.
-- Stack behavior: update records must carry `999 ff $s/$i` so the MARC authority matcher can find the foundation SRS record, but `mod-source-record-manager` rejects any incoming authority record with `999 ff $s` or `$i` when the profile contains a `CREATE AUTHORITY` action anywhere in the snapshot.
+- Stack behavior: this is a valid FOLIO authority upsert profile, but not one the wrangler can exercise with one generated import file. Update records must carry `999 ff $s` so the MARC authority matcher can find the foundation SRS record, while `mod-source-record-manager` rejects CREATE AUTHORITY records with `999 ff $s` or `$i` before branch routing.
 - Sweep examples: `jp-006` and `jp-042`.
 
 ### `multiple-root-update-branches`

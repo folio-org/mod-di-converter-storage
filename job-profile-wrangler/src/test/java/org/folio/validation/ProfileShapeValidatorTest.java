@@ -12,7 +12,7 @@ import org.folio.validation.rules.MatchInstanceUpdateMarcBibRule;
 import org.folio.validation.rules.MatchModifyMarcBibRule;
 import org.folio.validation.rules.MissingMarcMappingOptionRule;
 import org.folio.validation.rules.MultipleRootUpdateBranchesRule;
-import org.folio.validation.rules.PairedAuthorityUpdateCreateRule;
+import org.folio.validation.rules.AuthorityUpsertRequiresBranchSpecificRecordsRule;
 import org.folio.validation.rules.UpdateItemWithoutItemMatchRule;
 import org.junit.Test;
 
@@ -101,12 +101,12 @@ public class ProfileShapeValidatorTest {
   }
 
   @Test
-  public void pairedAuthorityUpdateCreateFires() throws Exception {
+  public void authorityUpsertRequiresBranchSpecificRecordsFires() throws Exception {
     Optional<BlockedUnsupportedWorkflow> outcome = ProfileShapeValidator.defaultValidator()
-      .validate(fixture("paired-authority-update-create.json"));
+      .validate(fixture("authority-upsert-requires-branch-specific-records.json"));
 
     assertTrue(outcome.isPresent());
-    assertEquals(PairedAuthorityUpdateCreateRule.RULE_NAME, outcome.get().rule());
+    assertEquals(AuthorityUpsertRequiresBranchSpecificRecordsRule.RULE_NAME, outcome.get().rule());
   }
 
   @Test

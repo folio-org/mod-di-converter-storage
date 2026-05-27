@@ -2,7 +2,7 @@
   "contentType": "JOB_PROFILE",
   "content": {
     "id": "job-1",
-    "name": "Unsupported paired authority update create",
+    "name": "Authority upsert requires branch-specific records",
     "dataType": "MARC"
   },
   "childSnapshotWrappers": [

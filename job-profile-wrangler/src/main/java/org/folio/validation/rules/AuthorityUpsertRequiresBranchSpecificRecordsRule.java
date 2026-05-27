@@ -7,15 +7,16 @@ import org.folio.validation.UnsupportedShapeRule;
 import java.util.Optional;
 
 /**
- * Blocks paired authority update/create branches that the current stack cannot route in one import.
+ * Blocks valid authority upsert profiles that need separate branch-specific dogfood records.
  */
-public class PairedAuthorityUpdateCreateRule implements UnsupportedShapeRule {
-  public static final String RULE_NAME = "paired-authority-update-create";
+public class AuthorityUpsertRequiresBranchSpecificRecordsRule implements UnsupportedShapeRule {
+  public static final String RULE_NAME = "authority-upsert-requires-branch-specific-records";
 
-  private static final String MESSAGE = "MATCH MARC_AUTHORITY with MATCH -> UPDATE MARC_AUTHORITY and "
-    + "NON_MATCH -> CREATE AUTHORITY cannot be exercised in one stack import: update records require 999ff$s/$i "
-    + "for matching, but the create branch makes mod-source-record-manager reject any incoming authority record "
-    + "that already contains 999ff$s or 999ff$i.";
+  private static final String MESSAGE = "MATCH MARC_AUTHORITY profiles with MATCH -> UPDATE MARC_AUTHORITY and "
+    + "NON_MATCH -> CREATE AUTHORITY are valid FOLIO upsert profiles, but the wrangler cannot exercise both "
+    + "branches with one generated import file. The update branch needs 999ff$s for SRS matching, while "
+    + "mod-source-record-manager rejects CREATE AUTHORITY records that contain 999ff$s or 999ff$i before "
+    + "branch routing.";
   private static final String CITATION = "mod-source-record-manager ChangeEngineServiceImpl "
     + "addErrorMessageWhen999ffFieldExistsOnCreateAction is profile-wide rather than branch-aware.";
 
