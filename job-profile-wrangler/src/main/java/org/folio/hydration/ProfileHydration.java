@@ -279,7 +279,7 @@ public class ProfileHydration {
             .withMasterProfileType(sourceProfileType)
             .withDetailProfileId(targetProfileId)
             .withDetailProfileType(targetProfileType)
-            .withOrder(target.getOrder());
+            .withOrder(associationOrder(graph, source, target, edge));
           if (edge instanceof MatchRelationshipEdge) {
             profileAssociation.setReactTo(ReactToType.MATCH);
           } else if (edge instanceof NonMatchRelationshipEdge) {
@@ -314,6 +314,72 @@ public class ProfileHydration {
           MatchDetailsFactory.DEFAULT_SYSTEM_CONTROL_NUMBER_TYPE_ID);
         return MatchDetailsFactory.DEFAULT_SYSTEM_CONTROL_NUMBER_TYPE_ID;
       });
+  }
+
+  private int associationOrder(
+      Graph<Profile, RegularEdge> graph,
+      Profile source,
+      Profile target,
+      RegularEdge edge) {
+    if (!(source instanceof MatchProfileNode)
+        || !isMatchReaction(edge)
+        || !hasMixedSameReactionChildren(graph, source, edge)) {
+      return target.getOrder();
+    }
+
+    // Action children descend into terminal mapping profiles, so same-reaction nested matches
+    // need to run first to load deeper Inventory context such as ITEM before UPDATE actions.
+    List<Profile> siblings = graph.outgoingEdgesOf(source).stream()
+      .filter(siblingEdge -> sameReaction(edge, siblingEdge))
+      .map(siblingEdge -> (Profile) siblingEdge.getTarget())
+      .sorted((left, right) -> {
+        int phase = Integer.compare(matchBeforeActionPhase(left), matchBeforeActionPhase(right));
+        if (phase != 0) {
+          return phase;
+        }
+        return Integer.compare(left.getOrder(), right.getOrder());
+      })
+      .toList();
+
+    for (int i = 0; i < siblings.size(); i++) {
+      if (siblings.get(i) == target) {
+        return i;
+      }
+    }
+    return target.getOrder();
+  }
+
+  private boolean hasMixedSameReactionChildren(Graph<Profile, RegularEdge> graph, Profile source, RegularEdge edge) {
+    boolean hasMatchChild = false;
+    boolean hasActionChild = false;
+    for (RegularEdge siblingEdge : graph.outgoingEdgesOf(source)) {
+      if (!sameReaction(edge, siblingEdge)) {
+        continue;
+      }
+      Profile child = (Profile) siblingEdge.getTarget();
+      hasMatchChild |= child instanceof MatchProfileNode;
+      hasActionChild |= child instanceof ActionProfileNode;
+    }
+    return hasMatchChild && hasActionChild;
+  }
+
+  private boolean isMatchReaction(RegularEdge edge) {
+    return edge instanceof MatchRelationshipEdge || edge instanceof NonMatchRelationshipEdge;
+  }
+
+  private boolean sameReaction(RegularEdge left, RegularEdge right) {
+    return (left instanceof MatchRelationshipEdge && right instanceof MatchRelationshipEdge)
+      || (left instanceof NonMatchRelationshipEdge && right instanceof NonMatchRelationshipEdge);
+  }
+
+  private int matchBeforeActionPhase(Profile profile) {
+    if (profile instanceof MatchProfileNode) {
+      return 0;
+    }
+    if (profile instanceof ActionProfileNode) {
+      return 1;
+    }
+    return 2;
   }
 
   private MappingDetail mappingDetailsFor(

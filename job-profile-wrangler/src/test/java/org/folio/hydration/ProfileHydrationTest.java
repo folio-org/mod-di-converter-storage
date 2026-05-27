@@ -176,6 +176,64 @@ public class ProfileHydrationTest {
   }
 
   @Test
+  public void hydrateOrdersNestedMatchBeforeSameReactionActionSibling() throws IOException {
+    graph = new DefaultDirectedGraph<>(RegularEdge.class);
+
+    Profile jobProfile = new JobProfileNode("1", "MARC", 0);
+    Profile instanceMatch = new MatchProfileNode("2", EntityType.MARC_BIBLIOGRAPHIC.toString(),
+      EntityType.INSTANCE.toString(), 0);
+    Profile holdingsMatch = new MatchProfileNode("3", EntityType.MARC_BIBLIOGRAPHIC.toString(),
+      EntityType.HOLDINGS.toString(), 0);
+    Profile holdingsUpdate = new ActionProfileNode("4", ActionProfile.Action.UPDATE.toString(),
+      ActionProfile.FolioRecord.HOLDINGS.toString(), 0);
+    Profile holdingsMapping = new MappingProfileNode("5", EntityType.MARC_BIBLIOGRAPHIC.toString(),
+      EntityType.HOLDINGS.toString(), 0);
+    Profile itemMatch = new MatchProfileNode("6", EntityType.MARC_BIBLIOGRAPHIC.toString(),
+      EntityType.ITEM.toString(), 1);
+
+    graph.addVertex(jobProfile);
+    graph.addVertex(instanceMatch);
+    graph.addVertex(holdingsMatch);
+    graph.addVertex(holdingsUpdate);
+    graph.addVertex(holdingsMapping);
+    graph.addVertex(itemMatch);
+    graph.addEdge(jobProfile, instanceMatch, new RegularEdge());
+    graph.addEdge(instanceMatch, holdingsMatch, new MatchRelationshipEdge());
+    graph.addEdge(holdingsMatch, holdingsUpdate, new MatchRelationshipEdge());
+    graph.addEdge(holdingsUpdate, holdingsMapping, new RegularEdge());
+    graph.addEdge(holdingsMatch, itemMatch, new MatchRelationshipEdge());
+
+    String mappingProfileResponse = Resources.toString(Resources.getResource("mapping_profile_response.json"), StandardCharsets.UTF_8);
+    String actionProfileResponse = Resources.toString(Resources.getResource("action_profile_response.json"), StandardCharsets.UTF_8);
+    String matchProfileResponse = Resources.toString(Resources.getResource("match_profile_response.json"), StandardCharsets.UTF_8);
+    String jobProfileResponse = Resources.toString(Resources.getResource("job_profile_response.json"), StandardCharsets.UTF_8);
+    when(folioClient.createMappingProfile(any())).thenReturn(Optional.of(OBJECT_MAPPER.readTree(mappingProfileResponse)));
+    when(folioClient.createActionProfile(any())).thenReturn(Optional.of(OBJECT_MAPPER.readTree(actionProfileResponse)));
+    when(folioClient.createMatchProfile(any())).thenReturn(Optional.of(OBJECT_MAPPER.readTree(matchProfileResponse)));
+    when(folioClient.createJobProfile(any())).thenReturn(Optional.of(OBJECT_MAPPER.readTree(jobProfileResponse)));
+
+    new ProfileHydration(folioClient).hydrate(50, graph);
+
+    ArgumentCaptor<String> requestCaptor = ArgumentCaptor.forClass(String.class);
+    verify(folioClient).createJobProfile(requestCaptor.capture());
+    JobProfileUpdateDto request = OBJECT_MAPPER.readValue(requestCaptor.getValue(), JobProfileUpdateDto.class);
+
+    ProfileAssociation matchToNestedMatch = request.getAddedRelations().stream()
+      .filter(association -> association.getMasterProfileType() == ProfileType.MATCH_PROFILE)
+      .filter(association -> association.getDetailProfileType() == ProfileType.MATCH_PROFILE)
+      .filter(association -> association.getReactTo() != null)
+      .reduce((first, second) -> second)
+      .orElseThrow();
+    ProfileAssociation matchToAction = request.getAddedRelations().stream()
+      .filter(association -> association.getMasterProfileType() == ProfileType.MATCH_PROFILE)
+      .filter(association -> association.getDetailProfileType() == ProfileType.ACTION_PROFILE)
+      .findFirst()
+      .orElseThrow();
+    assertEquals(Integer.valueOf(0), matchToNestedMatch.getOrder());
+    assertEquals(Integer.valueOf(1), matchToAction.getOrder());
+  }
+
+  @Test
   public void hydrateAddsMarcMappingOptionForMarcBibliographicUpdateMappings() throws IOException {
     MappingDetail mappingDetails = hydrateMarcMapping(ActionProfile.Action.UPDATE,
       ActionProfile.FolioRecord.MARC_BIBLIOGRAPHIC,
