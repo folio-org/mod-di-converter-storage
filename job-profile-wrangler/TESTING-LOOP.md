@@ -139,17 +139,34 @@ import.
 
 **Only run this step if `test-records-foundation.mrc` was generated and is non-empty.**
 
-**Profile Selection:** Choose the foundation import profile by the prerequisite entities
-the test profile must match, not only by the MARC fields present in the generated
-foundation file. Some generated foundation records contain `852` so the later test import
-can create Holdings, but the foundation seed still only needs an Instance when the test
-profile is `MATCH INSTANCE -> CREATE HOLDINGS`.
+**Profile Selection:** Import foundation records with the seed profile that matches
+each generated record's MARC shape. Do not import the whole foundation file through
+`jp-001`; that profile creates Instance + Holdings + Item for every record and will
+reject valid Holdings-only seeds that intentionally omit Item fields.
 
-| Test Profile Needs To Match | Typical Shape | Use Profile | Profile UUID |
-|----------------------------|---------------|-------------|--------------|
-| Instance only | `MATCH INSTANCE -> CREATE HOLDINGS` | Default System Profile | `e34d7b92-9b83-11eb-a8b3-0242ac130003` |
-| Holdings context already present | `MATCH INSTANCE -> MATCH/UPDATE HOLDINGS` or `MATCH HOLDINGS -> ...` | jp-001 | Query via API |
-| Item context already present | `MATCH ITEM -> ...` | jp-001 | Query via API |
+The `di-int-tests` harness owns the seed-profile set used for dogfood:
+
+| Foundation record shape | Bucket | Use Profile |
+|-------------------------|--------|-------------|
+| no `852` and no `945` | instance | `jp-900` |
+| has `852`, no `945` | holdings | `jp-901` |
+| has `945` | item | `jp-902` |
+
+Export these once before the loop if they are not already present in the tenant:
+
+```bash
+FOUNDATION_REPO=/Users/okolawole/git/folio/ctx-data-import/di-int-tests/scripts/wrangler-foundation-profiles
+for id in 900 901 902; do
+  java -jar target/job-profile-wrangler-2.6.0-SNAPSHOT.jar export \
+    --repository "$FOUNDATION_REPO" \
+    --id "$id"
+done
+```
+
+Split `test-records-foundation.mrc` into per-bucket MARC files, then run the upload
+and `processFiles` steps below once for each non-empty bucket file with the matching
+profile. The sweep script at `di-int-tests/scripts/wrangler-docker-sweep.py` uses this
+same rule (`945` -> item, `852` -> holdings, otherwise instance).
 
 ```bash
 # Check if foundation records file exists and has content
@@ -160,28 +177,25 @@ else
   # Skip to Step 8
 fi
 
-# 7.0: Determine appropriate import profile based on required prerequisites.
-# Default to seeding only the Instance. Use jp-001 only when the test profile must match
-# or update existing Holdings/Items, not merely because 852 exists in the MARC.
-NEEDS_EXISTING_HOLDINGS_OR_ITEMS=false
+# 7.0: Determine the profile for the current bucket file.
+# Run this block separately for instance, holdings, and item bucket files.
+FOUNDATION_BUCKET=item # instance | holdings | item
+case "$FOUNDATION_BUCKET" in
+  instance) FOUNDATION_PROFILE_PREFIX="jp-900" ;;
+  holdings) FOUNDATION_PROFILE_PREFIX="jp-901" ;;
+  item) FOUNDATION_PROFILE_PREFIX="jp-902" ;;
+  *) echo "Unknown foundation bucket: $FOUNDATION_BUCKET"; exit 1 ;;
+esac
 
-if [ "$NEEDS_EXISTING_HOLDINGS_OR_ITEMS" = "true" ]; then
-  echo "Test profile needs existing Holdings/Items - using jp-001 for foundation import"
-  # Get jp-001 UUID
-  FOUNDATION_PROFILE_UUID=$(curl -s "http://localhost:8000/data-import-profiles/jobProfiles?query=name==jp-001*" \
-    -H "x-okapi-token: $TOKEN" \
-    -H "x-okapi-tenant: diku" | jq -r '.jobProfiles[0].id')
-  FOUNDATION_PROFILE_NAME="jp-001 (Instance + Holdings + Item)"
+FOUNDATION_PROFILE=$(curl -s "http://localhost:8000/data-import-profiles/jobProfiles?query=name==$FOUNDATION_PROFILE_PREFIX*&limit=1" \
+  -H "x-okapi-token: $TOKEN" \
+  -H "x-okapi-tenant: diku")
+FOUNDATION_PROFILE_UUID=$(echo "$FOUNDATION_PROFILE" | jq -r '.jobProfiles[0].id')
+FOUNDATION_PROFILE_NAME=$(echo "$FOUNDATION_PROFILE" | jq -r '.jobProfiles[0].name')
 
-  if [ "$FOUNDATION_PROFILE_UUID" = "null" ] || [ -z "$FOUNDATION_PROFILE_UUID" ]; then
-    echo "WARNING: jp-001 not found in FOLIO. The test profile needs existing Holdings/Items but no appropriate profile exists."
-    echo "Please export jp-001 first: java -jar target/job-profile-wrangler-2.4.0-SNAPSHOT.jar export -u http://localhost:8000 --tenant diku --username diku_admin --password admin -i 1 -r src/main/resources/repository"
-    exit 1
-  fi
-else
-  echo "Test profile only needs an existing Instance - using default system profile"
-  FOUNDATION_PROFILE_UUID="e34d7b92-9b83-11eb-a8b3-0242ac130003"
-  FOUNDATION_PROFILE_NAME="Default - Create instance and SRS MARC Bib"
+if [ "$FOUNDATION_PROFILE_UUID" = "null" ] || [ -z "$FOUNDATION_PROFILE_UUID" ]; then
+  echo "WARNING: $FOUNDATION_PROFILE_PREFIX not found in FOLIO. Export the foundation profiles from di-int-tests first."
+  exit 1
 fi
 
 echo "Using profile: $FOUNDATION_PROFILE_NAME ($FOUNDATION_PROFILE_UUID)"
@@ -388,7 +402,7 @@ curl -G -s "http://olamimacmini:3100/loki/api/v1/query_range" \
 - [ ] Job Profile UUID obtained
 - [ ] Test MARC records generated (check which files exist)
 - [ ] **Foundation records generated when required** (see Troubleshooting below if missing)
-- [ ] Foundation records imported with system profile if `test-records-foundation.mrc` exists (status: COMMITTED)
+- [ ] Foundation records split by MARC shape and imported with `jp-900`/`jp-901`/`jp-902` as needed (status: COMMITTED)
 - [ ] Import/Test records imported with test profile (status: COMMITTED)
 - [ ] Job log entries show expected actions (CREATED/UPDATED)
 - [ ] No unexpected errors in journal records

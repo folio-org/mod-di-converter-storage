@@ -480,8 +480,8 @@ public class StrictRecordWriter {
     prerequisites.add(targetEntity);
     prerequisites.addAll(getPrerequisiteEntities(targetEntity));
     if ("HOLDINGS".equals(targetEntity)) {
-      // The dogfood seed profile jp-001 creates root Instance, Holdings, and Item records
-      // for every foundation MARC record, so Holdings update seeds must be Item-safe too.
+      // Direct Holdings updates need an existing Holdings record. Include item fields so
+      // the foundation record is valid for the full-inventory seed bucket when needed.
       prerequisites.add("ITEM");
       prerequisites.addAll(getPrerequisiteEntities("ITEM"));
     }
