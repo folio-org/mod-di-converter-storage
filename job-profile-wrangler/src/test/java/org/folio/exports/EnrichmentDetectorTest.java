@@ -2,6 +2,7 @@ package org.folio.exports;
 
 import org.folio.graph.nodes.ActionProfileNode;
 import org.folio.graph.nodes.JobProfileNode;
+import org.folio.graph.nodes.MatchProfileNode;
 import org.junit.Test;
 
 import java.util.List;
@@ -55,6 +56,36 @@ public class EnrichmentDetectorTest {
     assertTrue(outcome.hint().contains("--record-type MARC_BIB"));
   }
 
+  @Test
+  public void marcBibMatchBySrsIdNeedsSourceRecordEnrichmentEvenWhenActionUpdatesInstance() {
+    CategorizedPath path = marcBibMatchPath("update-instance", "UPDATE", "INSTANCE", new MatchCriteria(
+      "match-bib",
+      List.of(new MatchCriteria.MatchFieldSpec("999", "f", "f", "s", null)),
+      List.of()
+    ));
+
+    GenerationOutcome.NeedsEnrichment outcome =
+      EnrichmentDetector.detect(List.of(path), OUTPUT_BASE).get(0);
+
+    assertEquals("update-instance", outcome.pathId());
+    assertEquals("Run: jp-wrangler enrich target/generated/job-profile-import.mrc --match-field 001 "
+      + "--enrich-field 999ff$s --enrich-type SOURCE_RECORD_ID --record-type MARC_BIB --skip-missing", outcome.hint());
+  }
+
+  @Test
+  public void sourceRecordEnrichmentUsesCurrentMatchProfileType() {
+    CategorizedPath path = chainedMarcMatchPath("update-instance", new MatchCriteria(
+      "match-bib",
+      List.of(new MatchCriteria.MatchFieldSpec("999", "f", "f", "s", null)),
+      List.of()
+    ));
+
+    GenerationOutcome.NeedsEnrichment outcome =
+      EnrichmentDetector.detect(List.of(path), OUTPUT_BASE).get(0);
+
+    assertEquals("update-instance", outcome.pathId());
+    assertTrue(outcome.hint().contains("--record-type MARC_BIB"));
+  }
 
   @Test
   public void instanceHridNeedsEnrichmentWithRunnableHint() {
@@ -206,6 +237,35 @@ public class EnrichmentDetectorTest {
 
   private CategorizedPath marcPath(String pathId, String action, MatchCriteria matchCriteria) {
     return marcSourceRecordPath(pathId, action, "MARC_BIBLIOGRAPHIC", matchCriteria);
+  }
+
+  private CategorizedPath marcBibMatchPath(
+      String pathId,
+      String action,
+      String folioRecord,
+      MatchCriteria matchCriteria) {
+    JobProfilePath path = new JobProfilePath(
+      List.of(
+        new JobProfileNode("job-1", "MARC", 0),
+        new MatchProfileNode("match-bib", "MARC_BIBLIOGRAPHIC", "MARC_BIBLIOGRAPHIC", 0),
+        new ActionProfileNode("action-1", action, folioRecord, 1)
+      ),
+      pathId
+    );
+    return new CategorizedPath(path, ReactTo.MATCH, matchCriteria.matchProfileId(), matchCriteria);
+  }
+
+  private CategorizedPath chainedMarcMatchPath(String pathId, MatchCriteria matchCriteria) {
+    JobProfilePath path = new JobProfilePath(
+      List.of(
+        new JobProfileNode("job-1", "MARC", 0),
+        new MatchProfileNode("match-auth", "MARC_AUTHORITY", "MARC_AUTHORITY", 0),
+        new MatchProfileNode("match-bib", "MARC_BIBLIOGRAPHIC", "MARC_BIBLIOGRAPHIC", 1),
+        new ActionProfileNode("action-1", "UPDATE", "INSTANCE", 2)
+      ),
+      pathId
+    );
+    return new CategorizedPath(path, ReactTo.MATCH, matchCriteria.matchProfileId(), matchCriteria);
   }
 
   private CategorizedPath marcSourceRecordPath(

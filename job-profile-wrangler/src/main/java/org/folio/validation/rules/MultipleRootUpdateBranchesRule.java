@@ -4,7 +4,12 @@ import com.fasterxml.jackson.databind.JsonNode;
 import org.folio.exports.GenerationOutcome.BlockedUnsupportedWorkflow;
 import org.folio.validation.UnsupportedShapeRule;
 
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.HashSet;
+import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 /**
  * Blocks root-level update branches that the stack executes against every incoming record.
@@ -15,7 +20,7 @@ public class MultipleRootUpdateBranchesRule implements UnsupportedShapeRule {
   private static final String MESSAGE = "Multiple root update branches cannot be isolated by generated records; "
     + "the stack may run each root branch against the same incoming record and report duplicate source records.";
   private static final String CITATION = "data-import-processing-core EventManager advances through root job-profile "
-    + "children without a per-generated-record branch discriminator.";
+    + "children without a branch discriminator unless generated records can vary distinct incoming match fields.";
 
   @Override
   public String name() {
@@ -24,7 +29,7 @@ public class MultipleRootUpdateBranchesRule implements UnsupportedShapeRule {
 
   @Override
   public String description() {
-    return "Blocks job profiles with more than one root child branch containing update-like actions.";
+    return "Blocks multiple root update branches unless their incoming match fields can be isolated.";
   }
 
   @Override
@@ -34,25 +39,119 @@ public class MultipleRootUpdateBranchesRule implements UnsupportedShapeRule {
 
   @Override
   public Optional<BlockedUnsupportedWorkflow> evaluate(JsonNode snapshot) {
-    if (rootUpdateBranchCount(snapshot) > 1) {
+    if (hasMultipleNonIsolatableRootUpdateBranches(snapshot)) {
       return Optional.of(new BlockedUnsupportedWorkflow(RULE_NAME, MESSAGE));
     }
     return Optional.empty();
   }
 
-  private int rootUpdateBranchCount(JsonNode snapshot) {
+  private boolean hasMultipleNonIsolatableRootUpdateBranches(JsonNode snapshot) {
     JsonNode children = children(snapshot);
     if (!children.isArray()) {
-      return 0;
+      return false;
     }
 
-    int count = 0;
-    for (JsonNode child : children) {
+    List<Set<String>> branchMatchKeys = new ArrayList<>();
+    boolean sawRootMatchBranch = false;
+    for (JsonNode child : orderedChildren(children)) {
+      if (isRootMarcBibModifyCleanup(child, sawRootMatchBranch)) {
+        continue;
+      }
       if (hasUpdateLikeAction(child)) {
-        count++;
+        branchMatchKeys.add(incomingMatchKeys(child));
+      }
+      if ("MATCH_PROFILE".equals(text(child, "contentType", "profileType"))) {
+        sawRootMatchBranch = true;
       }
     }
-    return count;
+    if (branchMatchKeys.size() <= 1) {
+      return false;
+    }
+
+    Set<String> seen = new HashSet<>();
+    for (Set<String> keys : branchMatchKeys) {
+      if (keys.isEmpty()) {
+        return true;
+      }
+      // MARC 001 is present on every generated record, so isolation depends on the
+      // writer's path-local 001 values never reusing a sibling branch's seeded match value.
+      for (String key : keys) {
+        if (!seen.add(key)) {
+          return true;
+        }
+      }
+    }
+    return false;
+  }
+
+  private Set<String> incomingMatchKeys(JsonNode rootBranch) {
+    Set<String> keys = new HashSet<>();
+    for (JsonNode matchProfile : matchProfiles(rootBranch)) {
+      JsonNode matchDetails = matchProfile.path("content").path("matchDetails");
+      if (!matchDetails.isArray()) {
+        continue;
+      }
+      for (JsonNode matchDetail : matchDetails) {
+        String key = expressionKey(matchDetail.path("incomingMatchExpression"));
+        if (!key.isEmpty()) {
+          keys.add(key);
+        }
+      }
+    }
+    return keys;
+  }
+
+  private List<JsonNode> matchProfiles(JsonNode node) {
+    List<JsonNode> matches = new ArrayList<>();
+    collectMatchProfiles(node, matches);
+    return matches;
+  }
+
+  private void collectMatchProfiles(JsonNode node, List<JsonNode> matches) {
+    if (node == null || node.isMissingNode() || node.isNull()) {
+      return;
+    }
+    if ("MATCH_PROFILE".equals(text(node, "contentType", "profileType"))) {
+      matches.add(node);
+    }
+
+    JsonNode children = children(node);
+    if (!children.isArray()) {
+      return;
+    }
+    for (JsonNode child : children) {
+      collectMatchProfiles(child, matches);
+    }
+  }
+
+  private String expressionKey(JsonNode expression) {
+    JsonNode fields = expression.path("fields");
+    if (!fields.isArray() || fields.isEmpty()) {
+      return "";
+    }
+
+    String field = "";
+    String indicator1 = "";
+    String indicator2 = "";
+    String subfield = "";
+    for (JsonNode fieldSpec : fields) {
+      String label = text(fieldSpec, "label");
+      String value = text(fieldSpec, "value").trim();
+      if ("field".equals(label)) {
+        field = value;
+      } else if ("indicator1".equals(label)) {
+        indicator1 = value;
+      } else if ("indicator2".equals(label)) {
+        indicator2 = value;
+      } else if ("recordSubfield".equals(label)) {
+        subfield = value;
+      }
+    }
+
+    if (field.isEmpty()) {
+      return "";
+    }
+    return field + "|" + indicator1 + "|" + indicator2 + "|" + subfield;
   }
 
   private boolean hasUpdateLikeAction(JsonNode node) {
@@ -79,6 +178,37 @@ public class MultipleRootUpdateBranchesRule implements UnsupportedShapeRule {
       }
     }
     return false;
+  }
+
+  private boolean isRootMarcBibModifyCleanup(JsonNode node, boolean sawRootMatchBranch) {
+    if (!sawRootMatchBranch || !"ACTION_PROFILE".equals(text(node, "contentType", "profileType"))) {
+      return false;
+    }
+
+    JsonNode content = node.path("content");
+    if (!"MODIFY".equals(text(content, "action"))
+      || !"MARC_BIBLIOGRAPHIC".equals(text(content, "folioRecord"))) {
+      return false;
+    }
+
+    JsonNode children = children(node);
+    if (!children.isArray() || children.isEmpty()) {
+      return false;
+    }
+
+    JsonNode mappingContent = children.get(0).path("content");
+    return "MAPPING_PROFILE".equals(text(children.get(0), "contentType", "profileType"))
+      && "MODIFY".equals(text(mappingContent.path("mappingDetails"), "marcMappingOption"));
+  }
+
+  private List<JsonNode> orderedChildren(JsonNode children) {
+    List<JsonNode> ordered = new ArrayList<>();
+    if (!children.isArray()) {
+      return ordered;
+    }
+    children.forEach(ordered::add);
+    ordered.sort(Comparator.comparingInt(child -> child.path("order").asInt(0)));
+    return ordered;
   }
 
   private JsonNode children(JsonNode node) {

@@ -1,0 +1,70 @@
+{
+  "contentType": "JOB_PROFILE",
+  "content": {
+    "id": "job-1",
+    "name": "Root MARC bib modify cleanup after match",
+    "dataType": "MARC"
+  },
+  "childSnapshotWrappers": [
+    {
+      "contentType": "MATCH_PROFILE",
+      "order": 0,
+      "content": {
+        "id": "match-srs-1",
+        "name": "Match existing SRS",
+        "incomingRecordType": "MARC_BIBLIOGRAPHIC",
+        "existingRecordType": "MARC_BIBLIOGRAPHIC",
+        "matchDetails": [
+          {
+            "incomingMatchExpression": {
+              "dataValueType": "VALUE_FROM_RECORD",
+              "fields": [
+                { "label": "field", "value": "999" },
+                { "label": "indicator1", "value": "f" },
+                { "label": "indicator2", "value": "f" },
+                { "label": "recordSubfield", "value": "s" }
+              ]
+            }
+          }
+        ]
+      },
+      "childSnapshotWrappers": [
+        {
+          "contentType": "ACTION_PROFILE",
+          "reactTo": "MATCH",
+          "content": {
+            "id": "update-marc-1",
+            "name": "Update MARC",
+            "action": "UPDATE",
+            "folioRecord": "MARC_BIBLIOGRAPHIC"
+          }
+        }
+      ]
+    },
+    {
+      "contentType": "ACTION_PROFILE",
+      "order": 1,
+      "content": {
+        "id": "modify-marc-cleanup-1",
+        "name": "Modify MARC cleanup",
+        "action": "MODIFY",
+        "folioRecord": "MARC_BIBLIOGRAPHIC"
+      },
+      "childSnapshotWrappers": [
+        {
+          "contentType": "MAPPING_PROFILE",
+          "content": {
+            "id": "mapping-marc-cleanup-1",
+            "name": "MARC cleanup mapping",
+            "incomingRecordType": "MARC_BIBLIOGRAPHIC",
+            "existingRecordType": "MARC_BIBLIOGRAPHIC",
+            "mappingDetails": {
+              "recordType": "MARC_BIBLIOGRAPHIC",
+              "marcMappingOption": "MODIFY"
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

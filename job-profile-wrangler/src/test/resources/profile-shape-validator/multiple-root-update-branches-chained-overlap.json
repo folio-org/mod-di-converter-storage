@@ -1,0 +1,212 @@
+{
+  "contentType": "JOB_PROFILE",
+  "content": {
+    "id": "job-1",
+    "name": "Chained root update branches with overlap",
+    "dataType": "MARC"
+  },
+  "childSnapshotWrappers": [
+    {
+      "contentType": "MATCH_PROFILE",
+      "content": {
+        "id": "match-srs-1",
+        "name": "Match existing SRS",
+        "incomingRecordType": "MARC_BIBLIOGRAPHIC",
+        "existingRecordType": "MARC_BIBLIOGRAPHIC",
+        "matchDetails": [
+          {
+            "incomingMatchExpression": {
+              "dataValueType": "VALUE_FROM_RECORD",
+              "fields": [
+                {
+                  "label": "field",
+                  "value": "999"
+                },
+                {
+                  "label": "indicator1",
+                  "value": "f"
+                },
+                {
+                  "label": "indicator2",
+                  "value": "f"
+                },
+                {
+                  "label": "recordSubfield",
+                  "value": "s"
+                }
+              ]
+            },
+            "existingMatchExpression": {
+              "dataValueType": "VALUE_FROM_RECORD",
+              "fields": [
+                {
+                  "label": "field",
+                  "value": "999"
+                },
+                {
+                  "label": "indicator1",
+                  "value": "f"
+                },
+                {
+                  "label": "indicator2",
+                  "value": "f"
+                },
+                {
+                  "label": "recordSubfield",
+                  "value": "s"
+                }
+              ]
+            }
+          }
+        ]
+      },
+      "childSnapshotWrappers": [
+        {
+          "contentType": "ACTION_PROFILE",
+          "reactTo": "MATCH",
+          "content": {
+            "id": "update-instance-1",
+            "name": "Update instance",
+            "action": "UPDATE",
+            "folioRecord": "INSTANCE",
+            "order": 0
+          }
+        }
+      ]
+    },
+    {
+      "contentType": "MATCH_PROFILE",
+      "content": {
+        "id": "match-holdings-1",
+        "name": "Match existing holdings",
+        "incomingRecordType": "MARC_BIBLIOGRAPHIC",
+        "existingRecordType": "HOLDINGS",
+        "matchDetails": [
+          {
+            "incomingMatchExpression": {
+              "dataValueType": "VALUE_FROM_RECORD",
+              "fields": [
+                {
+                  "label": "field",
+                  "value": "004"
+                }
+              ]
+            },
+            "existingMatchExpression": {
+              "dataValueType": "VALUE_FROM_RECORD",
+              "fields": [
+                {
+                  "label": "field",
+                  "value": "holdings"
+                },
+                {
+                  "label": "field",
+                  "value": "formerIds[]"
+                }
+              ]
+            }
+          }
+        ]
+      },
+      "childSnapshotWrappers": [
+        {
+          "contentType": "MATCH_PROFILE",
+          "reactTo": "MATCH",
+          "content": {
+            "id": "match-holdings-deeper-001",
+            "name": "Deeper match also uses 001",
+            "incomingRecordType": "MARC_BIBLIOGRAPHIC",
+            "existingRecordType": "ITEM",
+            "matchDetails": [
+              {
+                "incomingMatchExpression": {
+                  "dataValueType": "VALUE_FROM_RECORD",
+                  "fields": [
+                    {
+                      "label": "field",
+                      "value": "001"
+                    }
+                  ]
+                },
+                "existingMatchExpression": {
+                  "dataValueType": "VALUE_FROM_RECORD",
+                  "fields": [
+                    {
+                      "label": "field",
+                      "value": "item"
+                    },
+                    {
+                      "label": "field",
+                      "value": "formerIds[]"
+                    }
+                  ]
+                }
+              }
+            ]
+          },
+          "childSnapshotWrappers": [
+            {
+              "contentType": "ACTION_PROFILE",
+              "reactTo": "MATCH",
+              "content": {
+                "id": "update-holdings-1",
+                "name": "Update holdings",
+                "action": "UPDATE",
+                "folioRecord": "HOLDINGS",
+                "order": 0
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "contentType": "MATCH_PROFILE",
+      "content": {
+        "id": "match-item-1",
+        "name": "Match existing item",
+        "incomingRecordType": "MARC_BIBLIOGRAPHIC",
+        "existingRecordType": "ITEM",
+        "matchDetails": [
+          {
+            "incomingMatchExpression": {
+              "dataValueType": "VALUE_FROM_RECORD",
+              "fields": [
+                {
+                  "label": "field",
+                  "value": "001"
+                }
+              ]
+            },
+            "existingMatchExpression": {
+              "dataValueType": "VALUE_FROM_RECORD",
+              "fields": [
+                {
+                  "label": "field",
+                  "value": "item"
+                },
+                {
+                  "label": "field",
+                  "value": "formerIds[]"
+                }
+              ]
+            }
+          }
+        ]
+      },
+      "childSnapshotWrappers": [
+        {
+          "contentType": "ACTION_PROFILE",
+          "reactTo": "MATCH",
+          "content": {
+            "id": "update-item-1",
+            "name": "Update item",
+            "action": "UPDATE",
+            "folioRecord": "ITEM",
+            "order": 0
+          }
+        }
+      ]
+    }
+  ]
+}

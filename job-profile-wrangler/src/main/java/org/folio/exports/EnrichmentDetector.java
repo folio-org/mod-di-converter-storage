@@ -102,18 +102,47 @@ public final class EnrichmentDetector {
   }
 
   private static List<String> sourceRecordTypesFor(CategorizedPath path) {
+    List<String> currentMatchSourceTypes = path.path().getProfiles().stream()
+      .filter(org.folio.graph.nodes.MatchProfileNode.class::isInstance)
+      .map(org.folio.graph.nodes.MatchProfileNode.class::cast)
+      .filter(match -> match.id().equals(path.matchProfileId()))
+      .map(match -> sourceRecordType(match.existingRecordType()))
+      .filter(java.util.Objects::nonNull)
+      .distinct()
+      .toList();
+    if (!currentMatchSourceTypes.isEmpty()) {
+      return currentMatchSourceTypes;
+    }
+
+    List<String> matchSourceTypes = path.path().getProfiles().stream()
+      .filter(org.folio.graph.nodes.MatchProfileNode.class::isInstance)
+      .map(org.folio.graph.nodes.MatchProfileNode.class::cast)
+      .map(match -> sourceRecordType(match.existingRecordType()))
+      .filter(java.util.Objects::nonNull)
+      .distinct()
+      .toList();
+    if (!matchSourceTypes.isEmpty()) {
+      return matchSourceTypes;
+    }
+
     return path.path().getProfiles().stream()
       .filter(org.folio.graph.nodes.ActionProfileNode.class::isInstance)
       .map(org.folio.graph.nodes.ActionProfileNode.class::cast)
       .filter(action -> "UPDATE".equals(action.action()) || "MODIFY".equals(action.action()) || "DELETE".equals(action.action()))
-      .map(action -> switch (action.folioRecord()) {
-        case "MARC_BIBLIOGRAPHIC" -> "MARC_BIB";
-        case "MARC_AUTHORITY" -> "MARC_AUTHORITY";
-        default -> null;
-      })
+      .map(action -> sourceRecordType(action.folioRecord()))
       .filter(java.util.Objects::nonNull)
       .distinct()
       .toList();
+  }
+
+  private static String sourceRecordType(String profileRecordType) {
+    if ("MARC_BIBLIOGRAPHIC".equals(profileRecordType)) {
+      return "MARC_BIB";
+    }
+    if ("MARC_AUTHORITY".equals(profileRecordType)) {
+      return "MARC_AUTHORITY";
+    }
+    return null;
   }
 
   private static String enrichTypeFor(String existingField) {

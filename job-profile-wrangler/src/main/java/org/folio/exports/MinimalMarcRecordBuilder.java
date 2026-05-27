@@ -204,7 +204,8 @@ public final class MinimalMarcRecordBuilder {
 
     Record record = FACTORY.newRecord();
 
-    // Generate unique identifier for this record
+    // Every MARC record has 001; generated foundation records rely on UUID uniqueness
+    // so sibling branches do not accidentally satisfy each other's 001-based matches.
     String uuid = UUID.randomUUID().toString();
     String shortId = uuid.substring(0, 8);
 

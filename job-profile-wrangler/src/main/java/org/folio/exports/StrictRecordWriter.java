@@ -149,6 +149,7 @@ public class StrictRecordWriter {
           destination(importFile, "import")), outcomes, hasGap, firstGap, foundationRecords, importRecords, () -> {
         MatchCriteria matchCriteria = pair.updatePath().matchCriteria();
         Set<String> branchPrerequisites = getBranchPrerequisiteEntities(pair.updatePath(), allCreatePaths);
+        branchPrerequisites.addAll(getUpdatePrerequisiteEntities(pair.updatePath()));
         MinimalMarcRecordBuilder.BuildResult foundation = MinimalMarcRecordBuilder.buildRecordForPathWithPrerequisites(
           pair.updatePath().path(), ++recordNumber[0], null, refData, matchCriteria, branchPrerequisites);
         foundationRecords.add(foundation.record());
@@ -248,6 +249,7 @@ public class StrictRecordWriter {
           destination(importFile, "import")), outcomes, hasGap, firstGap, foundationRecords, importRecords, () -> {
         MatchCriteria matchCriteria = updatePath.matchCriteria();
         Set<String> branchPrerequisites = getBranchPrerequisiteEntities(updatePath, allCreatePaths);
+        branchPrerequisites.addAll(getUpdatePrerequisiteEntities(updatePath));
         if (updatePath.reactTo() == ReactTo.NONE) {
           branchPrerequisites.addAll(getJobCreateEntities(allCreatePaths));
         }
@@ -469,6 +471,23 @@ public class StrictRecordWriter {
     return prerequisites;
   }
 
+  private Set<String> getUpdatePrerequisiteEntities(CategorizedPath updatePath) {
+    String targetEntity = getUpdateTargetEntityFromPath(updatePath.path());
+    if (!"HOLDINGS".equals(targetEntity) && !"ITEM".equals(targetEntity)) {
+      return new HashSet<>();
+    }
+    Set<String> prerequisites = new HashSet<>();
+    prerequisites.add(targetEntity);
+    prerequisites.addAll(getPrerequisiteEntities(targetEntity));
+    if ("HOLDINGS".equals(targetEntity)) {
+      // The dogfood seed profile jp-001 creates root Instance, Holdings, and Item records
+      // for every foundation MARC record, so Holdings update seeds must be Item-safe too.
+      prerequisites.add("ITEM");
+      prerequisites.addAll(getPrerequisiteEntities("ITEM"));
+    }
+    return prerequisites;
+  }
+
   private boolean sameExecutableBranch(CategorizedPath targetPath, CategorizedPath createPath) {
     if (targetPath.reactTo() != createPath.reactTo()) {
       return false;
@@ -507,6 +526,26 @@ public class StrictRecordWriter {
       }
     }
     return null;
+  }
+
+  private String getUpdateTargetEntityFromPath(JobProfilePath path) {
+    for (int i = path.getProfiles().size() - 1; i >= 0; i--) {
+      Profile profile = path.getProfiles().get(i);
+      if (profile instanceof ActionProfileNode actionProfile && "UPDATE".equals(actionProfile.action())) {
+        return actionProfile.folioRecord();
+      }
+    }
+    for (int i = path.getProfiles().size() - 1; i >= 0; i--) {
+      Profile profile = path.getProfiles().get(i);
+      if (profile instanceof ActionProfileNode actionProfile && isMarcBibModifyAction(actionProfile)) {
+        return actionProfile.folioRecord();
+      }
+    }
+    return null;
+  }
+
+  private boolean isMarcBibModifyAction(ActionProfileNode actionProfile) {
+    return "MODIFY".equals(actionProfile.action()) && "MARC_BIBLIOGRAPHIC".equals(actionProfile.folioRecord());
   }
 
   private boolean pathCreatesRecordType(JobProfilePath path, String recordType) {

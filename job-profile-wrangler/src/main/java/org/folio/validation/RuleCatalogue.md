@@ -52,9 +52,10 @@ The v1 validator walks live job-profile snapshot JSON, not repository DOT files.
 
 ### `multiple-root-update-branches`
 
-- Predicate: block a job profile whose root job-profile node has more than one child branch containing an update-like action (`UPDATE`, or `MODIFY MARC_BIBLIOGRAPHIC`).
-- Stack behavior: root branches are not isolated by generated record path; the stack can run multiple root update branches against each incoming record, which can surface as duplicate source-record errors instead of a deterministic branch result.
-- Sweep examples: `jp-051`.
+- Predicate: block a job profile whose root job-profile node has more than one child branch containing an update-like action (`UPDATE`, or `MODIFY MARC_BIBLIOGRAPHIC`) when those branches do not expose distinct incoming match fields.
+- Allowed variants: root update branches with disjoint incoming match fields, such as separate `999 ff $s`, `004`, and `001` matches, because generated records can omit or vary those fields to isolate one branch per record.
+- Stack behavior: root branches are not isolated by generated record path; without distinct incoming match fields, the stack can run multiple root update branches against each incoming record, which can surface as duplicate source-record errors instead of a deterministic branch result.
+- Sweep examples: `jp-051`; `jp-015` is allowed because its three root update branches match on distinct incoming fields.
 
 ### `authority-nonmatch-create-with-999-s-match`
 

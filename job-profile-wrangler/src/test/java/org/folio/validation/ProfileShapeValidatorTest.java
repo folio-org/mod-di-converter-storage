@@ -118,6 +118,39 @@ public class ProfileShapeValidatorTest {
   }
 
   @Test
+  public void multipleRootUpdateBranchesDetectsOverlappingDeeperMatchProfileFields() throws Exception {
+    Optional<BlockedUnsupportedWorkflow> outcome = ProfileShapeValidator.defaultValidator()
+      .validate(fixture("multiple-root-update-branches-chained-overlap.json"));
+
+    assertTrue(outcome.isPresent());
+    assertEquals(MultipleRootUpdateBranchesRule.RULE_NAME, outcome.get().rule());
+  }
+
+  @Test
+  public void multipleRootUpdateBranchesWithDistinctIncomingMatchFieldsDoesNotMatch() throws Exception {
+    assertNoRuleMatch("multiple-root-update-branches-distinct-fields.json");
+  }
+
+  @Test
+  public void rootMarcBibModifyCleanupAfterRootMatchDoesNotMatch() throws Exception {
+    assertNoRuleMatch("root-marc-bib-modify-cleanup-after-match.json");
+  }
+
+  @Test
+  public void rootMarcBibModifyCleanupUsesWrapperOrderNotSerializationOrder() throws Exception {
+    assertNoRuleMatch("root-marc-bib-modify-cleanup-serialized-before-match.json");
+  }
+
+  @Test
+  public void rootMarcBibModifyCleanupBeforeRootMatchStillFires() throws Exception {
+    Optional<BlockedUnsupportedWorkflow> outcome = ProfileShapeValidator.defaultValidator()
+      .validate(fixture("root-marc-bib-modify-cleanup-before-match.json"));
+
+    assertTrue(outcome.isPresent());
+    assertEquals(MultipleRootUpdateBranchesRule.RULE_NAME, outcome.get().rule());
+  }
+
+  @Test
   public void authorityNonMatchCreateWith999sFires() throws Exception {
     Optional<BlockedUnsupportedWorkflow> outcome = ProfileShapeValidator.defaultValidator()
       .validate(fixture("authority-nonmatch-create-with-999-s-match.json"));

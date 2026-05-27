@@ -142,6 +142,70 @@ public class StrictRecordWriterTest {
   }
 
   @Test
+  public void unpairedUpdateHoldingsFoundationIsCompatibleWithFullInventorySeedProfile() throws IOException {
+    Path outputBase = temp.getRoot().toPath().resolve("records");
+
+    StrictRecordWriter.WriteResult result = new StrictRecordWriter().write(
+      new CategorizedPaths(List.of(), List.of(), List.of(categorized(path("UPDATE", "HOLDINGS"))), List.of()),
+      new MinimalMarcRecordBuilder.ReferenceDataContext("location-id", "material-type-id", "loan-type-id"),
+      outputBase);
+
+    assertEquals(GenerationOutcome.GENERATED, result.overallOutcome().label());
+    assertEquals(1, result.foundationRecords().size());
+    assertEquals(1, result.importRecords().size());
+    assertHoldingsLocation(result.foundationRecords().get(0), "location-id");
+    assertItemFields(result.foundationRecords().get(0));
+    assertHoldingsLocation(result.importRecords().get(0), "location-id");
+    assertItemFields(result.importRecords().get(0));
+  }
+
+  @Test
+  public void trailingMarcBibModifyDoesNotHideHoldingsUpdatePrerequisites() throws IOException {
+    Path outputBase = temp.getRoot().toPath().resolve("records");
+    JobProfileNode job = new JobProfileNode("job-1", "MARC", 0);
+    MatchProfileNode match = new MatchProfileNode("match-1", "MARC_BIBLIOGRAPHIC", "HOLDINGS", 0);
+    CategorizedPath updateHoldingsThenCleanup = categorized(pathOf(
+      job,
+      match,
+      new ActionProfileNode("action-update-holdings", "UPDATE", "HOLDINGS", 0),
+      new MappingProfileNode("mapping-update-holdings", "MARC_BIBLIOGRAPHIC", "HOLDINGS", 0),
+      new ActionProfileNode("action-modify-marc", "MODIFY", "MARC_BIBLIOGRAPHIC", 1),
+      new MappingProfileNode("mapping-modify-marc", "MARC_BIBLIOGRAPHIC", "MARC_BIBLIOGRAPHIC", 0)
+    ), ReactTo.MATCH, "match-1");
+
+    StrictRecordWriter.WriteResult result = new StrictRecordWriter().write(
+      new CategorizedPaths(List.of(), List.of(), List.of(updateHoldingsThenCleanup), List.of()),
+      new MinimalMarcRecordBuilder.ReferenceDataContext("location-id", "material-type-id", "loan-type-id"),
+      outputBase);
+
+    assertEquals(GenerationOutcome.GENERATED, result.overallOutcome().label());
+    assertEquals(1, result.foundationRecords().size());
+    assertEquals(1, result.importRecords().size());
+    assertHoldingsLocation(result.foundationRecords().get(0), "location-id");
+    assertItemFields(result.foundationRecords().get(0));
+    assertHoldingsLocation(result.importRecords().get(0), "location-id");
+    assertItemFields(result.importRecords().get(0));
+  }
+
+  @Test
+  public void unpairedUpdateItemFoundationIncludesHoldingsAndItemFields() throws IOException {
+    Path outputBase = temp.getRoot().toPath().resolve("records");
+
+    StrictRecordWriter.WriteResult result = new StrictRecordWriter().write(
+      new CategorizedPaths(List.of(), List.of(), List.of(categorized(path("UPDATE", "ITEM"))), List.of()),
+      new MinimalMarcRecordBuilder.ReferenceDataContext("location-id", "material-type-id", "loan-type-id"),
+      outputBase);
+
+    assertEquals(GenerationOutcome.GENERATED, result.overallOutcome().label());
+    assertEquals(1, result.foundationRecords().size());
+    assertEquals(1, result.importRecords().size());
+    assertHoldingsLocation(result.foundationRecords().get(0), "location-id");
+    assertItemFields(result.foundationRecords().get(0));
+    assertHoldingsLocation(result.importRecords().get(0), "location-id");
+    assertItemFields(result.importRecords().get(0));
+  }
+
+  @Test
   public void explicitMatchIdDoesNotShareBranchWithNullMatchIdEvenWithCommonAncestor() throws IOException {
     Path outputBase = temp.getRoot().toPath().resolve("records");
     JobProfileNode job = new JobProfileNode("job-1", "MARC", 0);
