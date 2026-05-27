@@ -205,6 +205,95 @@ public class JpWranglerCliGenerateInternalsTest {
   }
 
   @Test
+  public void extractionKeepsAncestorMarcMatchCriteriaForChainedMatches() throws Exception {
+    Method method = JpWranglerCli.GenerateCommand.class.getDeclaredMethod("extractAllPaths", JsonNode.class);
+    method.setAccessible(true);
+    JsonNode snapshot = OBJECT_MAPPER.readTree("""
+      {
+        "contentType": "JOB_PROFILE",
+        "content": {"id": "job", "dataType": "MARC", "order": 0},
+        "childSnapshotWrappers": [{
+          "contentType": "MATCH_PROFILE",
+          "reactTo": "MATCH",
+          "content": {
+            "id": "match-bib",
+            "incomingRecordType": "MARC_BIBLIOGRAPHIC",
+            "existingRecordType": "MARC_BIBLIOGRAPHIC",
+            "order": 0,
+            "matchDetails": [{
+              "incomingMatchExpression": {
+                "dataValueType": "VALUE_FROM_RECORD",
+                "fields": [
+                  {"label": "field", "value": "999"},
+                  {"label": "indicator1", "value": "f"},
+                  {"label": "indicator2", "value": "f"},
+                  {"label": "recordSubfield", "value": "s"}
+                ]
+              },
+              "existingMatchExpression": {
+                "dataValueType": "VALUE_FROM_RECORD",
+                "fields": [
+                  {"label": "field", "value": "999"},
+                  {"label": "indicator1", "value": "f"},
+                  {"label": "indicator2", "value": "f"},
+                  {"label": "recordSubfield", "value": "s"}
+                ]
+              }
+            }]
+          },
+          "childSnapshotWrappers": [{
+            "contentType": "MATCH_PROFILE",
+            "reactTo": "MATCH",
+            "content": {
+              "id": "match-holdings",
+              "incomingRecordType": "STATIC_VALUE",
+              "existingRecordType": "HOLDINGS",
+              "order": 1,
+              "matchDetails": [{
+                "incomingMatchExpression": {
+                  "dataValueType": "STATIC_VALUE",
+                  "fields": [],
+                  "staticValueDetails": {"text": "false"}
+                },
+                "existingMatchExpression": {
+                  "dataValueType": "VALUE_FROM_RECORD",
+                  "fields": [{"label": "field", "value": "holdingsrecord.discoverySuppress"}]
+                }
+              }]
+            },
+            "childSnapshotWrappers": [{
+              "contentType": "ACTION_PROFILE",
+              "content": {"id": "update", "action": "UPDATE", "folioRecord": "HOLDINGS", "order": 0},
+              "childSnapshotWrappers": [{
+                "contentType": "MAPPING_PROFILE",
+                "content": {"id": "mapping", "incomingRecordType": "MARC_BIBLIOGRAPHIC", "existingRecordType": "HOLDINGS"}
+              }]
+            }]
+          }]
+        }]
+      }
+      """);
+
+    PathExtractionResult result = (PathExtractionResult) method.invoke(new JpWranglerCli.GenerateCommand(), snapshot);
+
+    assertEquals(1, result.updatePaths().size());
+    CategorizedPath path = result.updatePaths().get(0);
+    assertEquals("match-holdings", path.matchProfileId());
+    assertEquals("match-holdings", path.matchCriteria().matchProfileId());
+    assertEquals(1, path.matchCriteria().matchFields().size());
+    MatchCriteria.MatchFieldSpec spec = path.matchCriteria().matchFields().get(0);
+    assertEquals("999", spec.fieldTag());
+    assertEquals("f", spec.indicator1());
+    assertEquals("f", spec.indicator2());
+    assertEquals("s", spec.subfieldCode());
+
+    Map<Integer, GenerationOutcome.NeedsEnrichment> enrichment =
+      EnrichmentDetector.detect(List.of(path), "records");
+    assertEquals(1, enrichment.size());
+    assertTrue(enrichment.get(0).hint().contains("--enrich-field 999ff$s"));
+  }
+
+  @Test
   public void extractionKeepsUnsupportedModifyForOtherRecordTypes() throws Exception {
     Method method = JpWranglerCli.GenerateCommand.class.getDeclaredMethod("extractAllPaths", JsonNode.class);
     method.setAccessible(true);

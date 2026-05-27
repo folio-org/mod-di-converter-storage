@@ -1059,7 +1059,7 @@ public class JpWranglerCli implements Callable<Integer> {
         // Track match profile ID and extract match criteria
         if ("MATCH_PROFILE".equals(contentType)) {
           currentMatchProfileId = content.path("id").asText();
-          currentMatchCriteria = extractMatchCriteria(content);
+          currentMatchCriteria = mergeMatchCriteria(currentMatchCriteria, extractMatchCriteria(content));
           if (verbose && !currentMatchCriteria.isEmpty()) {
             LOGGER.info("Extracted match criteria from match profile {}: {} MARC field(s), {} non-MARC match(es)",
               currentMatchProfileId,
@@ -1128,6 +1128,31 @@ public class JpWranglerCli implements Callable<Integer> {
           }
         }
       }
+    }
+
+    private MatchCriteria mergeMatchCriteria(MatchCriteria inherited, MatchCriteria current) {
+      if (inherited == null || inherited.isEmpty()) {
+        return current == null ? MatchCriteria.empty() : current;
+      }
+      if (current == null) {
+        return inherited;
+      }
+      if (current.isEmpty()) {
+        return new MatchCriteria(current.matchProfileId(), inherited.matchFields(), inherited.nonMarcMatches());
+      }
+
+      List<MatchCriteria.MatchFieldSpec> matchFields = new ArrayList<>();
+      matchFields.addAll(inherited.matchFields());
+      matchFields.addAll(current.matchFields());
+
+      List<MatchCriteria.NonMarcMatchSpec> nonMarcMatches = new ArrayList<>();
+      nonMarcMatches.addAll(inherited.nonMarcMatches());
+      nonMarcMatches.addAll(current.nonMarcMatches());
+
+      // Chained FOLIO match profiles all gate the same leaf action. Preserve ancestor
+      // MARC criteria (for example 999 ff $s) while keeping the current leaf match id
+      // for grouping sibling actions under the deepest MATCH outcome.
+      return new MatchCriteria(current.matchProfileId(), matchFields, nonMarcMatches);
     }
 
     private boolean isUpdateLikeAction(ActionProfileNode action) {
