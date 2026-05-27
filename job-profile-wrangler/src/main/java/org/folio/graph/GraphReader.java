@@ -18,6 +18,9 @@ import org.jgrapht.nio.Attribute;
 import org.jgrapht.nio.dot.DOTImporter;
 
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -98,6 +101,17 @@ public class GraphReader {
     Graph<Profile, RegularEdge> simpleGraph = new SimpleDirectedGraph<>(RegularEdge.class);
     DOT_IMPORTER.importGraph(simpleGraph, filePath.toFile());
     return simpleGraph;
+  }
+
+  public static Graph<Profile, RegularEdge> readResource(String resourcePath) throws IOException {
+    try (InputStream stream = GraphReader.class.getResourceAsStream(resourcePath)) {
+      if (stream == null) {
+        throw new IOException("Graph resource not found: " + resourcePath);
+      }
+      Graph<Profile, RegularEdge> simpleGraph = new SimpleDirectedGraph<>(RegularEdge.class);
+      DOT_IMPORTER.importGraph(simpleGraph, new InputStreamReader(stream, StandardCharsets.UTF_8));
+      return simpleGraph;
+    }
   }
 
   /**

@@ -1,6 +1,7 @@
 package org.folio.hydration;
 
 import com.google.common.io.Resources;
+import org.folio.foundation.FoundationSeedProfile;
 import org.folio.graph.edges.MatchRelationshipEdge;
 import org.folio.graph.edges.RegularEdge;
 import org.folio.graph.nodes.ActionProfileNode;
@@ -14,6 +15,7 @@ import org.folio.rest.jaxrs.model.EntityType;
 import org.folio.rest.jaxrs.model.JobProfileUpdateDto;
 import org.folio.rest.jaxrs.model.MappingDetail;
 import org.folio.rest.jaxrs.model.MappingProfileUpdateDto;
+import org.folio.rest.jaxrs.model.MappingRule;
 import org.folio.rest.jaxrs.model.MatchProfileUpdateDto;
 import org.folio.rest.jaxrs.model.ProfileAssociation;
 import org.folio.rest.jaxrs.model.ProfileType;
@@ -105,6 +107,30 @@ public class ProfileHydrationTest {
     MatchProfileUpdateDto request = OBJECT_MAPPER.readValue(requestCaptor.getValue(), MatchProfileUpdateDto.class);
     String matchDetailsJson = OBJECT_MAPPER.writeValueAsString(request.getProfile().getMatchDetails());
     assertTrue(matchDetailsJson.contains("tenant-system-control-number-id"));
+  }
+
+  @Test
+  public void hydrateDoesNotTreatUserRepoId900AsFoundationSeedProfile() throws IOException {
+    MappingDetail mappingDetails = hydrateAndCaptureInstanceMapping(900, false);
+
+    MappingRule discoverySuppressField = mappingDetails.getMappingFields().stream()
+      .filter(field -> "discoverySuppress".equals(field.getName()))
+      .findFirst()
+      .orElseThrow();
+
+    assertNull(discoverySuppressField.getBooleanFieldAction());
+  }
+
+  @Test
+  public void hydrateFoundationSeedProfileUsesFoundationMappingDetails() throws IOException {
+    MappingDetail mappingDetails = hydrateAndCaptureInstanceMapping(900, true);
+
+    MappingRule discoverySuppressField = mappingDetails.getMappingFields().stream()
+      .filter(field -> "discoverySuppress".equals(field.getName()))
+      .findFirst()
+      .orElseThrow();
+
+    assertEquals(MappingRule.BooleanFieldAction.ALL_FALSE, discoverySuppressField.getBooleanFieldAction());
   }
 
   @Test
@@ -210,6 +236,29 @@ public class ProfileHydrationTest {
     when(folioClient.createJobProfile(any())).thenReturn(Optional.of(OBJECT_MAPPER.readTree(jobProfileResponse)));
 
     new ProfileHydration(folioClient).hydrate(19, graph);
+
+    ArgumentCaptor<String> requestCaptor = ArgumentCaptor.forClass(String.class);
+    verify(folioClient).createMappingProfile(requestCaptor.capture());
+    MappingProfileUpdateDto request = OBJECT_MAPPER.readValue(requestCaptor.getValue(), MappingProfileUpdateDto.class);
+    return request.getProfile().getMappingDetails();
+  }
+
+  private MappingDetail hydrateAndCaptureInstanceMapping(int repoId, boolean foundationSeed) throws IOException {
+    String mappingProfileResponse = Resources.toString(Resources.getResource("mapping_profile_response.json"), StandardCharsets.UTF_8);
+    String actionProfileResponse = Resources.toString(Resources.getResource("action_profile_response.json"), StandardCharsets.UTF_8);
+    String matchProfileResponse = Resources.toString(Resources.getResource("match_profile_response.json"), StandardCharsets.UTF_8);
+    String jobProfileResponse = Resources.toString(Resources.getResource("job_profile_response.json"), StandardCharsets.UTF_8);
+    when(folioClient.createMappingProfile(any())).thenReturn(Optional.of(OBJECT_MAPPER.readTree(mappingProfileResponse)));
+    when(folioClient.createActionProfile(any())).thenReturn(Optional.of(OBJECT_MAPPER.readTree(actionProfileResponse)));
+    when(folioClient.createMatchProfile(any())).thenReturn(Optional.of(OBJECT_MAPPER.readTree(matchProfileResponse)));
+    when(folioClient.createJobProfile(any())).thenReturn(Optional.of(OBJECT_MAPPER.readTree(jobProfileResponse)));
+
+    ProfileHydration hydration = new ProfileHydration(folioClient);
+    if (foundationSeed) {
+      hydration.hydrateFoundationSeedProfile(FoundationSeedProfile.INSTANCE, graph);
+    } else {
+      hydration.hydrate(repoId, graph);
+    }
 
     ArgumentCaptor<String> requestCaptor = ArgumentCaptor.forClass(String.class);
     verify(folioClient).createMappingProfile(requestCaptor.capture());

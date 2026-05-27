@@ -365,6 +365,30 @@ public final class MappingDetailsFactory {
       ));
   }
 
+  public static MappingDetail createFoundationMappingDetailsForRecordType(String existingRecordType) {
+    if (existingRecordType == null) {
+      return null;
+    }
+    return switch (existingRecordType) {
+      case "INSTANCE" -> createFoundationInstanceMappingDetails();
+      case "HOLDINGS" -> createFoundationHoldingsMappingDetails();
+      case "ITEM" -> createFoundationItemMappingDetails();
+      default -> createMappingDetailsForRecordType(existingRecordType);
+    };
+  }
+
+  public static MappingDetail createFoundationInstanceMappingDetails() {
+    return withDiscoverySuppressFalse(createInstanceMappingDetails(), "instance.discoverySuppress");
+  }
+
+  public static MappingDetail createFoundationHoldingsMappingDetails() {
+    return withDiscoverySuppressFalse(createHoldingsMappingDetails(), "holdings.discoverySuppress");
+  }
+
+  public static MappingDetail createFoundationItemMappingDetails() {
+    return withDiscoverySuppressFalse(createItemMappingDetails(), "item.discoverySuppress");
+  }
+
   /**
    * Creates default mappingDetails for MARC_BIBLIOGRAPHIC record type.
    * MARC records don't use the same field structure, so return empty mappingFields.
@@ -497,6 +521,31 @@ public final class MappingDetailsFactory {
       .withValue(value)
       .withEnabled(enabled ? "true" : "false")
       .withSubfields(Collections.emptyList());
+  }
+
+  private static MappingRule createBooleanField(String name, String path, boolean enabled,
+                                                MappingRule.BooleanFieldAction action) {
+    return createField(name, path, enabled)
+      .withBooleanFieldAction(action);
+  }
+
+  static MappingDetail withDiscoverySuppressFalse(MappingDetail mappingDetail, String discoverySuppressPath) {
+    boolean[] found = {false};
+    List<MappingRule> mappingFields = mappingDetail.getMappingFields().stream()
+      .map(field -> {
+        if (discoverySuppressPath.equals(field.getPath())) {
+          found[0] = true;
+          return createBooleanField(field.getName(), field.getPath(), true, MappingRule.BooleanFieldAction.ALL_FALSE);
+        }
+        return field;
+      })
+      .toList();
+    if (!found[0]) {
+      throw new IllegalStateException("Mapping detail is missing required foundation seed field: "
+        + discoverySuppressPath);
+    }
+
+    return mappingDetail.withMappingFields(mappingFields);
   }
 
   private static MappingRule createFieldWithSubfields(String name, String path, boolean enabled,

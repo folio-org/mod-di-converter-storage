@@ -6,6 +6,7 @@ import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.folio.exports.GenerationOutcome.BlockedUnsupportedWorkflow;
+import org.folio.foundation.FoundationSeedProfile;
 import org.folio.graph.ProfileDepthFirstIterator;
 import org.folio.graph.edges.MatchRelationshipEdge;
 import org.folio.graph.edges.NonMatchRelationshipEdge;
@@ -39,6 +40,7 @@ import java.lang.reflect.Method;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -80,6 +82,24 @@ public class ProfileHydration {
    * @param graph  The graph representing the profiles and their relationships.
    */
   public Optional<Object> hydrate(int repoId, Graph<Profile, RegularEdge> graph) {
+    return hydrateInternal(repoId, graph, false)
+      .map(HydrationResult::rootProfile);
+  }
+
+  public Optional<HydrationResult> hydrateFoundationSeedProfile(
+      FoundationSeedProfile seedProfile,
+      Graph<Profile, RegularEdge> graph) {
+    return hydrateInternal(seedProfile.repoId(), graph, true);
+  }
+
+  public void rollback(HydrationResult result) {
+    rollbackCreatedProfiles(result.createdObjectsInFolio(), result.createdProfiles());
+  }
+
+  private Optional<HydrationResult> hydrateInternal(
+      int repoId,
+      Graph<Profile, RegularEdge> graph,
+      boolean foundationSeedProfile) {
     Optional<BlockedUnsupportedWorkflow> blocked = new GraphProfileShapeValidator().validate(graph);
     if (blocked.isPresent()) {
       LOGGER.error("Export blocked by rule {}: {}", blocked.get().rule(), blocked.get().message());
@@ -124,7 +144,8 @@ public class ProfileHydration {
           .withExistingRecordType(EntityType.fromValue(existingRecordType));
 
         // Add default mappingDetails based on existing record type and parent action context.
-        MappingDetail mappingDetails = mappingDetailsFor(graph, mappingProfileNode, existingRecordType);
+        MappingDetail mappingDetails = mappingDetailsFor(
+          foundationSeedProfile, graph, mappingProfileNode, existingRecordType);
         if (mappingDetails != null) {
           mappingProfile.withMappingDetails(mappingDetails);
         }
@@ -278,7 +299,11 @@ public class ProfileHydration {
       return rollbackAndEmpty(createdObjectsInFolio, createdProfiles);
     }
 
-    return Optional.ofNullable(createdObjectsInFolio.get(jobProfile.get()));
+    Object rootProfile = createdObjectsInFolio.get(jobProfile.get());
+    return Optional.ofNullable(rootProfile)
+      .map(root -> new HydrationResult(root,
+        Collections.unmodifiableMap(new HashMap<>(createdObjectsInFolio)),
+        List.copyOf(createdProfiles)));
   }
 
   private String systemControlNumberTypeId() {
@@ -292,12 +317,16 @@ public class ProfileHydration {
   }
 
   private MappingDetail mappingDetailsFor(
+      boolean foundationSeedProfile,
       Graph<Profile, RegularEdge> graph,
       MappingProfileNode mappingProfileNode,
       String existingRecordType) {
     Optional<ActionProfileNode> marcAction = parentMarcAction(graph, mappingProfileNode, existingRecordType);
     if (marcAction.isPresent()) {
       return marcMappingDetailsFor(existingRecordType, marcAction.get().action());
+    }
+    if (foundationSeedProfile) {
+      return MappingDetailsFactory.createFoundationMappingDetailsForRecordType(existingRecordType);
     }
     return MappingDetailsFactory.createMappingDetailsForRecordType(existingRecordType);
   }
@@ -378,7 +407,9 @@ public class ProfileHydration {
     }
   }
 
-  private Optional<Object> rollbackAndEmpty(Map<Profile, Object> createdObjectsInFolio, List<Profile> createdProfiles) {
+  private Optional<HydrationResult> rollbackAndEmpty(
+      Map<Profile, Object> createdObjectsInFolio,
+      List<Profile> createdProfiles) {
     rollbackCreatedProfiles(createdObjectsInFolio, createdProfiles);
     return Optional.empty();
   }
@@ -454,4 +485,10 @@ public class ProfileHydration {
     }
     return null;
   }
+
+  public record HydrationResult(
+    Object rootProfile,
+    Map<Profile, Object> createdObjectsInFolio,
+    List<Profile> createdProfiles
+  ) {}
 }

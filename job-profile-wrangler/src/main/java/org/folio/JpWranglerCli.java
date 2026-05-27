@@ -16,6 +16,7 @@ import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -44,6 +45,7 @@ import org.folio.exports.PathExtractionResult;
 import org.folio.exports.PathOutcome;
 import org.folio.exports.ReactTo;
 import org.folio.exports.StrictRecordWriter;
+import org.folio.foundation.FoundationSeedProfile;
 import org.folio.graph.GraphReader;
 import org.folio.graph.GraphWriter;
 import org.folio.graph.GraphWriterEnhanced;
@@ -408,19 +410,55 @@ public class JpWranglerCli implements Callable<Integer> {
     @Option(names = {"--all"}, description = "Export all job profiles")
     boolean exportAll;
 
+    @Option(names = {"--foundation-seed-profiles", "--foundation-profiles"},
+      description = "Export built-in foundation seed profiles jp-900, jp-901, and jp-902")
+    boolean exportFoundationSeedProfiles;
+
     @Override
     public Integer call() {
-      if (repoId == null && !exportAll) {
-        LOGGER.error("Either --id or --all must be specified");
+      if (selectedExportModeCount(repoId, exportAll, exportFoundationSeedProfiles) != 1) {
+        LOGGER.error("Specify --id, --all, or --foundation-seed-profiles");
         return 1;
       }
 
       try {
-        ensureRepositoryExists();
+        if (!exportFoundationSeedProfiles) {
+          ensureRepositoryExists();
+        }
         FolioClient client = folioOptions.createFolioClient();
         ProfileHydration hydration = new ProfileHydration(client);
 
-        if (exportAll) {
+        if (exportFoundationSeedProfiles) {
+          Map<FoundationSeedProfile, Graph<Profile, RegularEdge>> seedGraphs = new LinkedHashMap<>();
+          for (FoundationSeedProfile seedProfile : FoundationSeedProfile.values()) {
+            seedGraphs.put(seedProfile, seedProfile.graph());
+          }
+
+          List<Integer> failedProfileIds = new ArrayList<>();
+          List<ProfileHydration.HydrationResult> createdSeedProfiles = new ArrayList<>();
+          for (Map.Entry<FoundationSeedProfile, Graph<Profile, RegularEdge>> seedEntry : seedGraphs.entrySet()) {
+            FoundationSeedProfile seedProfile = seedEntry.getKey();
+            try {
+              var result = hydration.hydrateFoundationSeedProfile(seedProfile, seedEntry.getValue());
+              if (result.isPresent()) {
+                createdSeedProfiles.add(result.get());
+                LOGGER.info("Exported foundation seed profile jp-{}", seedProfile.repoId());
+              } else {
+                LOGGER.error("Failed to export foundation seed profile jp-{}", seedProfile.repoId());
+                failedProfileIds.add(seedProfile.repoId());
+              }
+            } catch (Exception e) {
+              LOGGER.error("Error exporting foundation seed profile jp-{}: {}",
+                seedProfile.repoId(), e.getMessage());
+              failedProfileIds.add(seedProfile.repoId());
+            }
+          }
+          if (!failedProfileIds.isEmpty()) {
+            rollbackSeedProfiles(hydration, createdSeedProfiles);
+            LOGGER.error("Foundation seed profile export failed for repository IDs: {}", failedProfileIds);
+            return 1;
+          }
+        } else if (exportAll) {
           // Export all profiles
           java.util.List<Integer> profileIds = listAvailableProfileIds();
           if (profileIds.isEmpty()) {
@@ -488,6 +526,28 @@ public class JpWranglerCli implements Callable<Integer> {
       } catch (Exception e) {
         LOGGER.error("Export failed: {}", e.getMessage(), e);
         return 1;
+      }
+    }
+
+    static int selectedExportModeCount(Integer repoId, boolean exportAll, boolean exportFoundationSeedProfiles) {
+      int count = 0;
+      if (repoId != null) {
+        count++;
+      }
+      if (exportAll) {
+        count++;
+      }
+      if (exportFoundationSeedProfiles) {
+        count++;
+      }
+      return count;
+    }
+
+    static void rollbackSeedProfiles(
+        ProfileHydration hydration,
+        List<ProfileHydration.HydrationResult> createdSeedProfiles) {
+      for (int i = createdSeedProfiles.size() - 1; i >= 0; i--) {
+        hydration.rollback(createdSeedProfiles.get(i));
       }
     }
   }

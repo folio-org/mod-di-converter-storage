@@ -1,0 +1,7 @@
+strict digraph G {
+  1 [ dataType="MARC" name="Job Profile" order="0" shape="plain" ];
+  2 [ name="Action Profile" action="CREATE" folioRecord="INSTANCE" order="0" shape="plain" ];
+  3 [ incomingRecordType="MARC_BIBLIOGRAPHIC" name="Mapping Profile" existingRecordType="INSTANCE" order="0" shape="plain" ];
+  2 -> 3 [ label="LINKS" ];
+  1 -> 2 [ label="LINKS" ];
+}

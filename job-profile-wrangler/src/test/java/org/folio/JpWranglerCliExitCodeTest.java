@@ -2,14 +2,18 @@ package org.folio;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.folio.graph.nodes.Profile;
 import org.folio.http.FolioClient;
+import org.folio.hydration.ProfileHydration;
 import org.folio.imports.ImportOutcome;
 import org.folio.imports.ImportReport;
 import org.junit.Test;
 import picocli.CommandLine;
 
+import java.util.HashMap;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -20,6 +24,7 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.when;
 
 public class JpWranglerCliExitCodeTest {
@@ -30,6 +35,32 @@ public class JpWranglerCliExitCodeTest {
     int exitCode = new CommandLine(new JpWranglerCli()).execute("generate", "profile-id");
 
     assertEquals(1, exitCode);
+  }
+
+  @Test
+  public void exportModesAreMutuallyExclusive() {
+    assertEquals(0, JpWranglerCli.ExportCommand.selectedExportModeCount(null, false, false));
+    assertEquals(1, JpWranglerCli.ExportCommand.selectedExportModeCount(5, false, false));
+    assertEquals(1, JpWranglerCli.ExportCommand.selectedExportModeCount(null, true, false));
+    assertEquals(1, JpWranglerCli.ExportCommand.selectedExportModeCount(null, false, true));
+    assertEquals(2, JpWranglerCli.ExportCommand.selectedExportModeCount(5, false, true));
+    assertEquals(2, JpWranglerCli.ExportCommand.selectedExportModeCount(null, true, true));
+    assertEquals(3, JpWranglerCli.ExportCommand.selectedExportModeCount(5, true, true));
+  }
+
+  @Test
+  public void foundationSeedRollbackRunsInReverseCreationOrder() {
+    ProfileHydration hydration = mock(ProfileHydration.class);
+    ProfileHydration.HydrationResult first =
+      new ProfileHydration.HydrationResult(new Object(), new HashMap<>(), new ArrayList<Profile>());
+    ProfileHydration.HydrationResult second =
+      new ProfileHydration.HydrationResult(new Object(), new HashMap<>(), new ArrayList<Profile>());
+
+    JpWranglerCli.ExportCommand.rollbackSeedProfiles(hydration, List.of(first, second));
+
+    var inOrder = inOrder(hydration);
+    inOrder.verify(hydration).rollback(second);
+    inOrder.verify(hydration).rollback(first);
   }
 
   @Test

@@ -144,7 +144,7 @@ each generated record's MARC shape. Do not import the whole foundation file thro
 `jp-001`; that profile creates Instance + Holdings + Item for every record and will
 reject valid Holdings-only seeds that intentionally omit Item fields.
 
-The `di-int-tests` harness owns the seed-profile set used for dogfood:
+The wrangler CLI owns the built-in seed-profile set used for dogfood:
 
 | Foundation record shape | Bucket | Use Profile |
 |-------------------------|--------|-------------|
@@ -155,12 +155,8 @@ The `di-int-tests` harness owns the seed-profile set used for dogfood:
 Export these once before the loop if they are not already present in the tenant:
 
 ```bash
-FOUNDATION_REPO=/Users/okolawole/git/folio/ctx-data-import/di-int-tests/scripts/wrangler-foundation-profiles
-for id in 900 901 902; do
-  java -jar target/job-profile-wrangler-2.6.0-SNAPSHOT.jar export \
-    --repository "$FOUNDATION_REPO" \
-    --id "$id"
-done
+java -jar target/job-profile-wrangler-2.6.0-SNAPSHOT.jar export \
+  --foundation-seed-profiles
 ```
 
 Split `test-records-foundation.mrc` into per-bucket MARC files, then run the upload
@@ -194,7 +190,7 @@ FOUNDATION_PROFILE_UUID=$(echo "$FOUNDATION_PROFILE" | jq -r '.jobProfiles[0].id
 FOUNDATION_PROFILE_NAME=$(echo "$FOUNDATION_PROFILE" | jq -r '.jobProfiles[0].name')
 
 if [ "$FOUNDATION_PROFILE_UUID" = "null" ] || [ -z "$FOUNDATION_PROFILE_UUID" ]; then
-  echo "WARNING: $FOUNDATION_PROFILE_PREFIX not found in FOLIO. Export the foundation profiles from di-int-tests first."
+  echo "WARNING: $FOUNDATION_PROFILE_PREFIX not found in FOLIO. Run wrangler export --foundation-seed-profiles first."
   exit 1
 fi
 

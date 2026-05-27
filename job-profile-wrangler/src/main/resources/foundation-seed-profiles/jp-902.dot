@@ -1,0 +1,15 @@
+strict digraph G {
+  1 [ dataType="MARC" name="Job Profile" order="0" shape="plain" ];
+  2 [ name="Action Profile" action="CREATE" folioRecord="INSTANCE" order="0" shape="plain" ];
+  3 [ incomingRecordType="MARC_BIBLIOGRAPHIC" name="Mapping Profile" existingRecordType="INSTANCE" order="0" shape="plain" ];
+  4 [ name="Action Profile" action="CREATE" folioRecord="HOLDINGS" order="1" shape="plain" ];
+  5 [ incomingRecordType="MARC_BIBLIOGRAPHIC" name="Mapping Profile" existingRecordType="HOLDINGS" order="0" shape="plain" ];
+  6 [ name="Action Profile" action="CREATE" folioRecord="ITEM" order="2" shape="plain" ];
+  7 [ incomingRecordType="MARC_BIBLIOGRAPHIC" name="Mapping Profile" existingRecordType="ITEM" order="0" shape="plain" ];
+  2 -> 3 [ label="LINKS" ];
+  1 -> 2 [ label="LINKS" ];
+  4 -> 5 [ label="LINKS" ];
+  1 -> 4 [ label="LINKS" ];
+  6 -> 7 [ label="LINKS" ];
+  1 -> 6 [ label="LINKS" ];
+}

@@ -19,6 +19,10 @@ metadata.
 | `enrich` | Populate generated import records with Instance identifiers/HRIDs after foundation import. |
 | `delete` | Delete tenant profiles by name pattern. |
 
+`export --foundation-seed-profiles` hydrates the built-in `jp-900`/`jp-901`/`jp-902`
+foundation profiles used to seed prerequisite Instance, Holdings, and Item records
+before a developer imports the final generated record set.
+
 ## Connection Defaults
 
 FOLIO connection options can be passed as flags, environment variables, or a dotenv
