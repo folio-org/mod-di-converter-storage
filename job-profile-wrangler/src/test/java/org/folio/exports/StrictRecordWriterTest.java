@@ -296,13 +296,14 @@ public class StrictRecordWriterTest {
       outputBase);
 
     assertEquals(GenerationOutcome.GENERATED, result.overallOutcome().label());
-    assertEquals(1, result.foundationRecords().size());
-    assertEquals(2, result.importRecords().size());
+    assertEquals(0, result.foundationRecords().size());
+    assertEquals(1, result.importRecords().size());
     assertEquals(4, result.pathOutcomes().size());
     assertHoldingsLocation(result.importRecords().get(0), "location-id");
     assertItemFields(result.importRecords().get(0));
-    assertHoldingsLocation(result.importRecords().get(1), "location-id");
-    assertItemFields(result.importRecords().get(1));
+    assertEquals("UPDATE TEST RECORD - Modified from original test record " +
+        result.importRecords().get(0).getControlNumber().substring(0, 8),
+      ((org.marc4j.marc.DataField) result.importRecords().get(0).getVariableField("500")).getSubfield('a').getData());
   }
 
   @Test

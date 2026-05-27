@@ -204,12 +204,27 @@ public class StrictRecordWriter {
       List<CategorizedPath> rootCreatePaths = directCreate.stream()
         .filter(path -> path.reactTo() == ReactTo.NONE)
         .toList();
-      for (List<CategorizedPath> siblingPaths : groupPathsByParentProfile(rootCreatePaths).values()) {
-        if (siblingPaths.isEmpty()) {
-          continue;
+      List<CategorizedPath> rootUpdatePaths = paths.unpairedUpdatePaths().stream()
+        .filter(path -> path.reactTo() == ReactTo.NONE)
+        .toList();
+      boolean hasRootExecutableStack = !rootCreatePaths.isEmpty() && !rootUpdatePaths.isEmpty();
+
+      if (hasRootExecutableStack) {
+        for (List<CategorizedPath> siblingPaths : groupPathsByParentProfile(rootCreatePaths).values()) {
+          if (siblingPaths.isEmpty()) {
+            continue;
+          }
+          attemptRootExecutableStack(siblingPaths, rootUpdatePaths, pathIndex, outcomes, hasGap, firstGap,
+            recordNumber, importRecords, refData, importFile);
         }
-        attemptCreateOnlyGroup(siblingPaths, pathIndex, outcomes, hasGap, firstGap, recordNumber,
-          importRecords, refData, importFile);
+      } else {
+        for (List<CategorizedPath> siblingPaths : groupPathsByParentProfile(rootCreatePaths).values()) {
+          if (siblingPaths.isEmpty()) {
+            continue;
+          }
+          attemptCreateOnlyGroup(siblingPaths, pathIndex, outcomes, hasGap, firstGap, recordNumber,
+            importRecords, refData, importFile);
+        }
       }
 
       for (CategorizedPath createPath : directCreate.stream()
@@ -226,6 +241,9 @@ public class StrictRecordWriter {
     }
 
     for (CategorizedPath updatePath : paths.unpairedUpdatePaths()) {
+      if (updatePath.reactTo() == ReactTo.NONE && !rootCreatePathsFor(paths).isEmpty()) {
+        continue;
+      }
       attemptPath(updatePath, pathIndex[0]++, List.of(destination(foundationFile, "foundation"),
           destination(importFile, "import")), outcomes, hasGap, firstGap, foundationRecords, importRecords, () -> {
         MatchCriteria matchCriteria = updatePath.matchCriteria();
@@ -259,6 +277,59 @@ public class StrictRecordWriter {
 
     GenerationOutcome overall = hasGap[0] ? firstGap[0] : GenerationOutcome.Generated.INSTANCE;
     return new GeneratedRecords(foundationRecords, importRecords, outcomes, overall);
+  }
+
+  private List<CategorizedPath> rootCreatePathsFor(CategorizedPaths paths) {
+    return paths.unpairedCreatePaths().stream()
+      .filter(path -> path.reactTo() == ReactTo.NONE)
+      .toList();
+  }
+
+  private void attemptRootExecutableStack(
+      List<CategorizedPath> createPaths,
+      List<CategorizedPath> updatePaths,
+      int[] pathIndex,
+      List<PathOutcome> outcomes,
+      boolean[] hasGap,
+      GenerationOutcome.GeneratorGap[] firstGap,
+      int[] recordNumber,
+      List<Record> importRecords,
+      MinimalMarcRecordBuilder.ReferenceDataContext refData,
+      Path importFile) {
+    List<CategorizedPath> stackPaths = new ArrayList<>();
+    stackPaths.addAll(createPaths);
+    stackPaths.addAll(updatePaths);
+
+    int firstIndex = pathIndex[0];
+    for (int i = 0; i < stackPaths.size(); i++) {
+      pathIndex[0]++;
+    }
+    int importSize = importRecords.size();
+    try {
+      JobProfilePath consolidatedPath = consolidatePaths(stackPaths);
+      MatchCriteria matchCriteria = stackPaths.get(0).matchCriteria();
+      MinimalMarcRecordBuilder.BuildResult base = MinimalMarcRecordBuilder.buildRecordForPath(
+        consolidatedPath, ++recordNumber[0], null, refData, matchCriteria);
+      MinimalMarcRecordBuilder.BuildResult update =
+        MinimalMarcRecordBuilder.buildUpdateRecordFromBase(base.record(), consolidatedPath, ++recordNumber[0],
+          null, refData, matchCriteria);
+      importRecords.add(update.record());
+      for (int i = 0; i < stackPaths.size(); i++) {
+        outcomes.add(pathOutcome(stackPaths.get(i), firstIndex + i,
+          List.of(destination(importFile, "import")), GenerationOutcome.Generated.INSTANCE));
+      }
+    } catch (GeneratorGapException e) {
+      rollback(importRecords, importSize);
+      hasGap[0] = true;
+      for (int i = 0; i < stackPaths.size(); i++) {
+        CategorizedPath path = stackPaths.get(i);
+        GenerationOutcome.GeneratorGap gap = gapOutcome(path, firstIndex + i, e);
+        if (firstGap[0] == null) {
+          firstGap[0] = gap;
+        }
+        outcomes.add(pathOutcome(path, firstIndex + i, List.of(destination(importFile, "import")), gap));
+      }
+    }
   }
 
   private void attemptCreateOnlyGroup(
@@ -460,9 +531,13 @@ public class StrictRecordWriter {
   }
 
   private JobProfilePath consolidateCreatePaths(List<CategorizedPath> createPaths) {
+    return consolidatePaths(createPaths);
+  }
+
+  private JobProfilePath consolidatePaths(List<CategorizedPath> paths) {
     List<Profile> consolidatedProfiles = new ArrayList<>();
     Set<String> seenProfileIds = new HashSet<>();
-    for (CategorizedPath catPath : createPaths) {
+    for (CategorizedPath catPath : paths) {
       for (Profile profile : catPath.path().getProfiles()) {
         String profileKey = profile.getClass().getSimpleName() + "-" + profile.getName();
         if (profile instanceof ActionProfileNode actionProfile) {
