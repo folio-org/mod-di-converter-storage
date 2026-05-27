@@ -36,6 +36,9 @@ public final class EnrichmentDetector {
 
     for (int pathIndex = 0; pathIndex < paths.size(); pathIndex++) {
       CategorizedPath path = paths.get(pathIndex);
+      if (path.reactTo() == ReactTo.NON_MATCH) {
+        continue;
+      }
       MatchCriteria matchCriteria = path.matchCriteria();
       GenerationOutcome.NeedsEnrichment sourceRecordIdEnrichment =
         sourceRecordIdEnrichment(pathIndex, path, outputBase);

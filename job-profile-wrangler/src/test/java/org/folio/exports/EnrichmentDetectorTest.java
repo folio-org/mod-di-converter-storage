@@ -73,6 +73,31 @@ public class EnrichmentDetectorTest {
   }
 
   @Test
+  public void nonMatchCreateBySrsIdDoesNotNeedSourceRecordEnrichment() {
+    CategorizedPath path = marcBibCreatePath("create-inventory", ReactTo.NON_MATCH, new MatchCriteria(
+      "match-bib",
+      List.of(new MatchCriteria.MatchFieldSpec("999", "f", "f", "s", null)),
+      List.of()
+    ));
+
+    Map<Integer, GenerationOutcome.NeedsEnrichment> result =
+      EnrichmentDetector.detect(List.of(path), OUTPUT_BASE);
+
+    assertTrue(result.isEmpty());
+  }
+
+  @Test
+  public void nonMatchCreateByInstanceHridDoesNotNeedEnrichment() {
+    CategorizedPath path = marcBibCreatePath("create-inventory", ReactTo.NON_MATCH,
+      matchCriteria(nonMarc("instance.hrid", "999", "a", "f", "f")));
+
+    Map<Integer, GenerationOutcome.NeedsEnrichment> result =
+      EnrichmentDetector.detect(List.of(path), OUTPUT_BASE);
+
+    assertTrue(result.isEmpty());
+  }
+
+  @Test
   public void sourceRecordEnrichmentUsesCurrentMatchProfileType() {
     CategorizedPath path = chainedMarcMatchPath("update-instance", new MatchCriteria(
       "match-bib",
@@ -253,6 +278,20 @@ public class EnrichmentDetectorTest {
       pathId
     );
     return new CategorizedPath(path, ReactTo.MATCH, matchCriteria.matchProfileId(), matchCriteria);
+  }
+
+  private CategorizedPath marcBibCreatePath(String pathId, ReactTo reactTo, MatchCriteria matchCriteria) {
+    JobProfilePath path = new JobProfilePath(
+      List.of(
+        new JobProfileNode("job-1", "MARC", 0),
+        new MatchProfileNode("match-bib", "MARC_BIBLIOGRAPHIC", "MARC_BIBLIOGRAPHIC", 0),
+        new ActionProfileNode("action-instance", "CREATE", "INSTANCE", 1),
+        new ActionProfileNode("action-holdings", "CREATE", "HOLDINGS", 2),
+        new ActionProfileNode("action-item", "CREATE", "ITEM", 3)
+      ),
+      pathId
+    );
+    return new CategorizedPath(path, reactTo, matchCriteria.matchProfileId(), matchCriteria);
   }
 
   private CategorizedPath chainedMarcMatchPath(String pathId, MatchCriteria matchCriteria) {
