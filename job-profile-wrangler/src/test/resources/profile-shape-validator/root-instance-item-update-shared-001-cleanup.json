@@ -1,0 +1,117 @@
+{
+  "contentType": "JOB_PROFILE",
+  "content": {
+    "id": "job-1",
+    "name": "Root instance and item updates share 001",
+    "dataType": "MARC"
+  },
+  "childSnapshotWrappers": [
+    {
+      "contentType": "MATCH_PROFILE",
+      "order": 0,
+      "content": {
+        "id": "match-item-1",
+        "name": "Match existing item",
+        "incomingRecordType": "MARC_BIBLIOGRAPHIC",
+        "existingRecordType": "ITEM",
+        "matchDetails": [
+          {
+            "incomingMatchExpression": {
+              "dataValueType": "VALUE_FROM_RECORD",
+              "fields": [
+                { "label": "field", "value": "001" },
+                { "label": "indicator1", "value": "" },
+                { "label": "indicator2", "value": "" },
+                { "label": "recordSubfield", "value": "" }
+              ]
+            },
+            "existingMatchExpression": {
+              "dataValueType": "VALUE_FROM_RECORD",
+              "fields": [
+                { "label": "field", "value": "item.formerIds[]" }
+              ]
+            }
+          }
+        ]
+      },
+      "childSnapshotWrappers": [
+        {
+          "contentType": "ACTION_PROFILE",
+          "reactTo": "MATCH",
+          "content": {
+            "id": "update-item-1",
+            "name": "Update item",
+            "action": "UPDATE",
+            "folioRecord": "ITEM"
+          }
+        }
+      ]
+    },
+    {
+      "contentType": "ACTION_PROFILE",
+      "order": 1,
+      "content": {
+        "id": "modify-marc-cleanup-1",
+        "name": "Modify MARC cleanup",
+        "action": "MODIFY",
+        "folioRecord": "MARC_BIBLIOGRAPHIC"
+      },
+      "childSnapshotWrappers": [
+        {
+          "contentType": "MAPPING_PROFILE",
+          "content": {
+            "id": "mapping-marc-cleanup-1",
+            "name": "MARC cleanup mapping",
+            "incomingRecordType": "MARC_BIBLIOGRAPHIC",
+            "existingRecordType": "MARC_BIBLIOGRAPHIC",
+            "mappingDetails": {
+              "recordType": "MARC_BIBLIOGRAPHIC",
+              "marcMappingOption": "MODIFY"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "contentType": "MATCH_PROFILE",
+      "order": 2,
+      "content": {
+        "id": "match-instance-1",
+        "name": "Match existing instance",
+        "incomingRecordType": "MARC_BIBLIOGRAPHIC",
+        "existingRecordType": "INSTANCE",
+        "matchDetails": [
+          {
+            "incomingMatchExpression": {
+              "dataValueType": "VALUE_FROM_RECORD",
+              "fields": [
+                { "label": "field", "value": "001" },
+                { "label": "indicator1", "value": "" },
+                { "label": "indicator2", "value": "" },
+                { "label": "recordSubfield", "value": "" }
+              ]
+            },
+            "existingMatchExpression": {
+              "dataValueType": "VALUE_FROM_RECORD",
+              "fields": [
+                { "label": "field", "value": "instance.identifiers[].value" }
+              ]
+            }
+          }
+        ]
+      },
+      "childSnapshotWrappers": [
+        {
+          "contentType": "ACTION_PROFILE",
+          "reactTo": "MATCH",
+          "content": {
+            "id": "update-instance-1",
+            "name": "Update instance",
+            "action": "UPDATE",
+            "folioRecord": "INSTANCE"
+          }
+        }
+      ]
+    }
+  ]
+}

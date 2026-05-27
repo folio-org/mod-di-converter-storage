@@ -51,31 +51,34 @@ public class MultipleRootUpdateBranchesRule implements UnsupportedShapeRule {
       return false;
     }
 
-    List<Set<String>> branchMatchKeys = new ArrayList<>();
+    List<BranchInfo> branches = new ArrayList<>();
     boolean sawRootMatchBranch = false;
     for (JsonNode child : orderedChildren(children)) {
       if (isRootMarcBibModifyCleanup(child, sawRootMatchBranch)) {
         continue;
       }
       if (hasUpdateLikeAction(child)) {
-        branchMatchKeys.add(incomingMatchKeys(child));
+        branches.add(new BranchInfo(incomingMatchKeys(child), rootUpdateTarget(child)));
       }
       if ("MATCH_PROFILE".equals(text(child, "contentType", "profileType"))) {
         sawRootMatchBranch = true;
       }
     }
-    if (branchMatchKeys.size() <= 1) {
+    if (branches.size() <= 1) {
+      return false;
+    }
+    if (isCoExecutableInstanceItemUpdateStack(branches)) {
       return false;
     }
 
     Set<String> seen = new HashSet<>();
-    for (Set<String> keys : branchMatchKeys) {
-      if (keys.isEmpty()) {
+    for (BranchInfo branch : branches) {
+      if (branch.matchKeys().isEmpty()) {
         return true;
       }
       // MARC 001 is present on every generated record, so isolation depends on the
       // writer's path-local 001 values never reusing a sibling branch's seeded match value.
-      for (String key : keys) {
+      for (String key : branch.matchKeys()) {
         if (!seen.add(key)) {
           return true;
         }
@@ -84,8 +87,30 @@ public class MultipleRootUpdateBranchesRule implements UnsupportedShapeRule {
     return false;
   }
 
-  private Set<String> incomingMatchKeys(JsonNode rootBranch) {
-    Set<String> keys = new HashSet<>();
+  private boolean isCoExecutableInstanceItemUpdateStack(List<BranchInfo> branches) {
+    if (branches.size() != 2) {
+      return false;
+    }
+    Set<String> targetTypes = new HashSet<>();
+    for (BranchInfo branch : branches) {
+      if (!branch.matchKeys().equals(List.of("001|||"))) {
+        return false;
+      }
+      if (branch.updateTarget().isEmpty()) {
+        return false;
+      }
+      if (!Set.of("INSTANCE", "ITEM").contains(branch.updateTarget())) {
+        return false;
+      }
+      if (!targetTypes.add(branch.updateTarget())) {
+        return false;
+      }
+    }
+    return targetTypes.contains("INSTANCE") && targetTypes.contains("ITEM");
+  }
+
+  private List<String> incomingMatchKeys(JsonNode rootBranch) {
+    List<String> keys = new ArrayList<>();
     for (JsonNode matchProfile : matchProfiles(rootBranch)) {
       JsonNode matchDetails = matchProfile.path("content").path("matchDetails");
       if (!matchDetails.isArray()) {
@@ -122,6 +147,30 @@ public class MultipleRootUpdateBranchesRule implements UnsupportedShapeRule {
     for (JsonNode child : children) {
       collectMatchProfiles(child, matches);
     }
+  }
+
+  private String rootUpdateTarget(JsonNode node) {
+    if (node == null || node.isMissingNode() || node.isNull()) {
+      return "";
+    }
+    if ("ACTION_PROFILE".equals(text(node, "contentType", "profileType"))) {
+      JsonNode content = node.path("content");
+      if ("UPDATE".equals(text(content, "action"))) {
+        return text(content, "folioRecord");
+      }
+    }
+
+    JsonNode children = children(node);
+    if (!children.isArray()) {
+      return "";
+    }
+    for (JsonNode child : children) {
+      String target = rootUpdateTarget(child);
+      if (!target.isEmpty()) {
+        return target;
+      }
+    }
+    return "";
   }
 
   private String expressionKey(JsonNode expression) {
@@ -228,4 +277,6 @@ public class MultipleRootUpdateBranchesRule implements UnsupportedShapeRule {
     }
     return "";
   }
+
+  private record BranchInfo(List<String> matchKeys, String updateTarget) {}
 }

@@ -133,6 +133,39 @@ public class ProfileShapeValidatorTest {
   }
 
   @Test
+  public void rootInstanceAndItemUpdatesSharingIncoming001DoNotMatch() throws Exception {
+    assertNoRuleMatch("root-instance-item-update-shared-001-cleanup.json");
+  }
+
+  @Test
+  public void duplicateInstanceBranchStillMatchesWhenInstanceAndItemShareIncoming001() throws Exception {
+    JsonNode snapshot = fixture("root-instance-item-update-shared-001-cleanup.json").deepCopy();
+    com.fasterxml.jackson.databind.node.ArrayNode children =
+      (com.fasterxml.jackson.databind.node.ArrayNode) snapshot.path("childSnapshotWrappers");
+    children.add(children.get(2).deepCopy());
+
+    Optional<BlockedUnsupportedWorkflow> outcome = ProfileShapeValidator.defaultValidator().validate(snapshot);
+
+    assertTrue(outcome.isPresent());
+    assertEquals(MultipleRootUpdateBranchesRule.RULE_NAME, outcome.get().rule());
+  }
+
+  @Test
+  public void repeatedIncoming001MatchDetailsStillMatch() throws Exception {
+    JsonNode snapshot = fixture("root-instance-item-update-shared-001-cleanup.json").deepCopy();
+    com.fasterxml.jackson.databind.node.ArrayNode matchDetails =
+      (com.fasterxml.jackson.databind.node.ArrayNode) snapshot
+        .path("childSnapshotWrappers").path(0)
+        .path("content").path("matchDetails");
+    matchDetails.add(matchDetails.get(0).deepCopy());
+
+    Optional<BlockedUnsupportedWorkflow> outcome = ProfileShapeValidator.defaultValidator().validate(snapshot);
+
+    assertTrue(outcome.isPresent());
+    assertEquals(MultipleRootUpdateBranchesRule.RULE_NAME, outcome.get().rule());
+  }
+
+  @Test
   public void rootMarcBibModifyCleanupAfterRootMatchDoesNotMatch() throws Exception {
     assertNoRuleMatch("root-marc-bib-modify-cleanup-after-match.json");
   }

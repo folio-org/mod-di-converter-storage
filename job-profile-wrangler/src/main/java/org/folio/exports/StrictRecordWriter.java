@@ -14,7 +14,9 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashSet;
+import java.util.IdentityHashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -120,9 +122,25 @@ public class StrictRecordWriter {
     if (isCreateOnlyProfile && matchTriggered.isEmpty()) {
       groupPathsByParentProfile(directCreate).values().forEach(ordered::addAll);
     } else {
-      ordered.addAll(directCreate);
+      List<CategorizedPath> rootCreatePaths = directCreate.stream()
+        .filter(path -> path.reactTo() == ReactTo.NONE)
+        .toList();
+      List<CategorizedPath> rootUpdatePaths = paths.unpairedUpdatePaths().stream()
+        .filter(path -> path.reactTo() == ReactTo.NONE)
+        .toList();
+      if (!rootCreatePaths.isEmpty() && !rootUpdatePaths.isEmpty()) {
+        groupPathsByParentProfile(rootCreatePaths).values().forEach(group -> {
+          ordered.addAll(group);
+          ordered.addAll(rootUpdatePaths);
+        });
+      } else {
+        ordered.addAll(rootCreatePaths);
+      }
+      directCreate.stream()
+        .filter(path -> path.reactTo() != ReactTo.NONE)
+        .forEach(ordered::add);
     }
-    ordered.addAll(flattenGroupedSiblingMatchUpdates(paths.unpairedUpdatePaths()));
+    ordered.addAll(flattenGroupedSiblingMatchUpdates(standaloneUpdatePathsFor(paths)));
     ordered.addAll(paths.deletePaths());
     return ordered;
   }
@@ -241,7 +259,7 @@ public class StrictRecordWriter {
       }
     }
 
-    for (List<CategorizedPath> updateGroup : groupSiblingMatchUpdates(paths.unpairedUpdatePaths())) {
+    for (List<CategorizedPath> updateGroup : groupSiblingMatchUpdates(standaloneUpdatePathsFor(paths))) {
       if (updateGroup.size() > 1) {
         attemptSiblingMatchUpdateGroup(updateGroup, allCreatePaths, pathIndex, outcomes, hasGap, firstGap,
           recordNumber, foundationRecords, importRecords, refData, foundationFile, importFile);
@@ -249,9 +267,6 @@ public class StrictRecordWriter {
       }
 
       CategorizedPath updatePath = updateGroup.get(0);
-      if (updatePath.reactTo() == ReactTo.NONE && !rootCreatePathsFor(paths).isEmpty()) {
-        continue;
-      }
       attemptPath(updatePath, pathIndex[0]++, List.of(destination(foundationFile, "foundation"),
           destination(importFile, "import")), outcomes, hasGap, firstGap, foundationRecords, importRecords, () -> {
         MatchCriteria matchCriteria = updatePath.matchCriteria();
@@ -291,6 +306,16 @@ public class StrictRecordWriter {
   private List<CategorizedPath> rootCreatePathsFor(CategorizedPaths paths) {
     return paths.unpairedCreatePaths().stream()
       .filter(path -> path.reactTo() == ReactTo.NONE)
+      .toList();
+  }
+
+  private List<CategorizedPath> standaloneUpdatePathsFor(CategorizedPaths paths) {
+    boolean rootCreatesConsumeRootUpdates = !rootCreatePathsFor(paths).isEmpty();
+    if (!rootCreatesConsumeRootUpdates) {
+      return paths.unpairedUpdatePaths();
+    }
+    return paths.unpairedUpdatePaths().stream()
+      .filter(path -> path.reactTo() != ReactTo.NONE)
       .toList();
   }
 
@@ -634,7 +659,18 @@ public class StrictRecordWriter {
   private List<List<CategorizedPath>> groupSiblingMatchUpdates(List<CategorizedPath> updatePaths) {
     Map<String, List<CategorizedPath>> grouped = new LinkedHashMap<>();
     List<List<CategorizedPath>> orderedGroups = new ArrayList<>();
+    Set<CategorizedPath> coExecutablePaths = coExecutableInventoryPaths(updatePaths);
+    boolean emittedCoExecutableGroup = false;
     for (CategorizedPath updatePath : updatePaths) {
+      if (coExecutablePaths.contains(updatePath)) {
+        if (!emittedCoExecutableGroup) {
+          orderedGroups.add(updatePaths.stream()
+            .filter(coExecutablePaths::contains)
+            .toList());
+          emittedCoExecutableGroup = true;
+        }
+        continue;
+      }
       String key = siblingMatchUpdateKey(updatePath);
       if (key == null) {
         orderedGroups.add(List.of(updatePath));
@@ -650,6 +686,41 @@ public class StrictRecordWriter {
     return orderedGroups;
   }
 
+  private Set<CategorizedPath> coExecutableInventoryPaths(List<CategorizedPath> updatePaths) {
+    CategorizedPath instancePath = null;
+    CategorizedPath itemPath = null;
+    List<CategorizedPath> cleanupPaths = new ArrayList<>();
+    for (CategorizedPath updatePath : updatePaths) {
+      if (isMarcBibModifyCleanup(updatePath)) {
+        cleanupPaths.add(updatePath);
+        continue;
+      }
+      if (!isCoExecutableInventoryUpdate(updatePath)) {
+        continue;
+      }
+      String target = getUpdateTargetEntityFromPath(updatePath.path());
+      if ("INSTANCE".equals(target)) {
+        if (instancePath != null) {
+          return Collections.emptySet();
+        }
+        instancePath = updatePath;
+      } else if ("ITEM".equals(target)) {
+        if (itemPath != null) {
+          return Collections.emptySet();
+        }
+        itemPath = updatePath;
+      }
+    }
+    if (instancePath == null || itemPath == null) {
+      return Collections.emptySet();
+    }
+    Set<CategorizedPath> coExecutablePaths = Collections.newSetFromMap(new IdentityHashMap<>());
+    coExecutablePaths.add(instancePath);
+    coExecutablePaths.add(itemPath);
+    coExecutablePaths.addAll(cleanupPaths);
+    return coExecutablePaths;
+  }
+
   private List<CategorizedPath> flattenGroupedSiblingMatchUpdates(List<CategorizedPath> updatePaths) {
     List<CategorizedPath> ordered = new ArrayList<>();
     for (List<CategorizedPath> updateGroup : groupSiblingMatchUpdates(updatePaths)) {
@@ -663,6 +734,36 @@ public class StrictRecordWriter {
       return null;
     }
     return "MATCH:" + path.matchProfileId();
+  }
+
+  private boolean isCoExecutableInventoryUpdate(CategorizedPath path) {
+    if (path.reactTo() != ReactTo.MATCH || !hasOnlyIncoming001Match(path.matchCriteria())) {
+      return false;
+    }
+    return Set.of("INSTANCE", "ITEM").contains(getUpdateTargetEntityFromPath(path.path()));
+  }
+
+  private boolean hasOnlyIncoming001Match(MatchCriteria matchCriteria) {
+    if (matchCriteria == null
+      || matchCriteria.matchFields() == null
+      || matchCriteria.matchFields().size() != 1) {
+      return false;
+    }
+    // Existing-side inventory matches are expected here; co-execution safety depends on the incoming MARC key.
+    MatchCriteria.MatchFieldSpec spec = matchCriteria.matchFields().get(0);
+    return "001".equals(spec.fieldTag())
+      && (spec.indicator1() == null || spec.indicator1().isBlank())
+      && (spec.indicator2() == null || spec.indicator2().isBlank())
+      && (spec.subfieldCode() == null || spec.subfieldCode().isBlank());
+  }
+
+  private boolean isMarcBibModifyCleanup(CategorizedPath path) {
+    return path.reactTo() == ReactTo.NONE
+      && "MARC_BIBLIOGRAPHIC".equals(getUpdateTargetEntityFromPath(path.path()))
+      && path.path().getProfiles().stream()
+        .filter(ActionProfileNode.class::isInstance)
+        .map(ActionProfileNode.class::cast)
+        .anyMatch(this::isMarcBibModifyAction);
   }
 
   private JobProfilePath consolidateCreatePaths(List<CategorizedPath> createPaths) {
