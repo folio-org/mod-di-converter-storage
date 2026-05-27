@@ -93,6 +93,22 @@ public class MinimalMarcRecordBuilderTest {
   }
 
   @Test
+  public void itemFieldsCarryWranglerFormerIdSeedInLocal945Subfield() {
+    MinimalMarcRecordBuilder.ReferenceDataContext refData =
+      new MinimalMarcRecordBuilder.ReferenceDataContext("location-id", "material-type-id", "loan-type-id");
+    JobProfilePath itemPath = path("CREATE", "ITEM");
+
+    MinimalMarcRecordBuilder.BuildResult result =
+      MinimalMarcRecordBuilder.buildRecordForPathWithPrerequisites(itemPath, 1, null, refData, null,
+        java.util.Set.of("HOLDINGS"));
+
+    String controlNumber = result.record().getControlNumber();
+    DataField field945 = (DataField) result.record().getVariableField("945");
+    assertNotNull(field945);
+    assertEquals(controlNumber, field945.getSubfield('f').getData());
+  }
+
+  @Test
   public void itemUpdatePrerequisiteAddsHoldingsFieldsEvenWhenHoldingsIsNotExplicitlyRequested() {
     MinimalMarcRecordBuilder.ReferenceDataContext refData =
       new MinimalMarcRecordBuilder.ReferenceDataContext("location-id", "material-type-id", "loan-type-id");

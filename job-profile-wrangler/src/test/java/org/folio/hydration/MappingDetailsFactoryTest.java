@@ -50,6 +50,62 @@ public class MappingDetailsFactoryTest {
   }
 
   @Test
+  public void defaultHoldingsFormerIdsMappingStaysInert() {
+    MappingDetail mappingDetail = MappingDetailsFactory.createHoldingsMappingDetails();
+
+    MappingRule formerIds = findField(mappingDetail, "formerIds");
+    MappingRule formerIdField = formerIds.getSubfields().get(0).getFields().get(0);
+
+    assertNull(formerIds.getRepeatableFieldAction());
+    assertEquals("formerId", formerIdField.getName());
+    assertEquals("holdings.formerIds[]", formerIdField.getPath());
+    assertEquals("", formerIdField.getValue());
+  }
+
+  @Test
+  public void defaultItemFormerIdsMappingStaysInert() {
+    MappingDetail mappingDetail = MappingDetailsFactory.createItemMappingDetails();
+
+    MappingRule formerIds = findField(mappingDetail, "formerIds");
+    MappingRule formerIdField = formerIds.getSubfields().get(0).getFields().get(0);
+
+    assertNull(formerIds.getRepeatableFieldAction());
+    assertEquals("formerId", formerIdField.getName());
+    assertEquals("item.formerIds[]", formerIdField.getPath());
+    assertEquals("", formerIdField.getValue());
+  }
+
+  @Test
+  public void foundationItemFormerIdsSeedFromWranglerLocal945FieldForItemMatches() {
+    MappingDetail mappingDetail = MappingDetailsFactory.createFoundationItemMappingDetails();
+
+    MappingRule formerIdField = findField(mappingDetail, "formerIds")
+      .getSubfields().get(0)
+      .getFields().get(0);
+
+    assertEquals(MappingRule.RepeatableFieldAction.EXTEND_EXISTING,
+      findField(mappingDetail, "formerIds").getRepeatableFieldAction());
+    assertEquals("formerId", formerIdField.getName());
+    assertEquals("item.formerIds[]", formerIdField.getPath());
+    assertEquals("945$f", formerIdField.getValue());
+  }
+
+  @Test
+  public void foundationHoldingsFormerIdsSeedFromIncoming004ForHoldingsMatches() {
+    MappingDetail mappingDetail = MappingDetailsFactory.createFoundationHoldingsMappingDetails();
+
+    MappingRule formerIdField = findField(mappingDetail, "formerIds")
+      .getSubfields().get(0)
+      .getFields().get(0);
+
+    assertEquals(MappingRule.RepeatableFieldAction.EXTEND_EXISTING,
+      findField(mappingDetail, "formerIds").getRepeatableFieldAction());
+    assertEquals("formerId", formerIdField.getName());
+    assertEquals("holdings.formerIds[]", formerIdField.getPath());
+    assertEquals("004", formerIdField.getValue());
+  }
+
+  @Test
   public void foundationHoldingsDiscoverySuppressSeedsExplicitFalse() {
     MappingDetail mappingDetail = MappingDetailsFactory.createFoundationHoldingsMappingDetails();
 

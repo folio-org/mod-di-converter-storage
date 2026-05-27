@@ -276,7 +276,7 @@ public final class MinimalMarcRecordBuilder {
     // CRITICAL: 945$h uses the same refData.locationId() as 852$b for permanentLocationId matching
     if (needsItemFields) {
       String barcode = "TEST-" + shortId;
-      addItemFields(record, requireRefData(refData), barcode, pathId, reportBuilder);
+      addItemFields(record, requireRefData(refData), barcode, uuid, pathId, reportBuilder);
     }
 
     // Add match fields from match criteria (if any)
@@ -540,7 +540,7 @@ public final class MinimalMarcRecordBuilder {
 
     if (needsItemFields) {
       String barcode = "TEST-" + shortId + "-UPD";
-      addItemFields(record, requireRefData(refData), barcode, pathId, reportBuilder);
+      addItemFields(record, requireRefData(refData), barcode, originalUuid, pathId, reportBuilder);
     }
 
     // Preserve match fields from base record (for UPDATE records to match)
@@ -872,7 +872,7 @@ public final class MinimalMarcRecordBuilder {
    * @param reportBuilder optional report builder for verbose output
    */
   private static void addItemFields(Record record, ReferenceDataContext refData,
-      String barcode, String pathId, GenerationReport.Builder reportBuilder) {
+      String barcode, String formerIdSeed, String pathId, GenerationReport.Builder reportBuilder) {
     String locationId = requireReferenceValue(refData.locationId(), "locations");
     String materialTypeId = requireReferenceValue(refData.materialTypeId(), "material-types");
     String loanTypeId = requireReferenceValue(refData.loanTypeId(), "loan-types");
@@ -882,6 +882,11 @@ public final class MinimalMarcRecordBuilder {
     // $b - Barcode (should be unique)
     if (barcode != null && !barcode.isBlank()) {
       field945.addSubfield(FACTORY.newSubfield('b', barcode));
+    }
+    // $f - Wrangler seed value for item.formerIds[]. Keep this out of 035$a,
+    // which may contain unrelated control numbers after Instance creation.
+    if (formerIdSeed != null && !formerIdSeed.isBlank()) {
+      field945.addSubfield(FACTORY.newSubfield('f', formerIdSeed));
     }
     // $a - Status (status.name) - REQUIRED
     field945.addSubfield(FACTORY.newSubfield('a', DEFAULT_ITEM_STATUS));
@@ -897,6 +902,9 @@ public final class MinimalMarcRecordBuilder {
       reportBuilder.addReferenceData(pathId, "945$h", locationId, "locations");
       if (barcode != null && !barcode.isBlank()) {
         reportBuilder.addFieldGeneration(pathId, "945$b", barcode, "item.barcode");
+      }
+      if (formerIdSeed != null && !formerIdSeed.isBlank()) {
+        reportBuilder.addFieldGeneration(pathId, "945$f", formerIdSeed, "item.formerIds[] seed");
       }
       reportBuilder.addFieldGeneration(pathId, "945$a", DEFAULT_ITEM_STATUS,
           "item.status.name (REQUIRED)");
