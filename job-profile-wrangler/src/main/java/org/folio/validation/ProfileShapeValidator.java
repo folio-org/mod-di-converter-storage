@@ -11,6 +11,7 @@ import org.folio.validation.rules.MatchModifyMarcBibRule;
 import org.folio.validation.rules.MissingMarcMappingOptionRule;
 import org.folio.validation.rules.MultipleRootUpdateBranchesRule;
 import org.folio.validation.rules.PairedAuthorityUpdateCreateRule;
+import org.folio.validation.rules.UpdateItemWithoutItemMatchRule;
 
 import java.util.List;
 import java.util.Objects;
@@ -29,6 +30,7 @@ public class ProfileShapeValidator {
     new CreateHoldingsWithoutInstanceContextRule(),
     new PairedAuthorityUpdateCreateRule(),
     new MultipleRootUpdateBranchesRule(),
+    new UpdateItemWithoutItemMatchRule(),
     new AuthorityNonMatchCreateWith999sRule()
   );
 

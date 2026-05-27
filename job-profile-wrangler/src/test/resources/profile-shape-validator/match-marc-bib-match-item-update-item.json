@@ -1,0 +1,86 @@
+{
+  "contentType": "JOB_PROFILE",
+  "content": {
+    "id": "job-1",
+    "name": "Update item after item match",
+    "dataType": "MARC"
+  },
+  "childSnapshotWrappers": [
+    {
+      "contentType": "MATCH_PROFILE",
+      "content": {
+        "id": "match-marc-bib-1",
+        "name": "Match existing MARC bib",
+        "incomingRecordType": "MARC_BIBLIOGRAPHIC",
+        "existingRecordType": "MARC_BIBLIOGRAPHIC",
+        "matchDetails": [
+          {
+            "incomingMatchExpression": {
+              "dataValueType": "VALUE_FROM_RECORD",
+              "fields": [
+                { "label": "field", "value": "999" },
+                { "label": "indicator1", "value": "f" },
+                { "label": "indicator2", "value": "f" },
+                { "label": "recordSubfield", "value": "s" }
+              ]
+            },
+            "existingMatchExpression": {
+              "dataValueType": "VALUE_FROM_RECORD",
+              "fields": [
+                { "label": "field", "value": "999" },
+                { "label": "indicator1", "value": "f" },
+                { "label": "indicator2", "value": "f" },
+                { "label": "recordSubfield", "value": "s" }
+              ]
+            }
+          }
+        ]
+      },
+      "childSnapshotWrappers": [
+        {
+          "contentType": "MATCH_PROFILE",
+          "reactTo": "MATCH",
+          "content": {
+            "id": "match-item-1",
+            "name": "Match existing item",
+            "incomingRecordType": "MARC_BIBLIOGRAPHIC",
+            "existingRecordType": "ITEM",
+            "matchDetails": [
+              {
+                "incomingMatchExpression": {
+                  "dataValueType": "VALUE_FROM_RECORD",
+                  "fields": [
+                    { "label": "field", "value": "945" },
+                    { "label": "indicator1", "value": " " },
+                    { "label": "indicator2", "value": " " },
+                    { "label": "recordSubfield", "value": "b" }
+                  ]
+                },
+                "existingMatchExpression": {
+                  "dataValueType": "VALUE_FROM_RECORD",
+                  "fields": [
+                    { "label": "field", "value": "item" },
+                    { "label": "field", "value": "barcode" }
+                  ]
+                }
+              }
+            ]
+          },
+          "childSnapshotWrappers": [
+            {
+              "contentType": "ACTION_PROFILE",
+              "reactTo": "MATCH",
+              "content": {
+                "id": "update-item-1",
+                "name": "Update item",
+                "action": "UPDATE",
+                "folioRecord": "ITEM",
+                "order": 0
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

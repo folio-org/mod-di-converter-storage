@@ -62,3 +62,10 @@ The v1 validator walks live job-profile snapshot JSON, not repository DOT files.
 - Predicate: block `MATCH MARC_AUTHORITY -> NON_MATCH CREATE AUTHORITY` when the incoming match expression uses `999 ff $s`.
 - Stack behavior: adding `999 ff $s` to exercise the matcher makes authority create invalid, while omitting it causes the generated record to miss the intended match shape and can produce opaque multiple-match runtime errors.
 - Sweep examples: `jp-011`.
+
+### `update-item-without-item-match-context`
+
+- Predicate: block `UPDATE ITEM` action paths unless the same execution branch has already matched an existing `ITEM`.
+- Allowed variants: `MATCH ... -> MATCH ITEM -> UPDATE ITEM`, where the Item match loads the existing Item into the event payload before the update handler runs.
+- Stack behavior: `UpdateItemEventHandler` checks that both `MARC_BIBLIOGRAPHIC` and `ITEM` context are present before invoking mapping. MARC item fields such as `945$b` can update an already matched item, but they do not load the existing Item by themselves.
+- Sweep examples: `jp-028`.

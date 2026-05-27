@@ -122,7 +122,7 @@ public class StrictRecordWriter {
     } else {
       ordered.addAll(directCreate);
     }
-    ordered.addAll(paths.unpairedUpdatePaths());
+    ordered.addAll(flattenGroupedSiblingMatchUpdates(paths.unpairedUpdatePaths()));
     ordered.addAll(paths.deletePaths());
     return ordered;
   }
@@ -241,7 +241,14 @@ public class StrictRecordWriter {
       }
     }
 
-    for (CategorizedPath updatePath : paths.unpairedUpdatePaths()) {
+    for (List<CategorizedPath> updateGroup : groupSiblingMatchUpdates(paths.unpairedUpdatePaths())) {
+      if (updateGroup.size() > 1) {
+        attemptSiblingMatchUpdateGroup(updateGroup, allCreatePaths, pathIndex, outcomes, hasGap, firstGap,
+          recordNumber, foundationRecords, importRecords, refData, foundationFile, importFile);
+        continue;
+      }
+
+      CategorizedPath updatePath = updateGroup.get(0);
       if (updatePath.reactTo() == ReactTo.NONE && !rootCreatePathsFor(paths).isEmpty()) {
         continue;
       }
@@ -369,6 +376,61 @@ public class StrictRecordWriter {
           firstGap[0] = gap;
         }
         outcomes.add(pathOutcome(path, firstIndex + i, List.of(destination(importFile, "import")), gap));
+      }
+    }
+  }
+
+  private void attemptSiblingMatchUpdateGroup(
+      List<CategorizedPath> siblingPaths,
+      List<CategorizedPath> allCreatePaths,
+      int[] pathIndex,
+      List<PathOutcome> outcomes,
+      boolean[] hasGap,
+      GenerationOutcome.GeneratorGap[] firstGap,
+      int[] recordNumber,
+      List<Record> foundationRecords,
+      List<Record> importRecords,
+      MinimalMarcRecordBuilder.ReferenceDataContext refData,
+      Path foundationFile,
+      Path importFile) {
+    int firstIndex = pathIndex[0];
+    for (int i = 0; i < siblingPaths.size(); i++) {
+      pathIndex[0]++;
+    }
+    int foundationSize = foundationRecords.size();
+    int importSize = importRecords.size();
+    try {
+      JobProfilePath consolidatedPath = consolidatePaths(siblingPaths);
+      MatchCriteria matchCriteria = siblingPaths.get(0).matchCriteria();
+      Set<String> prerequisites = new HashSet<>();
+      for (CategorizedPath siblingPath : siblingPaths) {
+        prerequisites.addAll(getBranchPrerequisiteEntities(siblingPath, allCreatePaths));
+        prerequisites.addAll(getUpdatePrerequisiteEntities(siblingPath));
+      }
+      MinimalMarcRecordBuilder.BuildResult foundation = MinimalMarcRecordBuilder.buildRecordForPathWithPrerequisites(
+        consolidatedPath, ++recordNumber[0], null, refData, matchCriteria, prerequisites);
+      foundationRecords.add(foundation.record());
+      MinimalMarcRecordBuilder.BuildResult update =
+        MinimalMarcRecordBuilder.buildUpdateRecordFromBaseWithPrerequisites(
+          foundation.record(), consolidatedPath, ++recordNumber[0], null, refData, matchCriteria, prerequisites);
+      importRecords.add(update.record());
+      for (int i = 0; i < siblingPaths.size(); i++) {
+        outcomes.add(pathOutcome(siblingPaths.get(i), firstIndex + i,
+          List.of(destination(foundationFile, "foundation"), destination(importFile, "import")),
+          GenerationOutcome.Generated.INSTANCE));
+      }
+    } catch (GeneratorGapException e) {
+      rollback(foundationRecords, foundationSize);
+      rollback(importRecords, importSize);
+      hasGap[0] = true;
+      for (int i = 0; i < siblingPaths.size(); i++) {
+        CategorizedPath path = siblingPaths.get(i);
+        GenerationOutcome.GeneratorGap gap = gapOutcome(path, firstIndex + i, e);
+        if (firstGap[0] == null) {
+          firstGap[0] = gap;
+        }
+        outcomes.add(pathOutcome(path, firstIndex + i,
+          List.of(destination(foundationFile, "foundation"), destination(importFile, "import")), gap));
       }
     }
   }
@@ -569,6 +631,40 @@ public class StrictRecordWriter {
     return grouped;
   }
 
+  private List<List<CategorizedPath>> groupSiblingMatchUpdates(List<CategorizedPath> updatePaths) {
+    Map<String, List<CategorizedPath>> grouped = new LinkedHashMap<>();
+    List<List<CategorizedPath>> orderedGroups = new ArrayList<>();
+    for (CategorizedPath updatePath : updatePaths) {
+      String key = siblingMatchUpdateKey(updatePath);
+      if (key == null) {
+        orderedGroups.add(List.of(updatePath));
+      } else {
+        List<CategorizedPath> group = grouped.computeIfAbsent(key, ignored -> {
+          List<CategorizedPath> created = new ArrayList<>();
+          orderedGroups.add(created);
+          return created;
+        });
+        group.add(updatePath);
+      }
+    }
+    return orderedGroups;
+  }
+
+  private List<CategorizedPath> flattenGroupedSiblingMatchUpdates(List<CategorizedPath> updatePaths) {
+    List<CategorizedPath> ordered = new ArrayList<>();
+    for (List<CategorizedPath> updateGroup : groupSiblingMatchUpdates(updatePaths)) {
+      ordered.addAll(updateGroup);
+    }
+    return ordered;
+  }
+
+  private String siblingMatchUpdateKey(CategorizedPath path) {
+    if (path.reactTo() != ReactTo.MATCH || path.matchProfileId() == null || path.matchProfileId().isBlank()) {
+      return null;
+    }
+    return "MATCH:" + path.matchProfileId();
+  }
+
   private JobProfilePath consolidateCreatePaths(List<CategorizedPath> createPaths) {
     return consolidatePaths(createPaths);
   }
@@ -578,18 +674,23 @@ public class StrictRecordWriter {
     Set<String> seenProfileIds = new HashSet<>();
     for (CategorizedPath catPath : paths) {
       for (Profile profile : catPath.path().getProfiles()) {
-        String profileKey = profile.getClass().getSimpleName() + "-" + profile.getName();
-        if (profile instanceof ActionProfileNode actionProfile) {
-          profileKey = "ActionProfile-" + actionProfile.action() + "-" + actionProfile.folioRecord();
-        } else if (profile instanceof MappingProfileNode mappingProfile) {
-          profileKey = "MappingProfile-" + mappingProfile.existingRecordType();
-        }
+        String profileKey = consolidationProfileKey(profile);
         if (seenProfileIds.add(profileKey)) {
           consolidatedProfiles.add(profile);
         }
       }
     }
     return new JobProfilePath(consolidatedProfiles);
+  }
+
+  private String consolidationProfileKey(Profile profile) {
+    if (profile instanceof ActionProfileNode actionProfile) {
+      return "ActionProfile-" + actionProfile.id() + "-" + actionProfile.action() + "-" + actionProfile.folioRecord();
+    }
+    if (profile instanceof MappingProfileNode mappingProfile) {
+      return "MappingProfile-" + mappingProfile.id() + "-" + mappingProfile.existingRecordType();
+    }
+    return profile.getClass().getSimpleName() + "-" + profile.getName();
   }
 
   private static Path outputFile(Path outputBase, String suffix) {

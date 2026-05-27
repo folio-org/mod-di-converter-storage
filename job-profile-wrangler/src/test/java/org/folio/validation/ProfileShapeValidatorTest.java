@@ -13,6 +13,7 @@ import org.folio.validation.rules.MatchModifyMarcBibRule;
 import org.folio.validation.rules.MissingMarcMappingOptionRule;
 import org.folio.validation.rules.MultipleRootUpdateBranchesRule;
 import org.folio.validation.rules.PairedAuthorityUpdateCreateRule;
+import org.folio.validation.rules.UpdateItemWithoutItemMatchRule;
 import org.junit.Test;
 
 import java.io.IOException;
@@ -160,6 +161,15 @@ public class ProfileShapeValidatorTest {
   }
 
   @Test
+  public void updateItemWithoutItemMatchContextFires() throws Exception {
+    Optional<BlockedUnsupportedWorkflow> outcome = ProfileShapeValidator.defaultValidator()
+      .validate(fixture("update-item-without-item-match-context.json"));
+
+    assertTrue(outcome.isPresent());
+    assertEquals(UpdateItemWithoutItemMatchRule.RULE_NAME, outcome.get().rule());
+  }
+
+  @Test
   public void createInstanceHoldingsItemDoesNotMatch() throws Exception {
     assertNoRuleMatch("create-instance-holdings-item.json");
   }
@@ -187,6 +197,11 @@ public class ProfileShapeValidatorTest {
   @Test
   public void matchInstanceMatchHoldingsCreateItemDoesNotMatch() throws Exception {
     assertNoRuleMatch("match-instance-match-holdings-create-item.json");
+  }
+
+  @Test
+  public void matchItemBeforeUpdateItemDoesNotMatch() throws Exception {
+    assertNoRuleMatch("match-marc-bib-match-item-update-item.json");
   }
 
   @Test

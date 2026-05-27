@@ -206,6 +206,69 @@ public class StrictRecordWriterTest {
   }
 
   @Test
+  public void siblingMatchUpdatesCollapseIntoOneExecutableRecordShape() throws IOException {
+    Path outputBase = temp.getRoot().toPath().resolve("records");
+    JobProfileNode job = new JobProfileNode("job-1", "MARC", 0);
+    MatchProfileNode match = new MatchProfileNode("match-1", "MARC_BIBLIOGRAPHIC", "MARC_BIBLIOGRAPHIC", 0);
+    MatchCriteria matchCriteria = new MatchCriteria("match-1",
+      List.of(new MatchCriteria.MatchFieldSpec("999", "f", "f", "s", null)),
+      List.of());
+    CategorizedPath updateInstance = new CategorizedPath(
+      pathWithPrefix(job, match, "UPDATE", "INSTANCE"), ReactTo.MATCH, "match-1", matchCriteria);
+    CategorizedPath updateHoldings = new CategorizedPath(
+      pathWithPrefix(job, match, "UPDATE", "HOLDINGS"), ReactTo.MATCH, "match-1", matchCriteria);
+
+    StrictRecordWriter.WriteResult result = new StrictRecordWriter().write(
+      new CategorizedPaths(List.of(), List.of(), List.of(updateInstance, updateHoldings), List.of()),
+      new MinimalMarcRecordBuilder.ReferenceDataContext("location-id", "material-type-id", "loan-type-id"),
+      outputBase);
+
+    assertEquals(GenerationOutcome.GENERATED, result.overallOutcome().label());
+    assertEquals(1, result.foundationRecords().size());
+    assertEquals(1, result.importRecords().size());
+    assertEquals(2, result.pathOutcomes().size());
+    assertHoldingsLocation(result.foundationRecords().get(0), "location-id");
+    assertItemFields(result.foundationRecords().get(0));
+    assertHoldingsLocation(result.importRecords().get(0), "location-id");
+    assertItemFields(result.importRecords().get(0));
+  }
+
+  @Test
+  public void pathOrderMatchesGroupedSiblingUpdateOutcomeOrder() throws IOException {
+    Path outputBase = temp.getRoot().toPath().resolve("records");
+    StrictRecordWriter writer = new StrictRecordWriter();
+    JobProfileNode job = new JobProfileNode("job-1", "MARC", 0);
+    MatchProfileNode firstMatch = new MatchProfileNode("match-1", "MARC_BIBLIOGRAPHIC", "MARC_BIBLIOGRAPHIC", 0);
+    MatchProfileNode secondMatch = new MatchProfileNode("match-2", "MARC_BIBLIOGRAPHIC", "MARC_BIBLIOGRAPHIC", 1);
+    MatchCriteria firstCriteria = new MatchCriteria("match-1",
+      List.of(new MatchCriteria.MatchFieldSpec("999", "f", "f", "s", null)),
+      List.of());
+    MatchCriteria secondCriteria = new MatchCriteria("match-2",
+      List.of(new MatchCriteria.MatchFieldSpec("001", null, null, null, null)),
+      List.of());
+    CategorizedPath firstUpdateInstance = new CategorizedPath(
+      pathWithPrefix(job, firstMatch, "UPDATE", "INSTANCE"), ReactTo.MATCH, "match-1", firstCriteria);
+    CategorizedPath secondUpdateInstance = new CategorizedPath(
+      pathWithPrefix(job, secondMatch, "UPDATE", "INSTANCE"), ReactTo.MATCH, "match-2", secondCriteria);
+    CategorizedPath firstUpdateHoldings = new CategorizedPath(
+      pathWithPrefix(job, firstMatch, "UPDATE", "HOLDINGS"), ReactTo.MATCH, "match-1", firstCriteria);
+    CategorizedPaths paths = new CategorizedPaths(
+      List.of(), List.of(), List.of(firstUpdateInstance, secondUpdateInstance, firstUpdateHoldings), List.of());
+
+    List<CategorizedPath> orderedPaths = writer.pathOrder(paths);
+    StrictRecordWriter.WriteResult result = writer.write(
+      paths,
+      new MinimalMarcRecordBuilder.ReferenceDataContext("location-id", "material-type-id", "loan-type-id"),
+      outputBase);
+
+    assertEquals(orderedPaths.size(), result.pathOutcomes().size());
+    for (int i = 0; i < orderedPaths.size(); i++) {
+      assertEquals(orderedPaths.get(i).path().getPathId(), result.pathOutcomes().get(i).pathId());
+      assertEquals(i, result.pathOutcomes().get(i).pathIndex());
+    }
+  }
+
+  @Test
   public void explicitMatchIdDoesNotShareBranchWithNullMatchIdEvenWithCommonAncestor() throws IOException {
     Path outputBase = temp.getRoot().toPath().resolve("records");
     JobProfileNode job = new JobProfileNode("job-1", "MARC", 0);
