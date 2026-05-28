@@ -4,10 +4,15 @@ import java.io.Console;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.BufferedReader;
+import java.io.InputStream;
 import java.io.OutputStream;
 import java.time.Instant;
+import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
+import java.time.Duration;
 import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
 import java.nio.file.Files;
 import java.nio.file.AtomicMoveNotSupportedException;
 import java.nio.file.Path;
@@ -90,6 +95,8 @@ import picocli.CommandLine.Parameters;
     JpWranglerCli.ListCommand.class,
     JpWranglerCli.VisualizeCommand.class,
     JpWranglerCli.GenerateCommand.class,
+    JpWranglerCli.ImportMarcCommand.class,
+    JpWranglerCli.SeedFoundationCommand.class,
     JpWranglerCli.DeleteCommand.class,
     JpWranglerCli.EnrichCommand.class
   },
@@ -136,6 +143,9 @@ public class JpWranglerCli implements Callable<Integer> {
     @Option(names = {"--env-file"}, description = "Path to dotenv file for FOLIO connection options")
     String envFile;
 
+    @Option(names = {"--http-timeout-seconds"}, description = "HTTP read/write timeout for slower local FOLIO stacks")
+    int httpTimeoutSeconds = 120;
+
     void ensurePassword() {
       applyEnvironmentDefaults();
       if (password == null && token == null) {
@@ -160,7 +170,7 @@ public class JpWranglerCli implements Callable<Integer> {
         return token;
       } else if (tenant != null && username != null && password != null && baseUrl != null) {
         Optional<String> okapiToken = FolioClient.getOkapiToken(
-          new OkHttpClient(),
+          httpClient(),
           HttpUrl.parse(baseUrl).newBuilder(),
           tenant,
           username,
@@ -177,13 +187,23 @@ public class JpWranglerCli implements Callable<Integer> {
         throw new IllegalArgumentException("FOLIO base URL is required");
       }
 
+      OkHttpClient httpClient = httpClient();
       if (token != null) {
-        return new FolioClient(new OkHttpClient(), () -> HttpUrl.parse(baseUrl).newBuilder(), token, tenant, okapiUrl);
+        return new FolioClient(httpClient, () -> HttpUrl.parse(baseUrl).newBuilder(), token, tenant, okapiUrl);
       } else if (tenant != null && username != null && password != null) {
-        return new FolioClient(new OkHttpClient(), () -> HttpUrl.parse(baseUrl).newBuilder(), getToken(), tenant, okapiUrl);
+        return new FolioClient(httpClient, () -> HttpUrl.parse(baseUrl).newBuilder(), getToken(), tenant, okapiUrl);
       } else {
         throw new IllegalArgumentException("Either token or tenant, username, and password must be provided");
       }
+    }
+
+    OkHttpClient httpClient() {
+      long timeoutSeconds = Math.max(1L, (long) httpTimeoutSeconds);
+      return new OkHttpClient.Builder()
+        .connectTimeout(Duration.ofSeconds(timeoutSeconds))
+        .readTimeout(Duration.ofSeconds(timeoutSeconds))
+        .writeTimeout(Duration.ofSeconds(timeoutSeconds))
+        .build();
     }
 
     void applyEnvironmentDefaults() {
@@ -306,12 +326,17 @@ public class JpWranglerCli implements Callable<Integer> {
   }
 
   // Helper class for repository operations
-  private static class RepositoryOptions {
-    @Option(names = {"-r", "--repository"}, description = "Path to job profile repository", defaultValue = "./repository")
+  static class RepositoryOptions {
+    private static final String DEFAULT_WRITABLE_REPOSITORY = "./repository";
+    private static final int MAX_EMBEDDED_REPOSITORY_ID = 999;
+    private static Path embeddedRepositoryPath;
+
+    @Option(names = {"-r", "--repository"},
+      description = "Path to job profile repository. If omitted, read commands use ./repository when populated, otherwise the embedded repository.")
     String repoPath;
 
     void ensureRepositoryExists() {
-      Path path = Paths.get(repoPath);
+      Path path = Paths.get(writableRepoPath());
       if (!Files.exists(path)) {
         try {
           Files.createDirectories(path);
@@ -322,6 +347,82 @@ public class JpWranglerCli implements Callable<Integer> {
       }
     }
 
+    String writableRepoPath() {
+      return hasExplicitRepository() ? explicitRepoPath() : DEFAULT_WRITABLE_REPOSITORY;
+    }
+
+    String readableRepoPath() throws IOException {
+      return readableRepoPath(null);
+    }
+
+    String readableRepoPath(Integer requiredRepoId) throws IOException {
+      if (hasExplicitRepository()) {
+        return explicitRepoPath();
+      }
+      Path localRepository = Paths.get(DEFAULT_WRITABLE_REPOSITORY);
+      if (containsDotProfiles(localRepository)) {
+        return localRepository.toString();
+      }
+      return embeddedRepositoryPath(requiredRepoId).toString();
+    }
+
+    boolean hasExplicitRepository() {
+      return repoPath != null;
+    }
+
+    private String explicitRepoPath() {
+      if (repoPath.isBlank()) {
+        throw new IllegalArgumentException("--repository must not be blank");
+      }
+      return repoPath;
+    }
+
+    private static boolean containsDotProfiles(Path path) throws IOException {
+      if (!Files.isDirectory(path)) {
+        return false;
+      }
+      try (java.util.stream.Stream<Path> stream = Files.list(path)) {
+        return stream
+          .filter(Files::isRegularFile)
+          .map(p -> p.getFileName().toString())
+          .anyMatch(name -> GraphWriter.DOT_FILE_PATTERN.matcher(name).matches());
+      }
+    }
+
+    private static synchronized Path embeddedRepositoryPath(Integer requiredRepoId) throws IOException {
+      if (embeddedRepositoryPath != null && embeddedRepositoryHasRequiredProfiles(embeddedRepositoryPath, requiredRepoId)) {
+        return embeddedRepositoryPath;
+      }
+
+      Path tempRepo = Files.createTempDirectory("jp-wrangler-embedded-repository-");
+      int copied = 0;
+      ClassLoader classLoader = JpWranglerCli.class.getClassLoader();
+      for (int id = 1; id <= MAX_EMBEDDED_REPOSITORY_ID; id++) {
+        String fileName = GraphWriter.genGraphFileName(id);
+        String resourcePath = "repository/" + fileName;
+        try (InputStream input = classLoader.getResourceAsStream(resourcePath)) {
+          if (input == null) {
+            continue;
+          }
+          Files.copy(input, tempRepo.resolve(fileName), StandardCopyOption.REPLACE_EXISTING);
+          copied++;
+        }
+      }
+      if (copied == 0) {
+        Files.deleteIfExists(tempRepo);
+        throw new IOException("Embedded repository is not available in this jar");
+      }
+      embeddedRepositoryPath = tempRepo;
+      return embeddedRepositoryPath;
+    }
+
+    private static boolean embeddedRepositoryHasRequiredProfiles(Path path, Integer requiredRepoId) throws IOException {
+      if (requiredRepoId == null) {
+        return containsDotProfiles(path);
+      }
+      return Files.isRegularFile(path.resolve(GraphWriter.genGraphFileName(requiredRepoId)));
+    }
+
     /**
      * Lists all available job profile IDs in the repository.
      *
@@ -329,7 +430,7 @@ public class JpWranglerCli implements Callable<Integer> {
      * @throws IOException If an error occurs reading the repository
      */
     java.util.List<Integer> listAvailableProfileIds() throws IOException {
-      Path path = Paths.get(repoPath);
+      Path path = Paths.get(readableRepoPath());
       if (!Files.exists(path)) {
         return java.util.Collections.emptyList();
       }
@@ -368,9 +469,9 @@ public class JpWranglerCli implements Callable<Integer> {
 
     @Override
     public Integer call() {
-      ensureRepositoryExists();
-
       try {
+        repoPath = writableRepoPath();
+        ensureRepositoryExists();
         FolioClient client = folioOptions.createFolioClient();
         RepoImport importer = new RepoImport(client, repoPath);
         ImportReport report = importer.importProfiles();
@@ -379,6 +480,9 @@ public class JpWranglerCli implements Callable<Integer> {
           report.addedCount(), report.duplicateCount(), report.blockedCount(), report.errorCount());
         System.out.println("Report: " + reportPath);
         return exitCodeForReport(report);
+      } catch (IllegalArgumentException e) {
+        LOGGER.error("Import failed: {}", e.getMessage());
+        return 1;
       } catch (Exception e) {
         LOGGER.error("Import failed: {}", e.getMessage(), e);
         return 1;
@@ -422,13 +526,13 @@ public class JpWranglerCli implements Callable<Integer> {
       }
 
       try {
-        if (!exportFoundationSeedProfiles) {
-          ensureRepositoryExists();
-        }
         FolioClient client = folioOptions.createFolioClient();
         ProfileHydration hydration = new ProfileHydration(client);
 
         if (exportFoundationSeedProfiles) {
+          List<DeleteCommand.ProfileDeletionData> seedProfilesToReplace = foundationSeedProfilesToReplace(client);
+          DeleteCommand.ProfileReferences orphanSeedProfilesToReplace =
+            foundationSeedOrphanProfilesToReplace(client, seedProfilesToReplace);
           Map<FoundationSeedProfile, Graph<Profile, RegularEdge>> seedGraphs = new LinkedHashMap<>();
           for (FoundationSeedProfile seedProfile : FoundationSeedProfile.values()) {
             seedGraphs.put(seedProfile, seedProfile.graph());
@@ -458,18 +562,26 @@ public class JpWranglerCli implements Callable<Integer> {
             LOGGER.error("Foundation seed profile export failed for repository IDs: {}", failedProfileIds);
             return 1;
           }
+          DeleteCommand.DeletionResult deletionResult = deleteSeedProfiles(client, seedProfilesToReplace,
+            orphanSeedProfilesToReplace);
+          if (deletionResult.totalFailed() > 0) {
+            LOGGER.error("Foundation seed profile replacement left {} old profile deletion(s) failed",
+              deletionResult.totalFailed());
+            return 1;
+          }
         } else if (exportAll) {
           // Export all profiles
+          String sourceRepoPath = readableRepoPath();
           java.util.List<Integer> profileIds = listAvailableProfileIds();
           if (profileIds.isEmpty()) {
-            System.err.println("No job profiles found in repository: " + repoPath);
+            System.err.println("No job profiles found in repository: " + sourceRepoPath);
             return 1;
           }
 
           List<Integer> failedProfileIds = new ArrayList<>();
           for (Integer id : profileIds) {
             try {
-              Graph<Profile, RegularEdge> graph = GraphReader.read(repoPath, id);
+              Graph<Profile, RegularEdge> graph = GraphReader.read(sourceRepoPath, id);
               var result = hydration.hydrate(id, graph);
               if (result.isPresent()) {
                 LOGGER.info("Exported job profile {}", id);
@@ -488,8 +600,9 @@ public class JpWranglerCli implements Callable<Integer> {
           }
         } else {
           // Export specific profile
+          String sourceRepoPath = readableRepoPath(repoId);
           String filename = GraphWriter.genGraphFileName(repoId);
-          Path profilePath = Paths.get(repoPath, filename);
+          Path profilePath = Paths.get(sourceRepoPath, filename);
 
           if (!Files.exists(profilePath)) {
             System.err.println("Error: Job profile with ID " + repoId + " does not exist.");
@@ -512,7 +625,7 @@ public class JpWranglerCli implements Callable<Integer> {
             return 1;
           }
 
-          Graph<Profile, RegularEdge> graph = GraphReader.read(repoPath, repoId);
+          Graph<Profile, RegularEdge> graph = GraphReader.read(sourceRepoPath, repoId);
           var result = hydration.hydrate(repoId, graph);
           if (result.isPresent()) {
             LOGGER.info("Exported job profile {}", repoId);
@@ -550,6 +663,83 @@ public class JpWranglerCli implements Callable<Integer> {
         hydration.rollback(createdSeedProfiles.get(i));
       }
     }
+
+    static List<DeleteCommand.ProfileDeletionData> foundationSeedProfilesToReplace(FolioClient client) {
+      List<DeleteCommand.ProfileDeletionData> profilesToReplace = new ArrayList<>();
+      for (FoundationSeedProfile seedProfile : FoundationSeedProfile.values()) {
+        client.getJobProfiles(Map.of("query", seedProfileNameQuery(seedProfile.repoId())))
+          .forEach(profile -> profilesToReplace.add(seedProfileDeletionData(client, profile)));
+      }
+      return profilesToReplace;
+    }
+
+    static DeleteCommand.ProfileReferences foundationSeedOrphanProfilesToReplace(
+        FolioClient client,
+        List<DeleteCommand.ProfileDeletionData> seedProfilesToReplace) {
+      DeleteCommand.ProfileReferences namedSeedChildren = DeleteCommand.ProfileReferences.empty();
+      for (FoundationSeedProfile seedProfile : FoundationSeedProfile.values()) {
+        Map<String, String> query = Map.of("query", seedProfileNameQuery(seedProfile.repoId()));
+        client.getActionProfiles(query)
+          .map(profile -> profile.path("id").asText(""))
+          .filter(id -> !id.isBlank())
+          .forEach(namedSeedChildren.actionIds()::add);
+        client.getMappingProfiles(query)
+          .map(profile -> profile.path("id").asText(""))
+          .filter(id -> !id.isBlank())
+          .forEach(namedSeedChildren.mappingIds()::add);
+        client.getMatchProfiles(query)
+          .map(profile -> profile.path("id").asText(""))
+          .filter(id -> !id.isBlank())
+          .forEach(namedSeedChildren.matchIds()::add);
+      }
+
+      DeleteCommand.ProfileReferences referencedBySeedJobs = DeleteCommand.ProfileReferences.empty();
+      seedProfilesToReplace.stream()
+        .map(DeleteCommand.ProfileDeletionData::references)
+        .forEach(referencedBySeedJobs::addAll);
+      return namedSeedChildren.without(referencedBySeedJobs);
+    }
+
+    private static DeleteCommand.ProfileDeletionData seedProfileDeletionData(FolioClient client, JsonNode profile) {
+      String id = profile.path("id").asText();
+      String name = profile.path("name").asText();
+      Optional<JsonNode> snapshotOpt = client.getJobProfileSnapshot(id);
+      if (snapshotOpt.isEmpty()) {
+        LOGGER.warn("Could not fetch foundation seed profile snapshot for {} ({}); deleting only the job profile "
+          + "and relying on the anchored seed-name orphan sweep for child profiles.", name, id);
+        return new DeleteCommand.ProfileDeletionData(id, name, Set.of(), Set.of(), Set.of());
+      }
+      DeleteCommand.ProfileReferences references = DeleteCommand.collectProfileIds(snapshotOpt.get());
+      return new DeleteCommand.ProfileDeletionData(id, name, references.matchIds(), references.actionIds(),
+        references.mappingIds());
+    }
+
+    static String seedProfileNameQuery(int repoId) {
+      return "name==\"jp-" + repoId + " *\"";
+    }
+
+    static DeleteCommand.DeletionResult deleteSeedProfiles(
+        FolioClient client,
+        List<DeleteCommand.ProfileDeletionData> seedProfilesToReplace) {
+      return deleteSeedProfiles(client, seedProfilesToReplace, DeleteCommand.ProfileReferences.empty());
+    }
+
+    static DeleteCommand.DeletionResult deleteSeedProfiles(
+        FolioClient client,
+        List<DeleteCommand.ProfileDeletionData> seedProfilesToReplace,
+        DeleteCommand.ProfileReferences orphanSeedProfilesToReplace) {
+      DeleteCommand.DeletionResult totalResult = DeleteCommand.DeletionResult.empty();
+      for (DeleteCommand.ProfileDeletionData profile : seedProfilesToReplace) {
+        totalResult = DeleteCommand.DeletionResult.combine(totalResult,
+          DeleteCommand.deleteProfileCascade(client, profile));
+      }
+      totalResult = DeleteCommand.DeletionResult.combine(totalResult,
+        DeleteCommand.deleteProfileReferences(client, orphanSeedProfilesToReplace, "orphan foundation seed sub-profile"));
+      if (!seedProfilesToReplace.isEmpty()) {
+        LOGGER.info("Replaced {} existing foundation seed profile(s)", seedProfilesToReplace.size());
+      }
+      return totalResult;
+    }
   }
 
   @Command(name = "list", description = "List job profiles in repository", mixinStandardHelpOptions = true)
@@ -557,12 +747,10 @@ public class JpWranglerCli implements Callable<Integer> {
     @Override
     public Integer call() {
       try {
-        ensureRepositoryExists();
-
         java.util.List<Integer> profileIds = listAvailableProfileIds();
 
         if (profileIds.isEmpty()) {
-          System.out.println("No job profiles found in repository: " + repoPath);
+          System.out.println("No job profiles found in repository: " + readableRepoPath());
         } else {
           System.out.println("Job profiles in repository:");
           for (Integer id : profileIds) {
@@ -588,11 +776,11 @@ public class JpWranglerCli implements Callable<Integer> {
     @Override
     public Integer call() {
       try {
-        ensureRepositoryExists();
+        String sourceRepoPath = readableRepoPath(repoId);
 
         // Check if the profile file exists before trying to read it
         String filename = GraphWriter.genGraphFileName(repoId);
-        Path profilePath = Paths.get(repoPath, filename);
+        Path profilePath = Paths.get(sourceRepoPath, filename);
 
         if (!Files.exists(profilePath)) {
           System.err.println("Error: Job profile with ID " + repoId + " does not exist.");
@@ -615,7 +803,7 @@ public class JpWranglerCli implements Callable<Integer> {
           return 1;
         }
 
-        Graph<Profile, RegularEdge> graph = GraphReader.read(repoPath, repoId);
+        Graph<Profile, RegularEdge> graph = GraphReader.read(sourceRepoPath, repoId);
 
         if (outputPath == null) {
           outputPath = "jp-" + repoId;
@@ -672,26 +860,12 @@ public class JpWranglerCli implements Callable<Integer> {
         // Ensure password is available if needed
         folioOptions.ensurePassword();
 
-        // Ensure repository exists
-        ensureRepositoryExists();
         if (!isOutputParentWritable()) {
           return 1;
         }
 
         // Connect to FOLIO to get the job profile snapshot
-        String token = folioOptions.getToken();
-        if (token == null) {
-          LOGGER.error("Authentication failed: could not obtain token");
-          return 1;
-        }
-
-        FolioClient client = new FolioClient(
-          new OkHttpClient(),
-          () -> HttpUrl.parse(folioOptions.baseUrl).newBuilder(),
-          token,
-          folioOptions.tenant,
-          folioOptions.okapiUrl
-        );
+        FolioClient client = folioOptions.createFolioClient();
 
         // Get the job profile snapshot directly using the provided UUID
         Optional<JsonNode> snapshot = client.getJobProfileSnapshot(jobProfileId);
@@ -1561,7 +1735,7 @@ public class JpWranglerCli implements Callable<Integer> {
           return 0;
         }
 
-        // Actually delete profiles in reverse order: Mapping → Action → Match → Job Profile
+        // Delete parent links before child profiles: Job → Action → Mapping → Match.
         System.out.println("\nDeleting profiles...");
 
         DeletionResult totalResult = deletionDataList.stream()
@@ -1662,9 +1836,21 @@ public class JpWranglerCli implements Callable<Integer> {
           intersection(mappingIds, other.mappingIds));
       }
 
+      ProfileReferences without(ProfileReferences other) {
+        return new ProfileReferences(without(matchIds, other.matchIds),
+          without(actionIds, other.actionIds),
+          without(mappingIds, other.mappingIds));
+      }
+
       private static Set<String> intersection(Set<String> first, Set<String> second) {
         Set<String> result = new HashSet<>(first);
         result.retainAll(second);
+        return result;
+      }
+
+      private static Set<String> without(Set<String> ids, Set<String> exclusions) {
+        Set<String> result = new HashSet<>(ids);
+        result.removeAll(exclusions);
         return result;
       }
     }
@@ -1679,6 +1865,10 @@ public class JpWranglerCli implements Callable<Integer> {
       Set<String> actionIds,
       Set<String> mappingIds
     ) {
+      ProfileReferences references() {
+        return new ProfileReferences(new HashSet<>(matchIds), new HashSet<>(actionIds), new HashSet<>(mappingIds));
+      }
+
       ProfileDeletionData without(ProfileReferences references) {
         return new ProfileDeletionData(id, name, without(matchIds, references.matchIds()),
           without(actionIds, references.actionIds()),
@@ -1695,7 +1885,7 @@ public class JpWranglerCli implements Callable<Integer> {
     /**
      * Holds the result of deletion operations with success/fail counts for each profile type.
      */
-    private record DeletionResult(
+    record DeletionResult(
       int jobSuccess,
       int jobFail,
       int matchSuccess,
@@ -1729,14 +1919,12 @@ public class JpWranglerCli implements Callable<Integer> {
 
     /**
      * Deletes a job profile and all its sub-profiles, returning the result counts.
-     * Deletion order: Job profile first (removes associations), then sub-profiles.
+     * Delete the job first to remove the root association, then actions before mappings because actions retain the
+     * action-to-mapping association in FOLIO until they are removed.
      */
-    private DeletionResult deleteProfileCascade(FolioClient client, ProfileDeletionData data) {
+    static DeletionResult deleteProfileCascade(FolioClient client, ProfileDeletionData data) {
       System.out.println("\nDeleting job profile: " + data.name());
 
-      int mappingSuccess = 0, mappingFail = 0;
-      int actionSuccess = 0, actionFail = 0;
-      int matchSuccess = 0, matchFail = 0;
       int jobSuccess = 0, jobFail = 0;
 
       // Delete the job profile FIRST to remove associations
@@ -1748,48 +1936,508 @@ public class JpWranglerCli implements Callable<Integer> {
         jobFail++;
         // If job profile deletion fails, skip sub-profile deletion
         return new DeletionResult(
-          jobSuccess, jobFail, matchSuccess, matchFail,
-          actionSuccess, actionFail, mappingSuccess, mappingFail
+          jobSuccess, jobFail, 0, 0,
+          0, 0, 0, 0
         );
       }
 
-      // Delete mapping profiles (may fail if shared with other job profiles)
-      for (String mappingId : data.mappingIds()) {
-        if (client.deleteMappingProfile(mappingId)) {
-          mappingSuccess++;
-          LOGGER.info("  Deleted mapping profile: {}", mappingId);
+      DeletionResult subProfileResult = deleteProfileReferences(client, data.references(), "sub-profile");
+      return new DeletionResult(
+        jobSuccess, jobFail,
+        subProfileResult.matchSuccess(), subProfileResult.matchFail(),
+        subProfileResult.actionSuccess(), subProfileResult.actionFail(),
+        subProfileResult.mappingSuccess(), subProfileResult.mappingFail()
+      );
+    }
+
+    static DeletionResult deleteProfileReferences(
+        FolioClient client,
+        ProfileReferences references,
+        String label) {
+      int mappingSuccess = 0, mappingFail = 0;
+      int actionSuccess = 0, actionFail = 0;
+      int matchSuccess = 0, matchFail = 0;
+
+      // Actions retain their action-to-mapping association in FOLIO, so mappings must be removed after actions.
+      for (String actionId : references.actionIds()) {
+        if (client.deleteActionProfile(actionId)) {
+          actionSuccess++;
+          LOGGER.info("  Deleted {} action profile: {}", label, actionId);
         } else {
-          mappingFail++;
-          LOGGER.warn("  Failed to delete mapping profile: {}", mappingId);
+          actionFail++;
+          LOGGER.warn("  Failed to delete {} action profile: {}", label, actionId);
         }
       }
 
-      // Delete action profiles (may fail if shared with other job profiles)
-      for (String actionId : data.actionIds()) {
-        if (client.deleteActionProfile(actionId)) {
-          actionSuccess++;
-          LOGGER.info("  Deleted action profile: {}", actionId);
+      // Delete mapping profiles after action profiles have released their associations.
+      for (String mappingId : references.mappingIds()) {
+        if (client.deleteMappingProfile(mappingId)) {
+          mappingSuccess++;
+          LOGGER.info("  Deleted {} mapping profile: {}", label, mappingId);
         } else {
-          actionFail++;
-          LOGGER.warn("  Failed to delete action profile: {}", actionId);
+          mappingFail++;
+          LOGGER.warn("  Failed to delete {} mapping profile: {}", label, mappingId);
         }
       }
 
       // Delete match profiles (may fail if shared with other job profiles)
-      for (String matchId : data.matchIds()) {
+      for (String matchId : references.matchIds()) {
         if (client.deleteMatchProfile(matchId)) {
           matchSuccess++;
-          LOGGER.info("  Deleted match profile: {}", matchId);
+          LOGGER.info("  Deleted {} match profile: {}", label, matchId);
         } else {
           matchFail++;
-          LOGGER.warn("  Failed to delete match profile: {}", matchId);
+          LOGGER.warn("  Failed to delete {} match profile: {}", label, matchId);
         }
       }
 
       return new DeletionResult(
-        jobSuccess, jobFail, matchSuccess, matchFail,
+        0, 0, matchSuccess, matchFail,
         actionSuccess, actionFail, mappingSuccess, mappingFail
       );
+    }
+  }
+
+  @Command(name = "seed-foundation",
+    description = "Upload foundation MARC files with the built-in seed profiles and wait for completion",
+    mixinStandardHelpOptions = true)
+  static class SeedFoundationCommand implements Callable<Integer> {
+    private static final Set<String> SUCCESS_STATUSES = Set.of(
+      "COMPLETED", "COMMITTED", "SUCCESS", "RUNNING_COMPLETE"
+    );
+    private static final Set<String> FAILURE_STATUSES = Set.of(
+      "ERROR", "FAILED", "FAIL", "CANCELLED", "CANCELED", "DISCARDED"
+    );
+
+    @CommandLine.Mixin
+    private FolioConnectionOptions folioOptions = new FolioConnectionOptions();
+
+    @Parameters(arity = "1..*", description = "Foundation MARC files to upload")
+    List<Path> files;
+
+    @Option(names = {"--poll-interval-seconds"}, description = "Seconds between job status checks")
+    int pollIntervalSeconds = 5;
+
+    @Option(names = {"--timeout-seconds"}, description = "Maximum seconds to wait for each foundation import")
+    int timeoutSeconds = 300;
+
+    @Override
+    public Integer call() {
+      try {
+        folioOptions.ensurePassword();
+        FolioClient client = folioOptions.createFolioClient();
+
+        int failures = 0;
+        for (Path file : files) {
+          if (!Files.isRegularFile(file)) {
+            LOGGER.error("Foundation file does not exist: {}", file);
+            failures++;
+            continue;
+          }
+          FoundationBucket bucket = detectFoundationBucket(file);
+          LOGGER.info("Detected {} foundation shape for {}", bucket.label(), file);
+          Optional<JsonNode> profile = latestProfile(client, bucket.profilePrefix());
+          if (profile.isEmpty()) {
+            LOGGER.error("No foundation seed job profile found for prefix {}", bucket.profilePrefix());
+            failures++;
+            continue;
+          }
+          if (!submitMarcFile(client, file, profile.get(), pollIntervalSeconds, timeoutSeconds)) {
+            failures++;
+          }
+        }
+        return failures == 0 ? 0 : 1;
+      } catch (Exception e) {
+        LOGGER.error("Foundation seeding failed: {}", e.getMessage(), e);
+        return 1;
+      }
+    }
+
+    static boolean submitMarcFile(
+        FolioClient client,
+        Path file,
+        JsonNode profile,
+        int pollIntervalSeconds,
+        int timeoutSeconds) throws InterruptedException {
+      String profileId = profile.path("id").asText();
+      String profileName = profile.path("name").asText();
+      String fileName = file.getFileName().toString();
+      LOGGER.info("Uploading {} with job profile {} ({})", fileName, profileName, profileId);
+
+      Optional<JsonNode> uploadDefinitionOpt = client.createUploadDefinition(fileName);
+      if (uploadDefinitionOpt.isEmpty()) {
+        return false;
+      }
+      JsonNode uploadDefinition = uploadDefinitionOpt.get();
+      String uploadDefinitionId = uploadDefinition.path("id").asText();
+      String fileDefinitionId = uploadDefinition.path("fileDefinitions").path(0).path("id").asText();
+      if (uploadDefinitionId.isBlank() || fileDefinitionId.isBlank()) {
+        LOGGER.error("Upload definition response did not include required ids for {}", fileName);
+        return false;
+      }
+
+      Optional<JsonNode> uploadUrlOpt = client.getUploadUrl(fileName);
+      if (uploadUrlOpt.isEmpty()) {
+        return false;
+      }
+      JsonNode uploadUrl = uploadUrlOpt.get();
+      String url = uploadUrl.path("url").asText();
+      String key = uploadUrl.path("key").asText();
+      String uploadId = uploadUrl.path("uploadId").asText();
+      if (url.isBlank() || key.isBlank() || uploadId.isBlank()) {
+        LOGGER.error("Upload URL response did not include url, key, and uploadId for {}", fileName);
+        return false;
+      }
+
+      Optional<String> etag = client.uploadFileToStorage(url, file);
+      if (etag.isEmpty()) {
+        return false;
+      }
+      if (!client.assembleStorageFile(uploadDefinitionId, fileDefinitionId, key, etag.get(), uploadId)) {
+        return false;
+      }
+
+      Optional<JsonNode> assembledDefinition = client.getUploadDefinition(uploadDefinitionId);
+      if (assembledDefinition.isEmpty()) {
+        return false;
+      }
+      Instant submittedAfter = Instant.now();
+      Optional<JsonNode> processResponse =
+        client.processUploadedFiles(uploadDefinitionId, assembledDefinition.get(), profileId, profileName);
+      if (processResponse.isEmpty()) {
+        return false;
+      }
+
+      Optional<String> jobExecutionId = findJobExecutionId(processResponse.get());
+      if (jobExecutionId.isEmpty()) {
+        jobExecutionId = awaitLatestJobExecutionId(client, profileId, fileName, submittedAfter,
+          pollIntervalSeconds, timeoutSeconds);
+      }
+      if (jobExecutionId.isEmpty()) {
+        LOGGER.error("Could not locate job execution for {}", fileName);
+        return false;
+      }
+      return waitForCompletion(client, jobExecutionId.get(), fileName, pollIntervalSeconds, timeoutSeconds);
+    }
+
+    static boolean waitForCompletion(
+        FolioClient client,
+        String jobExecutionId,
+        String fileName,
+        int pollIntervalSeconds,
+        int timeoutSeconds)
+        throws InterruptedException {
+      long timeoutMillis = Math.max(1L, (long) timeoutSeconds) * 1000L;
+      long sleepMillis = Math.max(1L, (long) pollIntervalSeconds) * 1000L;
+      long deadline = System.currentTimeMillis() + timeoutMillis;
+      JsonNode lastExecution = null;
+      while (System.currentTimeMillis() <= deadline) {
+        Optional<JsonNode> execution = client.getJobExecution(jobExecutionId);
+        if (execution.isPresent()) {
+          lastExecution = execution.get();
+          String status = statusText(lastExecution);
+          LOGGER.info("Foundation import {} job {} status: {}", fileName, jobExecutionId, status);
+          if (isSuccess(lastExecution)) {
+            LOGGER.info("Foundation import completed for {} ({})", fileName, jobExecutionId);
+            return true;
+          }
+          if (isFailure(lastExecution)) {
+            LOGGER.error("Foundation import failed for {} ({}): {}", fileName, jobExecutionId, status);
+            return false;
+          }
+        }
+        Thread.sleep(sleepMillis);
+      }
+      LOGGER.error("Timed out waiting for foundation import {} ({}) to complete. Last status: {}",
+        fileName, jobExecutionId, lastExecution == null ? "unknown" : statusText(lastExecution));
+      return false;
+    }
+
+    static Optional<JsonNode> latestProfile(FolioClient client, String prefix) {
+      return client.getJobProfiles(Map.of("query", "name==\"" + prefix + "*\""))
+        .max((first, second) -> profileCreatedDate(first).compareTo(profileCreatedDate(second)));
+    }
+
+    private static Optional<String> awaitLatestJobExecutionId(
+        FolioClient client,
+        String profileId,
+        String fileName,
+        Instant submittedAfter,
+        int pollIntervalSeconds,
+        int timeoutSeconds) throws InterruptedException {
+      long sleepMillis = Math.max(1L, (long) pollIntervalSeconds) * 1000L;
+      long timeoutMillis = Math.max(1L, (long) timeoutSeconds) * 1000L;
+      long discoveryMillis = Math.min(timeoutMillis, Math.max(60_000L, sleepMillis * 3));
+      long deadline = System.currentTimeMillis() + discoveryMillis;
+      while (System.currentTimeMillis() <= deadline) {
+        Optional<String> jobExecutionId = latestJobExecutionId(client, profileId, fileName, submittedAfter);
+        if (jobExecutionId.isPresent()) {
+          return jobExecutionId;
+        }
+        Thread.sleep(sleepMillis);
+      }
+      return Optional.empty();
+    }
+
+    static Optional<String> latestJobExecutionId(FolioClient client, String profileId, String fileName) {
+      return latestJobExecutionId(client, profileId, fileName, Instant.EPOCH);
+    }
+
+    static Optional<String> latestJobExecutionId(
+        FolioClient client,
+        String profileId,
+        String fileName,
+        Instant submittedAfter) {
+      return client.getJobExecutions(25)
+        .filter(execution -> profileId.equals(execution.path("jobProfileInfo").path("id").asText()))
+        .filter(execution -> matchesExecutionFile(execution, fileName))
+        .filter(execution -> startedAtOrEpoch(execution).compareTo(submittedAfter.minusSeconds(1)) >= 0)
+        .map(execution -> execution.path("id").asText(""))
+        .filter(id -> !id.isBlank())
+        .findFirst();
+    }
+
+    static boolean matchesExecutionFile(JsonNode execution, String fileName) {
+      String executionFileName = execution.path("fileName").asText("");
+      String sourcePath = execution.path("sourcePath").asText("");
+      return matchesDataImportFileName(executionFileName, fileName)
+        || matchesDataImportFileName(sourcePath, fileName)
+        || matchesDataImportFileName(lastPathSegment(sourcePath), fileName);
+    }
+
+    private static String lastPathSegment(String path) {
+      int slash = Math.max(path.lastIndexOf('/'), path.lastIndexOf('\\'));
+      return slash >= 0 ? path.substring(slash + 1) : path;
+    }
+
+    private static boolean matchesDataImportFileName(String executionValue, String originalFileName) {
+      if (originalFileName.equals(executionValue)) {
+        return true;
+      }
+      String executionFileName = lastPathSegment(executionValue);
+      if (originalFileName.equals(executionFileName)) {
+        return true;
+      }
+      if (executionFileName.matches("\\d+-" + java.util.regex.Pattern.quote(originalFileName))) {
+        return true;
+      }
+
+      int dot = originalFileName.lastIndexOf('.');
+      if (dot <= 0) {
+        return false;
+      }
+      String base = java.util.regex.Pattern.quote(originalFileName.substring(0, dot));
+      String extension = java.util.regex.Pattern.quote(originalFileName.substring(dot));
+      return executionFileName.matches("\\d+-" + base + "_\\d+" + extension);
+    }
+
+    private static Instant profileCreatedDate(JsonNode profile) {
+      String createdDate = profile.path("metadata").path("createdDate").asText("");
+      return parseFolioInstantOrEpoch(createdDate, profile.path("id").asText(""));
+    }
+
+    private static Instant startedAtOrEpoch(JsonNode execution) {
+      String startedDate = execution.path("startedDate").asText("");
+      if (startedDate.isBlank()) {
+        startedDate = execution.path("started_date").asText("");
+      }
+      return parseFolioInstantOrEpoch(startedDate, execution.path("id").asText(""));
+    }
+
+    private static Instant parseFolioInstantOrEpoch(String createdDate, String idForLogging) {
+      if (createdDate.isBlank()) {
+        return Instant.EPOCH;
+      }
+      try {
+        return parseFolioInstant(createdDate);
+      } catch (DateTimeParseException e) {
+        LOGGER.warn("Ignoring unparsable FOLIO timestamp '{}' for {}", createdDate, idForLogging);
+        return Instant.EPOCH;
+      }
+    }
+
+    private static Instant parseFolioInstant(String value) {
+      try {
+        return Instant.parse(value);
+      } catch (DateTimeParseException ignored) {
+        // FOLIO responses commonly use +0000 offsets; normalize them to ISO's +00:00 form.
+      }
+      String normalized = value.replaceFirst("([+-]\\d{2})(\\d{2})$", "$1:$2");
+      try {
+        return OffsetDateTime.parse(normalized, DateTimeFormatter.ISO_DATE_TIME).toInstant();
+      } catch (DateTimeParseException ignored) {
+        // Some older metadata has no offset; treat it as UTC because FOLIO createdDate is UTC metadata.
+      }
+      return LocalDateTime.parse(value, DateTimeFormatter.ISO_DATE_TIME).toInstant(ZoneOffset.UTC);
+    }
+
+    static FoundationBucket detectFoundationBucket(Path file) throws IOException {
+      boolean sawRecord = false;
+      boolean sawHoldings = false;
+      try (InputStream input = Files.newInputStream(file)) {
+        MarcReader reader = new MarcStreamReader(input);
+        while (reader.hasNext()) {
+          sawRecord = true;
+          Record record = reader.next();
+          FoundationBucket recordBucket = bucketForRecord(record);
+          if (recordBucket == FoundationBucket.ITEM) {
+            return FoundationBucket.ITEM;
+          }
+          if (recordBucket == FoundationBucket.HOLDINGS) {
+            sawHoldings = true;
+          }
+        }
+      }
+      if (!sawRecord) {
+        throw new IOException("Foundation MARC file contains no records: " + file);
+      }
+      return sawHoldings ? FoundationBucket.HOLDINGS : FoundationBucket.INSTANCE;
+    }
+
+    static FoundationBucket bucketForRecord(Record record) {
+      if (!record.getVariableFields("945").isEmpty()) {
+        return FoundationBucket.ITEM;
+      }
+      if (!record.getVariableFields("852").isEmpty()) {
+        return FoundationBucket.HOLDINGS;
+      }
+      return FoundationBucket.INSTANCE;
+    }
+
+    static Optional<String> findJobExecutionId(JsonNode node) {
+      if (node == null || node.isMissingNode() || node.isNull()) {
+        return Optional.empty();
+      }
+      if (node.isObject()) {
+        for (String fieldName : List.of("jobExecutionId", "jobExecutionID", "id")) {
+          JsonNode id = node.get(fieldName);
+          if (id != null && id.isTextual() && !id.asText().isBlank()
+            && (fieldName.startsWith("jobExecution") || hasJobExecutionShape(node))) {
+            return Optional.of(id.asText());
+          }
+        }
+        JsonNode executions = node.get("jobExecutions");
+        if (executions != null && executions.isArray() && !executions.isEmpty()) {
+          return findJobExecutionId(executions.get(0));
+        }
+        java.util.Iterator<JsonNode> values = node.elements();
+        while (values.hasNext()) {
+          Optional<String> nested = findJobExecutionId(values.next());
+          if (nested.isPresent()) {
+            return nested;
+          }
+        }
+      } else if (node.isArray()) {
+        for (JsonNode element : node) {
+          Optional<String> nested = findJobExecutionId(element);
+          if (nested.isPresent()) {
+            return nested;
+          }
+        }
+      }
+      return Optional.empty();
+    }
+
+    private static boolean hasJobExecutionShape(JsonNode node) {
+      return node.has("jobProfileInfo") || node.has("status") || node.has("uiStatus");
+    }
+
+    private static boolean isSuccess(JsonNode execution) {
+      return SUCCESS_STATUSES.contains(execution.path("status").asText("").toUpperCase())
+        || SUCCESS_STATUSES.contains(execution.path("uiStatus").asText("").toUpperCase());
+    }
+
+    private static boolean isFailure(JsonNode execution) {
+      return FAILURE_STATUSES.contains(execution.path("status").asText("").toUpperCase())
+        || FAILURE_STATUSES.contains(execution.path("uiStatus").asText("").toUpperCase())
+        || FAILURE_STATUSES.contains(execution.path("errorStatus").asText("").toUpperCase());
+    }
+
+    private static String statusText(JsonNode execution) {
+      return "status=" + execution.path("status").asText("")
+        + ", uiStatus=" + execution.path("uiStatus").asText("")
+        + ", errorStatus=" + execution.path("errorStatus").asText("");
+    }
+
+    enum FoundationBucket {
+      INSTANCE("instance", "jp-900 "),
+      HOLDINGS("holdings", "jp-901 "),
+      ITEM("item", "jp-902 ");
+
+      private final String label;
+      private final String profilePrefix;
+
+      FoundationBucket(String label, String profilePrefix) {
+        this.label = label;
+        this.profilePrefix = profilePrefix;
+      }
+
+      String label() {
+        return label;
+      }
+
+      String profilePrefix() {
+        return profilePrefix;
+      }
+    }
+  }
+
+  @Command(name = "import-marc",
+    description = "Upload a MARC file with a selected job profile and wait for completion",
+    mixinStandardHelpOptions = true)
+  static class ImportMarcCommand implements Callable<Integer> {
+    @CommandLine.Mixin
+    private FolioConnectionOptions folioOptions = new FolioConnectionOptions();
+
+    @Parameters(index = "0", description = "MARC file to upload")
+    Path file;
+
+    @Option(names = {"--profile-id"}, description = "Exact FOLIO job profile UUID")
+    String profileId;
+
+    @Option(names = {"--profile-prefix"},
+      description = "Find the newest job profile whose name starts with this prefix, e.g. jp-063")
+    String profilePrefix;
+
+    @Option(names = {"--poll-interval-seconds"}, description = "Seconds between job status checks")
+    int pollIntervalSeconds = 5;
+
+    @Option(names = {"--timeout-seconds"}, description = "Maximum seconds to wait for the import")
+    int timeoutSeconds = 300;
+
+    @Override
+    public Integer call() {
+      if ((profileId == null || profileId.isBlank()) == (profilePrefix == null || profilePrefix.isBlank())) {
+        LOGGER.error("Specify exactly one of --profile-id or --profile-prefix");
+        return 1;
+      }
+      if (!Files.isRegularFile(file)) {
+        LOGGER.error("MARC file does not exist: {}", file);
+        return 1;
+      }
+
+      try {
+        folioOptions.ensurePassword();
+        FolioClient client = folioOptions.createFolioClient();
+
+        Optional<JsonNode> profile = selectedProfile(client);
+        if (profile.isEmpty()) {
+          LOGGER.error("Could not find job profile for import");
+          return 1;
+        }
+        return SeedFoundationCommand.submitMarcFile(client, file, profile.get(), pollIntervalSeconds, timeoutSeconds)
+          ? 0 : 1;
+      } catch (Exception e) {
+        LOGGER.error("MARC import failed: {}", e.getMessage(), e);
+        return 1;
+      }
+    }
+
+    private Optional<JsonNode> selectedProfile(FolioClient client) {
+      if (profileId != null && !profileId.isBlank()) {
+        return client.getJobProfiles(Map.of("query", "id==\"" + profileId + "\"")).findFirst();
+      }
+      return SeedFoundationCommand.latestProfile(client, profilePrefix);
     }
   }
 

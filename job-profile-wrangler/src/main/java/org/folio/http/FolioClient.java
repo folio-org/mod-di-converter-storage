@@ -12,6 +12,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.io.IOException;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -164,6 +165,26 @@ public class FolioClient {
    * @return stream of job profile JSON nodes
    */
   public Stream<JsonNode> getJobProfiles(Map<String, String> queryParams) {
+    return getProfiles("data-import-profiles/jobProfiles", "jobProfiles", queryParams, "job profiles");
+  }
+
+  public Stream<JsonNode> getActionProfiles(Map<String, String> queryParams) {
+    return getProfiles("data-import-profiles/actionProfiles", "actionProfiles", queryParams, "action profiles");
+  }
+
+  public Stream<JsonNode> getMappingProfiles(Map<String, String> queryParams) {
+    return getProfiles("data-import-profiles/mappingProfiles", "mappingProfiles", queryParams, "mapping profiles");
+  }
+
+  public Stream<JsonNode> getMatchProfiles(Map<String, String> queryParams) {
+    return getProfiles("data-import-profiles/matchProfiles", "matchProfiles", queryParams, "match profiles");
+  }
+
+  private Stream<JsonNode> getProfiles(
+      String pathSegments,
+      String collectionField,
+      Map<String, String> queryParams,
+      String profileType) {
     final int queryParamLimit = 3000;
     final AtomicInteger queryParamOffset = new AtomicInteger(0);
     final AtomicInteger totalRecords = new AtomicInteger(0);
@@ -175,7 +196,7 @@ public class FolioClient {
         }
 
         HttpUrl.Builder intermediateUrlBuilder = baseUrlBuilderSupplier.get()
-          .addPathSegments("data-import-profiles/jobProfiles")
+          .addPathSegments(pathSegments)
           .addQueryParameter("limit", Integer.toString(queryParamLimit))
           .addQueryParameter("offset", Integer.toString(queryParamOffset.get()));
 
@@ -203,7 +224,7 @@ public class FolioClient {
           if (!response.isSuccessful()) throw new IOException("Unexpected code " + response);
 
           if (response.body() == null) {
-            throw new IOException("Response body is null for getJobProfiles request");
+            throw new IOException("Response body is null for " + profileType + " request");
           }
           String result = response.body().string();
           JsonNode jsonNode = OBJECT_MAPPER.readTree(result);
@@ -211,7 +232,7 @@ public class FolioClient {
           if (queryParamOffset.get() == 0) {
             JsonNode totalRecordsNode = jsonNode.get("totalRecords");
             if (totalRecordsNode == null || !totalRecordsNode.canConvertToInt()) {
-              throw new IOException("Job profiles response is missing numeric totalRecords");
+              throw new IOException(profileType + " response is missing numeric totalRecords");
             }
             totalRecords.set(totalRecordsNode.asInt());
             if (totalRecords.get() == 0) {
@@ -219,15 +240,15 @@ public class FolioClient {
             }
           }
 
-          JsonNode jobProfilesNode = jsonNode.get("jobProfiles");
-          if (jobProfilesNode == null || !jobProfilesNode.isArray()) {
-            throw new IOException("Job profiles response is missing jobProfiles array");
+          JsonNode profilesNode = jsonNode.get(collectionField);
+          if (profilesNode == null || !profilesNode.isArray()) {
+            throw new IOException(profileType + " response is missing " + collectionField + " array");
           }
 
           queryParamOffset.getAndAdd(queryParamLimit);
-          return StreamSupport.stream(jobProfilesNode.spliterator(), false);
+          return StreamSupport.stream(profilesNode.spliterator(), false);
         } catch (IOException e) {
-          throw new IllegalStateException("Failed to fetch job profiles page at offset "
+          throw new IllegalStateException("Failed to fetch " + profileType + " page at offset "
             + queryParamOffset.get(), e);
         }
       }).takeWhile(Objects::nonNull)
@@ -393,6 +414,176 @@ public class FolioClient {
     } catch (IOException e) {
       LOGGER.error("Failed to delete mapping profile: {}", mappingProfileId, e);
       return false;
+    }
+  }
+
+  public Optional<JsonNode> createUploadDefinition(String fileName) {
+    HttpUrl url = baseUrlBuilderSupplier.get()
+      .addPathSegments("data-import/uploadDefinitions")
+      .build();
+    String body = """
+      {"fileDefinitions":[{"name":%s}]}
+      """.formatted(jsonString(fileName));
+    return postJson(url, body);
+  }
+
+  public Optional<JsonNode> getUploadDefinition(String uploadDefinitionId) {
+    HttpUrl url = baseUrlBuilderSupplier.get()
+      .addPathSegments("data-import/uploadDefinitions")
+      .addPathSegment(uploadDefinitionId)
+      .build();
+    return getJson(url);
+  }
+
+  public Optional<JsonNode> getUploadUrl(String fileName) {
+    HttpUrl url = baseUrlBuilderSupplier.get()
+      .addPathSegments("data-import/uploadUrl")
+      .addQueryParameter("fileName", fileName)
+      .build();
+    return getJson(url);
+  }
+
+  public Optional<String> uploadFileToStorage(String uploadUrl, Path filePath) {
+    RequestBody body = RequestBody.create(filePath.toFile(), MediaType.parse("application/octet-stream"));
+    Request request = new Request.Builder()
+      .url(uploadUrl)
+      .put(body)
+      .build();
+
+    try (Response response = httpClient.newCall(request).execute()) {
+      if (!response.isSuccessful()) {
+        String errorBody = response.body() != null ? response.body().string() : "No response body";
+        LOGGER.error("Failed to upload file to storage: {} - Status: {} - Response: {}",
+          filePath, response.code(), errorBody);
+        return Optional.empty();
+      }
+      String etag = response.header("ETag");
+      if (etag == null || etag.isBlank()) {
+        LOGGER.error("Storage upload response did not include an ETag for {}", filePath);
+        return Optional.empty();
+      }
+      return Optional.of(etag.replace("\"", ""));
+    } catch (IOException e) {
+      LOGGER.error("Failed to upload file to storage: {}", filePath, e);
+      return Optional.empty();
+    }
+  }
+
+  public boolean assembleStorageFile(
+      String uploadDefinitionId,
+      String fileDefinitionId,
+      String key,
+      String etag,
+      String uploadId) {
+    HttpUrl url = baseUrlBuilderSupplier.get()
+      .addPathSegments("data-import/uploadDefinitions")
+      .addPathSegment(uploadDefinitionId)
+      .addPathSegment("files")
+      .addPathSegment(fileDefinitionId)
+      .addPathSegment("assembleStorageFile")
+      .build();
+    String body = """
+      {"key":%s,"tags":[%s],"uploadId":%s}
+      """.formatted(jsonString(key), jsonString(etag), jsonString(uploadId));
+    return postJson(url, body).isPresent();
+  }
+
+  public Optional<JsonNode> processUploadedFiles(
+      String uploadDefinitionId,
+      JsonNode uploadDefinition,
+      String jobProfileId,
+      String jobProfileName) {
+    HttpUrl url = baseUrlBuilderSupplier.get()
+      .addPathSegments("data-import/uploadDefinitions")
+      .addPathSegment(uploadDefinitionId)
+      .addPathSegment("processFiles")
+      .build();
+    String body = """
+      {"uploadDefinition":%s,"jobProfileInfo":{"id":%s,"name":%s,"dataType":"MARC"}}
+      """.formatted(uploadDefinition.toString(), jsonString(jobProfileId), jsonString(jobProfileName));
+    return postJson(url, body);
+  }
+
+  public Optional<JsonNode> getJobExecution(String jobExecutionId) {
+    HttpUrl url = baseUrlBuilderSupplier.get()
+      .addPathSegments("change-manager/jobExecutions")
+      .addPathSegment(jobExecutionId)
+      .build();
+    return getJson(url);
+  }
+
+  public Stream<JsonNode> getJobExecutions(int limit) {
+    HttpUrl url = baseUrlBuilderSupplier.get()
+      .addPathSegments("metadata-provider/jobExecutions")
+      .addQueryParameter("sortBy", "started_date,desc")
+      .addQueryParameter("limit", Integer.toString(limit))
+      .build();
+    Optional<JsonNode> response = getJson(url);
+    if (response.isEmpty()) {
+      return Stream.empty();
+    }
+    JsonNode executions = response.get().path("jobExecutions");
+    if (!executions.isArray()) {
+      return Stream.empty();
+    }
+    return StreamSupport.stream(executions.spliterator(), false);
+  }
+
+  private Optional<JsonNode> getJson(HttpUrl url) {
+    Request request = addFolioHeaders(new Request.Builder()
+      .url(url))
+      .get()
+      .build();
+
+    try (Response response = httpClient.newCall(request).execute()) {
+      if (!response.isSuccessful()) {
+        String errorBody = response.body() != null ? response.body().string() : "No response body";
+        LOGGER.error("GET failed: {} - Status: {} - Response: {}", url, response.code(), errorBody);
+        return Optional.empty();
+      }
+      if (response.body() == null) {
+        LOGGER.error("Response body is null for GET request to: {}", url);
+        return Optional.empty();
+      }
+      return Optional.of(OBJECT_MAPPER.readTree(response.body().string()));
+    } catch (IOException e) {
+      LOGGER.error("GET failed: {}", url, e);
+      return Optional.empty();
+    }
+  }
+
+  private Optional<JsonNode> postJson(HttpUrl url, String jsonBody) {
+    RequestBody body = RequestBody.create(jsonBody, JSON_MEDIA_TYPE);
+    Request request = addFolioHeaders(new Request.Builder()
+      .url(url))
+      .post(body)
+      .build();
+
+    try (Response response = httpClient.newCall(request).execute()) {
+      if (!response.isSuccessful()) {
+        String errorBody = response.body() != null ? response.body().string() : "No response body";
+        LOGGER.error("POST failed: {} - Status: {} - Response: {}", url, response.code(), errorBody);
+        return Optional.empty();
+      }
+      if (response.body() == null) {
+        return Optional.of(OBJECT_MAPPER.createObjectNode());
+      }
+      String responseBody = response.body().string();
+      if (responseBody.isBlank()) {
+        return Optional.of(OBJECT_MAPPER.createObjectNode());
+      }
+      return Optional.of(OBJECT_MAPPER.readTree(responseBody));
+    } catch (IOException e) {
+      LOGGER.error("POST failed: {}", url, e);
+      return Optional.empty();
+    }
+  }
+
+  private static String jsonString(String value) {
+    try {
+      return OBJECT_MAPPER.writeValueAsString(value);
+    } catch (IOException e) {
+      throw new IllegalArgumentException("Unable to serialize JSON string", e);
     }
   }
 

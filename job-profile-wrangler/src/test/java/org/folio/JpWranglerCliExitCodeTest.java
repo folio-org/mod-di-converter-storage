@@ -2,6 +2,8 @@ package org.folio;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.marc4j.marc.MarcFactory;
+import org.marc4j.marc.Record;
 import org.folio.graph.nodes.Profile;
 import org.folio.http.FolioClient;
 import org.folio.hydration.ProfileHydration;
@@ -11,6 +13,7 @@ import org.junit.Test;
 import picocli.CommandLine;
 
 import java.util.HashMap;
+import java.time.Instant;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -18,6 +21,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.stream.Stream;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -25,6 +29,7 @@ import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.inOrder;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 public class JpWranglerCliExitCodeTest {
@@ -61,6 +66,177 @@ public class JpWranglerCliExitCodeTest {
     var inOrder = inOrder(hydration);
     inOrder.verify(hydration).rollback(second);
     inOrder.verify(hydration).rollback(first);
+  }
+
+  @Test
+  public void foundationSeedProfilesToReplaceCollectsExistingSeedProfiles() throws Exception {
+    FolioClient client = mock(FolioClient.class);
+    JsonNode old900 = profile("old-900", "jp-900 old");
+    JsonNode old901 = profile("old-901", "jp-901 old");
+    JsonNode old902 = profile("old-902", "jp-902 old");
+
+    when(client.getJobProfiles(Map.of("query", "name==\"jp-900 *\""))).thenReturn(Stream.of(old900));
+    when(client.getJobProfiles(Map.of("query", "name==\"jp-901 *\""))).thenReturn(Stream.of(old901));
+    when(client.getJobProfiles(Map.of("query", "name==\"jp-902 *\""))).thenReturn(Stream.of(old902));
+    when(client.getJobProfileSnapshot("old-900")).thenReturn(Optional.of(snapshot("old-900", "m900", "a900", "p900")));
+    when(client.getJobProfileSnapshot("old-901")).thenReturn(Optional.of(snapshot("old-901", "m901", "a901", "p901")));
+    when(client.getJobProfileSnapshot("old-902")).thenReturn(Optional.of(snapshot("old-902", "m902", "a902", "p902")));
+
+    List<JpWranglerCli.DeleteCommand.ProfileDeletionData> profiles =
+      JpWranglerCli.ExportCommand.foundationSeedProfilesToReplace(client);
+
+    assertEquals(List.of("old-900", "old-901", "old-902"),
+      profiles.stream().map(JpWranglerCli.DeleteCommand.ProfileDeletionData::id).toList());
+    assertEquals(Set.of("p900"), profiles.get(0).mappingIds());
+  }
+
+  @Test
+  public void foundationSeedProfilesToReplaceKeepsPrefixAnchoredToSeedNames() {
+    assertEquals("name==\"jp-900 *\"", JpWranglerCli.ExportCommand.seedProfileNameQuery(900));
+  }
+
+  @Test
+  public void foundationSeedProfilesToReplaceDoesNotAbortOnSnapshotlessSeedJob() throws Exception {
+    FolioClient client = mock(FolioClient.class);
+    JsonNode old900 = profile("old-900", "jp-900 partial");
+
+    when(client.getJobProfiles(Map.of("query", "name==\"jp-900 *\""))).thenReturn(Stream.of(old900));
+    when(client.getJobProfiles(Map.of("query", "name==\"jp-901 *\""))).thenReturn(Stream.empty());
+    when(client.getJobProfiles(Map.of("query", "name==\"jp-902 *\""))).thenReturn(Stream.empty());
+    when(client.getJobProfileSnapshot("old-900")).thenReturn(Optional.empty());
+
+    List<JpWranglerCli.DeleteCommand.ProfileDeletionData> profiles =
+      JpWranglerCli.ExportCommand.foundationSeedProfilesToReplace(client);
+
+    assertEquals(List.of("old-900"),
+      profiles.stream().map(JpWranglerCli.DeleteCommand.ProfileDeletionData::id).toList());
+    assertTrue(profiles.get(0).actionIds().isEmpty());
+    assertTrue(profiles.get(0).mappingIds().isEmpty());
+    assertTrue(profiles.get(0).matchIds().isEmpty());
+  }
+
+  @Test
+  public void deleteSeedProfilesUsesCascadeDeletion() {
+    FolioClient client = mock(FolioClient.class);
+    JpWranglerCli.DeleteCommand.ProfileDeletionData profile =
+      new JpWranglerCli.DeleteCommand.ProfileDeletionData("job", "jp-900 old",
+        Set.of("match"), Set.of("action"), Set.of("mapping"));
+    when(client.deleteJobProfile("job")).thenReturn(true);
+    when(client.deleteMappingProfile("mapping")).thenReturn(true);
+    when(client.deleteActionProfile("action")).thenReturn(true);
+    when(client.deleteMatchProfile("match")).thenReturn(true);
+
+    JpWranglerCli.DeleteCommand.DeletionResult result =
+      JpWranglerCli.ExportCommand.deleteSeedProfiles(client, List.of(profile));
+
+    assertEquals(0, result.totalFailed());
+    var inOrder = inOrder(client);
+    inOrder.verify(client).deleteJobProfile("job");
+    inOrder.verify(client).deleteActionProfile("action");
+    inOrder.verify(client).deleteMappingProfile("mapping");
+    inOrder.verify(client).deleteMatchProfile("match");
+  }
+
+  @Test
+  public void foundationSeedOrphanProfilesExcludeChildrenStillReferencedBySeedJobs() throws Exception {
+    FolioClient client = mock(FolioClient.class);
+    for (String prefix : List.of("jp-900", "jp-901", "jp-902")) {
+      Map<String, String> query = Map.of("query", "name==\"" + prefix + " *\"");
+      when(client.getActionProfiles(query)).thenReturn(Stream.empty());
+      when(client.getMappingProfiles(query)).thenReturn(Stream.empty());
+      when(client.getMatchProfiles(query)).thenReturn(Stream.empty());
+    }
+
+    Map<String, String> query900 = Map.of("query", "name==\"jp-900 *\"");
+    when(client.getActionProfiles(query900)).thenReturn(Stream.of(
+      profile("action-orphan", "jp-900 orphan action"),
+      profile("action-linked", "jp-900 linked action")));
+    when(client.getMappingProfiles(query900)).thenReturn(Stream.of(
+      profile("mapping-orphan", "jp-900 orphan mapping"),
+      profile("mapping-linked", "jp-900 linked mapping")));
+    when(client.getMatchProfiles(query900)).thenReturn(Stream.of(
+      profile("match-orphan", "jp-900 orphan match"),
+      profile("match-linked", "jp-900 linked match")));
+
+    JpWranglerCli.DeleteCommand.ProfileDeletionData linkedSeedJob =
+      new JpWranglerCli.DeleteCommand.ProfileDeletionData("job", "jp-900 old",
+        Set.of("match-linked"), Set.of("action-linked"), Set.of("mapping-linked"));
+
+    JpWranglerCli.DeleteCommand.ProfileReferences orphans =
+      JpWranglerCli.ExportCommand.foundationSeedOrphanProfilesToReplace(client, List.of(linkedSeedJob));
+
+    assertEquals(Set.of("action-orphan"), orphans.actionIds());
+    assertEquals(Set.of("mapping-orphan"), orphans.mappingIds());
+    assertEquals(Set.of("match-orphan"), orphans.matchIds());
+  }
+
+  @Test
+  public void seedFoundationDetectsInstanceHoldingsAndItemShapes() throws Exception {
+    assertEquals(JpWranglerCli.SeedFoundationCommand.FoundationBucket.INSTANCE,
+      JpWranglerCli.SeedFoundationCommand.bucketForRecord(marcRecord(null)));
+    assertEquals(JpWranglerCli.SeedFoundationCommand.FoundationBucket.HOLDINGS,
+      JpWranglerCli.SeedFoundationCommand.bucketForRecord(marcRecord("852")));
+    assertEquals(JpWranglerCli.SeedFoundationCommand.FoundationBucket.ITEM,
+      JpWranglerCli.SeedFoundationCommand.bucketForRecord(marcRecord("945")));
+  }
+
+  @Test
+  public void blankRepositoryOptionFailsInsteadOfFallingBackToEmbeddedRepository() {
+    JpWranglerCli.RepositoryOptions options = new JpWranglerCli.RepositoryOptions();
+    options.repoPath = " ";
+
+    IllegalArgumentException error = assertThrows(IllegalArgumentException.class, options::readableRepoPath);
+
+    assertTrue(error.getMessage().contains("--repository must not be blank"));
+  }
+
+  @Test
+  public void latestProfileUsesParsedCreationTimeAndTreatsMissingDatesAsOldest() throws Exception {
+    FolioClient client = mock(FolioClient.class);
+    JsonNode undated = profile("undated", "jp-900 undated");
+    JsonNode older = profileWithCreatedDate("older", "jp-900 older", "2026-01-01T00:00:00.000+0000");
+    JsonNode middle = profileWithCreatedDate("middle", "jp-900 middle", "2026-01-02T00:00:00.000+00:00");
+    JsonNode newer = profileWithCreatedDate("newer", "jp-900 newer", "2026-01-03T00:00:00.000");
+    when(client.getJobProfiles(Map.of("query", "name==\"jp-900 *\"")))
+      .thenReturn(Stream.of(undated, middle, newer, older));
+
+    Optional<JsonNode> latest = JpWranglerCli.SeedFoundationCommand.latestProfile(client, "jp-900 ");
+
+    assertTrue(latest.isPresent());
+    assertEquals("newer", latest.get().path("id").asText());
+  }
+
+  @Test
+  public void jobExecutionFallbackMatchesOnlyAllowListedFilenameFields() throws Exception {
+    JsonNode windowsPathExecution = OBJECT_MAPPER.readTree("""
+      {"fileName":"","sourcePath":"C:\\\\imports\\\\seed.mrc"}
+      """);
+    JsonNode dataImportRenamedExecution = OBJECT_MAPPER.readTree("""
+      {"fileName":"1779977091049-seed.mrc","sourcePath":"data-import/diku/1779977091049-seed_1.mrc"}
+      """);
+    JsonNode substringCollision = OBJECT_MAPPER.readTree("""
+      {"fileName":"other-seed.mrc","sourcePath":"","notes":"seed.mrc"}
+      """);
+
+    assertTrue(JpWranglerCli.SeedFoundationCommand.matchesExecutionFile(windowsPathExecution, "seed.mrc"));
+    assertTrue(JpWranglerCli.SeedFoundationCommand.matchesExecutionFile(dataImportRenamedExecution, "seed.mrc"));
+    assertFalse(JpWranglerCli.SeedFoundationCommand.matchesExecutionFile(substringCollision, "seed.mrc"));
+  }
+
+  @Test
+  public void latestJobExecutionIgnoresOlderExecutionsFromPreviousUploads() throws Exception {
+    FolioClient client = mock(FolioClient.class);
+    JsonNode older = jobExecution("older", "profile", "1779977091049-seed.mrc",
+      "2026-05-28T14:04:52.767+00:00");
+    JsonNode current = jobExecution("current", "profile", "1779977291049-seed.mrc",
+      "2026-05-28T14:08:52.767+00:00");
+    when(client.getJobExecutions(25)).thenReturn(Stream.of(older, current));
+
+    Optional<String> id = JpWranglerCli.SeedFoundationCommand.latestJobExecutionId(client, "profile", "seed.mrc",
+      Instant.parse("2026-05-28T14:08:00Z"));
+
+    assertTrue(id.isPresent());
+    assertEquals("current", id.get());
   }
 
   @Test
@@ -202,7 +378,36 @@ public class JpWranglerCliExitCodeTest {
   }
 
   private JsonNode profile(String id) {
-    return OBJECT_MAPPER.createObjectNode().put("id", id).put("name", id);
+    return profile(id, id);
+  }
+
+  private JsonNode profile(String id, String name) {
+    return OBJECT_MAPPER.createObjectNode().put("id", id).put("name", name);
+  }
+
+  private JsonNode profileWithCreatedDate(String id, String name, String createdDate) {
+    var profile = OBJECT_MAPPER.createObjectNode().put("id", id).put("name", name);
+    profile.putObject("metadata").put("createdDate", createdDate);
+    return profile;
+  }
+
+  private JsonNode jobExecution(String id, String profileId, String fileName, String startedDate) {
+    var execution = OBJECT_MAPPER.createObjectNode()
+      .put("id", id)
+      .put("fileName", fileName)
+      .put("startedDate", startedDate);
+    execution.putObject("jobProfileInfo").put("id", profileId);
+    return execution;
+  }
+
+  private Record marcRecord(String dataFieldTag) {
+    MarcFactory factory = MarcFactory.newInstance();
+    Record record = factory.newRecord("00000nam a2200000 a 4500");
+    record.addVariableField(factory.newControlField("001", "seed-001"));
+    if (dataFieldTag != null) {
+      record.addVariableField(factory.newDataField(dataFieldTag, ' ', ' '));
+    }
+    return record;
   }
 
   private JsonNode snapshot(String jobId, String matchId, String actionId, String mappingId) throws Exception {
