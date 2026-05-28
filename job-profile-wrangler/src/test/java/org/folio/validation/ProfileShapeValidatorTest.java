@@ -194,6 +194,85 @@ public class ProfileShapeValidatorTest {
   }
 
   @Test
+  public void rootMarcBibModifyBeforeMatchedInventoryUpdateDoesNotMatch() throws Exception {
+    assertNoRuleMatch("root-marc-bib-modify-before-match-instance-update.json");
+  }
+
+  @Test
+  public void rootMarcBibModifyBeforeMatchedHoldingsOrItemUpdateDoesNotMatch() throws Exception {
+    assertNoRuleMatch(rootMarcBibModifyBeforeMatchedInventoryUpdate("HOLDINGS", "holdingsRecords.formerIds[]"));
+    assertNoRuleMatch(rootMarcBibModifyBeforeMatchedInventoryUpdate("ITEM", "item.formerIds[]"));
+  }
+
+  @Test
+  public void rootMarcBibModifyBeforeInventoryNonMatchUpdateStillFires() throws Exception {
+    JsonNode snapshot = fixture("root-marc-bib-modify-before-match-instance-update.json").deepCopy();
+    ObjectNode updateWrapper = (ObjectNode) snapshot
+      .path("childSnapshotWrappers").path(1)
+      .path("childSnapshotWrappers").path(0);
+    updateWrapper.put("reactTo", "NON_MATCH");
+
+    Optional<BlockedUnsupportedWorkflow> outcome = ProfileShapeValidator.defaultValidator().validate(snapshot);
+
+    assertTrue(outcome.isPresent());
+    assertEquals(MultipleRootUpdateBranchesRule.RULE_NAME, outcome.get().rule());
+  }
+
+  @Test
+  public void rootMarcBibModifyInventoryPreprocessorRequiresOrderSingleModifyAndIncoming001() throws Exception {
+    JsonNode matchThenModify = fixture("root-marc-bib-modify-before-match-instance-update.json").deepCopy();
+    ((ObjectNode) matchThenModify.path("childSnapshotWrappers").path(0)).put("order", 2);
+    ((ObjectNode) matchThenModify.path("childSnapshotWrappers").path(1)).put("order", 1);
+    Optional<BlockedUnsupportedWorkflow> matchThenModifyOutcome =
+      ProfileShapeValidator.defaultValidator().validate(matchThenModify);
+    assertTrue(matchThenModifyOutcome.isPresent());
+    assertEquals(MultipleRootUpdateBranchesRule.RULE_NAME, matchThenModifyOutcome.get().rule());
+
+    JsonNode multipleModify = fixture("root-marc-bib-modify-before-match-instance-update.json").deepCopy();
+    com.fasterxml.jackson.databind.node.ArrayNode children =
+      (com.fasterxml.jackson.databind.node.ArrayNode) multipleModify.path("childSnapshotWrappers");
+    ObjectNode secondModify = children.get(0).deepCopy();
+    secondModify.put("order", 1);
+    ((ObjectNode) children.get(1)).put("order", 2);
+    children.add(secondModify);
+    Optional<BlockedUnsupportedWorkflow> multipleModifyOutcome =
+      ProfileShapeValidator.defaultValidator().validate(multipleModify);
+    assertTrue(multipleModifyOutcome.isPresent());
+    assertEquals(MultipleRootUpdateBranchesRule.RULE_NAME, multipleModifyOutcome.get().rule());
+
+    JsonNode non001 = fixture("root-marc-bib-modify-before-match-instance-update.json").deepCopy();
+    ObjectNode incomingField = (ObjectNode) non001
+      .path("childSnapshotWrappers").path(1)
+      .path("content").path("matchDetails").path(0)
+      .path("incomingMatchExpression").path("fields").path(0);
+    incomingField.put("value", "035");
+    Optional<BlockedUnsupportedWorkflow> non001Outcome =
+      ProfileShapeValidator.defaultValidator().validate(non001);
+    assertTrue(non001Outcome.isPresent());
+    assertEquals(MultipleRootUpdateBranchesRule.RULE_NAME, non001Outcome.get().rule());
+  }
+
+  private JsonNode rootMarcBibModifyBeforeMatchedInventoryUpdate(String targetRecord, String existingField)
+      throws Exception {
+    JsonNode snapshot = fixture("root-marc-bib-modify-before-match-instance-update.json").deepCopy();
+    ObjectNode matchContent = (ObjectNode) snapshot
+      .path("childSnapshotWrappers").path(1)
+      .path("content");
+    matchContent.put("existingRecordType", targetRecord);
+    ObjectNode existingFieldNode = (ObjectNode) matchContent
+      .path("matchDetails").path(0)
+      .path("existingMatchExpression").path("fields").path(0);
+    existingFieldNode.put("value", existingField);
+
+    ObjectNode updateContent = (ObjectNode) snapshot
+      .path("childSnapshotWrappers").path(1)
+      .path("childSnapshotWrappers").path(0)
+      .path("content");
+    updateContent.put("folioRecord", targetRecord);
+    return snapshot;
+  }
+
+  @Test
   public void authorityNonMatchCreateWith999sFires() throws Exception {
     Optional<BlockedUnsupportedWorkflow> outcome = ProfileShapeValidator.defaultValidator()
       .validate(fixture("authority-nonmatch-create-with-999-s-match.json"));
@@ -269,8 +348,12 @@ public class ProfileShapeValidatorTest {
   }
 
   private void assertNoRuleMatch(String fixtureName) throws Exception {
+    assertNoRuleMatch(fixture(fixtureName));
+  }
+
+  private void assertNoRuleMatch(JsonNode snapshot) {
     Optional<BlockedUnsupportedWorkflow> outcome = ProfileShapeValidator.defaultValidator()
-      .validate(fixture(fixtureName));
+      .validate(snapshot);
 
     assertFalse(outcome.isPresent());
   }

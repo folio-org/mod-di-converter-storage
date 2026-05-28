@@ -215,7 +215,7 @@ public class StrictRecordWriter {
         .filter(path -> path.reactTo() != ReactTo.NONE)
         .forEach(ordered::add);
     }
-    ordered.addAll(flattenGroupedSiblingMatchUpdates(standaloneUpdatePathsFor(paths)));
+    ordered.addAll(flattenExecutableUpdateGroups(standaloneUpdatePathsFor(paths)));
     ordered.addAll(paths.deletePaths());
     return ordered;
   }
@@ -334,7 +334,7 @@ public class StrictRecordWriter {
       }
     }
 
-    for (List<CategorizedPath> updateGroup : groupSiblingMatchUpdates(standaloneUpdatePathsFor(paths))) {
+    for (List<CategorizedPath> updateGroup : executableUpdateGroups(standaloneUpdatePathsFor(paths))) {
       if (updateGroup.size() > 1) {
         attemptSiblingMatchUpdateGroup(updateGroup, allCreatePaths, pathIndex, outcomes, hasGap, firstGap,
           recordNumber, foundationRecords, importRecords, refData, foundationFile, importFile);
@@ -503,11 +503,14 @@ public class StrictRecordWriter {
     int importSize = importRecords.size();
     try {
       JobProfilePath consolidatedPath = consolidatePaths(siblingPaths);
-      MatchCriteria matchCriteria = siblingPaths.get(0).matchCriteria();
+      MatchCriteria matchCriteria = firstNonEmptyMatchCriteria(siblingPaths);
       Set<String> prerequisites = new HashSet<>();
       for (CategorizedPath siblingPath : siblingPaths) {
         prerequisites.addAll(getBranchPrerequisiteEntities(siblingPath, allCreatePaths));
         prerequisites.addAll(getUpdatePrerequisiteEntities(siblingPath));
+        if (siblingPath.reactTo() == ReactTo.NONE) {
+          prerequisites.addAll(getJobCreateEntities(allCreatePaths));
+        }
       }
       MinimalMarcRecordBuilder.BuildResult foundation = MinimalMarcRecordBuilder.buildRecordForPathWithPrerequisites(
         consolidatedPath, ++recordNumber[0], null, refData, matchCriteria, prerequisites);
@@ -767,6 +770,57 @@ public class StrictRecordWriter {
     return orderedGroups;
   }
 
+  private List<List<CategorizedPath>> executableUpdateGroups(List<CategorizedPath> updatePaths) {
+    List<CategorizedPath> rootMarcPreprocessors = updatePaths.stream()
+      .filter(this::isMarcBibModifyCleanup)
+      .toList();
+    List<CategorizedPath> nonPreprocessors = updatePaths.stream()
+      .filter(path -> !rootMarcPreprocessors.contains(path))
+      .toList();
+
+    // FOLIO can run a root MARC-bib MODIFY as preprocessing before a matched Inventory update.
+    // Emit one record shape so the generated MARC is modified, then matched, then used for the Inventory action.
+    if (rootMarcPreprocessors.size() == 1
+      && nonPreprocessors.size() == 1
+      && preprocessorRunsBeforeUpdate(updatePaths, rootMarcPreprocessors.get(0), nonPreprocessors.get(0))
+      && isMatchedInventoryUpdate(nonPreprocessors.get(0))) {
+      return List.of(updatePaths);
+    }
+    return groupSiblingMatchUpdates(updatePaths);
+  }
+
+  private boolean preprocessorRunsBeforeUpdate(
+      List<CategorizedPath> updatePaths,
+      CategorizedPath preprocessor,
+      CategorizedPath update) {
+    int preprocessorIndex = singleIndexOf(updatePaths, preprocessor);
+    int updateIndex = singleIndexOf(updatePaths, update);
+    return preprocessorIndex >= 0
+      && updateIndex >= 0
+      && preprocessorIndex < updateIndex;
+  }
+
+  private int singleIndexOf(List<CategorizedPath> paths, CategorizedPath target) {
+    int found = -1;
+    for (int index = 0; index < paths.size(); index++) {
+      if (paths.get(index).equals(target)) {
+        if (found >= 0) {
+          return -1;
+        }
+        found = index;
+      }
+    }
+    return found;
+  }
+
+  private List<CategorizedPath> flattenExecutableUpdateGroups(List<CategorizedPath> updatePaths) {
+    List<CategorizedPath> ordered = new ArrayList<>();
+    for (List<CategorizedPath> updateGroup : executableUpdateGroups(updatePaths)) {
+      ordered.addAll(updateGroup);
+    }
+    return ordered;
+  }
+
   private Set<CategorizedPath> coExecutableInventoryPaths(List<CategorizedPath> updatePaths) {
     CategorizedPath instancePath = null;
     CategorizedPath itemPath = null;
@@ -792,7 +846,7 @@ public class StrictRecordWriter {
         itemPath = updatePath;
       }
     }
-    if (instancePath == null || itemPath == null) {
+    if (cleanupPaths.size() > 1 || instancePath == null || itemPath == null) {
       return Collections.emptySet();
     }
     Set<CategorizedPath> coExecutablePaths = Collections.newSetFromMap(new IdentityHashMap<>());
@@ -800,14 +854,6 @@ public class StrictRecordWriter {
     coExecutablePaths.add(itemPath);
     coExecutablePaths.addAll(cleanupPaths);
     return coExecutablePaths;
-  }
-
-  private List<CategorizedPath> flattenGroupedSiblingMatchUpdates(List<CategorizedPath> updatePaths) {
-    List<CategorizedPath> ordered = new ArrayList<>();
-    for (List<CategorizedPath> updateGroup : groupSiblingMatchUpdates(updatePaths)) {
-      ordered.addAll(updateGroup);
-    }
-    return ordered;
   }
 
   private String siblingMatchUpdateKey(CategorizedPath path) {
@@ -822,6 +868,12 @@ public class StrictRecordWriter {
       return false;
     }
     return Set.of("INSTANCE", "ITEM").contains(getUpdateTargetEntityFromPath(path.path()));
+  }
+
+  private boolean isMatchedInventoryUpdate(CategorizedPath path) {
+    return path.reactTo() == ReactTo.MATCH
+      && hasOnlyIncoming001Match(path.matchCriteria())
+      && Set.of("INSTANCE", "HOLDINGS", "ITEM").contains(getUpdateTargetEntityFromPath(path.path()));
   }
 
   private boolean hasOnlyIncoming001Match(MatchCriteria matchCriteria) {
@@ -845,6 +897,14 @@ public class StrictRecordWriter {
         .filter(ActionProfileNode.class::isInstance)
         .map(ActionProfileNode.class::cast)
         .anyMatch(this::isMarcBibModifyAction);
+  }
+
+  private MatchCriteria firstNonEmptyMatchCriteria(List<CategorizedPath> paths) {
+    return paths.stream()
+      .map(CategorizedPath::matchCriteria)
+      .filter(criteria -> criteria != null && !criteria.isEmpty())
+      .findFirst()
+      .orElseGet(MatchCriteria::empty);
   }
 
   private JobProfilePath consolidateCreatePaths(List<CategorizedPath> createPaths) {

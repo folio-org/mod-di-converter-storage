@@ -269,6 +269,136 @@ public class StrictRecordWriterTest {
   }
 
   @Test
+  public void rootMarcBibModifyPreprocessorCoExecutesWithMatchedInventoryUpdate() throws IOException {
+    Path outputBase = temp.getRoot().toPath().resolve("records");
+    JobProfileNode job = new JobProfileNode("job-1", "MARC", 0);
+    CategorizedPath modifyMarc = categorized(pathOf(
+      job,
+      new ActionProfileNode("action-modify-marc", "MODIFY", "MARC_BIBLIOGRAPHIC", 0),
+      new MappingProfileNode("mapping-modify-marc", "MARC_BIBLIOGRAPHIC", "MARC_BIBLIOGRAPHIC", 0)
+    ));
+    MatchProfileNode match = new MatchProfileNode("match-instance", "MARC_BIBLIOGRAPHIC", "INSTANCE", 1);
+    CategorizedPath updateInstance = new CategorizedPath(pathOf(
+      job,
+      match,
+      new ActionProfileNode("action-update-instance", "UPDATE", "INSTANCE", 0),
+      new MappingProfileNode("mapping-instance", "MARC_BIBLIOGRAPHIC", "INSTANCE", 0)
+    ), ReactTo.MATCH, "match-instance", incoming001Criteria("match-instance", "instance.identifiers[].value"));
+
+    StrictRecordWriter.WriteResult result = new StrictRecordWriter().write(
+      new CategorizedPaths(List.of(), List.of(), List.of(modifyMarc, updateInstance), List.of()),
+      new MinimalMarcRecordBuilder.ReferenceDataContext("location-id", "material-type-id", "loan-type-id"),
+      outputBase);
+
+    assertEquals(GenerationOutcome.GENERATED, result.overallOutcome().label());
+    assertEquals(1, result.foundationRecords().size());
+    assertEquals(1, result.importRecords().size());
+    assertEquals(2, result.pathOutcomes().size());
+    assertEquals(Integer.valueOf(1), result.pathOutcomes().get(0).importRecordNumber());
+    assertEquals(Integer.valueOf(1), result.pathOutcomes().get(1).importRecordNumber());
+    assertEquals(
+      result.foundationRecords().get(0).getControlNumber(),
+      result.importRecords().get(0).getControlNumber());
+    assertTitleContains(result.importRecords().get(0), "MODIFY MARC_BIBLIOGRAPHIC/UPDATE INSTANCE");
+    assertNotNull(result.importRecords().get(0).getVariableField("500"));
+  }
+
+  @Test
+  public void rootMarcBibModifyPreprocessorCoExecutesWithMatchedHoldingsUpdate() throws IOException {
+    Path outputBase = temp.getRoot().toPath().resolve("records");
+    JobProfileNode job = new JobProfileNode("job-1", "MARC", 0);
+    CategorizedPath modifyMarc = categorized(pathOf(
+      job,
+      new ActionProfileNode("action-modify-marc", "MODIFY", "MARC_BIBLIOGRAPHIC", 0),
+      new MappingProfileNode("mapping-modify-marc", "MARC_BIBLIOGRAPHIC", "MARC_BIBLIOGRAPHIC", 0)
+    ));
+    MatchProfileNode match = new MatchProfileNode("match-holdings", "MARC_BIBLIOGRAPHIC", "HOLDINGS", 1);
+    CategorizedPath updateHoldings = new CategorizedPath(pathOf(
+      job,
+      match,
+      new ActionProfileNode("action-update-holdings", "UPDATE", "HOLDINGS", 0),
+      new MappingProfileNode("mapping-holdings", "MARC_BIBLIOGRAPHIC", "HOLDINGS", 0)
+    ), ReactTo.MATCH, "match-holdings", incoming001Criteria("match-holdings", "holdingsRecords.formerIds[]"));
+
+    StrictRecordWriter.WriteResult result = new StrictRecordWriter().write(
+      new CategorizedPaths(List.of(), List.of(), List.of(modifyMarc, updateHoldings), List.of()),
+      new MinimalMarcRecordBuilder.ReferenceDataContext("location-id", "material-type-id", "loan-type-id"),
+      outputBase);
+
+    assertEquals(GenerationOutcome.GENERATED, result.overallOutcome().label());
+    assertEquals(1, result.foundationRecords().size());
+    assertEquals(1, result.importRecords().size());
+    assertHoldingsLocation(result.foundationRecords().get(0), "location-id");
+    assertHoldingsLocation(result.importRecords().get(0), "location-id");
+    assertTitleContains(result.importRecords().get(0), "MODIFY MARC_BIBLIOGRAPHIC/UPDATE HOLDINGS");
+  }
+
+  @Test
+  public void rootMarcBibModifyPreprocessorDoesNotCoExecuteAfterMatchedInventoryUpdate() throws IOException {
+    Path outputBase = temp.getRoot().toPath().resolve("records");
+    JobProfileNode job = new JobProfileNode("job-1", "MARC", 0);
+    CategorizedPath modifyMarc = categorized(pathOf(
+      job,
+      new ActionProfileNode("action-modify-marc", "MODIFY", "MARC_BIBLIOGRAPHIC", 1),
+      new MappingProfileNode("mapping-modify-marc", "MARC_BIBLIOGRAPHIC", "MARC_BIBLIOGRAPHIC", 0)
+    ));
+    MatchProfileNode match = new MatchProfileNode("match-instance", "MARC_BIBLIOGRAPHIC", "INSTANCE", 0);
+    CategorizedPath updateInstance = new CategorizedPath(pathOf(
+      job,
+      match,
+      new ActionProfileNode("action-update-instance", "UPDATE", "INSTANCE", 0),
+      new MappingProfileNode("mapping-instance", "MARC_BIBLIOGRAPHIC", "INSTANCE", 0)
+    ), ReactTo.MATCH, "match-instance", incoming001Criteria("match-instance", "instance.identifiers[].value"));
+
+    StrictRecordWriter.WriteResult result = new StrictRecordWriter().write(
+      new CategorizedPaths(List.of(), List.of(), List.of(updateInstance, modifyMarc), List.of()),
+      new MinimalMarcRecordBuilder.ReferenceDataContext("location-id", "material-type-id", "loan-type-id"),
+      outputBase);
+
+    assertEquals(2, result.foundationRecords().size());
+    assertEquals(2, result.importRecords().size());
+  }
+
+  @Test
+  public void rootMarcBibModifyPreprocessorRequiresSingleModifyAndIncoming001() throws IOException {
+    Path outputBase = temp.getRoot().toPath().resolve("records");
+    JobProfileNode job = new JobProfileNode("job-1", "MARC", 0);
+    CategorizedPath firstModify = categorized(pathOf(
+      job,
+      new ActionProfileNode("action-modify-marc-1", "MODIFY", "MARC_BIBLIOGRAPHIC", 0),
+      new MappingProfileNode("mapping-modify-marc-1", "MARC_BIBLIOGRAPHIC", "MARC_BIBLIOGRAPHIC", 0)
+    ));
+    CategorizedPath secondModify = categorized(pathOf(
+      job,
+      new ActionProfileNode("action-modify-marc-2", "MODIFY", "MARC_BIBLIOGRAPHIC", 1),
+      new MappingProfileNode("mapping-modify-marc-2", "MARC_BIBLIOGRAPHIC", "MARC_BIBLIOGRAPHIC", 0)
+    ));
+    MatchProfileNode match = new MatchProfileNode("match-instance", "MARC_BIBLIOGRAPHIC", "INSTANCE", 2);
+    CategorizedPath updateInstance = new CategorizedPath(pathOf(
+      job,
+      match,
+      new ActionProfileNode("action-update-instance", "UPDATE", "INSTANCE", 0),
+      new MappingProfileNode("mapping-instance", "MARC_BIBLIOGRAPHIC", "INSTANCE", 0)
+    ), ReactTo.MATCH, "match-instance", incoming001Criteria("match-instance", "instance.identifiers[].value"));
+
+    StrictRecordWriter.WriteResult multiModifyResult = new StrictRecordWriter().write(
+      new CategorizedPaths(List.of(), List.of(), List.of(firstModify, secondModify, updateInstance), List.of()),
+      new MinimalMarcRecordBuilder.ReferenceDataContext("location-id", "material-type-id", "loan-type-id"),
+      outputBase);
+
+    assertEquals(3, multiModifyResult.importRecords().size());
+
+    StrictRecordWriter.WriteResult non001Result = new StrictRecordWriter().write(
+      new CategorizedPaths(List.of(), List.of(), List.of(firstModify,
+        new CategorizedPath(updateInstance.path(), ReactTo.MATCH, "match-instance", incoming035Criteria("match-instance"))),
+        List.of()),
+      new MinimalMarcRecordBuilder.ReferenceDataContext("location-id", "material-type-id", "loan-type-id"),
+      temp.getRoot().toPath().resolve("records-non001"));
+
+    assertEquals(2, non001Result.importRecords().size());
+  }
+
+  @Test
   public void rootInstanceAndItemUpdatesSharing001CollapseWithMarcCleanup() throws IOException {
     Path outputBase = temp.getRoot().toPath().resolve("records");
     JobProfileNode job = new JobProfileNode("job-1", "MARC", 0);
@@ -712,6 +842,12 @@ public class StrictRecordWriterTest {
     assertEquals("loan-type-id", field945.getSubfield('t').getData());
   }
 
+  private void assertTitleContains(Record record, String expected) {
+    DataField title = (DataField) record.getVariableField("245");
+    assertNotNull(title);
+    assertTrue(title.getSubfield('a').getData().contains(expected));
+  }
+
   private JobProfilePath path(String action, String folioRecord) {
     List<Profile> profiles = List.of(
       new JobProfileNode("job-1", "MARC", 0),
@@ -738,6 +874,12 @@ public class StrictRecordWriterTest {
     return new MatchCriteria(matchProfileId,
       List.of(new MatchCriteria.MatchFieldSpec("001", "", "", "", null)),
       List.of(new MatchCriteria.NonMarcMatchSpec(existingField, "001", "", "", "")));
+  }
+
+  private MatchCriteria incoming035Criteria(String matchProfileId) {
+    return new MatchCriteria(matchProfileId,
+      List.of(new MatchCriteria.MatchFieldSpec("035", "", "", "a", null)),
+      List.of(new MatchCriteria.NonMarcMatchSpec("instance.identifiers[].value", "035", "a", "", "")));
   }
 
   private JobProfilePath authorityPathWithPrefix(

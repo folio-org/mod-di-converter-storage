@@ -51,10 +51,23 @@ public class MultipleRootUpdateBranchesRule implements UnsupportedShapeRule {
       return false;
     }
 
+    List<JsonNode> orderedChildren = orderedChildren(children);
+    // A root MARC MODIFY can be a pre-match MARC normalization step for an Inventory update.
+    // Keep that narrow: it is not evidence that arbitrary root MARC + Inventory updates are isolated.
+    boolean hasRootInventoryMatchBranch = orderedChildren.stream()
+      .anyMatch(this::isRootMatchInventoryUpdateBranch);
+    long rootMarcModifyCleanupCount = orderedChildren.stream()
+      .filter(this::isRootMarcBibModifyCleanupCandidate)
+      .count();
+
     List<BranchInfo> branches = new ArrayList<>();
     boolean sawRootMatchBranch = false;
-    for (JsonNode child : orderedChildren(children)) {
-      if (isRootMarcBibModifyCleanup(child, sawRootMatchBranch)) {
+    for (int index = 0; index < orderedChildren.size(); index++) {
+      JsonNode child = orderedChildren.get(index);
+      boolean canPrecedeInventoryMatch = rootMarcModifyCleanupCount == 1
+        && hasFollowingRootInventoryMatchBranch(orderedChildren, index);
+      if (isRootMarcBibModifyCleanup(child, sawRootMatchBranch, hasRootInventoryMatchBranch,
+          canPrecedeInventoryMatch)) {
         continue;
       }
       if (hasUpdateLikeAction(child)) {
@@ -248,25 +261,76 @@ public class MultipleRootUpdateBranchesRule implements UnsupportedShapeRule {
     return false;
   }
 
-  private boolean isRootMarcBibModifyCleanup(JsonNode node, boolean sawRootMatchBranch) {
-    if (!sawRootMatchBranch || !"ACTION_PROFILE".equals(text(node, "contentType", "profileType"))) {
+  private boolean isRootMatchInventoryUpdateBranch(JsonNode node) {
+    if (!"MATCH_PROFILE".equals(text(node, "contentType", "profileType"))) {
+      return false;
+    }
+    return incomingMatchKeys(node).equals(List.of("001|||"))
+      && Set.of("INSTANCE", "HOLDINGS", "ITEM").contains(directMatchUpdateTarget(node));
+  }
+
+  private boolean hasFollowingRootInventoryMatchBranch(List<JsonNode> orderedChildren, int currentIndex) {
+    for (int index = currentIndex + 1; index < orderedChildren.size(); index++) {
+      if (isRootMatchInventoryUpdateBranch(orderedChildren.get(index))) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  private String directMatchUpdateTarget(JsonNode matchNode) {
+    JsonNode children = children(matchNode);
+    if (!children.isArray()) {
+      return "";
+    }
+    for (JsonNode child : orderedChildren(children)) {
+      if (!"MATCH".equals(text(child, "reactTo"))) {
+        continue;
+      }
+      if (!"ACTION_PROFILE".equals(text(child, "contentType", "profileType"))) {
+        continue;
+      }
+      JsonNode content = child.path("content");
+      if ("UPDATE".equals(text(content, "action"))) {
+        return text(content, "folioRecord");
+      }
+    }
+    return "";
+  }
+
+  private boolean isRootMarcBibModifyCleanup(
+      JsonNode node,
+      boolean sawRootMatchBranch,
+      boolean hasRootInventoryMatchBranch,
+      boolean canPrecedeInventoryMatch) {
+    boolean canFollowPriorMatchCleanup = sawRootMatchBranch && !hasRootInventoryMatchBranch;
+    if (!canFollowPriorMatchCleanup && !canPrecedeInventoryMatch) {
       return false;
     }
 
-    JsonNode content = node.path("content");
-    if (!"MODIFY".equals(text(content, "action"))
-      || !"MARC_BIBLIOGRAPHIC".equals(text(content, "folioRecord"))) {
+    return isRootMarcBibModifyCleanupCandidate(node);
+  }
+
+  private boolean isRootMarcBibModifyCleanupCandidate(JsonNode node) {
+    if (!isRootMarcBibModifyAction(node)) {
       return false;
     }
-
     JsonNode children = children(node);
     if (!children.isArray() || children.isEmpty()) {
       return false;
     }
-
     JsonNode mappingContent = children.get(0).path("content");
     return "MAPPING_PROFILE".equals(text(children.get(0), "contentType", "profileType"))
       && "MODIFY".equals(text(mappingContent.path("mappingDetails"), "marcMappingOption"));
+  }
+
+  private boolean isRootMarcBibModifyAction(JsonNode node) {
+    if (!"ACTION_PROFILE".equals(text(node, "contentType", "profileType"))) {
+      return false;
+    }
+    JsonNode content = node.path("content");
+    return "MODIFY".equals(text(content, "action"))
+      && "MARC_BIBLIOGRAPHIC".equals(text(content, "folioRecord"));
   }
 
   private List<JsonNode> orderedChildren(JsonNode children) {
