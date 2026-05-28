@@ -801,7 +801,7 @@ public class JpWranglerCli implements Callable<Integer> {
 
       StrictRecordWriter.WriteResult result = writer.write(categorized, refData, outputBase);
       List<PathOutcome> pathOutcomes = mergeEnrichmentOutcomes(result.pathOutcomes(), needsEnrichment);
-      GenerationOutcome overallOutcome = mergedOverallOutcome(result.overallOutcome(), needsEnrichment);
+      GenerationOutcome overallOutcome = mergedOverallOutcome(result.overallOutcome(), pathOutcomes);
       writeReport(reportWriter, outputBase, snapshot, runTimestamp, overallOutcome, pathOutcomes, refData);
 
       if (result.overallOutcome() instanceof GenerationOutcome.GeneratorGap gap) {
@@ -824,7 +824,13 @@ public class JpWranglerCli implements Callable<Integer> {
       if (!needsEnrichment.isEmpty()) {
         LOGGER.warn("Generated pre-enrichment MARC records; {} path(s) require the enrich step before final import.",
           needsEnrichment.size());
-        needsEnrichment.values().forEach(outcome -> LOGGER.warn("{}", outcome.hint()));
+        pathOutcomes.stream()
+          .map(PathOutcome::outcome)
+          .filter(GenerationOutcome.NeedsEnrichment.class::isInstance)
+          .map(GenerationOutcome.NeedsEnrichment.class::cast)
+          .map(GenerationOutcome.NeedsEnrichment::hint)
+          .distinct()
+          .forEach(hint -> LOGGER.warn("{}", hint));
         return overallOutcome.exitCode();
       }
 
@@ -861,13 +867,14 @@ public class JpWranglerCli implements Callable<Integer> {
         GenerationOutcome outcome = pathOutcome.outcome();
         GenerationOutcome.NeedsEnrichment enrichment = needsEnrichment.get(pathOutcome.pathIndex());
         if (enrichment != null && !(outcome instanceof GenerationOutcome.GeneratorGap)) {
-          outcome = enrichment;
+          outcome = enrichmentForImportRecord(enrichment, pathOutcome.importRecordNumber());
         }
         merged.add(new PathOutcome(
           pathOutcome.pathIndex(),
           pathOutcome.pathId(),
           pathOutcome.reactTo(),
           pathOutcome.matchProfileId(),
+          pathOutcome.importRecordNumber(),
           pathOutcome.destinationFiles(),
           pathOutcome.fieldsWritten(),
           outcome
@@ -876,15 +883,30 @@ public class JpWranglerCli implements Callable<Integer> {
       return merged;
     }
 
+    private GenerationOutcome.NeedsEnrichment enrichmentForImportRecord(
+        GenerationOutcome.NeedsEnrichment enrichment,
+        Integer importRecordNumber) {
+      if (importRecordNumber == null) {
+        return enrichment;
+      }
+      return new GenerationOutcome.NeedsEnrichment(
+        enrichment.pathIndex(),
+        enrichment.pathId(),
+        enrichment.matchProfileId(),
+        enrichment.hint().replaceAll("--record-number \\d+", "--record-number " + importRecordNumber)
+      );
+    }
+
     private GenerationOutcome mergedOverallOutcome(
         GenerationOutcome writerOutcome,
-        Map<Integer, GenerationOutcome.NeedsEnrichment> needsEnrichment) {
-      if (writerOutcome instanceof GenerationOutcome.GeneratorGap || needsEnrichment.isEmpty()) {
+        List<PathOutcome> pathOutcomes) {
+      if (writerOutcome instanceof GenerationOutcome.GeneratorGap) {
         return writerOutcome;
       }
-      return needsEnrichment.entrySet().stream()
-        .min(Map.Entry.comparingByKey())
-        .<GenerationOutcome>map(Map.Entry::getValue)
+      return pathOutcomes.stream()
+        .map(PathOutcome::outcome)
+        .filter(GenerationOutcome.NeedsEnrichment.class::isInstance)
+        .findFirst()
         .orElse(writerOutcome);
     }
 

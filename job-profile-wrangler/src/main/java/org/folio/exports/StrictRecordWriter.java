@@ -423,8 +423,9 @@ public class StrictRecordWriter {
         MinimalMarcRecordBuilder.buildUpdateRecordFromBase(base.record(), consolidatedPath, ++recordNumber[0],
           null, refData, matchCriteria);
       importRecords.add(update.record());
+      Integer importRecordNumber = importRecords.size();
       for (int i = 0; i < stackPaths.size(); i++) {
-        outcomes.add(pathOutcome(stackPaths.get(i), firstIndex + i,
+        outcomes.add(pathOutcome(stackPaths.get(i), firstIndex + i, importRecordNumber,
           List.of(destination(importFile, "import")), GenerationOutcome.Generated.INSTANCE));
       }
     } catch (GeneratorGapException e) {
@@ -436,7 +437,7 @@ public class StrictRecordWriter {
         if (firstGap[0] == null) {
           firstGap[0] = gap;
         }
-        outcomes.add(pathOutcome(path, firstIndex + i, List.of(destination(importFile, "import")), gap));
+        outcomes.add(pathOutcome(path, firstIndex + i, null, List.of(destination(importFile, "import")), gap));
       }
     }
   }
@@ -462,8 +463,9 @@ public class StrictRecordWriter {
       MinimalMarcRecordBuilder.BuildResult result = MinimalMarcRecordBuilder.buildRecordForPath(
         consolidatedPath, ++recordNumber[0], null, refData, matchCriteria);
       importRecords.add(result.record());
+      Integer importRecordNumber = importRecords.size();
       for (int i = 0; i < siblingPaths.size(); i++) {
-        outcomes.add(pathOutcome(siblingPaths.get(i), firstIndex + i,
+        outcomes.add(pathOutcome(siblingPaths.get(i), firstIndex + i, importRecordNumber,
           List.of(destination(importFile, "import")), GenerationOutcome.Generated.INSTANCE));
       }
     } catch (GeneratorGapException e) {
@@ -475,7 +477,7 @@ public class StrictRecordWriter {
         if (firstGap[0] == null) {
           firstGap[0] = gap;
         }
-        outcomes.add(pathOutcome(path, firstIndex + i, List.of(destination(importFile, "import")), gap));
+        outcomes.add(pathOutcome(path, firstIndex + i, null, List.of(destination(importFile, "import")), gap));
       }
     }
   }
@@ -514,8 +516,9 @@ public class StrictRecordWriter {
         MinimalMarcRecordBuilder.buildUpdateRecordFromBaseWithPrerequisites(
           foundation.record(), consolidatedPath, ++recordNumber[0], null, refData, matchCriteria, prerequisites);
       importRecords.add(update.record());
+      Integer importRecordNumber = importRecords.size();
       for (int i = 0; i < siblingPaths.size(); i++) {
-        outcomes.add(pathOutcome(siblingPaths.get(i), firstIndex + i,
+        outcomes.add(pathOutcome(siblingPaths.get(i), firstIndex + i, importRecordNumber,
           List.of(destination(foundationFile, "foundation"), destination(importFile, "import")),
           GenerationOutcome.Generated.INSTANCE));
       }
@@ -529,7 +532,7 @@ public class StrictRecordWriter {
         if (firstGap[0] == null) {
           firstGap[0] = gap;
         }
-        outcomes.add(pathOutcome(path, firstIndex + i,
+        outcomes.add(pathOutcome(path, firstIndex + i, null,
           List.of(destination(foundationFile, "foundation"), destination(importFile, "import")), gap));
       }
     }
@@ -549,7 +552,8 @@ public class StrictRecordWriter {
     int importSize = importRecords.size();
     try {
       build.build();
-      outcomes.add(pathOutcome(path, pathIndex, destinationFiles, GenerationOutcome.Generated.INSTANCE));
+      Integer importRecordNumber = importRecords.size() > importSize ? importRecords.size() : null;
+      outcomes.add(pathOutcome(path, pathIndex, importRecordNumber, destinationFiles, GenerationOutcome.Generated.INSTANCE));
     } catch (GeneratorGapException e) {
       rollback(foundationRecords, foundationSize);
       rollback(importRecords, importSize);
@@ -558,7 +562,7 @@ public class StrictRecordWriter {
       if (firstGap[0] == null) {
         firstGap[0] = gap;
       }
-      outcomes.add(pathOutcome(path, pathIndex, destinationFiles, gap));
+      outcomes.add(pathOutcome(path, pathIndex, null, destinationFiles, gap));
     }
   }
 
@@ -569,6 +573,7 @@ public class StrictRecordWriter {
   private PathOutcome pathOutcome(
       CategorizedPath path,
       int pathIndex,
+      Integer importRecordNumber,
       List<PathOutcome.DestinationFile> destinationFiles,
       GenerationOutcome outcome) {
     return new PathOutcome(
@@ -576,6 +581,7 @@ public class StrictRecordWriter {
       path.path().getPathId(),
       path.reactTo().name(),
       path.matchProfileId(),
+      importRecordNumber,
       destinationFiles,
       List.of(),
       outcome);

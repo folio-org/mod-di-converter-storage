@@ -260,6 +260,8 @@ public class StrictRecordWriterTest {
     assertEquals(1, result.foundationRecords().size());
     assertEquals(1, result.importRecords().size());
     assertEquals(2, result.pathOutcomes().size());
+    assertEquals(Integer.valueOf(1), result.pathOutcomes().get(0).importRecordNumber());
+    assertEquals(Integer.valueOf(1), result.pathOutcomes().get(1).importRecordNumber());
     assertHoldingsLocation(result.foundationRecords().get(0), "location-id");
     assertItemFields(result.foundationRecords().get(0));
     assertHoldingsLocation(result.importRecords().get(0), "location-id");
