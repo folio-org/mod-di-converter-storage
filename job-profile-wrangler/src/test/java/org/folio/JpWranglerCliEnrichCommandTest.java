@@ -88,6 +88,20 @@ public class JpWranglerCliEnrichCommandTest {
     assertEquals(null, value);
   }
 
+  @Test
+  public void recordNumberFilterScopesEnrichmentToSelectedMarcRecords() throws Exception {
+    JpWranglerCli.EnrichCommand command = new JpWranglerCli.EnrichCommand();
+    command.recordNumbers = List.of(2, 4);
+    Method shouldEnrichRecord = JpWranglerCli.EnrichCommand.class
+      .getDeclaredMethod("shouldEnrichRecord", int.class);
+    shouldEnrichRecord.setAccessible(true);
+
+    assertFalse((Boolean) shouldEnrichRecord.invoke(command, 1));
+    assertTrue((Boolean) shouldEnrichRecord.invoke(command, 2));
+    assertFalse((Boolean) shouldEnrichRecord.invoke(command, 3));
+    assertTrue((Boolean) shouldEnrichRecord.invoke(command, 4));
+  }
+
   private Object parseEnrichField(JpWranglerCli.EnrichCommand command, String fieldSpec) throws Exception {
     Method parseEnrichField = JpWranglerCli.EnrichCommand.class
       .getDeclaredMethod("parseEnrichField", String.class);

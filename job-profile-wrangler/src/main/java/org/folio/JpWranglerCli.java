@@ -1797,6 +1797,9 @@ public class JpWranglerCli implements Callable<Integer> {
     @Option(names = {"--skip-missing"}, description = "Skip records where instance is not found (default: fail)")
     boolean skipMissing = false;
 
+    @Option(names = {"--record-number"}, description = "Only enrich this 1-based MARC record number; repeat for multiple records")
+    List<Integer> recordNumbers = new ArrayList<>();
+
     enum EnrichType { INSTANCE_ID, INSTANCE_HRID, SOURCE_RECORD_ID }
 
     private static final MarcFactory MARC_FACTORY = MarcFactory.newInstance();
@@ -1852,6 +1855,12 @@ public class JpWranglerCli implements Callable<Integer> {
           while (reader.hasNext()) {
             Record record = reader.next();
             totalRecords++;
+
+            if (!shouldEnrichRecord(totalRecords)) {
+              enrichedRecords.add(record);
+              skippedCount++;
+              continue;
+            }
 
             // Extract the lookup value from the record
             String lookupValue = extractLookupValue(record, matchField);
@@ -1921,6 +1930,10 @@ public class JpWranglerCli implements Callable<Integer> {
         LOGGER.error("Enrichment failed: {}", e.getMessage(), e);
         return 1;
       }
+    }
+
+    private boolean shouldEnrichRecord(int recordNumber) {
+      return recordNumbers == null || recordNumbers.isEmpty() || recordNumbers.contains(recordNumber);
     }
 
     private void writeEnrichedRecordsAtomically(List<Record> records, Path output) throws IOException {

@@ -70,6 +70,9 @@ public class MultipleRootUpdateBranchesRule implements UnsupportedShapeRule {
     if (isCoExecutableInstanceItemUpdateStack(branches)) {
       return false;
     }
+    if (hasMarcBibUpdateMixedWithInventoryUpdate(branches)) {
+      return true;
+    }
 
     Set<String> seen = new HashSet<>();
     for (BranchInfo branch : branches) {
@@ -85,6 +88,22 @@ public class MultipleRootUpdateBranchesRule implements UnsupportedShapeRule {
       }
     }
     return false;
+  }
+
+  private boolean hasMarcBibUpdateMixedWithInventoryUpdate(List<BranchInfo> branches) {
+    boolean hasMarcBibUpdate = false;
+    boolean hasInventoryUpdate = false;
+    for (BranchInfo branch : branches) {
+      if ("MARC_BIBLIOGRAPHIC".equals(branch.updateTarget())) {
+        hasMarcBibUpdate = true;
+      } else if (Set.of("INSTANCE", "HOLDINGS", "ITEM").contains(branch.updateTarget())) {
+        hasInventoryUpdate = true;
+      }
+    }
+    // FOLIO evaluates sibling root update branches over the same event payload. Inventory
+    // updates can also write/update MARC context before a sibling MARC-bib update branch
+    // runs, so distinct incoming match fields still do not isolate this mixed stack.
+    return hasMarcBibUpdate && hasInventoryUpdate;
   }
 
   private boolean isCoExecutableInstanceItemUpdateStack(List<BranchInfo> branches) {

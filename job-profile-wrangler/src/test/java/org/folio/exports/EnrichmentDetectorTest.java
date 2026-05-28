@@ -38,7 +38,7 @@ public class EnrichmentDetectorTest {
     assertEquals("update-bib", outcome.pathId());
     assertEquals("match-bib", outcome.matchProfileId());
     assertEquals("Run: jp-wrangler enrich target/generated/job-profile-import.mrc --match-field 001 "
-      + "--enrich-field 999ff$s --enrich-type SOURCE_RECORD_ID --record-type MARC_BIB --skip-missing", outcome.hint());
+      + "--enrich-field 999ff$s --enrich-type SOURCE_RECORD_ID --record-type MARC_BIB --record-number 1 --skip-missing", outcome.hint());
   }
 
   @Test
@@ -69,7 +69,7 @@ public class EnrichmentDetectorTest {
 
     assertEquals("update-instance", outcome.pathId());
     assertEquals("Run: jp-wrangler enrich target/generated/job-profile-import.mrc --match-field 001 "
-      + "--enrich-field 999ff$s --enrich-type SOURCE_RECORD_ID --record-type MARC_BIB --skip-missing", outcome.hint());
+      + "--enrich-field 999ff$s --enrich-type SOURCE_RECORD_ID --record-type MARC_BIB --record-number 1 --skip-missing", outcome.hint());
   }
 
   @Test
@@ -125,7 +125,7 @@ public class EnrichmentDetectorTest {
     assertEquals("path-0", outcome.pathId());
     assertEquals("match-1", outcome.matchProfileId());
     assertEquals("Run: jp-wrangler enrich target/generated/job-profile-import.mrc --match-field 001 "
-      + "--enrich-field 999ff$a --enrich-type INSTANCE_HRID", outcome.hint());
+      + "--enrich-field 999ff$a --enrich-type INSTANCE_HRID --record-number 1", outcome.hint());
   }
 
   @Test
@@ -152,7 +152,7 @@ public class EnrichmentDetectorTest {
     assertEquals("delete-auth", outcome.pathId());
     assertEquals("match-auth", outcome.matchProfileId());
     assertEquals("Run: jp-wrangler enrich target/generated/job-profile-import.mrc --match-field 001 "
-      + "--enrich-field 999ff$s --enrich-type SOURCE_RECORD_ID --record-type MARC_AUTHORITY --skip-missing", outcome.hint());
+      + "--enrich-field 999ff$s --enrich-type SOURCE_RECORD_ID --record-type MARC_AUTHORITY --record-number 1 --skip-missing", outcome.hint());
   }
 
   @Test
@@ -169,7 +169,7 @@ public class EnrichmentDetectorTest {
     assertEquals("update-auth", outcome.pathId());
     assertEquals("match-auth", outcome.matchProfileId());
     assertEquals("Run: jp-wrangler enrich target/generated/job-profile-import.mrc --match-field 001 "
-      + "--enrich-field 999ff$s --enrich-type SOURCE_RECORD_ID --record-type MARC_AUTHORITY --skip-missing", outcome.hint());
+      + "--enrich-field 999ff$s --enrich-type SOURCE_RECORD_ID --record-type MARC_AUTHORITY --record-number 1 --skip-missing", outcome.hint());
   }
 
   @Test
@@ -201,6 +201,7 @@ public class EnrichmentDetectorTest {
     assertTrue(result.containsKey(1));
     assertEquals(1, result.get(1).pathIndex());
     assertEquals("path-1", result.get(1).pathId());
+    assertTrue(result.get(1).hint().contains("--record-number 2"));
   }
 
   @Test
@@ -226,7 +227,7 @@ public class EnrichmentDetectorTest {
       EnrichmentDetector.detect(List.of(path), OUTPUT_BASE).get(0);
 
     assertEquals("Run: jp-wrangler enrich target/generated/job-profile-import.mrc --match-field 001 "
-      + "--enrich-field 035ff$z --enrich-type INSTANCE_HRID", outcome.hint());
+      + "--enrich-field 035ff$z --enrich-type INSTANCE_HRID --record-number 1", outcome.hint());
   }
 
   @Test
@@ -238,7 +239,7 @@ public class EnrichmentDetectorTest {
 
     assertEquals(firstHint, secondHint);
     assertEquals("Run: jp-wrangler enrich target/generated/job-profile-import.mrc --match-field 001 "
-      + "--enrich-field 999ff$a --enrich-type INSTANCE_HRID", firstHint);
+      + "--enrich-field 999ff$a --enrich-type INSTANCE_HRID --record-number 1", firstHint);
   }
 
   private CategorizedPath path(String pathId, MatchCriteria matchCriteria) {

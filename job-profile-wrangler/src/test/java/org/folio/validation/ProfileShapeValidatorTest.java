@@ -133,6 +133,15 @@ public class ProfileShapeValidatorTest {
   }
 
   @Test
+  public void multipleRootInventoryAndMarcBibUpdateBranchesStillMatchWithDistinctFields() throws Exception {
+    Optional<BlockedUnsupportedWorkflow> outcome = ProfileShapeValidator.defaultValidator()
+      .validate(fixture("multiple-root-inventory-and-marc-bib-update-distinct-fields.json"));
+
+    assertTrue(outcome.isPresent());
+    assertEquals(MultipleRootUpdateBranchesRule.RULE_NAME, outcome.get().rule());
+  }
+
+  @Test
   public void rootInstanceAndItemUpdatesSharingIncoming001DoNotMatch() throws Exception {
     assertNoRuleMatch("root-instance-item-update-shared-001-cleanup.json");
   }

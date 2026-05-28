@@ -60,7 +60,7 @@ public final class EnrichmentDetector {
         pathIndex,
         path.path().getPathId(),
         path.matchProfileId(),
-        hintFor(outputBase, spec, enrichType)
+        hintFor(outputBase, spec, enrichType, pathIndex)
       ));
     }
 
@@ -95,13 +95,16 @@ public final class EnrichmentDetector {
     // 999 ff $s is assigned by SRS when foundation records are imported, so generated
     // import records must be enriched before the final update/delete import. For MARC bibs,
     // successful SRS update/modify events also update the related Instance via 999 ff $i.
+    // Scope enrichment to this path's import record so sibling root match branches do not
+    // accidentally become eligible for an SRS update match.
     return new GenerationOutcome.NeedsEnrichment(
       pathIndex,
       path.path().getPathId(),
       path.matchProfileId(),
       "Run: jp-wrangler enrich " + outputBase + "-import.mrc"
         + " --match-field 001 --enrich-field 999ff$s --enrich-type SOURCE_RECORD_ID"
-        + " --record-type " + recordType + " --skip-missing");
+        + " --record-type " + recordType + " --record-number " + importRecordNumber(pathIndex)
+        + " --skip-missing");
   }
 
   private static List<String> sourceRecordTypesFor(CategorizedPath path) {
@@ -161,13 +164,19 @@ public final class EnrichmentDetector {
   private static String hintFor(
       String outputBase,
       MatchCriteria.NonMarcMatchSpec spec,
-      String enrichType) {
+      String enrichType,
+      int pathIndex) {
 
     String subfield = normalize(spec.targetSubfield()) == null ? "a" : normalize(spec.targetSubfield());
     return "Run: jp-wrangler enrich " + outputBase + "-import.mrc"
       + " --match-field 001"
       + " --enrich-field " + enrichFieldSpec(spec, subfield)
-      + " --enrich-type " + enrichType;
+      + " --enrich-type " + enrichType
+      + " --record-number " + importRecordNumber(pathIndex);
+  }
+
+  private static int importRecordNumber(int pathIndex) {
+    return pathIndex + 1;
   }
 
   private static String enrichFieldSpec(MatchCriteria.NonMarcMatchSpec spec, String subfield) {
