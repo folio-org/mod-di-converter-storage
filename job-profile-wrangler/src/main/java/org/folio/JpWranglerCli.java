@@ -27,45 +27,27 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.Callable;
+import java.util.regex.Pattern;
+import java.util.stream.Stream;
 
 import okhttp3.HttpUrl;
 import okhttp3.OkHttpClient;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.folio.exports.GenerationReport;
-import org.folio.exports.GenerationReportWriter;
-import org.folio.exports.GenerationOutcome;
-import org.folio.exports.CategorizedPath;
-import org.folio.exports.CategorizedPaths;
-import org.folio.exports.EnrichmentDetector;
-import org.folio.exports.GeneratorGapException;
+import org.folio.exports.GeneratePipeline;
 import org.folio.exports.JobProfileAnalyzer;
-import org.folio.exports.JobProfilePath;
-import org.folio.exports.MatchedPathPair;
-import org.folio.exports.MatchCriteria;
-import org.folio.exports.MappingRulesAnalysis;
-import org.folio.exports.MappingRulesProcessor;
 import org.folio.exports.MinimalMarcRecordBuilder;
-import org.folio.exports.PathExtractionResult;
-import org.folio.exports.PathOutcome;
-import org.folio.exports.ReactTo;
-import org.folio.exports.StrictRecordWriter;
 import org.folio.foundation.FoundationSeedProfile;
 import org.folio.graph.GraphReader;
 import org.folio.graph.GraphWriter;
 import org.folio.graph.GraphWriterEnhanced;
 import org.folio.graph.edges.RegularEdge;
-import org.folio.graph.nodes.ActionProfileNode;
-import org.folio.graph.nodes.JobProfileNode;
-import org.folio.graph.nodes.MappingProfileNode;
-import org.folio.graph.nodes.MatchProfileNode;
 import org.folio.graph.nodes.Profile;
 import org.folio.http.FolioClient;
 import org.folio.http.ReferenceDataManager;
 import org.folio.hydration.ProfileHydration;
 import org.folio.imports.ImportReport;
 import org.folio.imports.RepoImport;
-import org.folio.validation.ProfileShapeValidator;
 import org.jgrapht.Graph;
 import org.marc4j.MarcReader;
 import org.marc4j.MarcStreamReader;
@@ -83,6 +65,8 @@ import picocli.CommandLine.Command;
 import picocli.CommandLine.Help.Visibility;
 import picocli.CommandLine.Option;
 import picocli.CommandLine.Parameters;
+
+import static org.folio.profile.ProfileTree.children;
 
 @Command(
   name = "jp-wrangler",
@@ -103,6 +87,9 @@ import picocli.CommandLine.Parameters;
   footer = "Note: The 'visualize' command requires GraphViz to be installed (https://graphviz.org/).")
 public class JpWranglerCli implements Callable<Integer> {
   private static final Logger LOGGER = LogManager.getLogger(JpWranglerCli.class);
+  private static final Pattern GENERATED_SEED_JOB_NAME = Pattern.compile("jp-(\\d{3}) \\d{12}-[A-Z]{5}");
+  private static final Pattern GENERATED_SEED_SUB_PROFILE_NAME =
+    Pattern.compile("jp-(\\d{3}) \\d{12}-[A-Z]{5} .+");
 
   public static void main(String[] args) {
     int exitCode = new CommandLine(new JpWranglerCli()).execute(args);
@@ -121,6 +108,7 @@ public class JpWranglerCli implements Callable<Integer> {
     private static final String DEFAULT_ENV_FILE = ".env";
 
     private boolean environmentDefaultsApplied;
+    private OkHttpClient httpClient;
 
     @Option(names = {"-u", "--url"}, description = "FOLIO base URL")
     String baseUrl;
@@ -198,12 +186,17 @@ public class JpWranglerCli implements Callable<Integer> {
     }
 
     OkHttpClient httpClient() {
+      if (httpClient != null) {
+        return httpClient;
+      }
       long timeoutSeconds = Math.max(1L, (long) httpTimeoutSeconds);
-      return new OkHttpClient.Builder()
+      // OkHttp clients own thread and connection pools, so token and API calls share one instance.
+      httpClient = new OkHttpClient.Builder()
         .connectTimeout(Duration.ofSeconds(timeoutSeconds))
         .readTimeout(Duration.ofSeconds(timeoutSeconds))
         .writeTimeout(Duration.ofSeconds(timeoutSeconds))
         .build();
+      return httpClient;
     }
 
     void applyEnvironmentDefaults() {
@@ -363,6 +356,10 @@ public class JpWranglerCli implements Callable<Integer> {
       if (containsDotProfiles(localRepository)) {
         return localRepository.toString();
       }
+      if (Files.isDirectory(localRepository)) {
+        LOGGER.warn("Local repository '{}' has no DOT profiles; using embedded bundled repository",
+          localRepository);
+      }
       return embeddedRepositoryPath(requiredRepoId).toString();
     }
 
@@ -394,7 +391,9 @@ public class JpWranglerCli implements Callable<Integer> {
         return embeddedRepositoryPath;
       }
 
+      Path previousRepo = embeddedRepositoryPath;
       Path tempRepo = Files.createTempDirectory("jp-wrangler-embedded-repository-");
+      tempRepo.toFile().deleteOnExit();
       int copied = 0;
       ClassLoader classLoader = JpWranglerCli.class.getClassLoader();
       for (int id = 1; id <= MAX_EMBEDDED_REPOSITORY_ID; id++) {
@@ -404,7 +403,9 @@ public class JpWranglerCli implements Callable<Integer> {
           if (input == null) {
             continue;
           }
-          Files.copy(input, tempRepo.resolve(fileName), StandardCopyOption.REPLACE_EXISTING);
+          Path target = tempRepo.resolve(fileName);
+          Files.copy(input, target, StandardCopyOption.REPLACE_EXISTING);
+          target.toFile().deleteOnExit();
           copied++;
         }
       }
@@ -413,7 +414,30 @@ public class JpWranglerCli implements Callable<Integer> {
         throw new IOException("Embedded repository is not available in this jar");
       }
       embeddedRepositoryPath = tempRepo;
+      // Tests can re-extract for a required id; remove the old temp tree instead of orphaning it.
+      if (previousRepo != null && !previousRepo.equals(tempRepo)) {
+        deleteDirectoryQuietly(previousRepo);
+      }
       return embeddedRepositoryPath;
+    }
+
+    private static void deleteDirectoryQuietly(Path directory) {
+      if (directory == null || !Files.isDirectory(directory)) {
+        return;
+      }
+      try (java.util.stream.Stream<Path> stream = Files.walk(directory)) {
+        stream
+          .sorted(java.util.Comparator.reverseOrder())
+          .forEach(path -> {
+            try {
+              Files.deleteIfExists(path);
+            } catch (IOException ignored) {
+              path.toFile().deleteOnExit();
+            }
+          });
+      } catch (IOException ignored) {
+        directory.toFile().deleteOnExit();
+      }
     }
 
     private static boolean embeddedRepositoryHasRequiredProfiles(Path path, Integer requiredRepoId) throws IOException {
@@ -668,6 +692,8 @@ public class JpWranglerCli implements Callable<Integer> {
       List<DeleteCommand.ProfileDeletionData> profilesToReplace = new ArrayList<>();
       for (FoundationSeedProfile seedProfile : FoundationSeedProfile.values()) {
         client.getJobProfiles(Map.of("query", seedProfileNameQuery(seedProfile.repoId())))
+          // Name prefix is only the search window; the generated suffix proves wrangler ownership.
+          .filter(profile -> isGeneratedFoundationSeedName(profile, seedProfile.repoId(), false))
           .forEach(profile -> profilesToReplace.add(seedProfileDeletionData(client, profile)));
       }
       return profilesToReplace;
@@ -679,18 +705,12 @@ public class JpWranglerCli implements Callable<Integer> {
       DeleteCommand.ProfileReferences namedSeedChildren = DeleteCommand.ProfileReferences.empty();
       for (FoundationSeedProfile seedProfile : FoundationSeedProfile.values()) {
         Map<String, String> query = Map.of("query", seedProfileNameQuery(seedProfile.repoId()));
-        client.getActionProfiles(query)
-          .map(profile -> profile.path("id").asText(""))
-          .filter(id -> !id.isBlank())
-          .forEach(namedSeedChildren.actionIds()::add);
-        client.getMappingProfiles(query)
-          .map(profile -> profile.path("id").asText(""))
-          .filter(id -> !id.isBlank())
-          .forEach(namedSeedChildren.mappingIds()::add);
-        client.getMatchProfiles(query)
-          .map(profile -> profile.path("id").asText(""))
-          .filter(id -> !id.isBlank())
-          .forEach(namedSeedChildren.matchIds()::add);
+        collectGeneratedSeedProfileIds(client.getActionProfiles(query), namedSeedChildren.actionIds(),
+          seedProfile.repoId());
+        collectGeneratedSeedProfileIds(client.getMappingProfiles(query), namedSeedChildren.mappingIds(),
+          seedProfile.repoId());
+        collectGeneratedSeedProfileIds(client.getMatchProfiles(query), namedSeedChildren.matchIds(),
+          seedProfile.repoId());
       }
 
       DeleteCommand.ProfileReferences referencedBySeedJobs = DeleteCommand.ProfileReferences.empty();
@@ -700,14 +720,33 @@ public class JpWranglerCli implements Callable<Integer> {
       return namedSeedChildren.without(referencedBySeedJobs);
     }
 
+    private static void collectGeneratedSeedProfileIds(Stream<JsonNode> profiles, Set<String> target, int repoId) {
+      profiles
+        .filter(profile -> isGeneratedFoundationSeedName(profile, repoId, true))
+        .map(profile -> profile.path("id").asText(""))
+        .filter(id -> !id.isBlank())
+        .forEach(target::add);
+    }
+
+    private static boolean isGeneratedFoundationSeedName(JsonNode profile, int repoId, boolean subProfile) {
+      String name = profile.path("name").asText("");
+      Pattern pattern = subProfile ? GENERATED_SEED_SUB_PROFILE_NAME : GENERATED_SEED_JOB_NAME;
+      var matcher = pattern.matcher(name);
+      if (!matcher.matches() || Integer.parseInt(matcher.group(1)) != repoId) {
+        LOGGER.warn("Skipping profile '{}' because it is not a wrangler-generated foundation seed name", name);
+        return false;
+      }
+      return true;
+    }
+
     private static DeleteCommand.ProfileDeletionData seedProfileDeletionData(FolioClient client, JsonNode profile) {
       String id = profile.path("id").asText();
       String name = profile.path("name").asText();
       Optional<JsonNode> snapshotOpt = client.getJobProfileSnapshot(id);
       if (snapshotOpt.isEmpty()) {
-        LOGGER.warn("Could not fetch foundation seed profile snapshot for {} ({}); deleting only the job profile "
-          + "and relying on the anchored seed-name orphan sweep for child profiles.", name, id);
-        return new DeleteCommand.ProfileDeletionData(id, name, Set.of(), Set.of(), Set.of());
+        // A missing snapshot means the cascade scope is unknown; deleting by name would be unsafe.
+        throw new IllegalStateException("Could not fetch foundation seed profile snapshot for " + name + " (" + id
+          + "); refusing to replace because child profile references are unknown.");
       }
       DeleteCommand.ProfileReferences references = DeleteCommand.collectProfileIds(snapshotOpt.get());
       return new DeleteCommand.ProfileDeletionData(id, name, references.matchIds(), references.actionIds(),
@@ -728,6 +767,21 @@ public class JpWranglerCli implements Callable<Integer> {
         FolioClient client,
         List<DeleteCommand.ProfileDeletionData> seedProfilesToReplace,
         DeleteCommand.ProfileReferences orphanSeedProfilesToReplace) {
+      DeleteCommand.ProfileReferences sharedReferences = sharedSeedReferences(client, seedProfilesToReplace,
+        orphanSeedProfilesToReplace);
+      if (!sharedReferences.isEmpty()) {
+        // Seed replacement must not break unrelated job profiles that reused a seed child.
+        LOGGER.warn("Skipping foundation seed sub-profiles still referenced by non-seed job profiles: "
+            + "{} match, {} action, {} mapping",
+          sharedReferences.matchIds().size(),
+          sharedReferences.actionIds().size(),
+          sharedReferences.mappingIds().size());
+        seedProfilesToReplace = seedProfilesToReplace.stream()
+          .map(profile -> profile.without(sharedReferences))
+          .toList();
+        orphanSeedProfilesToReplace = orphanSeedProfilesToReplace.without(sharedReferences);
+      }
+
       DeleteCommand.DeletionResult totalResult = DeleteCommand.DeletionResult.empty();
       for (DeleteCommand.ProfileDeletionData profile : seedProfilesToReplace) {
         totalResult = DeleteCommand.DeletionResult.combine(totalResult,
@@ -739,6 +793,26 @@ public class JpWranglerCli implements Callable<Integer> {
         LOGGER.info("Replaced {} existing foundation seed profile(s)", seedProfilesToReplace.size());
       }
       return totalResult;
+    }
+
+    private static DeleteCommand.ProfileReferences sharedSeedReferences(
+        FolioClient client,
+        List<DeleteCommand.ProfileDeletionData> seedProfilesToReplace,
+        DeleteCommand.ProfileReferences orphanSeedProfilesToReplace) {
+      DeleteCommand.ProfileReferences selectedReferences = DeleteCommand.ProfileReferences.empty();
+      seedProfilesToReplace.stream()
+        .map(DeleteCommand.ProfileDeletionData::references)
+        .forEach(selectedReferences::addAll);
+      selectedReferences.addAll(orphanSeedProfilesToReplace);
+      if (selectedReferences.isEmpty()) {
+        return DeleteCommand.ProfileReferences.empty();
+      }
+
+      Set<String> selectedJobProfileIds = seedProfilesToReplace.stream()
+        .map(DeleteCommand.ProfileDeletionData::id)
+        .collect(java.util.stream.Collectors.toSet());
+      return DeleteCommand.sharedReferencesFromNonSelectedProfiles(client, client.getJobProfiles().toList(),
+        selectedJobProfileIds, selectedReferences);
     }
   }
 
@@ -877,223 +951,17 @@ public class JpWranglerCli implements Callable<Integer> {
 
         LOGGER.info("Successfully retrieved job profile snapshot for UUID: {}", jobProfileId);
 
-        return generateMinimalRecords(client, snapshot.get());
+        GeneratePipeline pipeline = new GeneratePipeline(
+          client,
+          () -> fetchReferenceDataContext(client),
+          Paths.get(outputPath),
+          verbose);
+        return pipeline.generate(snapshot.get(), jobProfileId);
 
       } catch (Exception e) {
         LOGGER.error("Test data generation failed: {}", e.getMessage(), e);
         return 1;
       }
-    }
-
-    /**
-     * Generates minimal MARC records from scratch using mapping rules.
-     * Creates two files:
-     * - {outputPath}-foundation.mrc: Foundation records to seed the database before testing
-     * - {outputPath}-import.mrc: Test records for exercising both CREATE and UPDATE paths
-     *
-     * NOTE: The file names do NOT correspond to action types. Both CREATE and UPDATE
-     * path records go to -import.mrc. The -foundation.mrc file contains pre-requisite
-     * records that must exist in the database before running the test import.
-     */
-    private Integer generateMinimalRecords(FolioClient client, JsonNode snapshot) throws IOException {
-      LOGGER.info("Generating minimal MARC records from scratch...");
-      String runTimestamp = Instant.now().toString();
-      GenerationReportWriter reportWriter = new GenerationReportWriter();
-      Path outputBase = Paths.get(outputPath);
-
-      // Get mapping rules from tenant
-      MappingRulesProcessor rulesProcessor = new MappingRulesProcessor(client);
-      MappingRulesAnalysis analysis = rulesProcessor.fetchAndAnalyze("marc-bib");
-
-      if (verbose) {
-        LOGGER.info("Mapping analysis: {} mapped fields, {} required fields",
-          analysis.getAllMappedInventoryFields().size(),
-          analysis.getRequiredInventoryFields().size());
-      }
-
-      // Fetch reference data for Holdings and Items
-      MinimalMarcRecordBuilder.ReferenceDataContext refData = fetchReferenceDataContext(client);
-      if (refData != null && verbose) {
-        LOGGER.info("Reference data fetched for Holdings/Items: locationId={}, materialTypeId={}, loanTypeId={}",
-          refData.locationId(), refData.materialTypeId(), refData.loanTypeId());
-      }
-
-      cleanupOutputFiles();
-
-      if (analysis.getAllMappedInventoryFields().isEmpty()) {
-        GeneratorGapException gap = GeneratorGapException.mappingRulesUnavailable("marc-bib");
-        GenerationOutcome.GeneratorGap outcome = new GenerationOutcome.GeneratorGap(-1, null,
-          gap.reason().name(), gap.getMessage());
-        writeReport(reportWriter, outputBase, snapshot, runTimestamp, outcome, List.of(), refData);
-        LOGGER.error("Generation outcome: {} - {}", GenerationOutcome.GENERATOR_GAP, gap.getMessage());
-        return outcome.exitCode();
-      }
-
-      Optional<GenerationOutcome.BlockedUnsupportedWorkflow> blocked =
-        ProfileShapeValidator.defaultValidator().validate(snapshot);
-      if (blocked.isPresent()) {
-        writeReport(reportWriter, outputBase, snapshot, runTimestamp, blocked.get(), List.of(), refData);
-        LOGGER.error("Generation outcome: {} - {}", blocked.get().label(), blocked.get().message());
-        return blocked.get().exitCode();
-      }
-
-      // Extract all paths (CREATE and UPDATE)
-      PathExtractionResult pathResult = extractAllPaths(snapshot);
-
-      if (!pathResult.unsupportedActionPaths().isEmpty()) {
-        List<PathOutcome> unsupportedOutcomes = unsupportedActionOutcomes(pathResult.unsupportedActionPaths());
-        GenerationOutcome.GeneratorGap outcome =
-          (GenerationOutcome.GeneratorGap) unsupportedOutcomes.get(0).outcome();
-        writeReport(reportWriter, outputBase, snapshot, runTimestamp, outcome, unsupportedOutcomes, refData);
-        LOGGER.error("Generation outcome: {} - {}", outcome.label(), outcome.message());
-        return outcome.exitCode();
-      }
-
-      if (pathResult.createPaths().isEmpty() && pathResult.updatePaths().isEmpty()
-        && pathResult.deletePaths().isEmpty()) {
-        GenerationOutcome.InvalidProfileShape outcome = new GenerationOutcome.InvalidProfileShape(
-          "EMPTY_PATH", "No CREATE, UPDATE, or DELETE action paths found in job profile");
-        writeReport(reportWriter, outputBase, snapshot, runTimestamp, outcome, List.of(), refData);
-        LOGGER.warn("No CREATE or UPDATE action paths found in job profile");
-        LOGGER.error("Generation outcome: {} - EMPTY_PATH", GenerationOutcome.INVALID_PROFILE_SHAPE);
-        return outcome.exitCode();
-      }
-
-      LOGGER.info("Found {} CREATE path(s), {} UPDATE path(s), and {} DELETE path(s) in job profile",
-        pathResult.createPaths().size(), pathResult.updatePaths().size(), pathResult.deletePaths().size());
-
-      // Categorize paths into paired and unpaired
-      CategorizedPaths categorized = categorizePaths(pathResult);
-
-      LOGGER.info("Found {} matched path pair(s) and {} unpaired CREATE stack(s) after categorization",
-        categorized.pairedPaths().size(), categorized.unpairedCreatePaths().size());
-
-      StrictRecordWriter writer = new StrictRecordWriter();
-      List<CategorizedPath> allPaths = writer.pathOrder(categorized);
-      Map<Integer, GenerationOutcome.NeedsEnrichment> needsEnrichment =
-        EnrichmentDetector.detect(allPaths, outputPath);
-
-      StrictRecordWriter.WriteResult result = writer.write(categorized, refData, outputBase);
-      List<PathOutcome> pathOutcomes = mergeEnrichmentOutcomes(result.pathOutcomes(), needsEnrichment);
-      GenerationOutcome overallOutcome = mergedOverallOutcome(result.overallOutcome(), pathOutcomes);
-      writeReport(reportWriter, outputBase, snapshot, runTimestamp, overallOutcome, pathOutcomes, refData);
-
-      if (result.overallOutcome() instanceof GenerationOutcome.GeneratorGap gap) {
-        LOGGER.error("Generation outcome: {} - {}", gap.label(), gap.message());
-        return gap.exitCode();
-      }
-
-      if (!result.foundationRecords().isEmpty()) {
-        LOGGER.info("Generated {} foundation record(s) written to {}",
-          result.foundationRecords().size(),
-          result.foundationFiles().stream()
-            .map(Path::toString)
-            .toList());
-      }
-      if (!result.importRecords().isEmpty()) {
-        LOGGER.info("Generated {} record(s) for import written to {}",
-          result.importRecords().size(), outputPath + "-import.mrc");
-      }
-
-      if (!needsEnrichment.isEmpty()) {
-        LOGGER.warn("Generated pre-enrichment MARC records; {} path(s) require the enrich step before final import.",
-          needsEnrichment.size());
-        pathOutcomes.stream()
-          .map(PathOutcome::outcome)
-          .filter(GenerationOutcome.NeedsEnrichment.class::isInstance)
-          .map(GenerationOutcome.NeedsEnrichment.class::cast)
-          .map(GenerationOutcome.NeedsEnrichment::hint)
-          .distinct()
-          .forEach(hint -> LOGGER.warn("{}", hint));
-        return overallOutcome.exitCode();
-      }
-
-      return overallOutcome.exitCode();
-    }
-
-    private void writeReport(
-        GenerationReportWriter reportWriter,
-        Path outputBase,
-        JsonNode snapshot,
-        String runTimestamp,
-        GenerationOutcome overallOutcome,
-        List<PathOutcome> paths,
-        MinimalMarcRecordBuilder.ReferenceDataContext refData) throws IOException {
-      reportWriter.write(outputBase, GenerationReport.of(
-        snapshotProfileId(snapshot),
-        snapshotProfileName(snapshot),
-        runTimestamp,
-        overallOutcome,
-        paths,
-        refData
-      ), System.out, verbose);
-    }
-
-    private List<PathOutcome> mergeEnrichmentOutcomes(
-        List<PathOutcome> pathOutcomes,
-        Map<Integer, GenerationOutcome.NeedsEnrichment> needsEnrichment) {
-      if (needsEnrichment.isEmpty()) {
-        return pathOutcomes;
-      }
-
-      List<PathOutcome> merged = new ArrayList<>();
-      for (PathOutcome pathOutcome : pathOutcomes) {
-        GenerationOutcome outcome = pathOutcome.outcome();
-        GenerationOutcome.NeedsEnrichment enrichment = needsEnrichment.get(pathOutcome.pathIndex());
-        if (enrichment != null && !(outcome instanceof GenerationOutcome.GeneratorGap)) {
-          outcome = enrichmentForImportRecord(enrichment, pathOutcome.importRecordNumber());
-        }
-        merged.add(new PathOutcome(
-          pathOutcome.pathIndex(),
-          pathOutcome.pathId(),
-          pathOutcome.reactTo(),
-          pathOutcome.matchProfileId(),
-          pathOutcome.importRecordNumber(),
-          pathOutcome.destinationFiles(),
-          pathOutcome.fieldsWritten(),
-          outcome
-        ));
-      }
-      return merged;
-    }
-
-    private GenerationOutcome.NeedsEnrichment enrichmentForImportRecord(
-        GenerationOutcome.NeedsEnrichment enrichment,
-        Integer importRecordNumber) {
-      if (importRecordNumber == null) {
-        return enrichment;
-      }
-      return new GenerationOutcome.NeedsEnrichment(
-        enrichment.pathIndex(),
-        enrichment.pathId(),
-        enrichment.matchProfileId(),
-        enrichment.hint().replaceAll("--record-number \\d+", "--record-number " + importRecordNumber)
-      );
-    }
-
-    private GenerationOutcome mergedOverallOutcome(
-        GenerationOutcome writerOutcome,
-        List<PathOutcome> pathOutcomes) {
-      if (writerOutcome instanceof GenerationOutcome.GeneratorGap) {
-        return writerOutcome;
-      }
-      return pathOutcomes.stream()
-        .map(PathOutcome::outcome)
-        .filter(GenerationOutcome.NeedsEnrichment.class::isInstance)
-        .findFirst()
-        .orElse(writerOutcome);
-    }
-
-    private String snapshotProfileId(JsonNode snapshot) {
-      String contentId = snapshot.path("content").path("id").asText(null);
-      if (contentId != null && !contentId.isBlank()) {
-        return contentId;
-      }
-      return snapshot.path("profileId").asText(jobProfileId);
-    }
-
-    private String snapshotProfileName(JsonNode snapshot) {
-      return snapshot.path("content").path("name").asText(null);
     }
 
     private boolean isOutputParentWritable() {
@@ -1111,491 +979,6 @@ public class JpWranglerCli implements Callable<Integer> {
         return false;
       }
       return true;
-    }
-
-    private void cleanupOutputFiles() throws IOException {
-      Files.deleteIfExists(Paths.get(outputPath + "-foundation.mrc"));
-      Files.deleteIfExists(Paths.get(outputPath + "-import.mrc"));
-      Files.deleteIfExists(Paths.get(outputPath + "-report.json"));
-    }
-
-    /**
-     * Categorizes paths into paired and unpaired groups.
-     *
-     * @param pathResult the extracted paths
-     * @return categorized paths with paired and unpaired groups
-     */
-    private CategorizedPaths categorizePaths(PathExtractionResult pathResult) {
-      List<MatchedPathPair> pairs = pairPaths(pathResult.createPaths(), pathResult.updatePaths());
-
-      Set<CategorizedPath> pairedCreatePaths = new HashSet<>();
-      Set<CategorizedPath> pairedUpdatePaths = new HashSet<>();
-
-      for (MatchedPathPair pair : pairs) {
-        pairedCreatePaths.add(pair.createPath());
-        pairedUpdatePaths.add(pair.updatePath());
-      }
-
-      List<CategorizedPath> unpairedCreate = coalesceSiblingCreateStacks(pathResult.createPaths().stream()
-        .filter(p -> !pairedCreatePaths.contains(p))
-        .toList());
-
-      List<CategorizedPath> unpairedUpdate = pathResult.updatePaths().stream()
-        .filter(p -> !pairedUpdatePaths.contains(p))
-        .toList();
-
-      return new CategorizedPaths(pairs, unpairedCreate, unpairedUpdate, pathResult.deletePaths());
-    }
-
-    private List<CategorizedPath> coalesceSiblingCreateStacks(List<CategorizedPath> createPaths) {
-      Map<String, List<CategorizedPath>> groups = new java.util.LinkedHashMap<>();
-      List<CategorizedPath> passthrough = new ArrayList<>();
-      for (CategorizedPath path : createPaths) {
-        if ((path.reactTo() == ReactTo.MATCH || path.reactTo() == ReactTo.NON_MATCH)
-            && path.matchProfileId() != null && !path.matchProfileId().isBlank()) {
-          groups.computeIfAbsent(path.reactTo() + ":" + path.matchProfileId(), key -> new ArrayList<>()).add(path);
-        } else {
-          passthrough.add(path);
-        }
-      }
-
-      List<CategorizedPath> coalesced = new ArrayList<>();
-      for (List<CategorizedPath> group : groups.values()) {
-        if (group.size() == 1) {
-          coalesced.add(group.get(0));
-        } else {
-          // Sibling CREATE actions under the same MATCH/NON_MATCH outcome execute as one FOLIO
-          // stack for a single incoming record, so generate one record with the union of fields.
-          coalesced.add(consolidateCategorizedCreatePaths(group));
-        }
-      }
-      coalesced.addAll(passthrough);
-      return coalesced;
-    }
-
-    private CategorizedPath consolidateCategorizedCreatePaths(List<CategorizedPath> paths) {
-      CategorizedPath first = paths.get(0);
-      List<Profile> consolidatedProfiles = new ArrayList<>();
-      Set<String> seenProfileIds = new HashSet<>();
-      for (CategorizedPath path : paths) {
-        for (Profile profile : path.path().getProfiles()) {
-          if (seenProfileIds.add(profileKey(profile))) {
-            consolidatedProfiles.add(profile);
-          }
-        }
-      }
-      return new CategorizedPath(
-        new JobProfilePath(consolidatedProfiles),
-        first.reactTo(),
-        first.matchProfileId(),
-        first.matchCriteria());
-    }
-
-    private String profileKey(Profile profile) {
-      if (profile instanceof JobProfileNode jobProfile) {
-        return "JobProfile-" + jobProfile.id();
-      }
-      if (profile instanceof MatchProfileNode matchProfile) {
-        return "MatchProfile-" + matchProfile.id();
-      }
-      if (profile instanceof ActionProfileNode actionProfile) {
-        return "ActionProfile-" + actionProfile.id();
-      }
-      if (profile instanceof MappingProfileNode mappingProfile) {
-        return "MappingProfile-" + mappingProfile.id();
-      }
-      return profile.getClass().getSimpleName() + "-" + profile.getName();
-    }
-
-
-    /**
-     * Extracts all paths (CREATE and UPDATE) from the job profile snapshot.
-     * Tracks the reactTo field to determine if paths are triggered by MATCH or NON_MATCH.
-     */
-    private PathExtractionResult extractAllPaths(JsonNode snapshot) {
-      List<CategorizedPath> createPaths = new ArrayList<>();
-      List<CategorizedPath> updatePaths = new ArrayList<>();
-      List<CategorizedPath> deletePaths = new ArrayList<>();
-      List<CategorizedPath> unsupportedActionPaths = new ArrayList<>();
-
-      extractPathsWithOutcome(snapshot, new ArrayList<>(), ReactTo.NONE, null, MatchCriteria.empty(),
-        createPaths, updatePaths, deletePaths, unsupportedActionPaths);
-
-      return new PathExtractionResult(createPaths, updatePaths, deletePaths, unsupportedActionPaths);
-    }
-
-    /**
-     * Recursively extracts paths from the snapshot, tracking reactTo (MATCH/NON_MATCH) for categorization.
-     * UPDATE actions are always under MATCH edges, CREATE actions can be under NON_MATCH or direct.
-     */
-    private void extractPathsWithOutcome(
-        JsonNode node,
-        List<Profile> currentPath,
-        ReactTo currentReactTo,
-        String currentMatchProfileId,
-        MatchCriteria currentMatchCriteria,
-        List<CategorizedPath> createPaths,
-        List<CategorizedPath> updatePaths,
-        List<CategorizedPath> deletePaths,
-        List<CategorizedPath> unsupportedActionPaths) {
-
-      String contentType = node.path("contentType").asText();
-      JsonNode content = node.path("content");
-
-      if (verbose) {
-        LOGGER.info("Processing node - contentType: '{}', hasContent: {}, fields: {}",
-          contentType, !content.isMissingNode(), node.fieldNames().hasNext() ? iteratorToString(node.fieldNames()) : "none");
-      }
-
-      // Create appropriate profile node based on content type
-      Profile profile = createProfileFromNode(contentType, content);
-      if (profile != null) {
-        currentPath.add(profile);
-        if (verbose) {
-          LOGGER.info("Traversing profile: {} (type: {})", profile.getName(), profile.getClass().getSimpleName());
-        }
-
-        // Track match profile ID and extract match criteria
-        if ("MATCH_PROFILE".equals(contentType)) {
-          currentMatchProfileId = content.path("id").asText();
-          currentMatchCriteria = mergeMatchCriteria(currentMatchCriteria, extractMatchCriteria(content));
-          if (verbose && !currentMatchCriteria.isEmpty()) {
-            LOGGER.info("Extracted match criteria from match profile {}: {} MARC field(s), {} non-MARC match(es)",
-              currentMatchProfileId,
-              currentMatchCriteria.matchFields().size(),
-              currentMatchCriteria.nonMarcMatches().size());
-          }
-        }
-      }
-
-      // Check children
-      JsonNode children = node.path("childSnapshotWrappers");
-      if (children.isArray() && !children.isEmpty()) {
-        if (verbose) {
-          LOGGER.info("Found {} children", children.size());
-        }
-        for (JsonNode child : children) {
-          // Check reactTo field on child to determine branch type
-          String reactToStr = child.path("reactTo").asText("");
-          ReactTo childReactTo = switch (reactToStr) {
-            case "MATCH" -> ReactTo.MATCH;
-            case "NON_MATCH" -> ReactTo.NON_MATCH;
-            default -> currentReactTo; // Inherit from parent if not specified
-          };
-
-          if (verbose && !reactToStr.isEmpty()) {
-            LOGGER.info("Child has reactTo: {}", reactToStr);
-          }
-
-          extractPathsWithOutcome(child, new ArrayList<>(currentPath), childReactTo, currentMatchProfileId,
-            currentMatchCriteria, createPaths, updatePaths, deletePaths, unsupportedActionPaths);
-        }
-      } else {
-        // Leaf node - categorize by action type
-        Optional<ActionProfileNode> actionOpt = currentPath.stream()
-          .filter(p -> p instanceof ActionProfileNode)
-          .map(p -> (ActionProfileNode) p)
-          .reduce((first, second) -> second); // Get last action profile
-
-        if (actionOpt.isPresent() && !currentPath.isEmpty()) {
-          ActionProfileNode action = actionOpt.get();
-          JobProfilePath path = new JobProfilePath(new ArrayList<>(currentPath));
-          CategorizedPath categorizedPath = new CategorizedPath(path, currentReactTo, currentMatchProfileId, currentMatchCriteria);
-
-          if ("CREATE".equals(action.action())) {
-            createPaths.add(categorizedPath);
-            if (verbose) {
-              LOGGER.info("Found CREATE path (reactTo: {}): {}", currentReactTo, path.getPathId());
-            }
-          } else if (isUpdateLikeAction(action)) {
-            updatePaths.add(categorizedPath);
-            if (verbose) {
-              LOGGER.info("Found update-like path ({} {}, reactTo: {}): {}",
-                action.action(), action.folioRecord(), currentReactTo, path.getPathId());
-            }
-          } else if ("DELETE".equals(action.action()) && "MARC_AUTHORITY".equals(action.folioRecord())) {
-            deletePaths.add(categorizedPath);
-            if (verbose) {
-              LOGGER.info("Found DELETE MARC_AUTHORITY path (reactTo: {}): {}", currentReactTo, path.getPathId());
-            }
-          } else {
-            unsupportedActionPaths.add(categorizedPath);
-            if (verbose) {
-              LOGGER.info("Found unsupported action path ({} {}, reactTo: {}): {}",
-                action.action(), action.folioRecord(), currentReactTo, path.getPathId());
-            }
-          }
-        }
-      }
-    }
-
-    private MatchCriteria mergeMatchCriteria(MatchCriteria inherited, MatchCriteria current) {
-      if (inherited == null || inherited.isEmpty()) {
-        return current == null ? MatchCriteria.empty() : current;
-      }
-      if (current == null) {
-        return inherited;
-      }
-      if (current.isEmpty()) {
-        return new MatchCriteria(current.matchProfileId(), inherited.matchFields(), inherited.nonMarcMatches());
-      }
-
-      List<MatchCriteria.MatchFieldSpec> matchFields = new ArrayList<>();
-      matchFields.addAll(inherited.matchFields());
-      matchFields.addAll(current.matchFields());
-
-      List<MatchCriteria.NonMarcMatchSpec> nonMarcMatches = new ArrayList<>();
-      nonMarcMatches.addAll(inherited.nonMarcMatches());
-      nonMarcMatches.addAll(current.nonMarcMatches());
-
-      // Chained FOLIO match profiles all gate the same leaf action. Preserve ancestor
-      // MARC criteria (for example 999 ff $s) while keeping the current leaf match id
-      // for grouping sibling actions under the deepest MATCH outcome.
-      return new MatchCriteria(current.matchProfileId(), matchFields, nonMarcMatches);
-    }
-
-    private boolean isUpdateLikeAction(ActionProfileNode action) {
-      return "UPDATE".equals(action.action())
-        || ("MODIFY".equals(action.action()) && "MARC_BIBLIOGRAPHIC".equals(action.folioRecord()));
-    }
-
-    private List<PathOutcome> unsupportedActionOutcomes(List<CategorizedPath> unsupportedPaths) {
-      List<PathOutcome> outcomes = new ArrayList<>();
-      for (int pathIndex = 0; pathIndex < unsupportedPaths.size(); pathIndex++) {
-        CategorizedPath path = unsupportedPaths.get(pathIndex);
-        ActionProfileNode action = lastAction(path.path()).orElseThrow();
-        GeneratorGapException gap = GeneratorGapException.unsupportedAction(action.action(), action.folioRecord());
-        GenerationOutcome.GeneratorGap outcome = new GenerationOutcome.GeneratorGap(
-          pathIndex, path.path().getPathId(), gap.reason().name(), gap.getMessage());
-        outcomes.add(new PathOutcome(
-          pathIndex,
-          path.path().getPathId(),
-          path.reactTo().name(),
-          path.matchProfileId(),
-          List.of(),
-          List.of(),
-          outcome));
-      }
-      return outcomes;
-    }
-
-    private Optional<ActionProfileNode> lastAction(JobProfilePath path) {
-      return path.getProfiles().stream()
-        .filter(ActionProfileNode.class::isInstance)
-        .map(ActionProfileNode.class::cast)
-        .reduce((first, second) -> second);
-    }
-
-    /**
-     * Extracts match criteria from a match profile's content node.
-     * Parses matchDetails to build MARC field specifications for matching.
-     *
-     * @param matchProfileContent the content node of a MATCH_PROFILE
-     * @return MatchCriteria with extracted field specifications
-     */
-    private MatchCriteria extractMatchCriteria(JsonNode matchProfileContent) {
-      String matchProfileId = matchProfileContent.path("id").asText();
-      List<MatchCriteria.MatchFieldSpec> matchFields = new ArrayList<>();
-      List<MatchCriteria.NonMarcMatchSpec> nonMarcMatches = new ArrayList<>();
-
-      JsonNode matchDetails = matchProfileContent.path("matchDetails");
-      if (!matchDetails.isArray()) {
-        return MatchCriteria.empty();
-      }
-
-      for (JsonNode matchDetail : matchDetails) {
-        // Parse incoming match expression (the MARC field in the incoming record)
-        JsonNode incomingExpr = matchDetail.path("incomingMatchExpression");
-        JsonNode existingExpr = matchDetail.path("existingMatchExpression");
-
-        String incomingDataType = incomingExpr.path("dataValueType").asText();
-        String existingDataType = existingExpr.path("dataValueType").asText();
-
-        // Check if incoming expression targets a MARC field
-        if ("VALUE_FROM_RECORD".equals(incomingDataType)) {
-          JsonNode fields = incomingExpr.path("fields");
-          if (fields.isArray() && !fields.isEmpty()) {
-            MatchCriteria.MatchFieldSpec spec = parseFieldsToMatchSpec(fields, null);
-            if (spec != null) {
-              matchFields.add(spec);
-              if (verbose) {
-                LOGGER.info("  Extracted MARC match field: {} {} {} subfield {}",
-                  spec.fieldTag(), spec.indicator1(), spec.indicator2(), spec.subfieldCode());
-              }
-            }
-          }
-        } else if ("STATIC_VALUE".equals(incomingDataType)) {
-          // Static value match - extract the static value and any field spec
-          String staticValue = incomingExpr.path("staticValueDetails").path("text").asText(null);
-          JsonNode fields = incomingExpr.path("fields");
-          if (fields.isArray() && !fields.isEmpty()) {
-            MatchCriteria.MatchFieldSpec spec = parseFieldsToMatchSpec(fields, staticValue);
-            if (spec != null) {
-              matchFields.add(spec);
-            }
-          }
-        }
-
-        // Check if existing expression targets a non-MARC field (instance.*, holdings.*)
-        if ("VALUE_FROM_RECORD".equals(existingDataType)) {
-          JsonNode existingFields = existingExpr.path("fields");
-          if (existingFields.isArray() && !existingFields.isEmpty()) {
-            String existingField = extractExistingFieldPath(existingFields);
-            if (existingField != null && !existingField.startsWith("marc") && !looksLikeMarcField(existingField)) {
-              // This is a non-MARC match (e.g., instance.hrid, instance.id)
-              // Extract the target MARC field from incoming expression for enrichment
-              JsonNode incomingFields = incomingExpr.path("fields");
-              if (incomingFields.isArray() && !incomingFields.isEmpty()) {
-                MatchCriteria.MatchFieldSpec incomingSpec = parseFieldsToMatchSpec(incomingFields, null);
-                if (incomingSpec != null) {
-                  nonMarcMatches.add(new MatchCriteria.NonMarcMatchSpec(
-                    existingField,
-                    incomingSpec.fieldTag(),
-                    incomingSpec.subfieldCode(),
-                    incomingSpec.indicator1(),
-                    incomingSpec.indicator2()
-                  ));
-                  if (verbose) {
-                    LOGGER.info("  Extracted non-MARC match: {} -> MARC {} subfield {}",
-                      existingField, incomingSpec.fieldTag(), incomingSpec.subfieldCode());
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-
-      return new MatchCriteria(matchProfileId, matchFields, nonMarcMatches);
-    }
-
-    private boolean looksLikeMarcField(String field) {
-      return field != null && field.matches("\\d{3}([$.].*)?");
-    }
-
-    /**
-     * Parses the fields array from a match expression to create a MatchFieldSpec.
-     *
-     * @param fields the fields array from the match expression
-     * @param staticValue optional static value for STATIC_VALUE type matches
-     * @return MatchFieldSpec or null if parsing fails
-     */
-    private MatchCriteria.MatchFieldSpec parseFieldsToMatchSpec(JsonNode fields, String staticValue) {
-      String fieldTag = null;
-      String indicator1 = null;
-      String indicator2 = null;
-      String subfieldCode = null;
-
-      for (JsonNode field : fields) {
-        String label = field.path("label").asText("");
-        String value = field.path("value").asText("");
-
-        switch (label) {
-          case "field" -> fieldTag = value;
-          case "indicator1" -> indicator1 = value;
-          case "indicator2" -> indicator2 = value;
-          case "recordSubfield" -> subfieldCode = value;
-        }
-      }
-
-      if (fieldTag == null || fieldTag.isBlank()) {
-        return null;
-      }
-
-      return new MatchCriteria.MatchFieldSpec(fieldTag, indicator1, indicator2, subfieldCode, staticValue);
-    }
-
-    /**
-     * Extracts the field path from an existing match expression's fields array.
-     * Concatenates label values to form paths like "instance.hrid" or "instance.id".
-     *
-     * @param fields the fields array from the existing match expression
-     * @return the field path or null if not determinable
-     */
-    private String extractExistingFieldPath(JsonNode fields) {
-      StringBuilder path = new StringBuilder();
-      for (JsonNode field : fields) {
-        String value = field.path("value").asText("");
-        if (!value.isEmpty()) {
-          if (path.length() > 0) {
-            path.append(".");
-          }
-          path.append(value);
-        }
-      }
-      return path.length() > 0 ? path.toString() : null;
-    }
-
-    /**
-     * Pairs CREATE and UPDATE paths that share the same match profile.
-     * Returns pairs where:
-     * - createPath is triggered on NON_MATCH
-     * - updatePath is triggered on MATCH
-     */
-    private List<MatchedPathPair> pairPaths(
-        List<CategorizedPath> createPaths,
-        List<CategorizedPath> updatePaths) {
-
-      List<MatchedPathPair> pairs = new ArrayList<>();
-
-      // Find CREATE paths that are under NON_MATCH (paired with UPDATE paths under MATCH)
-      for (CategorizedPath createCatPath : createPaths) {
-        // Only pair CREATE paths that are triggered by NON_MATCH
-        if (createCatPath.reactTo() == ReactTo.NON_MATCH && createCatPath.matchProfileId() != null) {
-          String matchProfileId = createCatPath.matchProfileId();
-
-          // Find UPDATE path with the same match profile under MATCH
-          for (CategorizedPath updateCatPath : updatePaths) {
-            if (updateCatPath.reactTo() == ReactTo.MATCH &&
-                matchProfileId.equals(updateCatPath.matchProfileId())) {
-              pairs.add(new MatchedPathPair(createCatPath, updateCatPath, matchProfileId));
-              if (verbose) {
-                LOGGER.info("Paired CREATE path {} with UPDATE path {} via match profile {}",
-                  createCatPath.path().getPathId(), updateCatPath.path().getPathId(), matchProfileId);
-              }
-              break; // One pair per CREATE path
-            }
-          }
-        }
-      }
-
-      return pairs;
-    }
-
-    private String iteratorToString(java.util.Iterator<String> iterator) {
-      List<String> list = new ArrayList<>();
-      iterator.forEachRemaining(list::add);
-      return String.join(", ", list);
-    }
-
-
-    /**
-     * Creates a Profile object from a snapshot node.
-     */
-    private Profile createProfileFromNode(String contentType, JsonNode content) {
-      String id = content.path("id").asText();
-      String dataType = content.path("dataType").asText();
-      int order = content.path("order").asInt(0);
-
-      return switch (contentType) {
-        case "JOB_PROFILE" -> new org.folio.graph.nodes.JobProfileNode(id, dataType, order);
-        case "ACTION_PROFILE" -> {
-          String action = content.path("action").asText();
-          String folioRecord = content.path("folioRecord").asText();
-          yield new ActionProfileNode(id, action, folioRecord, order);
-        }
-        case "MATCH_PROFILE" -> {
-          String incomingRecordType = content.path("incomingRecordType").asText();
-          String existingRecordType = content.path("existingRecordType").asText();
-          yield new org.folio.graph.nodes.MatchProfileNode(id, incomingRecordType, existingRecordType, order);
-        }
-        case "MAPPING_PROFILE" -> {
-          String incomingRecordType = content.path("incomingRecordType").asText();
-          String existingRecordType = content.path("existingRecordType").asText();
-          yield new org.folio.graph.nodes.MappingProfileNode(id, incomingRecordType, existingRecordType, order);
-        }
-        default -> null;
-      };
     }
 
     /**
@@ -1778,10 +1161,9 @@ public class JpWranglerCli implements Callable<Integer> {
         }
       }
 
-      // Recurse into children
-      JsonNode children = node.path("childSnapshotWrappers");
-      if (children.isArray()) {
-        for (JsonNode child : children) {
+      JsonNode childNodes = children(node);
+      if (childNodes.isArray()) {
+        for (JsonNode child : childNodes) {
           collectProfileIds(child, references);
         }
       }

@@ -4,6 +4,9 @@ import com.fasterxml.jackson.databind.JsonNode;
 import org.folio.exports.GenerationOutcome.BlockedUnsupportedWorkflow;
 import org.folio.validation.UnsupportedShapeRule;
 
+import static org.folio.profile.ProfileTree.children;
+import static org.folio.profile.ProfileTree.text;
+
 import java.util.Optional;
 
 /**
@@ -85,23 +88,4 @@ public class MissingMarcMappingOptionRule implements UnsupportedShapeRule {
 
   private boolean isMarcRecordType(String recordType) {
     return recordType != null && recordType.startsWith("MARC_");
-  }
-
-  private JsonNode children(JsonNode node) {
-    JsonNode childSnapshotWrappers = node.path("childSnapshotWrappers");
-    if (!childSnapshotWrappers.isMissingNode()) {
-      return childSnapshotWrappers;
-    }
-    return node.path("childrenWrappers");
-  }
-
-  private String text(JsonNode node, String... fieldNames) {
-    for (String fieldName : fieldNames) {
-      JsonNode value = node.path(fieldName);
-      if (!value.isMissingNode() && !value.isNull()) {
-        return value.asText();
-      }
-    }
-    return "";
-  }
-}
+  }}

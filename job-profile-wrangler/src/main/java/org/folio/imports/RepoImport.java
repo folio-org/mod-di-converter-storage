@@ -7,25 +7,18 @@ import org.apache.logging.log4j.Logger;
 import org.folio.RepoObject;
 import org.folio.graph.GraphReader;
 import org.folio.graph.GraphWriter;
-import org.folio.graph.edges.MatchRelationshipEdge;
-import org.folio.graph.edges.NonMatchRelationshipEdge;
 import org.folio.graph.edges.RegularEdge;
-import org.folio.graph.nodes.ActionProfileNode;
-import org.folio.graph.nodes.JobProfileNode;
-import org.folio.graph.nodes.MappingProfileNode;
-import org.folio.graph.nodes.MatchProfileNode;
 import org.folio.graph.nodes.Profile;
 import org.folio.http.FolioClient;
+import org.folio.profile.ProfileTree;
 import org.folio.validation.GraphProfileShapeValidator;
 import org.folio.validation.ProfileShapeValidator;
 import org.jgrapht.Graph;
-import org.jgrapht.graph.SimpleDirectedGraph;
 
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
-import java.util.stream.StreamSupport;
 
 import static org.folio.Constants.OBJECT_MAPPER;
 
@@ -84,10 +77,10 @@ public class RepoImport implements Runnable {
       jsonNode.path("content").path("name").asText(null),
       jsonNode);
     if (entry.outcome() instanceof ImportOutcome.Added added) {
-      return Optional.of(new RepoObject(added.repoId(), buildGraph(new SimpleDirectedGraph<>(RegularEdge.class), jsonNode)));
+      return Optional.of(new RepoObject(added.repoId(), buildGraph(jsonNode)));
     }
     if (entry.outcome() instanceof ImportOutcome.Duplicate duplicate) {
-      return Optional.of(new RepoObject(duplicate.existingRepoId(), buildGraph(new SimpleDirectedGraph<>(RegularEdge.class), jsonNode)));
+      return Optional.of(new RepoObject(duplicate.existingRepoId(), buildGraph(jsonNode)));
     }
     return Optional.empty();
   }
@@ -99,8 +92,7 @@ public class RepoImport implements Runnable {
         new ImportOutcome.BlockedUnsupported(blocked.get().rule(), blocked.get().message()));
     }
 
-    Graph<Profile, RegularEdge> g = new SimpleDirectedGraph<>(RegularEdge.class);
-    buildGraph(g, jsonNode);
+    Graph<Profile, RegularEdge> g = buildGraph(jsonNode);
     var graphBlocked = new GraphProfileShapeValidator().validate(g);
     if (graphBlocked.isPresent()) {
       return new ImportReport.Entry(profileId, profileName,
@@ -123,92 +115,7 @@ public class RepoImport implements Runnable {
     }
   }
 
-  private static Graph<Profile, RegularEdge> buildGraph(Graph<Profile, RegularEdge> graph, JsonNode profileSnapshot) {
-    addProfileToGraph(graph, profileSnapshot);
-    return graph;
-  }
-
-  private static Optional<Profile> addProfileToGraph(Graph<Profile, RegularEdge> graph, JsonNode profileSnapshot) {
-    return createProfileNode(profileSnapshot)
-      .map(node -> {
-        graph.addVertex(node);
-        addChildren(graph, profileSnapshot, node);
-        return node;
-      });
-  }
-
-  private static Optional<Profile> createProfileNode(JsonNode profileSnapshot) {
-    String contentType = profileSnapshot.path("contentType").asText();
-    String id = profileSnapshot.path("profileWrapperId").asText();
-    int order = profileSnapshot.path("order").asInt();
-
-    return switch (contentType) {
-      case "JOB_PROFILE" -> Optional.of(new JobProfileNode(id,
-        profileSnapshot.path("content").path("dataType").asText(), order));
-
-      case "MATCH_PROFILE" -> Optional.of(new MatchProfileNode(id,
-        profileSnapshot.path("content").path("incomingRecordType").asText(),
-        profileSnapshot.path("content").path("existingRecordType").asText(),
-        order));
-
-      case "ACTION_PROFILE" -> Optional.of(new ActionProfileNode(id,
-        profileSnapshot.path("content").path("action").asText(),
-        profileSnapshot.path("content").path("folioRecord").asText(),
-        order));
-
-      case "MAPPING_PROFILE" -> Optional.of(new MappingProfileNode(id,
-        profileSnapshot.path("content").path("incomingRecordType").asText(),
-        profileSnapshot.path("content").path("existingRecordType").asText(),
-        order));
-
-      default -> Optional.empty();
-    };
-  }
-
-  private static void addChildren(Graph<Profile, RegularEdge> graph, JsonNode profileSnapshot, Profile node) {
-    Optional.ofNullable(profileSnapshot.get("childSnapshotWrappers"))
-      .filter(JsonNode::isArray)
-      .ifPresent(children -> {
-        if (node instanceof MatchProfileNode matchNode) {
-          addMatchChildren(graph, children, matchNode);
-        } else if (node instanceof MappingProfileNode) {
-          LOGGER.warn("Ignoring childSnapshotWrappers under mapping profile {}; mapping profiles must be leaves",
-            node.getName());
-        } else {
-          addRegularChildren(graph, children, node);
-        }
-      });
-  }
-
-  private static void addRegularChildren(Graph<Profile, RegularEdge> graph, JsonNode children, Profile parent) {
-    StreamSupport.stream(children.spliterator(), false)
-      .map(child -> addProfileToGraph(graph, child))
-      .flatMap(Optional::stream)
-      .forEach(child -> graph.addEdge(parent, child));
-  }
-
-  private static void addMatchChildren(Graph<Profile, RegularEdge> graph, JsonNode children, MatchProfileNode parent) {
-    StreamSupport.stream(children.spliterator(), false)
-      .forEach(child -> {
-        String reactTo = child.path("reactTo").asText();
-        if (!isValidReactTo(reactTo)) {
-          LOGGER.warn("Skipping child profile due to invalid reactTo value '{}' for parent: {}", reactTo, parent);
-          return;
-        }
-        addProfileToGraph(graph, child)
-          .ifPresent(profile -> addMatchEdge(graph, parent, profile, reactTo));
-      });
-  }
-
-  private static void addMatchEdge(Graph<Profile, RegularEdge> graph, Profile parent, Profile child, String reactTo) {
-    switch (reactTo) {
-      case "NON_MATCH" -> graph.addEdge(parent, child, new NonMatchRelationshipEdge());
-      case "MATCH" -> graph.addEdge(parent, child, new MatchRelationshipEdge());
-      default -> LOGGER.warn("Skipping child profile due to invalid reactTo value '{}' for parent: {}", reactTo, parent);
-    }
-  }
-
-  private static boolean isValidReactTo(String reactTo) {
-    return "NON_MATCH".equals(reactTo) || "MATCH".equals(reactTo);
+  private static Graph<Profile, RegularEdge> buildGraph(JsonNode profileSnapshot) {
+    return ProfileTree.fromSnapshot(profileSnapshot).toGraph(ProfileTree.ProfileIdSource.WRAPPER);
   }
 }

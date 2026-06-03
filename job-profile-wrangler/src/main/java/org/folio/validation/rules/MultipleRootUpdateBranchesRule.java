@@ -4,8 +4,11 @@ import com.fasterxml.jackson.databind.JsonNode;
 import org.folio.exports.GenerationOutcome.BlockedUnsupportedWorkflow;
 import org.folio.validation.UnsupportedShapeRule;
 
+import static org.folio.profile.ProfileTree.children;
+import static org.folio.profile.ProfileTree.orderedChildren;
+import static org.folio.profile.ProfileTree.text;
+
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
@@ -46,12 +49,10 @@ public class MultipleRootUpdateBranchesRule implements UnsupportedShapeRule {
   }
 
   private boolean hasMultipleNonIsolatableRootUpdateBranches(JsonNode snapshot) {
-    JsonNode children = children(snapshot);
-    if (!children.isArray()) {
+    List<JsonNode> orderedChildren = orderedChildren(snapshot);
+    if (orderedChildren.isEmpty()) {
       return false;
     }
-
-    List<JsonNode> orderedChildren = orderedChildren(children);
     // A root MARC MODIFY can be a pre-match MARC normalization step for an Inventory update.
     // Keep that narrow: it is not evidence that arbitrary root MARC + Inventory updates are isolated.
     boolean hasRootInventoryMatchBranch = orderedChildren.stream()
@@ -331,34 +332,6 @@ public class MultipleRootUpdateBranchesRule implements UnsupportedShapeRule {
     JsonNode content = node.path("content");
     return "MODIFY".equals(text(content, "action"))
       && "MARC_BIBLIOGRAPHIC".equals(text(content, "folioRecord"));
-  }
-
-  private List<JsonNode> orderedChildren(JsonNode children) {
-    List<JsonNode> ordered = new ArrayList<>();
-    if (!children.isArray()) {
-      return ordered;
-    }
-    children.forEach(ordered::add);
-    ordered.sort(Comparator.comparingInt(child -> child.path("order").asInt(0)));
-    return ordered;
-  }
-
-  private JsonNode children(JsonNode node) {
-    JsonNode childSnapshotWrappers = node.path("childSnapshotWrappers");
-    if (!childSnapshotWrappers.isMissingNode()) {
-      return childSnapshotWrappers;
-    }
-    return node.path("childrenWrappers");
-  }
-
-  private String text(JsonNode node, String... fieldNames) {
-    for (String fieldName : fieldNames) {
-      JsonNode value = node.path(fieldName);
-      if (!value.isMissingNode() && !value.isNull()) {
-        return value.asText();
-      }
-    }
-    return "";
   }
 
   private record BranchInfo(List<String> matchKeys, String updateTarget) {}

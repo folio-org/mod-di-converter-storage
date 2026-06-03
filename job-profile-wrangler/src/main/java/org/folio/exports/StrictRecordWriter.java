@@ -390,8 +390,18 @@ public class StrictRecordWriter {
       return paths.unpairedUpdatePaths();
     }
     return paths.unpairedUpdatePaths().stream()
-      .filter(path -> path.reactTo() != ReactTo.NONE)
+      .filter(path -> path.reactTo() != ReactTo.NONE
+        || rootPreprocessorFeedsMatchedUpdate(path, paths.unpairedUpdatePaths()))
       .toList();
+  }
+
+  private boolean rootPreprocessorFeedsMatchedUpdate(CategorizedPath preprocessor, List<CategorizedPath> updatePaths) {
+    if (!isMarcBibModifyCleanup(preprocessor)) {
+      return false;
+    }
+    return updatePaths.stream()
+      .filter(this::isMatchedInventoryUpdate)
+      .anyMatch(updatePath -> preprocessorRunsBeforeUpdate(updatePaths, preprocessor, updatePath));
   }
 
   private void attemptRootExecutableStack(

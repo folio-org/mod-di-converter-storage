@@ -57,6 +57,19 @@ public class GenerationOutcomeTest {
   }
 
   @Test
+  public void needsEnrichmentRendersStructuredRecordNumberInHint() {
+    GenerationOutcome.NeedsEnrichment outcome = new GenerationOutcome.NeedsEnrichment(
+      0,
+      "Path",
+      "match-1",
+      "Run enrich --skip-missing",
+      3);
+
+    assertEquals(3, outcome.importRecordNumber().intValue());
+    assertEquals("Run enrich --record-number 3 --skip-missing", outcome.hint());
+  }
+
+  @Test
   public void pathOutcomeSerializationAlwaysIncludesDestinationFilesList() throws Exception {
     PathOutcome generated = new PathOutcome(
       0,

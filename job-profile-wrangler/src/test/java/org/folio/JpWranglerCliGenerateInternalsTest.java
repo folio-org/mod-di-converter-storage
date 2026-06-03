@@ -8,6 +8,7 @@ import org.folio.exports.JobProfilePath;
 import org.folio.exports.MatchedPathPair;
 import org.folio.exports.MatchCriteria;
 import org.folio.exports.PathExtractionResult;
+import org.folio.exports.ProfilePathExtractor;
 import org.folio.exports.ReactTo;
 import org.folio.exports.StrictRecordWriter;
 import org.folio.graph.nodes.ActionProfileNode;
@@ -15,9 +16,9 @@ import org.folio.graph.nodes.JobProfileNode;
 import org.folio.graph.nodes.MappingProfileNode;
 import org.folio.graph.nodes.MatchProfileNode;
 import org.folio.graph.nodes.Profile;
+import org.folio.profile.ProfileTree;
 import org.junit.Test;
 
-import java.lang.reflect.Method;
 import java.util.List;
 import java.util.Map;
 
@@ -32,8 +33,6 @@ public class JpWranglerCliGenerateInternalsTest {
 
   @Test
   public void existingFieldPathUsesFieldValuesFromFolioMatchExpression() throws Exception {
-    Method method = JpWranglerCli.GenerateCommand.class.getDeclaredMethod("extractExistingFieldPath", JsonNode.class);
-    method.setAccessible(true);
     JsonNode fields = OBJECT_MAPPER.readTree("""
       [
         {"label":"field","value":"instance"},
@@ -41,7 +40,7 @@ public class JpWranglerCliGenerateInternalsTest {
       ]
       """);
 
-    Object result = method.invoke(new JpWranglerCli.GenerateCommand(), fields);
+    Object result = new ProfilePathExtractor(false).extractExistingFieldPath(fields);
 
     assertEquals("instance.hrid", result);
   }
@@ -68,8 +67,6 @@ public class JpWranglerCliGenerateInternalsTest {
 
   @Test
   public void extractionRecognizesAuthorityDeletePaths() throws Exception {
-    Method method = JpWranglerCli.GenerateCommand.class.getDeclaredMethod("extractAllPaths", JsonNode.class);
-    method.setAccessible(true);
     JsonNode snapshot = OBJECT_MAPPER.readTree("""
       {
         "contentType": "JOB_PROFILE",
@@ -106,7 +103,7 @@ public class JpWranglerCliGenerateInternalsTest {
       }
       """);
 
-    PathExtractionResult result = (PathExtractionResult) method.invoke(new JpWranglerCli.GenerateCommand(), snapshot);
+    PathExtractionResult result = extractAllPaths(snapshot);
 
     assertTrue(result.createPaths().isEmpty());
     assertTrue(result.updatePaths().isEmpty());
@@ -118,8 +115,6 @@ public class JpWranglerCliGenerateInternalsTest {
 
   @Test
   public void extractionRecognizesMatchMarcAuthorityUpdatePaths() throws Exception {
-    Method method = JpWranglerCli.GenerateCommand.class.getDeclaredMethod("extractAllPaths", JsonNode.class);
-    method.setAccessible(true);
     JsonNode snapshot = OBJECT_MAPPER.readTree("""
       {
         "contentType": "JOB_PROFILE",
@@ -157,7 +152,7 @@ public class JpWranglerCliGenerateInternalsTest {
       }
       """);
 
-    PathExtractionResult result = (PathExtractionResult) method.invoke(new JpWranglerCli.GenerateCommand(), snapshot);
+    PathExtractionResult result = extractAllPaths(snapshot);
 
     assertTrue(result.createPaths().isEmpty());
     assertEquals(1, result.updatePaths().size());
@@ -169,8 +164,6 @@ public class JpWranglerCliGenerateInternalsTest {
 
   @Test
   public void extractionTreatsModifyMarcBibliographicAsUpdateLike() throws Exception {
-    Method method = JpWranglerCli.GenerateCommand.class.getDeclaredMethod("extractAllPaths", JsonNode.class);
-    method.setAccessible(true);
     JsonNode snapshot = OBJECT_MAPPER.readTree("""
       {
         "contentType": "JOB_PROFILE",
@@ -196,7 +189,7 @@ public class JpWranglerCliGenerateInternalsTest {
       }
       """);
 
-    PathExtractionResult result = (PathExtractionResult) method.invoke(new JpWranglerCli.GenerateCommand(), snapshot);
+    PathExtractionResult result = extractAllPaths(snapshot);
 
     assertEquals(1, result.createPaths().size());
     assertEquals(1, result.updatePaths().size());
@@ -206,8 +199,6 @@ public class JpWranglerCliGenerateInternalsTest {
 
   @Test
   public void extractionKeepsAncestorMarcMatchCriteriaForChainedMatches() throws Exception {
-    Method method = JpWranglerCli.GenerateCommand.class.getDeclaredMethod("extractAllPaths", JsonNode.class);
-    method.setAccessible(true);
     JsonNode snapshot = OBJECT_MAPPER.readTree("""
       {
         "contentType": "JOB_PROFILE",
@@ -274,7 +265,7 @@ public class JpWranglerCliGenerateInternalsTest {
       }
       """);
 
-    PathExtractionResult result = (PathExtractionResult) method.invoke(new JpWranglerCli.GenerateCommand(), snapshot);
+    PathExtractionResult result = extractAllPaths(snapshot);
 
     assertEquals(1, result.updatePaths().size());
     CategorizedPath path = result.updatePaths().get(0);
@@ -295,8 +286,6 @@ public class JpWranglerCliGenerateInternalsTest {
 
   @Test
   public void extractionKeepsUnsupportedModifyForOtherRecordTypes() throws Exception {
-    Method method = JpWranglerCli.GenerateCommand.class.getDeclaredMethod("extractAllPaths", JsonNode.class);
-    method.setAccessible(true);
     JsonNode snapshot = OBJECT_MAPPER.readTree("""
       {
         "contentType": "JOB_PROFILE",
@@ -312,7 +301,7 @@ public class JpWranglerCliGenerateInternalsTest {
       }
       """);
 
-    PathExtractionResult result = (PathExtractionResult) method.invoke(new JpWranglerCli.GenerateCommand(), snapshot);
+    PathExtractionResult result = extractAllPaths(snapshot);
 
     assertTrue(result.createPaths().isEmpty());
     assertTrue(result.updatePaths().isEmpty());
@@ -322,9 +311,6 @@ public class JpWranglerCliGenerateInternalsTest {
 
   @Test
   public void categorizationCoalescesSiblingMatchCreateActionsIntoOneImportRecord() throws Exception {
-    Method method = JpWranglerCli.GenerateCommand.class.getDeclaredMethod("categorizePaths", PathExtractionResult.class);
-    method.setAccessible(true);
-
     CategorizedPath holdingsPath = matchCreatePath(
       "CREATE",
       "HOLDINGS",
@@ -346,7 +332,7 @@ public class JpWranglerCliGenerateInternalsTest {
       List.of()
     );
 
-    CategorizedPaths result = (CategorizedPaths) method.invoke(new JpWranglerCli.GenerateCommand(), extraction);
+    CategorizedPaths result = new ProfilePathExtractor(false).categorizePaths(extraction);
 
     assertEquals("Sibling CREATE actions under one MATCH outcome share one incoming record",
       1, result.unpairedCreatePaths().size());
@@ -360,9 +346,6 @@ public class JpWranglerCliGenerateInternalsTest {
 
   @Test
   public void categorizationDoesNotCoalesceCreateActionsWhenMatchProfileIdIsBlank() throws Exception {
-    Method method = JpWranglerCli.GenerateCommand.class.getDeclaredMethod("categorizePaths", PathExtractionResult.class);
-    method.setAccessible(true);
-
     CategorizedPath holdingsPath = new CategorizedPath(
       matchCreatePath("CREATE", "HOLDINGS", "MARC_BIBLIOGRAPHIC", "HOLDINGS", 2).path(),
       ReactTo.MATCH,
@@ -380,10 +363,40 @@ public class JpWranglerCliGenerateInternalsTest {
       List.of()
     );
 
-    CategorizedPaths result = (CategorizedPaths) method.invoke(new JpWranglerCli.GenerateCommand(), extraction);
+    CategorizedPaths result = new ProfilePathExtractor(false).categorizePaths(extraction);
 
     assertEquals("Blank match profile ids are malformed and should not be grouped together",
       2, result.unpairedCreatePaths().size());
+  }
+
+  @Test
+  public void categorizationPairsCoalescedNonMatchCreateStackOnce() {
+    CategorizedPath updatePath = path("update", ReactTo.MATCH, MatchCriteria.empty());
+    CategorizedPath holdingsPath = new CategorizedPath(
+      matchCreatePath("CREATE", "HOLDINGS", "MARC_BIBLIOGRAPHIC", "HOLDINGS", 2).path(),
+      ReactTo.NON_MATCH,
+      "match-1",
+      MatchCriteria.empty());
+    CategorizedPath itemPath = new CategorizedPath(
+      matchCreatePath("CREATE", "ITEM", "MARC_BIBLIOGRAPHIC", "ITEM", 4).path(),
+      ReactTo.NON_MATCH,
+      "match-1",
+      MatchCriteria.empty());
+    PathExtractionResult extraction = new PathExtractionResult(
+      List.of(holdingsPath, itemPath),
+      List.of(updatePath),
+      List.of(),
+      List.of()
+    );
+
+    CategorizedPaths result = new ProfilePathExtractor(false).categorizePaths(extraction);
+
+    assertEquals("Sibling NON_MATCH creates should produce one matched pair",
+      1, result.pairedPaths().size());
+    assertTrue(result.unpairedCreatePaths().isEmpty());
+    JobProfilePath createPath = result.pairedPaths().get(0).createPath().path();
+    assertTrue(createPath.createsHoldings());
+    assertTrue(createPath.createsItems());
   }
 
   private CategorizedPath path(String pathId, ReactTo reactTo, MatchCriteria criteria) {
@@ -411,5 +424,9 @@ public class JpWranglerCliGenerateInternalsTest {
       List.of(new MatchCriteria.MatchFieldSpec("999", "f", "f", "a", null)),
       List.of(new MatchCriteria.NonMarcMatchSpec("instance.hrid", "999", "a", "f", "f"))
     );
+  }
+
+  private PathExtractionResult extractAllPaths(JsonNode snapshot) {
+    return new ProfilePathExtractor(false).extractAllPaths(ProfileTree.fromSnapshot(snapshot));
   }
 }

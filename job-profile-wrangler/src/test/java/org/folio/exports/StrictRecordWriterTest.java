@@ -432,7 +432,7 @@ public class StrictRecordWriterTest {
   }
 
   @Test
-  public void rootCreateStackDoesNotProcessMarcCleanupAgainWithCoExecutableUpdates() throws IOException {
+  public void rootCreateStackAlsoAppliesMarcCleanupToCoExecutableUpdates() throws IOException {
     Path outputBase = temp.getRoot().toPath().resolve("records");
     JobProfileNode job = new JobProfileNode("job-1", "MARC", 0);
     MatchProfileNode itemMatch = new MatchProfileNode("match-item", "MARC_BIBLIOGRAPHIC", "ITEM", 0);
@@ -460,7 +460,9 @@ public class StrictRecordWriterTest {
     assertEquals(GenerationOutcome.GENERATED, result.overallOutcome().label());
     assertEquals(1, result.foundationRecords().size());
     assertEquals(2, result.importRecords().size());
-    assertEquals(6, result.pathOutcomes().size());
+    assertEquals(7, result.pathOutcomes().size());
+    assertMarcModifyField(result.importRecords().get(0));
+    assertMarcModifyField(result.importRecords().get(1));
   }
 
   @Test
@@ -716,6 +718,35 @@ public class StrictRecordWriterTest {
   }
 
   @Test
+  public void rootMarcPreprocessorAlsoFeedsLaterMatchedInventoryUpdate() throws IOException {
+    Path outputBase = temp.getRoot().toPath().resolve("records");
+    JobProfileNode job = new JobProfileNode("job-1", "MARC", 0);
+    MatchProfileNode match = new MatchProfileNode("match-1", "MARC_BIBLIOGRAPHIC", "INSTANCE", 2);
+    CategorizedPath rootCreate = categorized(path("CREATE", "INSTANCE"));
+    CategorizedPath rootModify = categorized(path("MODIFY", "MARC_BIBLIOGRAPHIC"));
+    CategorizedPath matchedUpdate = new CategorizedPath(
+      pathWithPrefix(job, match, "UPDATE", "INSTANCE"),
+      ReactTo.MATCH,
+      "match-1",
+      incoming001Criteria("match-1", "instance.hrid"));
+
+    StrictRecordWriter.WriteResult result = new StrictRecordWriter().write(
+      new CategorizedPaths(List.of(), List.of(rootCreate), List.of(rootModify, matchedUpdate), List.of()),
+      new MinimalMarcRecordBuilder.ReferenceDataContext(null, null, null),
+      outputBase);
+
+    assertEquals(GenerationOutcome.GENERATED, result.overallOutcome().label());
+    assertEquals(1, result.foundationRecords().size());
+    assertEquals(2, result.importRecords().size());
+    assertMarcModifyField(result.importRecords().get(0));
+    assertMarcModifyField(result.importRecords().get(1));
+    assertEquals(4, result.pathOutcomes().size());
+    assertEquals(Integer.valueOf(1), result.pathOutcomes().get(1).importRecordNumber());
+    assertEquals(Integer.valueOf(2), result.pathOutcomes().get(2).importRecordNumber());
+    assertEquals(Integer.valueOf(2), result.pathOutcomes().get(3).importRecordNumber());
+  }
+
+  @Test
   public void deleteMarcAuthorityWritesFoundationAndImportRecords() throws IOException {
     Path outputBase = temp.getRoot().toPath().resolve("records");
 
@@ -846,6 +877,12 @@ public class StrictRecordWriterTest {
     DataField title = (DataField) record.getVariableField("245");
     assertNotNull(title);
     assertTrue(title.getSubfield('a').getData().contains(expected));
+  }
+
+  private void assertMarcModifyField(Record record) {
+    DataField field500 = (DataField) record.getVariableField("500");
+    assertNotNull(field500);
+    assertTrue(field500.getSubfield('a').getData().startsWith("UPDATE TEST RECORD - Modified from original test record"));
   }
 
   private JobProfilePath path(String action, String folioRecord) {

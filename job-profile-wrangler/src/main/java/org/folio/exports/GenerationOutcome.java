@@ -72,12 +72,34 @@ public sealed interface GenerationOutcome permits
     int pathIndex,
     String pathId,
     String matchProfileId,
-    String hint
+    String hint,
+    Integer importRecordNumber
   ) implements GenerationOutcome {
+    public NeedsEnrichment(int pathIndex, String pathId, String matchProfileId, String hint) {
+      this(pathIndex, pathId, matchProfileId, hint, null);
+    }
+
     @Override
     @JsonProperty("type")
     public String type() {
       return NEEDS_ENRICHMENT;
+    }
+
+    public NeedsEnrichment withImportRecordNumber(Integer importRecordNumber) {
+      return new NeedsEnrichment(pathIndex, pathId, matchProfileId, hint, importRecordNumber);
+    }
+
+    public String hint() {
+      if (importRecordNumber == null) {
+        return hint;
+      }
+      // Keep the record number structured; render it only when presenting the command.
+      String renderedRecordNumber = " --record-number " + importRecordNumber;
+      int skipMissing = hint.indexOf(" --skip-missing");
+      if (skipMissing >= 0) {
+        return hint.substring(0, skipMissing) + renderedRecordNumber + hint.substring(skipMissing);
+      }
+      return hint + renderedRecordNumber;
     }
 
     @Override

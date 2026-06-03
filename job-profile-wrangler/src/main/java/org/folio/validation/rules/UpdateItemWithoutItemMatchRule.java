@@ -4,8 +4,9 @@ import com.fasterxml.jackson.databind.JsonNode;
 import org.folio.exports.GenerationOutcome.BlockedUnsupportedWorkflow;
 import org.folio.validation.UnsupportedShapeRule;
 
-import java.util.ArrayList;
-import java.util.Comparator;
+import static org.folio.profile.ProfileTree.orderedChildren;
+import static org.folio.profile.ProfileTree.text;
+
 import java.util.List;
 import java.util.Optional;
 
@@ -120,39 +121,5 @@ public class UpdateItemWithoutItemMatchRule implements UnsupportedShapeRule {
       return inheritedItemContext || "ITEM".equals(text(node.path("content"), "existingRecordType"));
     }
     return inheritedItemContext;
-  }
-
-  private JsonNode children(JsonNode node) {
-    JsonNode childSnapshotWrappers = node.path("childSnapshotWrappers");
-    if (!childSnapshotWrappers.isMissingNode()) {
-      return childSnapshotWrappers;
-    }
-    return node.path("childrenWrappers");
-  }
-
-  private List<JsonNode> orderedChildren(JsonNode node) {
-    JsonNode children = children(node);
-    if (!children.isArray()) {
-      return List.of();
-    }
-
-    List<JsonNode> ordered = new ArrayList<>();
-    children.forEach(ordered::add);
-    ordered.sort(Comparator.comparingInt(this::order));
-    return ordered;
-  }
-
-  private int order(JsonNode node) {
-    return node.path("content").path("order").asInt(node.path("order").asInt(0));
-  }
-
-  private String text(JsonNode node, String... fieldNames) {
-    for (String fieldName : fieldNames) {
-      JsonNode value = node.path(fieldName);
-      if (!value.isMissingNode() && !value.isNull()) {
-        return value.asText();
-      }
-    }
-    return "";
   }
 }

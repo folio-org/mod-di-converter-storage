@@ -60,7 +60,8 @@ public final class EnrichmentDetector {
         pathIndex,
         path.path().getPathId(),
         path.matchProfileId(),
-        hintFor(outputBase, spec, enrichType, pathIndex)
+        hintFor(outputBase, spec, enrichType),
+        importRecordNumber(pathIndex)
       ));
     }
 
@@ -103,8 +104,8 @@ public final class EnrichmentDetector {
       path.matchProfileId(),
       "Run: jp-wrangler enrich " + outputBase + "-import.mrc"
         + " --match-field 001 --enrich-field 999ff$s --enrich-type SOURCE_RECORD_ID"
-        + " --record-type " + recordType + " --record-number " + importRecordNumber(pathIndex)
-        + " --skip-missing");
+        + " --record-type " + recordType + " --skip-missing",
+      importRecordNumber(pathIndex));
   }
 
   private static List<String> sourceRecordTypesFor(CategorizedPath path) {
@@ -164,15 +165,13 @@ public final class EnrichmentDetector {
   private static String hintFor(
       String outputBase,
       MatchCriteria.NonMarcMatchSpec spec,
-      String enrichType,
-      int pathIndex) {
+      String enrichType) {
 
     String subfield = normalize(spec.targetSubfield()) == null ? "a" : normalize(spec.targetSubfield());
     return "Run: jp-wrangler enrich " + outputBase + "-import.mrc"
       + " --match-field 001"
       + " --enrich-field " + enrichFieldSpec(spec, subfield)
-      + " --enrich-type " + enrichType
-      + " --record-number " + importRecordNumber(pathIndex);
+      + " --enrich-type " + enrichType;
   }
 
   private static int importRecordNumber(int pathIndex) {

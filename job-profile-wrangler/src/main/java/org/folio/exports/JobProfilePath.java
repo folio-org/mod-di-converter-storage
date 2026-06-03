@@ -6,6 +6,7 @@ import org.folio.graph.nodes.Profile;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 
 /**
  * Represents a single execution path through a job profile graph.
@@ -70,6 +71,13 @@ public class JobProfilePath {
         .filter(ActionProfileNode.class::isInstance)
         .map(ActionProfileNode.class::cast)
         .anyMatch(action -> "CREATE".equals(action.action()) && recordType.equals(action.folioRecord()));
+  }
+
+  public Optional<ActionProfileNode> lastAction() {
+    return profiles.stream()
+      .filter(ActionProfileNode.class::isInstance)
+      .map(ActionProfileNode.class::cast)
+      .reduce((first, second) -> second);
   }
 
   private static String generatePathId(List<Profile> profiles) {

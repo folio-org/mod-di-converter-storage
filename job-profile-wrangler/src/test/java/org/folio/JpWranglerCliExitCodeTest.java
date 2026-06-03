@@ -71,9 +71,9 @@ public class JpWranglerCliExitCodeTest {
   @Test
   public void foundationSeedProfilesToReplaceCollectsExistingSeedProfiles() throws Exception {
     FolioClient client = mock(FolioClient.class);
-    JsonNode old900 = profile("old-900", "jp-900 old");
-    JsonNode old901 = profile("old-901", "jp-901 old");
-    JsonNode old902 = profile("old-902", "jp-902 old");
+    JsonNode old900 = profile("old-900", "jp-900 202606031205-ABCDE");
+    JsonNode old901 = profile("old-901", "jp-901 202606031205-FGHIJ");
+    JsonNode old902 = profile("old-902", "jp-902 202606031205-KLMNO");
 
     when(client.getJobProfiles(Map.of("query", "name==\"jp-900 *\""))).thenReturn(Stream.of(old900));
     when(client.getJobProfiles(Map.of("query", "name==\"jp-901 *\""))).thenReturn(Stream.of(old901));
@@ -96,23 +96,38 @@ public class JpWranglerCliExitCodeTest {
   }
 
   @Test
-  public void foundationSeedProfilesToReplaceDoesNotAbortOnSnapshotlessSeedJob() throws Exception {
+  public void foundationSeedProfilesToReplaceSkipsUserNamedPrefixCollisions() throws Exception {
     FolioClient client = mock(FolioClient.class);
-    JsonNode old900 = profile("old-900", "jp-900 partial");
+    JsonNode userNamed = profile("user-job", "jp-900 My Action");
+    JsonNode generated = profile("generated-job", "jp-900 202606031205-ABCDE");
+
+    when(client.getJobProfiles(Map.of("query", "name==\"jp-900 *\""))).thenReturn(Stream.of(userNamed, generated));
+    when(client.getJobProfiles(Map.of("query", "name==\"jp-901 *\""))).thenReturn(Stream.empty());
+    when(client.getJobProfiles(Map.of("query", "name==\"jp-902 *\""))).thenReturn(Stream.empty());
+    when(client.getJobProfileSnapshot("generated-job"))
+      .thenReturn(Optional.of(snapshot("generated-job", "m900", "a900", "p900")));
+
+    List<JpWranglerCli.DeleteCommand.ProfileDeletionData> profiles =
+      JpWranglerCli.ExportCommand.foundationSeedProfilesToReplace(client);
+
+    assertEquals(List.of("generated-job"),
+      profiles.stream().map(JpWranglerCli.DeleteCommand.ProfileDeletionData::id).toList());
+  }
+
+  @Test
+  public void foundationSeedProfilesToReplaceAbortsOnSnapshotlessSeedJob() throws Exception {
+    FolioClient client = mock(FolioClient.class);
+    JsonNode old900 = profile("old-900", "jp-900 202606031205-ABCDE");
 
     when(client.getJobProfiles(Map.of("query", "name==\"jp-900 *\""))).thenReturn(Stream.of(old900));
     when(client.getJobProfiles(Map.of("query", "name==\"jp-901 *\""))).thenReturn(Stream.empty());
     when(client.getJobProfiles(Map.of("query", "name==\"jp-902 *\""))).thenReturn(Stream.empty());
     when(client.getJobProfileSnapshot("old-900")).thenReturn(Optional.empty());
 
-    List<JpWranglerCli.DeleteCommand.ProfileDeletionData> profiles =
-      JpWranglerCli.ExportCommand.foundationSeedProfilesToReplace(client);
+    IllegalStateException error = assertThrows(IllegalStateException.class,
+      () -> JpWranglerCli.ExportCommand.foundationSeedProfilesToReplace(client));
 
-    assertEquals(List.of("old-900"),
-      profiles.stream().map(JpWranglerCli.DeleteCommand.ProfileDeletionData::id).toList());
-    assertTrue(profiles.get(0).actionIds().isEmpty());
-    assertTrue(profiles.get(0).mappingIds().isEmpty());
-    assertTrue(profiles.get(0).matchIds().isEmpty());
+    assertTrue(error.getMessage().contains("child profile references are unknown"));
   }
 
   @Test
@@ -121,6 +136,7 @@ public class JpWranglerCliExitCodeTest {
     JpWranglerCli.DeleteCommand.ProfileDeletionData profile =
       new JpWranglerCli.DeleteCommand.ProfileDeletionData("job", "jp-900 old",
         Set.of("match"), Set.of("action"), Set.of("mapping"));
+    when(client.getJobProfiles()).thenReturn(Stream.empty());
     when(client.deleteJobProfile("job")).thenReturn(true);
     when(client.deleteMappingProfile("mapping")).thenReturn(true);
     when(client.deleteActionProfile("action")).thenReturn(true);
@@ -138,6 +154,36 @@ public class JpWranglerCliExitCodeTest {
   }
 
   @Test
+  public void deleteSeedProfilesSkipsChildrenReferencedByNonSeedJobs() throws Exception {
+    FolioClient client = mock(FolioClient.class);
+    JpWranglerCli.DeleteCommand.ProfileDeletionData seedJob =
+      new JpWranglerCli.DeleteCommand.ProfileDeletionData("seed-job", "jp-900 202606031205-ABCDE",
+        Set.of("match-shared", "match-owned"),
+        Set.of("action-shared", "action-owned"),
+        Set.of("mapping-shared", "mapping-owned"));
+    JsonNode otherJob = profile("other-job", "User Job");
+
+    when(client.getJobProfiles()).thenReturn(Stream.of(otherJob));
+    when(client.getJobProfileSnapshot("other-job"))
+      .thenReturn(Optional.of(snapshot("other-job", "match-shared", "action-shared", "mapping-shared")));
+    when(client.deleteJobProfile("seed-job")).thenReturn(true);
+    when(client.deleteActionProfile("action-owned")).thenReturn(true);
+    when(client.deleteMappingProfile("mapping-owned")).thenReturn(true);
+    when(client.deleteMatchProfile("match-owned")).thenReturn(true);
+
+    JpWranglerCli.DeleteCommand.DeletionResult result =
+      JpWranglerCli.ExportCommand.deleteSeedProfiles(client, List.of(seedJob));
+
+    assertEquals(0, result.totalFailed());
+    verify(client).deleteActionProfile("action-owned");
+    verify(client).deleteMappingProfile("mapping-owned");
+    verify(client).deleteMatchProfile("match-owned");
+    verify(client, org.mockito.Mockito.never()).deleteActionProfile("action-shared");
+    verify(client, org.mockito.Mockito.never()).deleteMappingProfile("mapping-shared");
+    verify(client, org.mockito.Mockito.never()).deleteMatchProfile("match-shared");
+  }
+
+  @Test
   public void foundationSeedOrphanProfilesExcludeChildrenStillReferencedBySeedJobs() throws Exception {
     FolioClient client = mock(FolioClient.class);
     for (String prefix : List.of("jp-900", "jp-901", "jp-902")) {
@@ -149,17 +195,20 @@ public class JpWranglerCliExitCodeTest {
 
     Map<String, String> query900 = Map.of("query", "name==\"jp-900 *\"");
     when(client.getActionProfiles(query900)).thenReturn(Stream.of(
-      profile("action-orphan", "jp-900 orphan action"),
-      profile("action-linked", "jp-900 linked action")));
+      profile("action-orphan", "jp-900 202606031205-ABCDE orphan action"),
+      profile("action-linked", "jp-900 202606031205-ABCDE linked action"),
+      profile("action-user", "jp-900 user action")));
     when(client.getMappingProfiles(query900)).thenReturn(Stream.of(
-      profile("mapping-orphan", "jp-900 orphan mapping"),
-      profile("mapping-linked", "jp-900 linked mapping")));
+      profile("mapping-orphan", "jp-900 202606031205-ABCDE orphan mapping"),
+      profile("mapping-linked", "jp-900 202606031205-ABCDE linked mapping"),
+      profile("mapping-user", "jp-900 user mapping")));
     when(client.getMatchProfiles(query900)).thenReturn(Stream.of(
-      profile("match-orphan", "jp-900 orphan match"),
-      profile("match-linked", "jp-900 linked match")));
+      profile("match-orphan", "jp-900 202606031205-ABCDE orphan match"),
+      profile("match-linked", "jp-900 202606031205-ABCDE linked match"),
+      profile("match-user", "jp-900 user match")));
 
     JpWranglerCli.DeleteCommand.ProfileDeletionData linkedSeedJob =
-      new JpWranglerCli.DeleteCommand.ProfileDeletionData("job", "jp-900 old",
+      new JpWranglerCli.DeleteCommand.ProfileDeletionData("job", "jp-900 202606031205-ABCDE",
         Set.of("match-linked"), Set.of("action-linked"), Set.of("mapping-linked"));
 
     JpWranglerCli.DeleteCommand.ProfileReferences orphans =
