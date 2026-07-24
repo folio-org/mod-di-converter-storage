@@ -52,6 +52,7 @@ public class DefaultMatchProfileTest extends AbstractRestVerticleTest{
   public void shouldUpdateDefaultDeleteMarcAuthorityMatchProfileOnPut() {
     var profile = getMatchProfileById(DEFAULT_DELETE_MARC_AUTHORITY_MATCH_PROFILE_ID);
     profile.setName("Changed name");
+
     RestAssured.given()
       .spec(spec)
       .body(new MatchProfileUpdateDto().withProfile(profile))
