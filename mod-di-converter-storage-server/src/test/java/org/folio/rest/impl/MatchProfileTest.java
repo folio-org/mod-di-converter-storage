@@ -74,7 +74,12 @@ public class MatchProfileTest extends AbstractRestVerticleTest {
 
   private static final String PROFILE_WRAPPERS_TABLE = "profile_wrappers";
 
-  private List<String> defaultMatchedProfileIds = Arrays.asList(
+  private static final List<String> DEFAULT_MATCH_PROFILE_IDS_RESTRICTED_FOR_UPDATE = Arrays.asList(
+    "d27d71ce-8a1e-44c6-acea-96961b5592c6", //OCLC_MARC_MARC_MATCH_PROFILE_ID
+    "31dbb554-0826-48ec-a0a4-3c55293d4dee"  //OCLC_INSTANCE_UUID_MATCH_PROFILE_ID
+  );
+
+  private static final List<String> DEFAULT_MATCH_PROFILE_IDS_RESTRICTED_FOR_DELETION = List.of(
     "d27d71ce-8a1e-44c6-acea-96961b5592c6", //OCLC_MARC_MARC_MATCH_PROFILE_ID
     "31dbb554-0826-48ec-a0a4-3c55293d4dee", //OCLC_INSTANCE_UUID_MATCH_PROFILE_ID
     "4be5d1d2-1f5a-42ff-a9bd-fc90609d94b6"  //DEFAULT_DELETE_MARC_AUTHORITY_MATCH_PROFILE_ID
@@ -224,7 +229,7 @@ public class MatchProfileTest extends AbstractRestVerticleTest {
   @Test
   public void shouldReturnBadRequestOnPutWithDefaultProfiles() {
     createProfiles();
-    for (String id : defaultMatchedProfileIds) {
+    for (String id : DEFAULT_MATCH_PROFILE_IDS_RESTRICTED_FOR_UPDATE) {
       RestAssured.given()
         .spec(spec)
         .body(matchProfile_1)
@@ -238,7 +243,7 @@ public class MatchProfileTest extends AbstractRestVerticleTest {
   @Test
   public void shouldReturnBadRequestOnDeleteWithDefaultProfiles() {
     createProfiles();
-    for (String id : defaultMatchedProfileIds) {
+    for (String id : DEFAULT_MATCH_PROFILE_IDS_RESTRICTED_FOR_DELETION) {
       RestAssured.given()
         .spec(spec)
         .when()
