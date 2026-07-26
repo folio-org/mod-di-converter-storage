@@ -740,9 +740,15 @@ MatchDetail receivedMatchDetail1 = receivedMatchProfile.getMatchDetails().get(0)
 
   private void createProfilesTree(List<String> profilesIds) {
     String nameForProfiles = "tree";
-    List<JobProfileUpdateDto> jobProfiles = Arrays.asList(jobProfile_1, jobProfile_1, jobProfile_1);
-    List<ActionProfileUpdateDto> actionProfiles = Arrays.asList(actionProfile_1, actionProfile_1, actionProfile_1);
-    List<MappingProfileUpdateDto> mappingProfiles = Arrays.asList(mappingProfile_1, mappingProfile_2, mappingProfile_3);
+    JobProfileUpdateDto clonedJobProfile1 = JsonObject.mapFrom(jobProfile_1).mapTo(JobProfileUpdateDto.class);
+    ActionProfileUpdateDto clonedActionProfile1 = JsonObject.mapFrom(actionProfile_1).mapTo(ActionProfileUpdateDto.class);
+    MappingProfileUpdateDto clonedMappingProfile1 = JsonObject.mapFrom(mappingProfile_1).mapTo(MappingProfileUpdateDto.class);
+    MappingProfileUpdateDto clonedMappingProfile2 = JsonObject.mapFrom(mappingProfile_2).mapTo(MappingProfileUpdateDto.class);
+    MappingProfileUpdateDto clonedMappingProfile3 = JsonObject.mapFrom(mappingProfile_3).mapTo(MappingProfileUpdateDto.class);
+
+    List<JobProfileUpdateDto> jobProfiles = Arrays.asList(clonedJobProfile1, clonedJobProfile1, clonedJobProfile1);
+    List<ActionProfileUpdateDto> actionProfiles = Arrays.asList(clonedActionProfile1, clonedActionProfile1, clonedActionProfile1);
+    List<MappingProfileUpdateDto> mappingProfiles = Arrays.asList(clonedMappingProfile1, clonedMappingProfile2, clonedMappingProfile3);
     List<JobProfileUpdateDto> created = new ArrayList<>();
     List<MappingProfileUpdateDto> createdMappings = new ArrayList<>();
     List<ActionProfileUpdateDto> createdActions = new ArrayList<>();
