@@ -17,6 +17,7 @@ import java.util.UUID;
 
 @Component
 public class MatchProfileServiceImpl extends AbstractProfileService<MatchProfile, MatchProfileCollection, MatchProfileUpdateDto> {
+  @SuppressWarnings("java:S6418") // Suppress warning about 'AUTH' detection meaning potentially hard-coded secret
   private static final String DEFAULT_DELETE_MARC_AUTHORITY_MATCH_PROFILE_ID = "4be5d1d2-1f5a-42ff-a9bd-fc90609d94b6";
   private static final List<String> DEFAULT_MATCH_PROFILES = Arrays.asList(
     "d27d71ce-8a1e-44c6-acea-96961b5592c6", //OCLC_MARC_MARC_MATCH_PROFILE_ID
