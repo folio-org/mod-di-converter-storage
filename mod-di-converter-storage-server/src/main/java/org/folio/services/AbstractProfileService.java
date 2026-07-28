@@ -84,7 +84,7 @@ public abstract class AbstractProfileService<T, S, D> implements ProfileService<
   protected AbstractProfileService() {
     List<String> entityTypeList = Arrays.stream(EntityTypes.values())
       .map(EntityTypes::getName)
-      .collect(Collectors.toList());
+      .toList();
     entityTypeCollection = new EntityTypeCollection()
       .withEntityTypes(entityTypeList)
       .withTotalRecords(entityTypeList.size());
@@ -141,7 +141,7 @@ public abstract class AbstractProfileService<T, S, D> implements ProfileService<
 
     List<Future<Boolean>> futureList = profileAssociations.stream()
       .map(association -> deleteAssociation(association, tenantId))
-      .collect(Collectors.toList());
+      .toList();
 
     Promise<Boolean> result = Promise.promise();
     Future.all(futureList).onComplete(ar -> {
@@ -277,7 +277,7 @@ public abstract class AbstractProfileService<T, S, D> implements ProfileService<
     }
 
     return profileDao.isProfileAssociatedAsDetail(id, tenantId)
-      .compose(isAssociated -> isAssociated
+      .compose(isAssociated -> Boolean.TRUE.equals(isAssociated)
         ? Future.failedFuture(new ConflictException(String.format(DELETE_PROFILE_ERROR_MESSAGE, id)))
         : profileDao.hardDeleteProfile(id, tenantId))
       .map(true);
@@ -543,7 +543,7 @@ public abstract class AbstractProfileService<T, S, D> implements ProfileService<
           .filter(errorCode -> ar.result().resultAt(errorCodes.indexOf(errorCode)))
           .map(errorCode -> new Error().withMessage(format(errorCode,
             ERROR_CODES_TYPES_RELATION.get(profileTypeName), getProfileName(profile))))
-          .collect(Collectors.toList());
+          .collect(Collectors.toCollection(ArrayList::new));
         promise.complete(new Errors().withErrors(errors).withTotalRecords(errors.size()));
       } else {
         promise.fail(ar.cause());

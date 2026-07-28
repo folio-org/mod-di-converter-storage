@@ -1,3 +1,6 @@
+## 2026-mm-dd 2.6.0-SNAPSHOT
+* [MODDICONV-436](https://issues.folio.org/browse/MODDICONV-436) Set Authority DELETE job/action/field mapping profiles to display via Settings > Data import
+
 ## 2025-04-14 2.5.0
 * [MODDICONV-425](https://folio-org.atlassian.net/browse/MODDICONV-425) Create new Default Mapping profile for Mosaic invoices
 * [MODDICONV-429](https://folio-org.atlassian.net/browse/MODDICONV-429) Upgrade module to Vert.x 5.0

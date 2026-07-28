@@ -74,7 +74,7 @@ public class MatchProfileTest extends AbstractRestVerticleTest {
 
   private static final String PROFILE_WRAPPERS_TABLE = "profile_wrappers";
 
-  private static final List<String> DEFAULT_MATCH_PROFILE_IDS_RESTRICTED_FOR_UPDATE = Arrays.asList(
+  private static final List<String> DEFAULT_MATCH_PROFILE_IDS_RESTRICTED_FOR_UPDATE = List.of(
     "d27d71ce-8a1e-44c6-acea-96961b5592c6", //OCLC_MARC_MARC_MATCH_PROFILE_ID
     "31dbb554-0826-48ec-a0a4-3c55293d4dee"  //OCLC_INSTANCE_UUID_MATCH_PROFILE_ID
   );
