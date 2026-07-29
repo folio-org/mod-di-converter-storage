@@ -74,7 +74,12 @@ public class MatchProfileTest extends AbstractRestVerticleTest {
 
   private static final String PROFILE_WRAPPERS_TABLE = "profile_wrappers";
 
-  private List<String> defaultMatchedProfileIds = Arrays.asList(
+  private static final List<String> DEFAULT_MATCH_PROFILE_IDS_RESTRICTED_FOR_UPDATE = List.of(
+    "d27d71ce-8a1e-44c6-acea-96961b5592c6", //OCLC_MARC_MARC_MATCH_PROFILE_ID
+    "31dbb554-0826-48ec-a0a4-3c55293d4dee"  //OCLC_INSTANCE_UUID_MATCH_PROFILE_ID
+  );
+
+  private static final List<String> DEFAULT_MATCH_PROFILE_IDS_RESTRICTED_FOR_DELETION = List.of(
     "d27d71ce-8a1e-44c6-acea-96961b5592c6", //OCLC_MARC_MARC_MATCH_PROFILE_ID
     "31dbb554-0826-48ec-a0a4-3c55293d4dee", //OCLC_INSTANCE_UUID_MATCH_PROFILE_ID
     "4be5d1d2-1f5a-42ff-a9bd-fc90609d94b6"  //DEFAULT_DELETE_MARC_AUTHORITY_MATCH_PROFILE_ID
@@ -224,7 +229,7 @@ public class MatchProfileTest extends AbstractRestVerticleTest {
   @Test
   public void shouldReturnBadRequestOnPutWithDefaultProfiles() {
     createProfiles();
-    for (String id : defaultMatchedProfileIds) {
+    for (String id : DEFAULT_MATCH_PROFILE_IDS_RESTRICTED_FOR_UPDATE) {
       RestAssured.given()
         .spec(spec)
         .body(matchProfile_1)
@@ -238,7 +243,7 @@ public class MatchProfileTest extends AbstractRestVerticleTest {
   @Test
   public void shouldReturnBadRequestOnDeleteWithDefaultProfiles() {
     createProfiles();
-    for (String id : defaultMatchedProfileIds) {
+    for (String id : DEFAULT_MATCH_PROFILE_IDS_RESTRICTED_FOR_DELETION) {
       RestAssured.given()
         .spec(spec)
         .when()
@@ -735,9 +740,15 @@ MatchDetail receivedMatchDetail1 = receivedMatchProfile.getMatchDetails().get(0)
 
   private void createProfilesTree(List<String> profilesIds) {
     String nameForProfiles = "tree";
-    List<JobProfileUpdateDto> jobProfiles = Arrays.asList(jobProfile_1, jobProfile_1, jobProfile_1);
-    List<ActionProfileUpdateDto> actionProfiles = Arrays.asList(actionProfile_1, actionProfile_1, actionProfile_1);
-    List<MappingProfileUpdateDto> mappingProfiles = Arrays.asList(mappingProfile_1, mappingProfile_2, mappingProfile_3);
+    JobProfileUpdateDto clonedJobProfile1 = JsonObject.mapFrom(jobProfile_1).mapTo(JobProfileUpdateDto.class);
+    ActionProfileUpdateDto clonedActionProfile1 = JsonObject.mapFrom(actionProfile_1).mapTo(ActionProfileUpdateDto.class);
+    MappingProfileUpdateDto clonedMappingProfile1 = JsonObject.mapFrom(mappingProfile_1).mapTo(MappingProfileUpdateDto.class);
+    MappingProfileUpdateDto clonedMappingProfile2 = JsonObject.mapFrom(mappingProfile_2).mapTo(MappingProfileUpdateDto.class);
+    MappingProfileUpdateDto clonedMappingProfile3 = JsonObject.mapFrom(mappingProfile_3).mapTo(MappingProfileUpdateDto.class);
+
+    List<JobProfileUpdateDto> jobProfiles = Arrays.asList(clonedJobProfile1, clonedJobProfile1, clonedJobProfile1);
+    List<ActionProfileUpdateDto> actionProfiles = Arrays.asList(clonedActionProfile1, clonedActionProfile1, clonedActionProfile1);
+    List<MappingProfileUpdateDto> mappingProfiles = Arrays.asList(clonedMappingProfile1, clonedMappingProfile2, clonedMappingProfile3);
     List<JobProfileUpdateDto> created = new ArrayList<>();
     List<MappingProfileUpdateDto> createdMappings = new ArrayList<>();
     List<ActionProfileUpdateDto> createdActions = new ArrayList<>();

@@ -204,6 +204,11 @@
       "run": "after",
       "snippetPath": "associations-migration/remove_old_association_tables.sql",
       "fromModuleVersion": "mod-di-converter-storage-2.5.0"
+    },
+    {
+      "run": "after",
+      "snippetPath": "defaultData/update_default_delete_marc_authority_job_profile.sql",
+      "fromModuleVersion": "mod-di-converter-storage-2.6.0"
     }
   ]
 }

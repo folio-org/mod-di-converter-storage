@@ -20,11 +20,12 @@ import static org.hamcrest.core.Is.is;
 public class DefaultMatchProfileTest extends AbstractRestVerticleTest{
 
   private static final String OCLC_INSTANCE_UUID_MATCH_PROFILE_ID = "31dbb554-0826-48ec-a0a4-3c55293d4dee";
+  private static final String DEFAULT_DELETE_MARC_AUTHORITY_MATCH_PROFILE_ID = "4be5d1d2-1f5a-42ff-a9bd-fc90609d94b6";
 
   @Test
   public void shouldAddAndRemoveTagsDefaultProfile() {
     Tags tags = new Tags().withTagList(Arrays.asList("Lorem", "ipsum"));
-    var profile = getMappingProfileById(OCLC_INSTANCE_UUID_MATCH_PROFILE_ID);
+    var profile = getMatchProfileById(OCLC_INSTANCE_UUID_MATCH_PROFILE_ID);
 //    Add tags to default profile
     RestAssured.given()
       .spec(spec)
@@ -35,7 +36,7 @@ public class DefaultMatchProfileTest extends AbstractRestVerticleTest{
       .statusCode(HttpStatus.SC_OK)
       .body("tags.tagList", is(tags.getTagList()));
 
-    profile = getMappingProfileById(OCLC_INSTANCE_UUID_MATCH_PROFILE_ID);
+    profile = getMatchProfileById(OCLC_INSTANCE_UUID_MATCH_PROFILE_ID);
 //    Delete tags from default profile
     RestAssured.given()
       .spec(spec)
@@ -47,7 +48,23 @@ public class DefaultMatchProfileTest extends AbstractRestVerticleTest{
       .body("tags.tagList", is(Matchers.empty()));
   }
 
-  private MatchProfile getMappingProfileById(String id) {
+  @Test
+  public void shouldUpdateDefaultDeleteMarcAuthorityMatchProfileOnPut() {
+    var profile = getMatchProfileById(DEFAULT_DELETE_MARC_AUTHORITY_MATCH_PROFILE_ID);
+    profile.setName("Changed name");
+
+    RestAssured.given()
+      .spec(spec)
+      .body(new MatchProfileUpdateDto().withProfile(profile))
+      .when()
+      .put(MATCH_PROFILES_PATH + "/" + DEFAULT_DELETE_MARC_AUTHORITY_MATCH_PROFILE_ID)
+      .then()
+      .statusCode(HttpStatus.SC_OK)
+      .log().all()
+      .body("name", is(profile.getName()));
+  }
+
+  private MatchProfile getMatchProfileById(String id) {
     return RestAssured.given()
       .spec(spec)
       .when()
