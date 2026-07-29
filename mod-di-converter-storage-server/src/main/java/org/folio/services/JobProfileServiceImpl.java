@@ -20,8 +20,10 @@ import org.folio.rest.jaxrs.model.MatchProfileCollection;
 import org.folio.rest.jaxrs.model.MatchProfileUpdateDto;
 import org.folio.rest.jaxrs.model.OperationType;
 import org.folio.rest.jaxrs.model.ProfileAssociation;
+import org.folio.rest.jaxrs.model.EntityType;
 import org.folio.rest.jaxrs.model.ProfileSnapshotWrapper;
 import org.folio.rest.jaxrs.model.ProfileType;
+import org.folio.rest.jaxrs.model.ReactToType;
 import org.folio.services.snapshot.ProfileSnapshotService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
@@ -49,6 +51,11 @@ public class JobProfileServiceImpl extends AbstractProfileService<JobProfile, Jo
   private static final String MODIFY_ACTION_CANNOT_BE_USED_AS_A_STANDALONE_ACTION = "Modify action cannot be used as a standalone action";
   private static final String MODIFY_ACTION_CANNOT_BE_USED_RIGHT_AFTER_THE_MATCH = "Modify action cannot be used right after a Match";
   private static final String LINKED_MATCH_PROFILES_WERE_NOT_FOUND = "Linked MatchProfiles with ids %s were not found";
+  private static final String INVALID_DELETE_MARC_AUTHORITY_ACTION_PROFILE_PLACEMENT =
+    "Delete MARC-AUTHORITY action profile must be placed in the for-matches branch " +
+      "of a match profile for MARC-AUTHORITY to MARC-AUTHORITY matching";
+  private static final String DELETE_MARC_AUTHORITY_CANNOT_BE_NEXT_TO_OTHER_ACTIONS =
+    "Delete MARC-AUTHORITY action profile cannot be placed next to other action profiles in the for-matches branch";
   private static final String DEFAULT_CREATE_SRS_MARC_AUTHORITY_JOB_PROFILE_ID = "6eefa4c6-bbf7-4845-ad82-de7fc5abd0e3"; //NOSONAR
   private static final List<String> DEFAULT_JOB_PROFILES = Arrays.asList(
     "d0ebb7b0-2f0f-11eb-adc1-0242ac120002", //OCLC_CREATE_INSTANCE_JOB_PROFILE_ID,
@@ -284,6 +291,7 @@ public class JobProfileServiceImpl extends AbstractProfileService<JobProfile, Jo
         return Future.succeededFuture(existingActionProfiles);
       })
       .compose(actionProfiles -> {
+        List<Future<Void>> validationFutures = new ArrayList<>();
         actionProfileAssociations.forEach(association -> {
           ActionProfile actionProfile = actionProfiles.stream()
             .filter(profile -> profile.getId().equals(association.getDetailProfileId()))
@@ -295,8 +303,14 @@ public class JobProfileServiceImpl extends AbstractProfileService<JobProfile, Jo
           if (actionProfile.getAction() == ActionProfile.Action.MODIFY) {
             validateAddedModifyActionProfileAssociation(profileAssociations, association, actionProfile, actionProfiles, errors);
           }
+          if (actionProfile.getAction() == ActionProfile.Action.DELETE
+            && actionProfile.getFolioRecord() == ActionProfile.FolioRecord.MARC_AUTHORITY) {
+            validationFutures.add(
+              validateDeleteMarcAuthorityActionProfileAssociation(association, actionProfile, errors, tenantId));
+          }
         });
-        return Future.succeededFuture(new Errors().withErrors(errors).withTotalRecords(errors.size()));
+        return Future.all(validationFutures)
+          .map(v -> new Errors().withErrors(errors).withTotalRecords(errors.size()));
       });
   }
 
@@ -325,6 +339,39 @@ public class JobProfileServiceImpl extends AbstractProfileService<JobProfile, Jo
       LOGGER.warn("validateAddedModifyActionProfileAssociation:: Modify profile with id {}, used right after Match profile", actionProfile.getId());
       errors.add(new Error().withMessage(MODIFY_ACTION_CANNOT_BE_USED_RIGHT_AFTER_THE_MATCH));
     }
+  }
+
+  private Future<Void> validateDeleteMarcAuthorityActionProfileAssociation(ProfileAssociation association,
+                                                                           ActionProfile actionProfile,
+                                                                           List<Error> errors, String tenantId) {
+    if (association.getMasterProfileType() != MATCH_PROFILE || association.getReactTo() != ReactToType.MATCH) {
+      LOGGER.warn("validateDeleteMarcAuthorityActionProfileAssociation:: Delete MARC-AUTHORITY action " +
+        "profile {} is not placed in the for-matches branch of a match profile", actionProfile.getId());
+      errors.add(new Error().withMessage(INVALID_DELETE_MARC_AUTHORITY_ACTION_PROFILE_PLACEMENT));
+      return Future.succeededFuture();
+    }
+
+    if (association.getOrder() != 0) {
+      LOGGER.warn("validateDeleteMarcAuthorityActionProfileAssociation:: Delete MARC-AUTHORITY action " +
+          "profile {} is preceded by other action profiles in the for-matches branch (order = {})",
+        actionProfile.getId(), association.getOrder());
+      errors.add(new Error().withMessage(DELETE_MARC_AUTHORITY_CANNOT_BE_NEXT_TO_OTHER_ACTIONS));
+      return Future.succeededFuture();
+    }
+
+    return matchProfileService.getProfileById(association.getMasterProfileId(), false, tenantId)
+      .compose(matchProfileOptional -> {
+        matchProfileOptional.ifPresent(matchProfile -> {
+          if (matchProfile.getIncomingRecordType() != EntityType.MARC_AUTHORITY
+              || matchProfile.getExistingRecordType() != EntityType.MARC_AUTHORITY) {
+            LOGGER.warn("validateDeleteMarcAuthorityActionProfileAssociation:: Delete MARC-AUTHORITY action " +
+                "profile {} is placed under match profile {} which is not MARC-AUTHORITY to MARC-AUTHORITY matching",
+              actionProfile.getId(), matchProfile.getId());
+            errors.add(new Error().withMessage(INVALID_DELETE_MARC_AUTHORITY_ACTION_PROFILE_PLACEMENT));
+          }
+        });
+        return Future.succeededFuture();
+      });
   }
 
   private static List<ProfileAssociation> getNotModifyProfileAssociations(List<ProfileAssociation> profileAssociations, List<ActionProfile> actionProfiles) {
