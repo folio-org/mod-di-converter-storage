@@ -5,9 +5,11 @@ import static org.folio.rest.impl.ActionProfileTest.ACTION_PROFILES_PATH;
 import static org.folio.rest.impl.ActionProfileTest.ACTION_PROFILES_TABLE_NAME;
 import static org.folio.rest.impl.MatchProfileTest.MATCH_PROFILES_PATH;
 import static org.folio.rest.jaxrs.model.ActionProfile.Action.CREATE;
+import static org.folio.rest.jaxrs.model.ActionProfile.Action.DELETE;
 import static org.folio.rest.jaxrs.model.ActionProfile.Action.MODIFY;
 import static org.folio.rest.jaxrs.model.ActionProfile.Action.UPDATE;
 import static org.folio.rest.jaxrs.model.ActionProfile.FolioRecord.INSTANCE;
+import static org.folio.rest.jaxrs.model.ActionProfile.FolioRecord.MARC_AUTHORITY;
 import static org.folio.rest.jaxrs.model.ActionProfile.FolioRecord.MARC_BIBLIOGRAPHIC;
 import static org.folio.rest.jaxrs.model.JobProfile.DataType.DELIMITED;
 import static org.folio.rest.jaxrs.model.JobProfile.DataType.EDIFACT;
@@ -18,6 +20,8 @@ import static org.folio.rest.jaxrs.model.ProfileType.MAPPING_PROFILE;
 import static org.folio.rest.jaxrs.model.ProfileType.MATCH_PROFILE;
 import static org.folio.rest.jaxrs.model.ReactToType.MATCH;
 import static org.folio.rest.jaxrs.model.ReactToType.NON_MATCH;
+import static org.folio.services.JobProfileServiceImpl.DELETE_MARC_AUTHORITY_CANNOT_BE_NEXT_TO_OTHER_ACTIONS;
+import static org.folio.services.JobProfileServiceImpl.INVALID_DELETE_MARC_AUTHORITY_ACTION_PROFILE_PLACEMENT;
 import static org.hamcrest.Matchers.empty;
 import static org.hamcrest.Matchers.everyItem;
 import static org.hamcrest.Matchers.hasEntry;
@@ -2146,6 +2150,810 @@ public class JobProfileTest extends AbstractRestVerticleTest {
       .body("errors[1].message", is("Job profile read-only 'parent' field should be empty"));
   }
 
+  @Test
+  public void shouldReturnCreatedOnPostJobProfileWithDeleteMarcAuthorityActionAsFirstActionUnderMarcAuthorityMatchProfile() {
+    var jobProfileId = UUID.randomUUID().toString();
+    var matchProfileId = UUID.randomUUID().toString();
+    var actionProfileId = UUID.randomUUID().toString();
+    var mappingProfileId = UUID.randomUUID().toString();
+
+    RestAssured.given()
+      .spec(spec)
+      .body(new MappingProfileUpdateDto()
+        .withProfile(new MappingProfile().withName("Delete MARC-Authority")
+          .withId(mappingProfileId)
+          .withIncomingRecordType(EntityType.MARC_AUTHORITY)
+          .withExistingRecordType(EntityType.MARC_AUTHORITY)))
+      .when()
+      .post(MAPPING_PROFILES_PATH)
+      .then()
+      .statusCode(HttpStatus.SC_CREATED)
+      .extract().as(MappingProfileUpdateDto.class);
+
+    RestAssured.given()
+      .spec(spec)
+      .body(new ActionProfileUpdateDto()
+        .withProfile(new ActionProfile()
+          .withId(actionProfileId)
+          .withName("Delete MARC-Authority")
+          .withAction(DELETE)
+          .withFolioRecord(MARC_AUTHORITY))
+        .withAddedRelations(List.of(new ProfileAssociation()
+          .withMasterProfileType(ACTION_PROFILE)
+          .withDetailProfileType(ProfileType.MAPPING_PROFILE)
+          .withMasterProfileId(actionProfileId)
+          .withDetailProfileId(mappingProfileId)
+          .withOrder(0))))
+      .when()
+      .post(ACTION_PROFILES_PATH)
+      .then()
+      .log().all()
+      .statusCode(HttpStatus.SC_CREATED);
+
+    RestAssured.given()
+      .spec(spec)
+      .body(new MatchProfileUpdateDto()
+        .withProfile(new MatchProfile()
+          .withId(matchProfileId)
+          .withName("Match MARC-Authority")
+          .withIncomingRecordType(EntityType.MARC_AUTHORITY)
+          .withExistingRecordType(EntityType.MARC_AUTHORITY)))
+      .when()
+      .post(MATCH_PROFILES_PATH)
+      .then()
+      .statusCode(HttpStatus.SC_CREATED);
+
+    var jobToMatchAssociation = new ProfileAssociation()
+      .withMasterProfileType(JOB_PROFILE)
+      .withMasterProfileId(jobProfileId)
+      .withDetailProfileType(MATCH_PROFILE)
+      .withDetailProfileId(matchProfileId)
+      .withOrder(0);
+
+    var matchToActionAssociation = new ProfileAssociation()
+      .withMasterProfileType(MATCH_PROFILE)
+      .withMasterProfileId(matchProfileId)
+      .withDetailProfileType(ACTION_PROFILE)
+      .withDetailProfileId(actionProfileId)
+      .withReactTo(MATCH)
+      .withOrder(0);
+
+    RestAssured.given()
+      .spec(spec)
+      .body(new JobProfileUpdateDto()
+        .withProfile(new JobProfile()
+          .withId(jobProfileId)
+          .withName("Delete MARC-Authority")
+          .withDataType(MARC))
+        .withAddedRelations(List.of(jobToMatchAssociation, matchToActionAssociation)))
+      .when()
+      .post(JOB_PROFILES_PATH)
+      .then()
+      .statusCode(HttpStatus.SC_CREATED);
+  }
+
+  @Test
+  public void shouldReturnUnprocessableEntityOnPostJobProfileWithDeleteMarcAuthorityUnderNonMatchBranch() {
+    var jobProfileId = UUID.randomUUID().toString();
+    var matchProfileId = UUID.randomUUID().toString();
+    var actionProfileId = UUID.randomUUID().toString();
+
+    RestAssured.given()
+      .spec(spec)
+      .body(new MatchProfileUpdateDto()
+        .withProfile(new MatchProfile()
+          .withId(matchProfileId)
+          .withName("Match Marc-Authority")
+          .withIncomingRecordType(EntityType.MARC_AUTHORITY)
+          .withExistingRecordType(EntityType.MARC_AUTHORITY)))
+      .when()
+      .post(MATCH_PROFILES_PATH)
+      .then()
+      .statusCode(HttpStatus.SC_CREATED);
+
+    RestAssured.given()
+      .spec(spec)
+      .body(new ActionProfileUpdateDto()
+        .withProfile(new ActionProfile()
+          .withId(actionProfileId)
+          .withName("Delete MARC-Authority")
+          .withAction(DELETE)
+          .withFolioRecord(MARC_AUTHORITY)))
+      .when()
+      .post(ACTION_PROFILES_PATH)
+      .then()
+      .statusCode(HttpStatus.SC_CREATED);
+
+    var jobToMatchAssociation = new ProfileAssociation()
+      .withMasterProfileType(JOB_PROFILE)
+      .withMasterProfileId(jobProfileId)
+      .withDetailProfileType(MATCH_PROFILE)
+      .withDetailProfileId(matchProfileId)
+      .withOrder(0);
+
+    var matchToActionAssociation = new ProfileAssociation()
+      .withMasterProfileType(MATCH_PROFILE)
+      .withMasterProfileId(matchProfileId)
+      .withDetailProfileType(ACTION_PROFILE)
+      .withDetailProfileId(actionProfileId)
+      .withReactTo(NON_MATCH)
+      .withOrder(0);
+    Assert.assertEquals(NON_MATCH, matchToActionAssociation.getReactTo());
+
+    RestAssured.given()
+      .spec(spec)
+      .body(new JobProfileUpdateDto()
+        .withProfile(new JobProfile()
+          .withId(jobProfileId)
+          .withName("Delete MARC-Authority")
+          .withDataType(MARC))
+        .withAddedRelations(List.of(jobToMatchAssociation, matchToActionAssociation)))
+      .when()
+      .post(JOB_PROFILES_PATH)
+      .then()
+      .statusCode(HttpStatus.SC_UNPROCESSABLE_ENTITY)
+      .body("errors", hasItem(
+        hasEntry(is("message"),
+          is(INVALID_DELETE_MARC_AUTHORITY_ACTION_PROFILE_PLACEMENT))
+      ));
+  }
+
+  @Test
+  public void shouldReturnUnprocessableEntityOnPostJobProfileIfDeleteMarcAuthorityNotFirstInMatchBranch() {
+    var jobProfileId = UUID.randomUUID().toString();
+    var matchProfileId = UUID.randomUUID().toString();
+    var updateActionProfileId = UUID.randomUUID().toString();
+    var deleteActionProfileId = UUID.randomUUID().toString();
+
+    RestAssured.given()
+      .spec(spec)
+      .body(new MatchProfileUpdateDto()
+        .withProfile(new MatchProfile()
+          .withId(matchProfileId)
+          .withName("Match Marc-Authority")
+          .withIncomingRecordType(EntityType.MARC_AUTHORITY)
+          .withExistingRecordType(EntityType.MARC_AUTHORITY)))
+      .when()
+      .post(MATCH_PROFILES_PATH)
+      .then()
+      .statusCode(HttpStatus.SC_CREATED);
+
+    RestAssured.given()
+      .spec(spec)
+      .body(new ActionProfileUpdateDto()
+        .withProfile(new ActionProfile()
+          .withId(updateActionProfileId)
+          .withName("Update Marc-Authority")
+          .withAction(UPDATE)
+          .withFolioRecord(MARC_AUTHORITY)))
+      .when()
+      .post(ACTION_PROFILES_PATH)
+      .then()
+      .statusCode(HttpStatus.SC_CREATED);
+
+    RestAssured.given()
+      .spec(spec)
+      .body(new ActionProfileUpdateDto()
+        .withProfile(new ActionProfile()
+          .withId(deleteActionProfileId)
+          .withName("Delete MARC-Authority")
+          .withAction(DELETE)
+          .withFolioRecord(MARC_AUTHORITY)))
+      .when()
+      .post(ACTION_PROFILES_PATH)
+      .then()
+      .statusCode(HttpStatus.SC_CREATED);
+
+    var jobToMatchAssociation = new ProfileAssociation()
+      .withMasterProfileType(JOB_PROFILE)
+      .withMasterProfileId(jobProfileId)
+      .withDetailProfileType(MATCH_PROFILE)
+      .withDetailProfileId(matchProfileId)
+      .withOrder(0);
+
+    var matchToUpdateActionAssociation = new ProfileAssociation()
+      .withMasterProfileType(MATCH_PROFILE)
+      .withMasterProfileId(matchProfileId)
+      .withDetailProfileType(ACTION_PROFILE)
+      .withDetailProfileId(updateActionProfileId)
+      .withReactTo(MATCH)
+      .withOrder(0);
+
+    var matchToDeleteActionAssociation = new ProfileAssociation()
+      .withMasterProfileType(MATCH_PROFILE)
+      .withMasterProfileId(matchProfileId)
+      .withDetailProfileType(ACTION_PROFILE)
+      .withDetailProfileId(deleteActionProfileId)
+      .withReactTo(MATCH)
+      .withOrder(1);
+
+    RestAssured.given()
+      .spec(spec)
+      .body(new JobProfileUpdateDto()
+        .withProfile(new JobProfile()
+          .withId(jobProfileId)
+          .withName("Delete MARC-Authority")
+          .withDataType(MARC))
+        .withAddedRelations(List.of(jobToMatchAssociation, matchToUpdateActionAssociation, matchToDeleteActionAssociation)))
+      .when()
+      .post(JOB_PROFILES_PATH)
+      .then()
+      .statusCode(HttpStatus.SC_UNPROCESSABLE_ENTITY)
+      .body("errors", hasItem(
+        hasEntry(is("message"), is(DELETE_MARC_AUTHORITY_CANNOT_BE_NEXT_TO_OTHER_ACTIONS))));
+  }
+
+  @Test
+  public void shouldReturnUnprocessableEntityOnPostJobProfileWithDeleteMarcAuthorityUnderNonMarcAuthorityMatchProfile() {
+    var jobProfileId = UUID.randomUUID().toString();
+    var matchProfileId = UUID.randomUUID().toString();
+    var actionProfileId = UUID.randomUUID().toString();
+
+    RestAssured.given()
+      .spec(spec)
+      .body(new MatchProfileUpdateDto()
+        .withProfile(new MatchProfile()
+          .withId(matchProfileId)
+          .withName("Match Marc-Bib")
+          .withIncomingRecordType(EntityType.MARC_BIBLIOGRAPHIC)
+          .withExistingRecordType(EntityType.MARC_BIBLIOGRAPHIC)))
+      .when()
+      .post(MATCH_PROFILES_PATH)
+      .then()
+      .statusCode(HttpStatus.SC_CREATED);
+
+    RestAssured.given()
+      .spec(spec)
+      .body(new ActionProfileUpdateDto()
+        .withProfile(new ActionProfile()
+          .withId(actionProfileId)
+          .withName("Delete MARC-Authority")
+          .withAction(DELETE)
+          .withFolioRecord(MARC_AUTHORITY)))
+      .when()
+      .post(ACTION_PROFILES_PATH)
+      .then()
+      .statusCode(HttpStatus.SC_CREATED);
+
+    var jobToMatchAssociation = new ProfileAssociation()
+      .withMasterProfileType(JOB_PROFILE)
+      .withMasterProfileId(jobProfileId)
+      .withDetailProfileType(MATCH_PROFILE)
+      .withDetailProfileId(matchProfileId)
+      .withOrder(0);
+
+    var matchToActionAssociation = new ProfileAssociation()
+      .withMasterProfileType(MATCH_PROFILE)
+      .withMasterProfileId(matchProfileId)
+      .withDetailProfileType(ACTION_PROFILE)
+      .withDetailProfileId(actionProfileId)
+      .withReactTo(MATCH)
+      .withOrder(0);
+
+    RestAssured.given()
+      .spec(spec)
+      .body(new JobProfileUpdateDto()
+        .withProfile(new JobProfile()
+          .withId(jobProfileId)
+          .withName("Delete MARC-Authority")
+          .withDataType(MARC))
+        .withAddedRelations(List.of(jobToMatchAssociation, matchToActionAssociation)))
+      .when()
+      .post(JOB_PROFILES_PATH)
+      .then()
+      .statusCode(HttpStatus.SC_UNPROCESSABLE_ENTITY)
+      .body("errors", hasItem(
+        hasEntry(is("message"),
+          is(INVALID_DELETE_MARC_AUTHORITY_ACTION_PROFILE_PLACEMENT))
+      ));
+  }
+
+  @Test
+  public void shouldReturnOkOnPutJobProfileWithDeleteMarcAuthorityAsFirstActionUnderMarcAuthorityMatchProfile() {
+    var jobProfileId = UUID.randomUUID().toString();
+    var matchProfileId = UUID.randomUUID().toString();
+    var updateActionProfileId = UUID.randomUUID().toString();
+    var updateMappingProfileId = UUID.randomUUID().toString();
+    var deleteActionProfileId = UUID.randomUUID().toString();
+    var deleteMappingProfileId = UUID.randomUUID().toString();
+
+    RestAssured.given()
+      .spec(spec)
+      .body(new MappingProfileUpdateDto()
+        .withProfile(new MappingProfile()
+          .withId(updateMappingProfileId)
+          .withName("Update MARC-Authority")
+          .withIncomingRecordType(EntityType.MARC_AUTHORITY)
+          .withExistingRecordType(EntityType.MARC_AUTHORITY)))
+      .when()
+      .post(MAPPING_PROFILES_PATH)
+      .then()
+      .statusCode(HttpStatus.SC_CREATED);
+
+    RestAssured.given()
+      .spec(spec)
+      .body(new ActionProfileUpdateDto()
+        .withProfile(new ActionProfile()
+          .withId(updateActionProfileId)
+          .withName("Update Marc-Authority")
+          .withAction(UPDATE)
+          .withFolioRecord(MARC_AUTHORITY))
+        .withAddedRelations(List.of(new ProfileAssociation()
+          .withMasterProfileType(ACTION_PROFILE)
+          .withDetailProfileType(ProfileType.MAPPING_PROFILE)
+          .withMasterProfileId(updateActionProfileId)
+          .withDetailProfileId(updateMappingProfileId)
+          .withOrder(0))))
+      .when()
+      .post(ACTION_PROFILES_PATH)
+      .then()
+      .statusCode(HttpStatus.SC_CREATED);
+
+    RestAssured.given()
+      .spec(spec)
+      .body(new MatchProfileUpdateDto()
+        .withProfile(new MatchProfile()
+          .withId(matchProfileId)
+          .withName("Match Marc-Authority")
+          .withIncomingRecordType(EntityType.MARC_AUTHORITY)
+          .withExistingRecordType(EntityType.MARC_AUTHORITY)))
+      .when()
+      .post(MATCH_PROFILES_PATH)
+      .then()
+      .statusCode(HttpStatus.SC_CREATED);
+
+    var jobToMatchAssociation = new ProfileAssociation()
+      .withMasterProfileType(JOB_PROFILE)
+      .withMasterProfileId(jobProfileId)
+      .withDetailProfileType(MATCH_PROFILE)
+      .withDetailProfileId(matchProfileId)
+      .withOrder(0);
+
+    var matchToUpdateActionAssociation = new ProfileAssociation()
+      .withMasterProfileType(MATCH_PROFILE)
+      .withMasterProfileId(matchProfileId)
+      .withDetailProfileType(ACTION_PROFILE)
+      .withDetailProfileId(updateActionProfileId)
+      .withReactTo(MATCH)
+      .withOrder(0);
+
+    var jobProfileToUpdate = RestAssured.given()
+      .spec(spec)
+      .body(new JobProfileUpdateDto()
+        .withProfile(new JobProfile()
+          .withId(jobProfileId)
+          .withName("Delete MARC-Authority")
+          .withDataType(MARC))
+        .withAddedRelations(List.of(jobToMatchAssociation, matchToUpdateActionAssociation)))
+      .when()
+      .post(JOB_PROFILES_PATH)
+      .then()
+      .statusCode(HttpStatus.SC_CREATED)
+      .extract().as(JobProfileUpdateDto.class);
+
+    RestAssured.given()
+      .spec(spec)
+      .body(new MappingProfileUpdateDto()
+        .withProfile(new MappingProfile()
+          .withId(deleteMappingProfileId)
+          .withName("Delete MARC-Authority")
+          .withIncomingRecordType(EntityType.MARC_AUTHORITY)
+          .withExistingRecordType(EntityType.MARC_AUTHORITY)))
+      .when()
+      .post(MAPPING_PROFILES_PATH)
+      .then()
+      .statusCode(HttpStatus.SC_CREATED);
+
+    RestAssured.given()
+      .spec(spec)
+      .body(new ActionProfileUpdateDto()
+        .withProfile(new ActionProfile()
+          .withId(deleteActionProfileId)
+          .withName("Delete MARC-Authority")
+          .withAction(DELETE)
+          .withFolioRecord(MARC_AUTHORITY))
+        .withAddedRelations(List.of(new ProfileAssociation()
+          .withMasterProfileType(ACTION_PROFILE)
+          .withDetailProfileType(ProfileType.MAPPING_PROFILE)
+          .withMasterProfileId(deleteActionProfileId)
+          .withDetailProfileId(deleteMappingProfileId)
+          .withOrder(0))))
+      .when()
+      .post(ACTION_PROFILES_PATH)
+      .then()
+      .statusCode(HttpStatus.SC_CREATED);
+
+    var matchToDeleteActionAssociation = new ProfileAssociation()
+      .withMasterProfileType(MATCH_PROFILE)
+      .withMasterProfileId(matchProfileId)
+      .withDetailProfileType(ACTION_PROFILE)
+      .withDetailProfileId(deleteActionProfileId)
+      .withReactTo(MATCH)
+      .withOrder(0);
+
+    RestAssured.given()
+      .spec(spec)
+      .body(jobProfileToUpdate
+        .withAddedRelations(List.of(matchToDeleteActionAssociation))
+        .withDeletedRelations(List.of(matchToUpdateActionAssociation)))
+      .when()
+      .put(JOB_PROFILES_PATH + "/" + jobProfileId)
+      .then()
+      .statusCode(HttpStatus.SC_OK);
+  }
+
+  @Test
+  public void shouldReturnUnprocessableEntityOnPutJobProfileWithDeleteMarcAuthorityUnderNonMatchBranch() {
+    var jobProfileId = UUID.randomUUID().toString();
+    var matchProfileId = UUID.randomUUID().toString();
+    var actionProfileId = UUID.randomUUID().toString();
+    var updateMappingProfileId = UUID.randomUUID().toString();
+    var deleteActionProfileId = UUID.randomUUID().toString();
+    var deleteMappingProfileId = UUID.randomUUID().toString();
+
+    RestAssured.given()
+      .spec(spec)
+      .body(new MappingProfileUpdateDto()
+        .withProfile(new MappingProfile()
+          .withId(updateMappingProfileId)
+          .withName("Update MARC-Authority")
+          .withIncomingRecordType(EntityType.MARC_AUTHORITY)
+          .withExistingRecordType(EntityType.MARC_AUTHORITY)))
+      .when()
+      .post(MAPPING_PROFILES_PATH)
+      .then()
+      .statusCode(HttpStatus.SC_CREATED);
+
+    RestAssured.given()
+      .spec(spec)
+      .body(new ActionProfileUpdateDto()
+        .withProfile(new ActionProfile()
+          .withId(actionProfileId)
+          .withName("Update Marc-Authority")
+          .withAction(UPDATE)
+          .withFolioRecord(MARC_AUTHORITY))
+        .withAddedRelations(List.of(new ProfileAssociation()
+          .withMasterProfileType(ACTION_PROFILE)
+          .withDetailProfileType(ProfileType.MAPPING_PROFILE)
+          .withMasterProfileId(actionProfileId)
+          .withDetailProfileId(updateMappingProfileId)
+          .withOrder(0))))
+      .when()
+      .post(ACTION_PROFILES_PATH)
+      .then()
+      .statusCode(HttpStatus.SC_CREATED);
+
+    RestAssured.given()
+      .spec(spec)
+      .body(new MatchProfileUpdateDto()
+        .withProfile(new MatchProfile()
+          .withId(matchProfileId)
+          .withName("Match Marc-Authority")
+          .withIncomingRecordType(EntityType.MARC_AUTHORITY)
+          .withExistingRecordType(EntityType.MARC_AUTHORITY)))
+      .when()
+      .post(MATCH_PROFILES_PATH)
+      .then()
+      .statusCode(HttpStatus.SC_CREATED);
+
+    RestAssured.given()
+      .spec(spec)
+      .body(new MappingProfileUpdateDto()
+        .withProfile(new MappingProfile()
+          .withId(deleteMappingProfileId)
+          .withName("Delete MARC-Authority mapping")
+          .withIncomingRecordType(EntityType.MARC_AUTHORITY)
+          .withExistingRecordType(EntityType.MARC_AUTHORITY)))
+      .when()
+      .post(MAPPING_PROFILES_PATH)
+      .then()
+      .statusCode(HttpStatus.SC_CREATED);
+
+    RestAssured.given()
+      .spec(spec)
+      .body(new ActionProfileUpdateDto()
+        .withProfile(new ActionProfile()
+          .withId(deleteActionProfileId)
+          .withName("Delete MARC-Authority")
+          .withAction(DELETE)
+          .withFolioRecord(MARC_AUTHORITY))
+        .withAddedRelations(List.of(new ProfileAssociation()
+          .withMasterProfileType(ACTION_PROFILE)
+          .withDetailProfileType(ProfileType.MAPPING_PROFILE)
+          .withMasterProfileId(deleteActionProfileId)
+          .withDetailProfileId(deleteMappingProfileId)
+          .withOrder(0))))
+      .when()
+      .post(ACTION_PROFILES_PATH)
+      .then()
+      .statusCode(HttpStatus.SC_CREATED);
+
+    var jobToMatchAssociation = new ProfileAssociation()
+      .withMasterProfileType(JOB_PROFILE)
+      .withMasterProfileId(jobProfileId)
+      .withDetailProfileType(MATCH_PROFILE)
+      .withDetailProfileId(matchProfileId)
+      .withOrder(0);
+
+    var matchToUpdateActionAssociation = new ProfileAssociation()
+      .withMasterProfileType(MATCH_PROFILE)
+      .withMasterProfileId(matchProfileId)
+      .withDetailProfileType(ACTION_PROFILE)
+      .withDetailProfileId(actionProfileId)
+      .withReactTo(MATCH)
+      .withOrder(0);
+
+    var jobProfileToUpdate = RestAssured.given()
+      .spec(spec)
+      .body(new JobProfileUpdateDto()
+        .withProfile(new JobProfile()
+          .withId(jobProfileId)
+          .withName("Delete MARC-Authority")
+          .withDataType(MARC))
+        .withAddedRelations(List.of(jobToMatchAssociation, matchToUpdateActionAssociation)))
+      .when()
+      .post(JOB_PROFILES_PATH)
+      .then()
+      .statusCode(HttpStatus.SC_CREATED)
+      .extract().as(JobProfileUpdateDto.class);
+
+    var matchToDeleteActionAssociation = new ProfileAssociation()
+      .withMasterProfileType(MATCH_PROFILE)
+      .withMasterProfileId(matchProfileId)
+      .withDetailProfileType(ACTION_PROFILE)
+      .withDetailProfileId(deleteActionProfileId)
+      .withReactTo(NON_MATCH)
+      .withOrder(0);
+
+    RestAssured.given()
+      .spec(spec)
+      .body(jobProfileToUpdate
+        .withAddedRelations(List.of(matchToDeleteActionAssociation))
+        .withDeletedRelations(List.of(matchToUpdateActionAssociation)))
+      .when()
+      .put(JOB_PROFILES_PATH + "/" + jobProfileId)
+      .then()
+      .statusCode(HttpStatus.SC_UNPROCESSABLE_ENTITY)
+      .body("errors", hasItem(
+        hasEntry(is("message"),
+          is(INVALID_DELETE_MARC_AUTHORITY_ACTION_PROFILE_PLACEMENT))
+      ));
+  }
+
+  @Test
+  public void shouldReturnUnprocessableEntityOnPutJobProfileIfDeleteMarcAuthorityNotFirstInMatchBranch() {
+    var jobProfileId = UUID.randomUUID().toString();
+    var matchProfileId = UUID.randomUUID().toString();
+    var updateActionProfileId = UUID.randomUUID().toString();
+    var updateMappingProfileId = UUID.randomUUID().toString();
+    var deleteActionProfileId = UUID.randomUUID().toString();
+
+    RestAssured.given()
+      .spec(spec)
+      .body(new MatchProfileUpdateDto()
+        .withProfile(new MatchProfile()
+          .withId(matchProfileId)
+          .withName("Match Marc-Authority")
+          .withIncomingRecordType(EntityType.MARC_AUTHORITY)
+          .withExistingRecordType(EntityType.MARC_AUTHORITY)))
+      .when()
+      .post(MATCH_PROFILES_PATH)
+      .then()
+      .statusCode(HttpStatus.SC_CREATED);
+
+    RestAssured.given()
+      .spec(spec)
+      .body(new MappingProfileUpdateDto()
+        .withProfile(new MappingProfile()
+          .withId(updateMappingProfileId)
+          .withName("Update MARC-Authority")
+          .withIncomingRecordType(EntityType.MARC_AUTHORITY)
+          .withExistingRecordType(EntityType.MARC_AUTHORITY)))
+      .when()
+      .post(MAPPING_PROFILES_PATH)
+      .then()
+      .statusCode(HttpStatus.SC_CREATED);
+
+    RestAssured.given()
+      .spec(spec)
+      .body(new ActionProfileUpdateDto()
+        .withProfile(new ActionProfile()
+          .withId(updateActionProfileId)
+          .withName("Update Marc-Authority")
+          .withAction(UPDATE)
+          .withFolioRecord(MARC_AUTHORITY))
+        .withAddedRelations(List.of(new ProfileAssociation()
+          .withMasterProfileType(ACTION_PROFILE)
+          .withDetailProfileType(ProfileType.MAPPING_PROFILE)
+          .withMasterProfileId(updateActionProfileId)
+          .withDetailProfileId(updateMappingProfileId)
+          .withOrder(0))))
+      .when()
+      .post(ACTION_PROFILES_PATH)
+      .then()
+      .statusCode(HttpStatus.SC_CREATED);
+
+    var jobToMatchAssociation = new ProfileAssociation()
+      .withMasterProfileType(JOB_PROFILE)
+      .withMasterProfileId(jobProfileId)
+      .withDetailProfileType(MATCH_PROFILE)
+      .withDetailProfileId(matchProfileId)
+      .withOrder(0);
+
+    var matchToUpdateActionAssociation = new ProfileAssociation()
+      .withMasterProfileType(MATCH_PROFILE)
+      .withMasterProfileId(matchProfileId)
+      .withDetailProfileType(ACTION_PROFILE)
+      .withDetailProfileId(updateActionProfileId)
+      .withReactTo(MATCH)
+      .withOrder(0);
+
+    var jobProfileToUpdate = RestAssured.given()
+      .spec(spec)
+      .body(new JobProfileUpdateDto()
+        .withProfile(new JobProfile()
+          .withId(jobProfileId)
+          .withName("Delete MARC-Authority")
+          .withDataType(MARC))
+        .withAddedRelations(List.of(jobToMatchAssociation, matchToUpdateActionAssociation)))
+      .when()
+      .post(JOB_PROFILES_PATH)
+      .then()
+      .statusCode(HttpStatus.SC_CREATED)
+      .extract().as(JobProfileUpdateDto.class);
+
+    RestAssured.given()
+      .spec(spec)
+      .body(new ActionProfileUpdateDto()
+        .withProfile(new ActionProfile()
+          .withId(deleteActionProfileId)
+          .withName("Delete MARC-Authority")
+          .withAction(DELETE)
+          .withFolioRecord(MARC_AUTHORITY)))
+      .when()
+      .post(ACTION_PROFILES_PATH)
+      .then()
+      .statusCode(HttpStatus.SC_CREATED);
+
+    var matchToDeleteActionAssociation = new ProfileAssociation()
+      .withMasterProfileType(MATCH_PROFILE)
+      .withMasterProfileId(matchProfileId)
+      .withDetailProfileType(ACTION_PROFILE)
+      .withDetailProfileId(deleteActionProfileId)
+      .withReactTo(MATCH)
+      .withOrder(1);
+
+    RestAssured.given()
+      .spec(spec)
+      .body(jobProfileToUpdate
+        .withAddedRelations(List.of(matchToDeleteActionAssociation))
+        .withDeletedRelations(List.of(matchToUpdateActionAssociation)))
+      .when()
+      .put(JOB_PROFILES_PATH + "/" + jobProfileId)
+      .then()
+      .statusCode(HttpStatus.SC_UNPROCESSABLE_ENTITY)
+      .body("errors", hasItem(
+        hasEntry(is("message"), is(DELETE_MARC_AUTHORITY_CANNOT_BE_NEXT_TO_OTHER_ACTIONS))));
+  }
+
+  @Test
+  public void shouldReturnUnprocessableEntityOnPutJobProfileWithDeleteMarcAuthorityUnderNonMarcAuthorityMatchProfile() {
+    var jobProfileId = UUID.randomUUID().toString();
+    var marcBibMatchProfileId = UUID.randomUUID().toString();
+    var actionProfileId = UUID.randomUUID().toString();
+    var updateMappingProfileId = UUID.randomUUID().toString();
+    var deleteActionProfileId = UUID.randomUUID().toString();
+
+    RestAssured.given()
+      .spec(spec)
+      .body(new MappingProfileUpdateDto()
+        .withProfile(new MappingProfile()
+          .withId(updateMappingProfileId)
+          .withName("Update MARC-Authority")
+          .withIncomingRecordType(EntityType.MARC_AUTHORITY)
+          .withExistingRecordType(EntityType.MARC_AUTHORITY)))
+      .when()
+      .post(MAPPING_PROFILES_PATH)
+      .then()
+      .statusCode(HttpStatus.SC_CREATED);
+
+    RestAssured.given()
+      .spec(spec)
+      .body(new ActionProfileUpdateDto()
+        .withProfile(new ActionProfile()
+          .withId(actionProfileId)
+          .withName("Update Marc-Authority")
+          .withAction(UPDATE)
+          .withFolioRecord(MARC_AUTHORITY))
+        .withAddedRelations(List.of(new ProfileAssociation()
+          .withMasterProfileType(ACTION_PROFILE)
+          .withDetailProfileType(ProfileType.MAPPING_PROFILE)
+          .withMasterProfileId(actionProfileId)
+          .withDetailProfileId(updateMappingProfileId)
+          .withOrder(0))))
+      .when()
+      .post(ACTION_PROFILES_PATH)
+      .then()
+      .statusCode(HttpStatus.SC_CREATED);
+
+    RestAssured.given()
+      .spec(spec)
+      .body(new MatchProfileUpdateDto()
+        .withProfile(new MatchProfile()
+          .withId(marcBibMatchProfileId)
+          .withName("Match Marc-Bib")
+          .withIncomingRecordType(EntityType.MARC_BIBLIOGRAPHIC)
+          .withExistingRecordType(EntityType.MARC_BIBLIOGRAPHIC)))
+      .when()
+      .post(MATCH_PROFILES_PATH)
+      .then()
+      .statusCode(HttpStatus.SC_CREATED);
+
+    var jobToMarcBibMatchAssociation = new ProfileAssociation()
+      .withMasterProfileType(JOB_PROFILE)
+      .withMasterProfileId(jobProfileId)
+      .withDetailProfileType(MATCH_PROFILE)
+      .withDetailProfileId(marcBibMatchProfileId)
+      .withOrder(1);
+
+    var matchToUpdateActionAssociation = new ProfileAssociation()
+      .withMasterProfileType(MATCH_PROFILE)
+      .withMasterProfileId(marcBibMatchProfileId)
+      .withDetailProfileType(ACTION_PROFILE)
+      .withDetailProfileId(actionProfileId)
+      .withReactTo(MATCH)
+      .withOrder(0);
+
+    var jobProfileToUpdate = RestAssured.given()
+      .spec(spec)
+      .body(new JobProfileUpdateDto()
+        .withProfile(new JobProfile()
+          .withId(jobProfileId)
+          .withName("Delete MARC-Authority")
+          .withDataType(MARC))
+        .withAddedRelations(List.of(jobToMarcBibMatchAssociation, matchToUpdateActionAssociation)))
+      .when()
+      .post(JOB_PROFILES_PATH)
+      .then()
+      .statusCode(HttpStatus.SC_CREATED)
+      .extract().as(JobProfileUpdateDto.class);
+
+    RestAssured.given()
+      .spec(spec)
+      .body(new ActionProfileUpdateDto()
+        .withProfile(new ActionProfile()
+          .withId(deleteActionProfileId)
+          .withName("Delete MARC-Authority")
+          .withAction(DELETE)
+          .withFolioRecord(MARC_AUTHORITY)))
+      .when()
+      .post(ACTION_PROFILES_PATH)
+      .then()
+      .statusCode(HttpStatus.SC_CREATED);
+
+    var marcBibMatchToDeleteActionAssociation = new ProfileAssociation()
+      .withMasterProfileType(MATCH_PROFILE)
+      .withMasterProfileId(marcBibMatchProfileId)
+      .withDetailProfileType(ACTION_PROFILE)
+      .withDetailProfileId(deleteActionProfileId)
+      .withReactTo(MATCH)
+      .withOrder(0);
+
+    RestAssured.given()
+      .spec(spec)
+      .body(jobProfileToUpdate
+        .withAddedRelations(List.of(marcBibMatchToDeleteActionAssociation))
+        .withDeletedRelations(List.of(matchToUpdateActionAssociation))
+      )
+      .when()
+      .put(JOB_PROFILES_PATH + "/" + jobProfileId)
+      .then()
+      .statusCode(HttpStatus.SC_UNPROCESSABLE_ENTITY)
+      .body("errors", hasItem(
+        hasEntry(is("message"),
+          is(INVALID_DELETE_MARC_AUTHORITY_ACTION_PROFILE_PLACEMENT))
+      ));
+  }
 
   private void createProfiles() {
     List<Tuple> jobProfilesToPost = Arrays.asList(
