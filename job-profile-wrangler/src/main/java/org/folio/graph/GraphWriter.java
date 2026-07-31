@@ -2,16 +2,6 @@ package org.folio.graph;
 
 import guru.nidi.graphviz.engine.Format;
 import guru.nidi.graphviz.engine.Graphviz;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
-import org.folio.graph.edges.RegularEdge;
-import org.folio.graph.nodes.Profile;
-import org.jgrapht.Graph;
-import org.jgrapht.nio.Attribute;
-import org.jgrapht.nio.AttributeType;
-import org.jgrapht.nio.DefaultAttribute;
-import org.jgrapht.nio.dot.DOTExporter;
-
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
@@ -31,17 +21,25 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+import org.folio.graph.edges.RegularEdge;
+import org.folio.graph.nodes.Profile;
+import org.jgrapht.Graph;
+import org.jgrapht.nio.Attribute;
+import org.jgrapht.nio.AttributeType;
+import org.jgrapht.nio.DefaultAttribute;
+import org.jgrapht.nio.dot.DOTExporter;
 
 /**
  * The GraphWriter class provides methods for writing and rendering graphs using the DOT format.
  * It uses the JGraphT library for graph operations and the Graphviz library for rendering graphs.
  */
-public class GraphWriter {
+public final class GraphWriter {
+  public static final Pattern DOT_FILE_PATTERN = Pattern.compile("jp-(\\d+)\\.dot");
   private static final Logger LOGGER = LogManager.getLogger();
   private static final DOTExporter<Profile, RegularEdge> DOT_EXPORTER = new DOTExporter<>();
-  private static final PriorityQueue<Integer> maxHeap = new PriorityQueue<>(Collections.reverseOrder());
-
-  public static final Pattern DOT_FILE_PATTERN = Pattern.compile("jp-(\\d+)\\.dot");
+  private static final PriorityQueue<Integer> MAX_HEAP = new PriorityQueue<>(Collections.reverseOrder());
 
   static {
     // Set the vertex attribute provider for the DOT exporter
@@ -80,7 +78,7 @@ public class GraphWriter {
    */
   public static synchronized Optional<Integer> writeGraph(String repoPath, Graph<Profile, RegularEdge> graph) {
 
-    if (maxHeap.isEmpty()) {
+    if (MAX_HEAP.isEmpty()) {
       // If the maxHeap is empty, read the existing DOT files in the repository and populate the maxHeap
       try (Stream<Path> stream = Files.list(Paths.get(repoPath))) {
         List<String> fileNames = stream
@@ -99,7 +97,7 @@ public class GraphWriter {
               return null;
             }
           }).filter(Objects::nonNull)
-          .forEach(id -> maxHeap.add(Integer.parseInt(id)));
+          .forEach(id -> MAX_HEAP.add(Integer.parseInt(id)));
       } catch (IOException e) {
         LOGGER.error("An error occurred while reading the directory.", e);
         return Optional.empty();
@@ -107,7 +105,7 @@ public class GraphWriter {
     }
 
     // Generate a new ID for the DOT file
-    Integer newId = maxHeap.peek() != null ? maxHeap.peek() + 1 : 1;
+    Integer newId = MAX_HEAP.peek() != null ? MAX_HEAP.peek() + 1 : 1;
     Path filePath = Paths.get(repoPath, genGraphFileName(newId));
 
     // Write the graph to the DOT file
@@ -118,13 +116,12 @@ public class GraphWriter {
       return Optional.empty();
     }
 
-    maxHeap.add(newId);
+    MAX_HEAP.add(newId);
     return Optional.of(newId);
-
   }
 
   /**
-   * Generate a file name for a repo identifier
+   * Generate a file name for a repo identifier.
    */
   public static String genGraphFileName(Integer repoId) {
     return String.format("jp-%03d", repoId) + ".dot";

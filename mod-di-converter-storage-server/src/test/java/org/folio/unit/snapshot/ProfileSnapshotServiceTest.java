@@ -1,8 +1,20 @@
 package org.folio.unit.snapshot;
 
+import static org.folio.rest.jaxrs.model.ProfileType.ACTION_PROFILE;
+import static org.folio.rest.jaxrs.model.ProfileType.JOB_PROFILE;
+import static org.folio.rest.jaxrs.model.ProfileType.MAPPING_PROFILE;
+import static org.folio.rest.jaxrs.model.ProfileType.MATCH_PROFILE;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
+
 import io.vertx.core.Future;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
+import java.util.UUID;
 import org.folio.dao.snapshot.ProfileSnapshotDao;
 import org.folio.rest.jaxrs.model.ActionProfile;
 import org.folio.rest.jaxrs.model.JobProfile;
@@ -21,48 +33,31 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.ArgumentMatchers;
-import org.mockito.Mockito;
 import org.springframework.beans.factory.annotation.Autowired;
-
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
-import java.util.UUID;
-
-import static org.folio.rest.jaxrs.model.ProfileType.ACTION_PROFILE;
-import static org.folio.rest.jaxrs.model.ProfileType.JOB_PROFILE;
-import static org.folio.rest.jaxrs.model.ProfileType.MAPPING_PROFILE;
-import static org.folio.rest.jaxrs.model.ProfileType.MATCH_PROFILE;
 
 public class ProfileSnapshotServiceTest extends AbstractUnitTest {
   private static final String TABLE_NAME = "profile_snapshots";
+  private final JobProfile jobProfile = new JobProfile().withId(UUID.randomUUID().toString());
+  private final ProfileAssociation jobProfileSnapshotAssociation = new ProfileAssociation();
+  private final MatchProfile matchProfile = new MatchProfile().withId(UUID.randomUUID().toString());
+  private final ProfileAssociation matchProfileSnapshotAssociation = new ProfileAssociation();
+  private final ActionProfile actionProfile = new ActionProfile().withId(UUID.randomUUID().toString());
+  private final ProfileAssociation actionProfileSnapshotAssociation = new ProfileAssociation();
+  private final MappingProfile mappingProfile = new MappingProfile().withId(UUID.randomUUID().toString());
+  private final ProfileAssociation mappingProfileSnapshotAssociation = new ProfileAssociation();
 
   @Autowired
   private ProfileSnapshotDao dao;
   @Autowired
   private ProfileSnapshotService service;
-
-  private JobProfile jobProfile = new JobProfile().withId(UUID.randomUUID().toString());
-  private ProfileAssociation jobProfileSnapshotAssociation = new ProfileAssociation();
-
-  private MatchProfile matchProfile = new MatchProfile().withId(UUID.randomUUID().toString());
-  private ProfileAssociation matchProfileSnapshotAssociation = new ProfileAssociation();
-
-  private ActionProfile actionProfile = new ActionProfile().withId(UUID.randomUUID().toString());
-  private ProfileAssociation actionProfileSnapshotAssociation = new ProfileAssociation();
-
-  private MappingProfile mappingProfile = new MappingProfile().withId(UUID.randomUUID().toString());
-  private ProfileAssociation mappingProfileSnapshotAssociation = new ProfileAssociation();
-
   private List<ProfileAssociation> associations;
 
   @Before
   public void setUp() {
-    String jobProfileWrapperId = UUID.randomUUID().toString();
-    String matchProfileWrapperId = UUID.randomUUID().toString();
-    String actionProfileWrapperId = UUID.randomUUID().toString();
-    String mappingProfileWrapperId = UUID.randomUUID().toString();
+    final String jobProfileWrapperId = UUID.randomUUID().toString();
+    final String matchProfileWrapperId = UUID.randomUUID().toString();
+    final String actionProfileWrapperId = UUID.randomUUID().toString();
+    final String mappingProfileWrapperId = UUID.randomUUID().toString();
 
     jobProfileSnapshotAssociation.setId(UUID.randomUUID().toString());
     jobProfileSnapshotAssociation.setMasterProfileId(null);
@@ -104,6 +99,7 @@ public class ProfileSnapshotServiceTest extends AbstractUnitTest {
   }
 
   @Test
+  @SuppressWarnings("checkstyle:MethodLength")
   public void shouldSaveAndReturnWrappersOnGetById(TestContext context) {
     Async async = context.async();
 
@@ -143,18 +139,25 @@ public class ProfileSnapshotServiceTest extends AbstractUnitTest {
         ProfileSnapshotWrapper actualJobProfileWrapper = optionalAr.get();
         context.assertEquals(expectedJobProfileWrapper.getId(), actualJobProfileWrapper.getId());
         context.assertEquals(expectedJobProfileWrapper.getContentType(), actualJobProfileWrapper.getContentType());
-        context.assertEquals(expectedJobProfileWrapper.getContent().getClass(), actualJobProfileWrapper.getContent().getClass());
+        context.assertEquals(expectedJobProfileWrapper.getContent().getClass(),
+          actualJobProfileWrapper.getContent().getClass());
 
-        ProfileSnapshotWrapper expectedMatchProfileWrapper = expectedJobProfileWrapper.getChildSnapshotWrappers().getFirst();
-        ProfileSnapshotWrapper actualMatchProfileWrapper = actualJobProfileWrapper.getChildSnapshotWrappers().getFirst();
+        ProfileSnapshotWrapper expectedMatchProfileWrapper =
+          expectedJobProfileWrapper.getChildSnapshotWrappers().getFirst();
+        ProfileSnapshotWrapper actualMatchProfileWrapper =
+          actualJobProfileWrapper.getChildSnapshotWrappers().getFirst();
         assertExpectedChildOnActualChild(expectedMatchProfileWrapper, actualMatchProfileWrapper, context);
 
-        ProfileSnapshotWrapper expectedActionProfileWrapper = expectedMatchProfileWrapper.getChildSnapshotWrappers().getFirst();
-        ProfileSnapshotWrapper actualActionProfileWrapper = actualMatchProfileWrapper.getChildSnapshotWrappers().getFirst();
+        ProfileSnapshotWrapper expectedActionProfileWrapper =
+          expectedMatchProfileWrapper.getChildSnapshotWrappers().getFirst();
+        ProfileSnapshotWrapper actualActionProfileWrapper =
+          actualMatchProfileWrapper.getChildSnapshotWrappers().getFirst();
         assertExpectedChildOnActualChild(expectedActionProfileWrapper, actualActionProfileWrapper, context);
 
-        ProfileSnapshotWrapper expectedMappingProfileWrapper = expectedActionProfileWrapper.getChildSnapshotWrappers().getFirst();
-        ProfileSnapshotWrapper actualMappingProfileWrapper = actualActionProfileWrapper.getChildSnapshotWrappers().getFirst();
+        ProfileSnapshotWrapper expectedMappingProfileWrapper =
+          expectedActionProfileWrapper.getChildSnapshotWrappers().getFirst();
+        ProfileSnapshotWrapper actualMappingProfileWrapper =
+          actualActionProfileWrapper.getChildSnapshotWrappers().getFirst();
         assertExpectedChildOnActualChild(expectedMappingProfileWrapper, actualMappingProfileWrapper, context);
 
         async.complete();
@@ -168,15 +171,16 @@ public class ProfileSnapshotServiceTest extends AbstractUnitTest {
   public void shouldReturnFailedFutureIfNoSnapshotAssociationsExist(TestContext context) {
     Async async = context.async();
     // given
-    ProfileSnapshotDao mockDao = Mockito.mock(ProfileSnapshotDao.class);
+    ProfileSnapshotDao mockDao = mock(ProfileSnapshotDao.class);
     ProfileSnapshotService profileSnapshotService = new ProfileSnapshotServiceImpl(dao);
 
     String jobProfileId = UUID.randomUUID().toString();
-    Mockito.when(mockDao.getSnapshotAssociations(jobProfileId, JOB_PROFILE, jobProfileId, TENANT_ID)).thenReturn(Future.succeededFuture(new ArrayList<>()));
+    when(mockDao.getSnapshotAssociations(jobProfileId, JOB_PROFILE, jobProfileId, TENANT_ID))
+      .thenReturn(Future.succeededFuture(new ArrayList<>()));
 
     // when
     profileSnapshotService.createSnapshot(jobProfileId, TENANT_ID).onComplete(ar -> {
-    // then
+      // then
       context.assertTrue(ar.failed());
       async.complete();
     });
@@ -186,15 +190,17 @@ public class ProfileSnapshotServiceTest extends AbstractUnitTest {
   public void shouldBuildAndSaveSnapshotForJobProfile(TestContext testContext) {
     Async async = testContext.async();
     // given
-    ProfileSnapshotDao mockDao = Mockito.mock(ProfileSnapshotDao.class);
+    ProfileSnapshotDao mockDao = mock(ProfileSnapshotDao.class);
     ProfileSnapshotService profileSnapshotService = new ProfileSnapshotServiceImpl(mockDao);
 
-    Mockito.when(mockDao.getSnapshotAssociations(jobProfile.getId(), JOB_PROFILE, jobProfile.getId(), TENANT_ID)).thenReturn(Future.succeededFuture(associations));
-    Mockito.when(mockDao.save(ArgumentMatchers.any(), ArgumentMatchers.anyString())).thenReturn(Future.succeededFuture(jobProfile.getId()));
+    when(mockDao.getSnapshotAssociations(jobProfile.getId(), JOB_PROFILE, jobProfile.getId(), TENANT_ID))
+      .thenReturn(Future.succeededFuture(associations));
+    when(mockDao.save(ArgumentMatchers.any(), ArgumentMatchers.anyString()))
+      .thenReturn(Future.succeededFuture(jobProfile.getId()));
 
     // when
     profileSnapshotService.createSnapshot(jobProfile.getId(), TENANT_ID).onComplete(ar -> {
-    // then
+      // then
       testContext.assertTrue(ar.succeeded());
       ProfileSnapshotWrapper jobProfileWrapper = ar.result();
       JobProfile actualJobProfile = (JobProfile) jobProfileWrapper.getContent();
@@ -220,15 +226,18 @@ public class ProfileSnapshotServiceTest extends AbstractUnitTest {
   }
 
   @Test
+  @SuppressWarnings("checkstyle:MethodLength")
   public void shouldBuildAndSaveSnapshotWithDuplicateProfilesForJobProfile(TestContext testContext) {
     Async async = testContext.async();
     // given
-    ProfileSnapshotDao mockDao = Mockito.mock(ProfileSnapshotDao.class);
+    ProfileSnapshotDao mockDao = mock(ProfileSnapshotDao.class);
     ProfileSnapshotService profileSnapshotService = new ProfileSnapshotServiceImpl(mockDao);
 
-    Mockito.when(mockDao.getSnapshotAssociations(jobProfile.getId(), JOB_PROFILE, jobProfile.getId(), TENANT_ID)).thenReturn(Future.succeededFuture(getAssociationsWithDuplicates()));
+    when(mockDao.getSnapshotAssociations(jobProfile.getId(), JOB_PROFILE, jobProfile.getId(), TENANT_ID))
+      .thenReturn(Future.succeededFuture(getAssociationsWithDuplicates()));
 
-    Mockito.when(mockDao.save(ArgumentMatchers.any(), ArgumentMatchers.anyString())).thenReturn(Future.succeededFuture(jobProfile.getId()));
+    when(mockDao.save(ArgumentMatchers.any(), ArgumentMatchers.anyString()))
+      .thenReturn(Future.succeededFuture(jobProfile.getId()));
 
     // when
     profileSnapshotService.createSnapshot(jobProfile.getId(), TENANT_ID).onComplete(ar -> {
@@ -290,75 +299,92 @@ public class ProfileSnapshotServiceTest extends AbstractUnitTest {
   public void shouldConstructSnapshotForJobProfile(TestContext testContext) {
     Async async = testContext.async();
     // given
-    ProfileSnapshotDao mockDao = Mockito.mock(ProfileSnapshotDao.class);
+    ProfileSnapshotDao mockDao = mock(ProfileSnapshotDao.class);
     ProfileSnapshotService profileSnapshotService = new ProfileSnapshotServiceImpl(mockDao);
 
-    Mockito.when(mockDao.getSnapshotAssociations(jobProfile.getId(), JOB_PROFILE, jobProfile.getId(), TENANT_ID)).thenReturn(Future.succeededFuture(associations));
+    when(mockDao.getSnapshotAssociations(jobProfile.getId(), JOB_PROFILE, jobProfile.getId(), TENANT_ID))
+      .thenReturn(Future.succeededFuture(associations));
 
     // when
-    profileSnapshotService.constructSnapshot(jobProfile.getId(), JOB_PROFILE, jobProfile.getId(), TENANT_ID).onComplete(ar -> {
-    // then
-      testContext.assertTrue(ar.succeeded());
-      ProfileSnapshotWrapper jobProfileWrapper = ar.result();
-      JobProfile actualJobProfile = (JobProfile) jobProfileWrapper.getContent();
-      testContext.assertEquals(jobProfile.getId(), actualJobProfile.getId());
-      testContext.assertEquals(jobProfile.getId(), jobProfileWrapper.getProfileId());
+    profileSnapshotService.constructSnapshot(jobProfile.getId(), JOB_PROFILE, jobProfile.getId(), TENANT_ID)
+      .onComplete(ar -> {
+        // then
+        testContext.assertTrue(ar.succeeded());
+        ProfileSnapshotWrapper jobProfileWrapper = ar.result();
+        JobProfile actualJobProfile = (JobProfile) jobProfileWrapper.getContent();
+        testContext.assertEquals(jobProfile.getId(), actualJobProfile.getId());
+        testContext.assertEquals(jobProfile.getId(), jobProfileWrapper.getProfileId());
 
-      ProfileSnapshotWrapper matchProfileWrapper = jobProfileWrapper.getChildSnapshotWrappers().getFirst();
-      MatchProfile actualMatchProfile = (MatchProfile) matchProfileWrapper.getContent();
-      testContext.assertEquals(matchProfile.getId(), actualMatchProfile.getId());
-      testContext.assertEquals(matchProfile.getId(), matchProfileWrapper.getProfileId());
+        ProfileSnapshotWrapper matchProfileWrapper = jobProfileWrapper.getChildSnapshotWrappers().getFirst();
+        MatchProfile actualMatchProfile = (MatchProfile) matchProfileWrapper.getContent();
+        testContext.assertEquals(matchProfile.getId(), actualMatchProfile.getId());
+        testContext.assertEquals(matchProfile.getId(), matchProfileWrapper.getProfileId());
 
-      ProfileSnapshotWrapper actionProfileWrapper = matchProfileWrapper.getChildSnapshotWrappers().getFirst();
-      ActionProfile actualActionProfile = (ActionProfile) actionProfileWrapper.getContent();
-      testContext.assertEquals(actionProfile.getId(), actualActionProfile.getId());
-      testContext.assertEquals(actionProfile.getId(), actionProfileWrapper.getProfileId());
+        ProfileSnapshotWrapper actionProfileWrapper = matchProfileWrapper.getChildSnapshotWrappers().getFirst();
+        ActionProfile actualActionProfile = (ActionProfile) actionProfileWrapper.getContent();
+        testContext.assertEquals(actionProfile.getId(), actualActionProfile.getId());
+        testContext.assertEquals(actionProfile.getId(), actionProfileWrapper.getProfileId());
 
-      ProfileSnapshotWrapper mappingProfileWrapper = actionProfileWrapper.getChildSnapshotWrappers().getFirst();
-      MappingProfile actualMappingProfile = (MappingProfile) mappingProfileWrapper.getContent();
-      testContext.assertEquals(mappingProfile.getId(), actualMappingProfile.getId());
-      testContext.assertEquals(mappingProfile.getId(), mappingProfileWrapper.getProfileId());
-      async.complete();
-    });
+        ProfileSnapshotWrapper mappingProfileWrapper = actionProfileWrapper.getChildSnapshotWrappers().getFirst();
+        MappingProfile actualMappingProfile = (MappingProfile) mappingProfileWrapper.getContent();
+        testContext.assertEquals(mappingProfile.getId(), actualMappingProfile.getId());
+        testContext.assertEquals(mappingProfile.getId(), mappingProfileWrapper.getProfileId());
+        async.complete();
+      });
   }
 
   @Test
   public void shouldReturnSnapshotAssociations(TestContext testContext) {
     Async async = testContext.async();
     // given
-    ProfileSnapshotDao mockDao = Mockito.mock(ProfileSnapshotDao.class);
+    ProfileSnapshotDao mockDao = mock(ProfileSnapshotDao.class);
     ProfileSnapshotService profileSnapshotService = new ProfileSnapshotServiceImpl(mockDao);
 
-    Mockito.when(mockDao.getSnapshotAssociations(jobProfile.getId(), JOB_PROFILE, jobProfile.getId(), TENANT_ID)).thenReturn(Future.succeededFuture(associations));
+    when(mockDao.getSnapshotAssociations(jobProfile.getId(), JOB_PROFILE, jobProfile.getId(), TENANT_ID))
+      .thenReturn(Future.succeededFuture(associations));
 
     // when
-    profileSnapshotService.getSnapshotAssociations(jobProfile.getId(), JOB_PROFILE, jobProfile.getId(), TENANT_ID).onComplete(ar -> {
-      // then
-      testContext.assertTrue(ar.succeeded());
-      List<ProfileAssociation> profileAssociations = ar.result();
-      testContext.assertEquals(profileAssociations, associations);
+    profileSnapshotService.getSnapshotAssociations(jobProfile.getId(), JOB_PROFILE, jobProfile.getId(), TENANT_ID)
+      .onComplete(ar -> {
+        // then
+        testContext.assertTrue(ar.succeeded());
+        List<ProfileAssociation> profileAssociations = ar.result();
+        testContext.assertEquals(profileAssociations, associations);
+        async.complete();
+      });
+  }
+
+  @After
+  public void afterTest(TestContext context) {
+    Async async = context.async();
+    PostgresClient.getInstance(vertx, TENANT_ID).delete(TABLE_NAME, new Criterion(), event -> {
+      if (event.failed()) {
+        context.fail(event.cause());
+      }
       async.complete();
     });
   }
 
-  private void assertExpectedChildOnActualChild(ProfileSnapshotWrapper expected, ProfileSnapshotWrapper actual, TestContext context) {
+  private void assertExpectedChildOnActualChild(ProfileSnapshotWrapper expected, ProfileSnapshotWrapper actual,
+                                                TestContext context) {
     context.assertEquals(expected.getId(), actual.getId());
     context.assertEquals(expected.getContentType(), actual.getContentType());
     context.assertEquals(expected.getContent().getClass(), actual.getContent().getClass());
   }
 
+  @SuppressWarnings("checkstyle:MethodLength")
   private List<ProfileAssociation> getAssociationsWithDuplicates() {
-    MatchProfile matchProfile2 = new MatchProfile().withId(UUID.randomUUID().toString());
+    final MatchProfile matchProfile2 = new MatchProfile().withId(UUID.randomUUID().toString());
 
-    ProfileAssociation parentMatchProfileSnapshotAssociation1 = new ProfileAssociation();
-    ProfileAssociation childMatchProfileSnapshotAssociation1 = new ProfileAssociation();
-    ProfileAssociation actionProfileSnapshotAssociation1 = new ProfileAssociation();
-    ProfileAssociation mappingProfileSnapshotAssociation1 = new ProfileAssociation();
+    final ProfileAssociation parentMatchProfileSnapshotAssociation1 = new ProfileAssociation();
+    final ProfileAssociation childMatchProfileSnapshotAssociation1 = new ProfileAssociation();
+    final ProfileAssociation actionProfileSnapshotAssociation1 = new ProfileAssociation();
+    final ProfileAssociation mappingProfileSnapshotAssociation1 = new ProfileAssociation();
 
-    String parentMatchProfileWrapperId1 = UUID.randomUUID().toString();
-    String childMatchProfileWrapperId1 = UUID.randomUUID().toString();
-    String actionProfileWrapperId1 = UUID.randomUUID().toString();
-    String mappingProfileWrapperId1 = UUID.randomUUID().toString();
+    final String parentMatchProfileWrapperId1 = UUID.randomUUID().toString();
+    final String childMatchProfileWrapperId1 = UUID.randomUUID().toString();
+    final String actionProfileWrapperId1 = UUID.randomUUID().toString();
+    final String mappingProfileWrapperId1 = UUID.randomUUID().toString();
 
     parentMatchProfileSnapshotAssociation1.setId(UUID.randomUUID().toString());
     parentMatchProfileSnapshotAssociation1.setMasterProfileId(jobProfile.getId());
@@ -392,15 +418,15 @@ public class ProfileSnapshotServiceTest extends AbstractUnitTest {
     mappingProfileSnapshotAssociation1.setDetailProfileType(MAPPING_PROFILE);
     mappingProfileSnapshotAssociation1.setDetail(mappingProfile);
 
-    ProfileAssociation parentMatchProfileSnapshotAssociation2 = new ProfileAssociation();
-    ProfileAssociation childMatchProfileSnapshotAssociation2 = new ProfileAssociation();
-    ProfileAssociation actionProfileSnapshotAssociation2 = new ProfileAssociation();
-    ProfileAssociation mappingProfileSnapshotAssociation2 = new ProfileAssociation();
+    final ProfileAssociation parentMatchProfileSnapshotAssociation2 = new ProfileAssociation();
+    final ProfileAssociation childMatchProfileSnapshotAssociation2 = new ProfileAssociation();
+    final ProfileAssociation actionProfileSnapshotAssociation2 = new ProfileAssociation();
+    final ProfileAssociation mappingProfileSnapshotAssociation2 = new ProfileAssociation();
 
-    String parentMatchProfileWrapperId2 = UUID.randomUUID().toString();
-    String childMatchProfileWrapperId2 = UUID.randomUUID().toString();
-    String actionProfileWrapperId2 = UUID.randomUUID().toString();
-    String mappingProfileWrapperId2 = UUID.randomUUID().toString();
+    final String parentMatchProfileWrapperId2 = UUID.randomUUID().toString();
+    final String childMatchProfileWrapperId2 = UUID.randomUUID().toString();
+    final String actionProfileWrapperId2 = UUID.randomUUID().toString();
+    final String mappingProfileWrapperId2 = UUID.randomUUID().toString();
 
     parentMatchProfileSnapshotAssociation2.setId(UUID.randomUUID().toString());
     parentMatchProfileSnapshotAssociation2.setMasterProfileId(jobProfile.getId());
@@ -445,16 +471,5 @@ public class ProfileSnapshotServiceTest extends AbstractUnitTest {
       actionProfileSnapshotAssociation2,
       mappingProfileSnapshotAssociation2)
     );
-  }
-
-  @After
-  public void afterTest(TestContext context) {
-    Async async = context.async();
-    PostgresClient.getInstance(vertx, TENANT_ID).delete(TABLE_NAME, new Criterion(), event -> {
-      if (event.failed()) {
-        context.fail(event.cause());
-      }
-      async.complete();
-    });
   }
 }

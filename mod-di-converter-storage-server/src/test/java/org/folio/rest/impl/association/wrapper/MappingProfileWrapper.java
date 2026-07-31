@@ -5,9 +5,8 @@ import org.folio.rest.jaxrs.model.MappingProfileUpdateDto;
 import org.folio.rest.jaxrs.model.Metadata;
 import org.folio.rest.jaxrs.model.UserInfo;
 
-
 /**
- * Wrapper for {@link MappingProfile} entity
+ * Wrapper for {@link MappingProfile} entity.
  */
 public class MappingProfileWrapper implements ProfileWrapper<MappingProfileUpdateDto> {
 

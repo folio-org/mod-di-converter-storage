@@ -1,12 +1,11 @@
 package org.folio.rest.impl.association.wrapper;
 
-import org.folio.rest.jaxrs.model.ActionProfile;
 import org.folio.rest.jaxrs.model.ActionProfileUpdateDto;
 import org.folio.rest.jaxrs.model.Metadata;
 import org.folio.rest.jaxrs.model.UserInfo;
 
 /**
- * Wrapper for {@link ActionProfileUpdateDto} entity
+ * Wrapper for {@link ActionProfileUpdateDto} entity.
  */
 public class ActionProfileWrapper implements ProfileWrapper<ActionProfileUpdateDto> {
 

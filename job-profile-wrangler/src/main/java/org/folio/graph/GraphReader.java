@@ -1,5 +1,18 @@
 package org.folio.graph;
 
+import static org.folio.graph.GraphWriter.DOT_FILE_PATTERN;
+
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.regex.Matcher;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -17,25 +30,12 @@ import org.jgrapht.graph.SimpleDirectedGraph;
 import org.jgrapht.nio.Attribute;
 import org.jgrapht.nio.dot.DOTImporter;
 
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.regex.Matcher;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
-
-import static org.folio.graph.GraphWriter.DOT_FILE_PATTERN;
-
 /**
  * The GraphReader class provides methods to read and search graphs from DOT files.
  * It uses the JGraphT library to represent and manipulate the graphs.
  */
-public class GraphReader {
+public final class GraphReader {
+
   private static final Logger LOGGER = LogManager.getLogger();
   private static final DOTImporter<Profile, RegularEdge> DOT_IMPORTER = new DOTImporter<>();
 
@@ -65,7 +65,7 @@ public class GraphReader {
     });
 
     // Configure the DOTImporter to create edges based on the "label" attribute
-    DOT_IMPORTER.setEdgeWithAttributesFactory((attrs -> attrs.entrySet()
+    DOT_IMPORTER.setEdgeWithAttributesFactory(attrs -> attrs.entrySet()
       .stream()
       .filter(entry -> entry.getKey().equals("label"))
       .findFirst()
@@ -79,10 +79,10 @@ public class GraphReader {
         return null;
       })
       .orElse(new RegularEdge())
-    ));
+    );
   }
 
-  private GraphReader() {}
+  private GraphReader() { }
 
   /**
    * Reads a graph from a DOT file specified by the repository path and ID.
@@ -158,22 +158,6 @@ public class GraphReader {
   }
 
   /**
-   * Normalizes the attributes by converting them to a Map<String, String>.
-   *
-   * @param attrs The attributes to normalize.
-   * @return The normalized attributes as a Map<String, String>.
-   */
-  private static Map<String, String> normalizeAttributes(Map<String, Attribute> attrs) {
-    return attrs
-      .entrySet()
-      .stream()
-      .collect(Collectors.toMap(
-        Map.Entry::getKey,
-        entry -> entry.getValue().toString()
-      ));
-  }
-
-  /**
    * Compares two graphs for equality using a custom comparator.
    *
    * @param graph1 The first graph to compare.
@@ -182,8 +166,8 @@ public class GraphReader {
    */
   public static boolean areGraphsEqual(Graph<Profile, RegularEdge> graph1, Graph<Profile, RegularEdge> graph2) {
     // Check if the graphs have the same number of vertices and edges
-    if (graph1.vertexSet().size() != graph2.vertexSet().size() ||
-      graph1.edgeSet().size() != graph2.edgeSet().size()) {
+    if (graph1.vertexSet().size() != graph2.vertexSet().size()
+        || graph1.edgeSet().size() != graph2.edgeSet().size()) {
       return false;
     }
 
@@ -191,7 +175,7 @@ public class GraphReader {
     boolean areNodesEqual = graph1.vertexSet().stream()
       .allMatch(node1 -> graph2.vertexSet().stream()
         .anyMatch(node2 -> node1.getClass().equals(node2.getClass())
-          && node1.getComparator().compare(node1, node2) == 0));
+                           && node1.getComparator().compare(node1, node2) == 0));
 
     if (!areNodesEqual) {
       return false;
@@ -210,10 +194,26 @@ public class GraphReader {
             Profile target2 = graph2.getEdgeTarget(edge2);
 
             return source1.getClass().equals(source2.getClass())
-              && target1.getClass().equals(target2.getClass())
-              && source1.getComparator().compare(source1, source2) == 0
-              && target1.getComparator().compare(target1, target2) == 0;
+                   && target1.getClass().equals(target2.getClass())
+                   && source1.getComparator().compare(source1, source2) == 0
+                   && target1.getComparator().compare(target1, target2) == 0;
           });
       });
+  }
+
+  /**
+   * Normalizes the attributes by converting them to a Map.
+   *
+   * @param attrs The attributes to normalize.
+   * @return The normalized attributes
+   */
+  private static Map<String, String> normalizeAttributes(Map<String, Attribute> attrs) {
+    return attrs
+      .entrySet()
+      .stream()
+      .collect(Collectors.toMap(
+        Map.Entry::getKey,
+        entry -> entry.getValue().toString()
+      ));
   }
 }

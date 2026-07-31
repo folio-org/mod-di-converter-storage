@@ -2,6 +2,7 @@ package org.folio.unit.dao;
 
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
+import java.util.UUID;
 import org.folio.dao.ProfileDao;
 import org.folio.dao.association.ProfileWrapperDao;
 import org.folio.rest.jaxrs.model.JobProfile;
@@ -14,8 +15,6 @@ import org.folio.unit.AbstractUnitTest;
 import org.junit.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
-
-import java.util.UUID;
 
 @Component
 public class ProfileDaoTest extends AbstractUnitTest {
@@ -40,7 +39,8 @@ public class ProfileDaoTest extends AbstractUnitTest {
     JobProfile jobProfile = new JobProfile().withId(jobProfileId);
 
     String wrapperId = UUID.randomUUID().toString();
-    ProfileWrapper profileWrapper = new ProfileWrapper().withProfileId(jobProfileId).withProfileType(ProfileType.JOB_PROFILE).withId(wrapperId);
+    ProfileWrapper profileWrapper =
+      new ProfileWrapper().withProfileId(jobProfileId).withProfileType(ProfileType.JOB_PROFILE).withId(wrapperId);
 
     jobProfileDao.saveProfile(jobProfile, TENANT_ID).onComplete(savedJobProfileAr -> {
       context.assertTrue(savedJobProfileAr.succeeded());

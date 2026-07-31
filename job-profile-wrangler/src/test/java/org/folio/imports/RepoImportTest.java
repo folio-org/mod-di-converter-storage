@@ -1,8 +1,19 @@
 package org.folio.imports;
 
+import static org.folio.Constants.OBJECT_MAPPER;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.when;
+
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.google.common.io.Resources;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.util.List;
+import java.util.Optional;
+import java.util.stream.StreamSupport;
 import org.folio.RepoObject;
 import org.folio.graph.GraphReader;
 import org.folio.graph.edges.RegularEdge;
@@ -16,20 +27,9 @@ import org.junit.runner.RunWith;
 import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnitRunner;
 
-import java.io.IOException;
-import java.nio.charset.StandardCharsets;
-import java.util.List;
-import java.util.Optional;
-import java.util.stream.StreamSupport;
-
-import static org.folio.Constants.OBJECT_MAPPER;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.when;
-
 @RunWith(MockitoJUnitRunner.class)
 public class RepoImportTest {
+
   @Rule
   public TemporaryFolder tempDir = new TemporaryFolder();
 
@@ -39,7 +39,8 @@ public class RepoImportTest {
   @Test
   public void run() throws IOException {
     String repoPath = tempDir.getRoot().toString();
-    String jobProfilesContent = Resources.toString(Resources.getResource("job_profiles_response.json"), StandardCharsets.UTF_8);
+    String jobProfilesContent =
+      Resources.toString(Resources.getResource("job_profiles_response.json"), StandardCharsets.UTF_8);
     JsonNode jsonNode = OBJECT_MAPPER.readTree(jobProfilesContent);
     ArrayNode arrayNode = (ArrayNode) jsonNode.path("jobProfiles");
     when(folioClient.getJobProfiles()).thenReturn(StreamSupport.stream(arrayNode.spliterator(), false));

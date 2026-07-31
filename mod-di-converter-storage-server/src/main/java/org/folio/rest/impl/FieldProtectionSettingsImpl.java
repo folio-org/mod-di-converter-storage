@@ -5,6 +5,9 @@ import io.vertx.core.Context;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
+import java.util.Map;
+import javax.ws.rs.NotFoundException;
+import javax.ws.rs.core.Response;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.folio.rest.impl.util.ExceptionHelper;
@@ -15,19 +18,14 @@ import org.folio.services.fieldprotectionsettings.MarcFieldProtectionSettingsSer
 import org.folio.spring.SpringContextUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 
-import javax.ws.rs.NotFoundException;
-import javax.ws.rs.core.Response;
-import java.util.Map;
-
-import static java.lang.String.format;
-
+@SuppressWarnings("java:S6813")
 public class FieldProtectionSettingsImpl implements FieldProtectionSettings {
 
   private static final Logger LOGGER = LogManager.getLogger();
+  private final String tenantId;
 
   @Autowired
   private MarcFieldProtectionSettingsService marcFieldProtectionSettingsService;
-  private final String tenantId;
 
   public FieldProtectionSettingsImpl(Vertx vertx, String tenantId) { //NOSONAR
     SpringContextUtil.autowireDependencies(this, Vertx.currentContext());
@@ -35,10 +33,12 @@ public class FieldProtectionSettingsImpl implements FieldProtectionSettings {
   }
 
   @Override
-  public void getFieldProtectionSettingsMarc(String query, String totalRecords, int offset, int limit, Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
+  public void getFieldProtectionSettingsMarc(String query, String totalRecords, int offset, int limit,
+                                             Map<String, String> okapiHeaders,
+                                             Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     try {
       marcFieldProtectionSettingsService.getMarcFieldProtectionSettings(query, offset, limit, tenantId)
-        .map(FieldProtectionSettings.GetFieldProtectionSettingsMarcResponse::respond200WithApplicationJson)
+        .map(GetFieldProtectionSettingsMarcResponse::respond200WithApplicationJson)
         .map(Response.class::cast)
         .otherwise(ExceptionHelper::mapExceptionToResponse)
         .onComplete(asyncResultHandler);
@@ -49,10 +49,12 @@ public class FieldProtectionSettingsImpl implements FieldProtectionSettings {
   }
 
   @Override
-  public void postFieldProtectionSettingsMarc(MarcFieldProtectionSetting entity, Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
+  public void postFieldProtectionSettingsMarc(MarcFieldProtectionSetting entity, Map<String, String> okapiHeaders,
+                                              Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     try {
       marcFieldProtectionSettingsService.addMarcFieldProtectionSetting(entity, tenantId)
-        .map(setting -> (Response) FieldProtectionSettings.PostFieldProtectionSettingsMarcResponse.respond201WithApplicationJson(setting, FieldProtectionSettings.PostFieldProtectionSettingsMarcResponse.headersFor201()))
+        .map(setting -> (Response) PostFieldProtectionSettingsMarcResponse
+          .respond201WithApplicationJson(setting, PostFieldProtectionSettingsMarcResponse.headersFor201()))
         .otherwise(ExceptionHelper::mapExceptionToResponse)
         .onComplete(asyncResultHandler);
     } catch (Exception e) {
@@ -62,34 +64,45 @@ public class FieldProtectionSettingsImpl implements FieldProtectionSettings {
   }
 
   @Override
-  public void putFieldProtectionSettingsMarcById(String id, MarcFieldProtectionSetting entity, Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
+  public void putFieldProtectionSettingsMarcById(String id, MarcFieldProtectionSetting entity,
+                                                 Map<String, String> okapiHeaders,
+                                                 Handler<AsyncResult<Response>> asyncResultHandler,
+                                                 Context vertxContext) {
     try {
       entity.setId(id);
       marcFieldProtectionSettingsService.updateMarcFieldProtectionSetting(entity, tenantId)
-        .map(setting -> (Response) FieldProtectionSettings.PutFieldProtectionSettingsMarcByIdResponse.respond200WithApplicationJson(setting))
+        .map(
+          setting -> (Response) PutFieldProtectionSettingsMarcByIdResponse.respond200WithApplicationJson(
+            setting))
         .otherwise(ExceptionHelper::mapExceptionToResponse)
         .onComplete(asyncResultHandler);
     } catch (Exception e) {
-      LOGGER.warn("putFieldProtectionSettingsMarcById:: Failed to update MARC field protection setting by id {}", id, e);
+      LOGGER.warn("putFieldProtectionSettingsMarcById:: Failed to update MARC field protection setting by id {}", id,
+        e);
       asyncResultHandler.handle(Future.succeededFuture(ExceptionHelper.mapExceptionToResponse(e)));
     }
   }
 
   @Override
-  public void deleteFieldProtectionSettingsMarcById(String id, Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
+  public void deleteFieldProtectionSettingsMarcById(String id, Map<String, String> okapiHeaders,
+                                                    Handler<AsyncResult<Response>> asyncResultHandler,
+                                                    Context vertxContext) {
     try {
       marcFieldProtectionSettingsService.deleteMarcFieldProtectionSetting(id, tenantId)
-        .map(deleted -> (Response) FieldProtectionSettings.DeleteFieldProtectionSettingsMarcByIdResponse.respond204())
+        .map(deleted -> (Response) DeleteFieldProtectionSettingsMarcByIdResponse.respond204())
         .otherwise(ExceptionHelper::mapExceptionToResponse)
         .onComplete(asyncResultHandler);
     } catch (Exception e) {
-      LOGGER.warn("deleteFieldProtectionSettingsMarcById:: Failed to delete MARC field protection setting by id {}", id, e);
+      LOGGER.warn("deleteFieldProtectionSettingsMarcById:: Failed to delete MARC field protection setting by id {}", id,
+        e);
       asyncResultHandler.handle(Future.succeededFuture(ExceptionHelper.mapExceptionToResponse(e)));
     }
   }
 
   @Override
-  public void getFieldProtectionSettingsMarcById(String id, Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
+  public void getFieldProtectionSettingsMarcById(String id, Map<String, String> okapiHeaders,
+                                                 Handler<AsyncResult<Response>> asyncResultHandler,
+                                                 Context vertxContext) {
     try {
       marcFieldProtectionSettingsService.getMarcFieldProtectionSettingById(id, tenantId)
         .map(optionalSetting -> optionalSetting.orElseThrow(() ->

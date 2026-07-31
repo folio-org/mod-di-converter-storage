@@ -1,7 +1,12 @@
 package org.folio.services;
 
 import io.vertx.core.Future;
+import java.util.Arrays;
+import java.util.List;
+import java.util.UUID;
 import org.apache.commons.lang3.StringUtils;
+import org.folio.dao.ProfileDao;
+import org.folio.dao.association.ProfileWrapperDao;
 import org.folio.rest.impl.util.OkapiConnectionParams;
 import org.folio.rest.jaxrs.model.MatchProfile;
 import org.folio.rest.jaxrs.model.MatchProfileCollection;
@@ -9,14 +14,13 @@ import org.folio.rest.jaxrs.model.MatchProfileUpdateDto;
 import org.folio.rest.jaxrs.model.ProfileAssociation;
 import org.folio.rest.jaxrs.model.ProfileSnapshotWrapper;
 import org.folio.rest.jaxrs.model.ProfileType;
+import org.folio.services.association.CommonProfileAssociationService;
+import org.folio.services.association.ProfileAssociationService;
 import org.springframework.stereotype.Service;
 
-import java.util.Arrays;
-import java.util.List;
-import java.util.UUID;
-
 @Service
-public class MatchProfileServiceImpl extends AbstractProfileService<MatchProfile, MatchProfileCollection, MatchProfileUpdateDto> {
+public class MatchProfileServiceImpl
+  extends AbstractProfileService<MatchProfile, MatchProfileCollection, MatchProfileUpdateDto> {
   @SuppressWarnings("java:S6418") // Suppress warning about 'AUTH' detection meaning potentially hard-coded secret
   private static final String DEFAULT_DELETE_MARC_AUTHORITY_MATCH_PROFILE_ID = "4be5d1d2-1f5a-42ff-a9bd-fc90609d94b6";
   private static final List<String> DEFAULT_MATCH_PROFILES = Arrays.asList(
@@ -27,18 +31,11 @@ public class MatchProfileServiceImpl extends AbstractProfileService<MatchProfile
     "aff72eae-847c-4a97-b7b9-c1ddb8cdcbbf"  //DEFAULT_QM_AUTHORITY_UPDATE_MATCH_PROFILE_ID
   );
 
-  @Override
-  MatchProfile setProfileId(MatchProfile profile) {
-    String profileId = profile.getId();
-    return profile.withId(StringUtils.isBlank(profileId)
-      ? UUID.randomUUID().toString() : profileId);
-  }
-
-  @Override
-  Future<MatchProfile> setUserInfoForProfile(MatchProfile profile, OkapiConnectionParams params) {
-    profile.setMetadata(getMetadata(params.getHeaders()));
-    return lookupUser(profile.getMetadata().getUpdatedByUserId(), params)
-      .compose(userInfo -> Future.succeededFuture(profile.withUserInfo(userInfo)));
+  public MatchProfileServiceImpl(ProfileAssociationService profileAssociationService,
+                                 CommonProfileAssociationService associationService,
+                                 ProfileDao<MatchProfile, MatchProfileCollection> profileDao,
+                                 ProfileWrapperDao profileWrapperDao) {
+    super(profileAssociationService, associationService, profileDao, profileWrapperDao);
   }
 
   @Override
@@ -52,7 +49,8 @@ public class MatchProfileServiceImpl extends AbstractProfileService<MatchProfile
   }
 
   @Override
-  public MatchProfileUpdateDto withDeletedRelations(MatchProfileUpdateDto profileUpdateDto, List<ProfileAssociation> profileAssociations) {
+  public MatchProfileUpdateDto withDeletedRelations(MatchProfileUpdateDto profileUpdateDto,
+                                                    List<ProfileAssociation> profileAssociations) {
     return profileUpdateDto.withDeletedRelations(profileAssociations);
   }
 
@@ -127,5 +125,19 @@ public class MatchProfileServiceImpl extends AbstractProfileService<MatchProfile
   @Override
   protected boolean canDeleteProfile(String profileId) {
     return !DEFAULT_DELETE_MARC_AUTHORITY_MATCH_PROFILE_ID.equals(profileId) && super.canDeleteProfile(profileId);
+  }
+
+  @Override
+  MatchProfile setProfileId(MatchProfile profile) {
+    String profileId = profile.getId();
+    return profile.withId(StringUtils.isBlank(profileId)
+                          ? UUID.randomUUID().toString() : profileId);
+  }
+
+  @Override
+  Future<MatchProfile> setUserInfoForProfile(MatchProfile profile, OkapiConnectionParams params) {
+    profile.setMetadata(getMetadata(params.getHeaders()));
+    return lookupUser(profile.getMetadata().getUpdatedByUserId(), params)
+      .compose(userInfo -> Future.succeededFuture(profile.withUserInfo(userInfo)));
   }
 }

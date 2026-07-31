@@ -2,6 +2,8 @@ package org.folio.unit.dao;
 
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
+import java.util.Optional;
+import java.util.UUID;
 import org.folio.dao.ProfileDao;
 import org.folio.dao.association.ProfileWrapperDao;
 import org.folio.rest.jaxrs.model.ActionProfile;
@@ -14,9 +16,6 @@ import org.folio.unit.AbstractUnitTest;
 import org.junit.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
-
-import java.util.Optional;
-import java.util.UUID;
 
 @Component
 public class ProfileWrapperDaoTest extends AbstractUnitTest {
@@ -53,7 +52,8 @@ public class ProfileWrapperDaoTest extends AbstractUnitTest {
     ActionProfile actionProfile = new ActionProfile().withId(actionProfileId);
 
     String wrapperId = UUID.randomUUID().toString();
-    ProfileWrapper profileWrapper1 = new ProfileWrapper().withProfileId(actionProfileId).withProfileType(ProfileType.ACTION_PROFILE).withId(wrapperId);
+    ProfileWrapper profileWrapper1 =
+      new ProfileWrapper().withProfileId(actionProfileId).withProfileType(ProfileType.ACTION_PROFILE).withId(wrapperId);
     actionProfileDao.saveProfile(actionProfile, TENANT_ID).onComplete(savedActionProfileAr -> {
       context.assertTrue(savedActionProfileAr.succeeded());
       dao.save(profileWrapper1, TENANT_ID).onComplete(e -> {
@@ -77,7 +77,8 @@ public class ProfileWrapperDaoTest extends AbstractUnitTest {
     ActionProfile actionProfile = new ActionProfile().withId(actionProfileId);
 
     String wrapperId = UUID.randomUUID().toString();
-    ProfileWrapper profileWrapper1 = new ProfileWrapper().withProfileId(actionProfileId).withProfileType(ProfileType.ACTION_PROFILE).withId(wrapperId);
+    ProfileWrapper profileWrapper1 =
+      new ProfileWrapper().withProfileId(actionProfileId).withProfileType(ProfileType.ACTION_PROFILE).withId(wrapperId);
     actionProfileDao.saveProfile(actionProfile, TENANT_ID).onComplete(savedActionProfileAr -> {
       context.assertTrue(savedActionProfileAr.succeeded());
       dao.save(profileWrapper1, TENANT_ID).onComplete(e -> {

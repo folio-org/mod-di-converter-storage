@@ -7,12 +7,16 @@ import org.folio.rest.persist.interfaces.Results;
 import org.springframework.stereotype.Component;
 
 /**
- * Data access object for {@link ActionProfile}
+ * Data access object for {@link ActionProfile}.
  */
 @Component
 public class ActionProfileDaoImpl extends AbstractProfileDao<ActionProfile, ActionProfileCollection> {
 
   private static final String ACTION_PROFILES_TABLE_NAME = "action_profiles";
+
+  protected ActionProfileDaoImpl(PostgresClientFactory pgClientFactory) {
+    super(pgClientFactory);
+  }
 
   @Override
   String getTableName() {
