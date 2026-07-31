@@ -1,5 +1,35 @@
-## 2026-mm-dd 2.6.0-SNAPSHOT
-* [MODDICONV-436](https://issues.folio.org/browse/MODDICONV-436) Set Authority DELETE job/action/field mapping profiles to display via Settings > Data import
+## v2.6.0 XXXX-XX-XX
+
+### Features
+* Set Authority DELETE job/action/field mapping profiles to display via Settings > Data import ([MODDICONV-436](https://folio-org.atlassian.net/browse/MODDICONV-436))
+
+### Tech Dept
+* Add checkstyle validation to the build
+
+### Dependencies
+* Bump `log4j-bom` from `2.24.3` to `2.26.1`
+* Bump `vertx-stack-depchain` from `5.0.5` to `5.1.5`
+* Bump `spring-framework-bom` from `7.0.6` to `7.0.8`
+* Bump `mockito-core` from `5.21.0` to `5.23.0`
+* Bump `rest-assured` from `5.5.1` to `6.0.1`
+* Bump `caffeine` from `3.2.0` to `3.2.4`
+* Bump `wiremock` from `3.12.1` to `3.13.2`
+* Bump `testcontainers` from `1.20.6` to `2.0.5`
+* Bump `aspectjrt` and `aspectjtools` from `1.9.22.1` to `1.9.25.1`
+* Bump `jgrapht-core` and `jgrapht-io` from `1.5.2` to `1.5.3`
+* Bump `okhttp` from `4.12.0` to `5.4.0`
+* Bump `maven-compiler-plugin` from `3.14.0` to `3.15.0`
+* Bump `versions-maven-plugin` from `2.18.0` to `2.21.0`
+* Bump `maven-surefire-plugin` from `3.5.4` to `3.5.6`
+* Bump `exec-maven-plugin` from `3.5.0` to `3.6.3`
+* Bump `maven-resources-plugin` from `3.3.1` to `3.5.0`
+* Bump `maven-release-plugin` from `3.1.1` to `3.3.1`
+* Bump `build-helper-maven-plugin` from `3.6.0` to `3.6.1`
+* Bump `properties-maven-plugin` from `1.2.1` to `1.3.0`
+* Bump `maven-shade-plugin` from `3.6.0` to `3.6.2`
+* Add `maven-checkstyle-plugin 3.6.0`
+* Add `folio-java-checkstyle 1.2.0`
+* Add `checkstyle 13.7.0`
 
 ## 2025-04-14 2.5.0
 * [MODDICONV-425](https://folio-org.atlassian.net/browse/MODDICONV-425) Create new Default Mapping profile for Mosaic invoices

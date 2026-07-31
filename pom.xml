@@ -27,7 +27,7 @@
     <sonar.exclusions>**/ModTenantAPI.java</sonar.exclusions>
 
     <raml-module-builder.version>36.0.0</raml-module-builder.version>
-    <folio-di-support.version>4.0.0</folio-di-support.version>
+    <folio-di-support.version>4.1.0-SNAPSHOT</folio-di-support.version>
     <vertx.version>5.1.5</vertx.version>
     <spring.version>7.0.8</spring.version>
     <aspectj.version>1.9.25.1</aspectj.version>
