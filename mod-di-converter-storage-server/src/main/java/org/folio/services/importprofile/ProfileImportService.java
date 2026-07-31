@@ -5,16 +5,17 @@ import org.folio.rest.impl.util.OkapiConnectionParams;
 import org.folio.rest.jaxrs.model.ProfileSnapshotWrapper;
 
 /**
- * JProfile import service
+ * JProfile import service.
  */
 public interface ProfileImportService {
 
   /**
-   * Import a profile snapshot with related profiles
+   * Import a profile snapshot with related profiles.
    *
-   * @param profileSnapshot  profile snapshot
-   * @param tenantId     tenant id
+   * @param profileSnapshot profile snapshot
+   * @param tenantId        tenant id
    * @return future with snapshot {@link ProfileSnapshotWrapper}
    */
-  Future<ProfileSnapshotWrapper> importProfile(ProfileSnapshotWrapper profileSnapshot, String tenantId, OkapiConnectionParams okapiParams);
+  Future<ProfileSnapshotWrapper> importProfile(ProfileSnapshotWrapper profileSnapshot, String tenantId,
+                                               OkapiConnectionParams okapiParams);
 }

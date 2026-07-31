@@ -8,4 +8,4 @@ import org.springframework.context.annotation.Configuration;
   "org.folio.rest.impl",
   "org.folio.dao",
   "org.folio.services"})
-public class ApplicationConfig {}
+public class ApplicationConfig { }

@@ -1,6 +1,8 @@
 package org.folio.services.association;
 
 import io.vertx.core.Future;
+import java.util.List;
+import java.util.Optional;
 import org.folio.rest.impl.util.OkapiConnectionParams;
 import org.folio.rest.jaxrs.model.ProfileAssociation;
 import org.folio.rest.jaxrs.model.ProfileAssociationCollection;
@@ -8,16 +10,13 @@ import org.folio.rest.jaxrs.model.ProfileSnapshotWrapper;
 import org.folio.rest.jaxrs.model.ProfileType;
 import org.folio.rest.jaxrs.model.ReactToType;
 
-import java.util.List;
-import java.util.Optional;
-
 /**
- * Generic Profile Association Service
+ * Generic Profile Association Service.
  */
-public interface ProfileAssociationService { //NOSONAR
+public interface ProfileAssociationService {
 
   /**
-   * Searches for ProfileAssociation by masterType and detailType
+   * Searches for ProfileAssociation by masterType and detailType.
    *
    * @param tenantId   tenant id
    * @param masterType a master type in association
@@ -27,34 +26,34 @@ public interface ProfileAssociationService { //NOSONAR
   Future<ProfileAssociationCollection> getAll(ProfileType masterType, ProfileType detailType, String tenantId);
 
   /**
-   * Searches for ProfileAssociation by id
+   * Searches for ProfileAssociation by id.
    *
-   * @param id         entity id
-   * @param tenantId   tenant id
+   * @param id       entity id
+   * @param tenantId tenant id
    * @return future with optional {@link ProfileAssociation}
    */
   Future<Optional<ProfileAssociation>> getById(String id, String tenantId);
 
-    /**
-     * Saves ProfileAssociation entity
-     *
-     * @param entity     ProfileAssociation to save
-     * @param tenantId   tenantId
-     * @return future with saved entity
-     */
+  /**
+   * Saves ProfileAssociation entity.
+   *
+   * @param entity   ProfileAssociation to save
+   * @param tenantId tenantId
+   * @return future with saved entity
+   */
   Future<ProfileAssociation> save(ProfileAssociation entity, String tenantId);
 
   /**
-   * Saves List of ProfileAssociation entities
+   * Saves List of ProfileAssociation entities.
    *
-   * @param profileAssociations     ProfileAssociations to save
-   * @param tenantId   tenantId
+   * @param profileAssociations ProfileAssociations to save
+   * @param tenantId            tenantId
    * @return future with saved entities list
    */
   Future<List<ProfileAssociation>> save(List<ProfileAssociation> profileAssociations, String tenantId);
 
   /**
-   * Updates ProfileAssociation with given id
+   * Updates ProfileAssociation with given id.
    *
    * @param entity     ProfileAssociation to update
    * @param masterType a master type in association
@@ -62,16 +61,33 @@ public interface ProfileAssociationService { //NOSONAR
    * @param params     {@link OkapiConnectionParams}
    * @return future with updated entity
    */
-  Future<ProfileAssociation> update(ProfileAssociation entity, ProfileType masterType, ProfileType detailType, OkapiConnectionParams params);
+  Future<ProfileAssociation> update(ProfileAssociation entity, ProfileType masterType, ProfileType detailType,
+                                    OkapiConnectionParams params);
 
   /**
-   * Deletes ProfileAssociation entity by id
+   * Deletes ProfileAssociation entity by id.
    *
-   * @param id         entity id
-   * @param tenantId   tenant id
+   * @param id       entity id
+   * @param tenantId tenant id
    * @return future with true if succeeded
    */
   Future<Boolean> delete(String id, String tenantId);
+
+  /**
+   * Delete ProfileAssociation by masterWrapperId and detailWrapperId.
+   *
+   * @param masterWrapperId - UUID of masterWrapperProfile
+   * @param detailWrapperId - UUID of detailWrapperProfile
+   * @param masterType      - master Profile Type
+   * @param detailType      - detail Profile Type
+   * @param jobProfileId    - job profile id (optional)
+   * @param reactTo         - reactTo of ReactToType
+   * @param order           - order
+   * @param tenantId        - tenant id
+   * @return - boolean result of operation
+   */
+  Future<Boolean> delete(String masterWrapperId, String detailWrapperId, ProfileType masterType, ProfileType detailType,
+                         String jobProfileId, ReactToType reactTo, Integer order, String tenantId);
 
   /**
    * Finds details by master id.
@@ -85,7 +101,8 @@ public interface ProfileAssociationService { //NOSONAR
    * @param tenantId   a tenant id
    * @return list of details for specified master
    */
-  Future<Optional<ProfileSnapshotWrapper>> findDetails(String masterId, ProfileType masterType, ProfileType detailType, String query, int offset, int limit, String tenantId);
+  Future<Optional<ProfileSnapshotWrapper>> findDetails(String masterId, ProfileType masterType, ProfileType detailType,
+                                                       String query, int offset, int limit, String tenantId);
 
   /**
    * Finds masters by detail id.
@@ -99,43 +116,29 @@ public interface ProfileAssociationService { //NOSONAR
    * @param tenantId   a tenant id
    * @return list of masters profiles for specified detail profile
    */
-  Future<Optional<ProfileSnapshotWrapper>> findMasters(String detailId, ProfileType detailType, ProfileType masterType, String query, int offset, int limit, String tenantId);
+  Future<Optional<ProfileSnapshotWrapper>> findMasters(String detailId, ProfileType detailType, ProfileType masterType,
+                                                       String query, int offset, int limit, String tenantId);
 
   /**
-   * Delete ProfileAssociation by masterWrapperId and detailWrapperId
+   * Delete profile associations for particular master profile by wrapperId.
    *
-   * @param masterWrapperId     - UUID of masterWrapperProfile
-   * @param detailWrapperId     - UUID of detailWrapperProfile
-   * @param masterType   - master Profile Type
-   * @param detailType   - detail Profile Type
-   * @param jobProfileId - job profile id (optional)
-   * @param reactTo      - reactTo of ReactToType
-   * @param order        - order
-   * @param tenantId     - tenant id
-   * @return - boolean result of operation
-   */
-  Future<Boolean> delete(String masterWrapperId, String detailWrapperId, ProfileType masterType, ProfileType detailType, String jobProfileId,
-                         ReactToType reactTo, Integer order, String tenantId);
-
-  /**
-   * Delete profile associations for particular master profile by wrapperId
-   *
-   * @param wrapperId   - master profile wrapper id
+   * @param wrapperId  - master profile wrapper id
    * @param masterType - master profile type
    * @param detailType - detail profile type
    * @param tenantId   - tenant id
    * @return future with boolean
    */
-  Future<Boolean> deleteByMasterWrapperId(String wrapperId, ProfileType masterType, ProfileType detailType, String tenantId);
+  Future<Boolean> deleteByMasterWrapperId(String wrapperId, ProfileType masterType, ProfileType detailType,
+                                          String tenantId);
 
   /**
-   * Delete ProfileAssociation by masterId and detailId
+   * Delete ProfileAssociation by masterId and detailId.
    *
-   * @param masterId     - UUID of masterProfile
-   * @param detailId     - UUID of detailProfile
-   * @param masterType   - master Profile Type
-   * @param detailType   - detail Profile Type
-   * @param tenantId     - tenant id
+   * @param masterId   - UUID of masterProfile
+   * @param detailId   - UUID of detailProfile
+   * @param masterType - master Profile Type
+   * @param detailType - detail Profile Type
+   * @param tenantId   - tenant id
    * @return - boolean result of operation
    */
   Future<Boolean> deleteByMasterIdAndDetailId(String masterId, String detailId, ProfileType masterType,

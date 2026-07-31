@@ -1,6 +1,11 @@
 package org.folio.dao.forms.configs;
 
+import static org.folio.dao.util.DaoUtil.constructCriteria;
+
 import io.vertx.core.Future;
+import java.util.Optional;
+import java.util.UUID;
+import javax.ws.rs.NotFoundException;
 import org.folio.dao.PostgresClientFactory;
 import org.folio.rest.jaxrs.model.FormConfig;
 import org.folio.rest.jaxrs.model.FormConfigCollection;
@@ -9,13 +14,6 @@ import org.folio.rest.persist.Criteria.Criterion;
 import org.folio.rest.persist.interfaces.Results;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Repository;
-
-import javax.ws.rs.NotFoundException;
-import java.util.Optional;
-import java.util.UUID;
-
-import static org.folio.dao.util.DaoUtil.constructCriteria;
-
 
 @Repository
 public class FormConfigDaoImpl implements FormConfigDao {
@@ -71,8 +69,10 @@ public class FormConfigDaoImpl implements FormConfigDao {
     return pgClientFactory.createInstance(tenantId)
       .update(TABLE_NAME, formConfig, new Criterion(formIdCriteria), true)
       .compose(updateResult -> updateResult.rowCount() == 1
-        ? Future.succeededFuture(formConfig)
-        : Future.failedFuture(new NotFoundException(String.format("FormConfig with formName '%s' was not found", formConfig.getFormName()))));
+                               ? Future.succeededFuture(formConfig)
+                               : Future.failedFuture(new NotFoundException(
+                                 String.format("FormConfig with formName '%s' was not found",
+                                   formConfig.getFormName()))));
   }
 
   @Override

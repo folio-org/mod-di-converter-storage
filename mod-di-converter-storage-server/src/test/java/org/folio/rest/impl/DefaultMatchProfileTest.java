@@ -1,23 +1,22 @@
 package org.folio.rest.impl;
 
+import static org.folio.rest.impl.MatchProfileTest.MATCH_PROFILES_PATH;
+import static org.hamcrest.core.Is.is;
+
 import io.restassured.RestAssured;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
+import java.util.Arrays;
+import java.util.Collections;
 import org.apache.http.HttpStatus;
-import org.folio.rest.jaxrs.model.Tags;
 import org.folio.rest.jaxrs.model.MatchProfile;
 import org.folio.rest.jaxrs.model.MatchProfileUpdateDto;
+import org.folio.rest.jaxrs.model.Tags;
 import org.hamcrest.Matchers;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
-import java.util.Arrays;
-import java.util.Collections;
-
-import static org.folio.rest.impl.MatchProfileTest.MATCH_PROFILES_PATH;
-import static org.hamcrest.core.Is.is;
-
 @RunWith(VertxUnitRunner.class)
-public class DefaultMatchProfileTest extends AbstractRestVerticleTest{
+public class DefaultMatchProfileTest extends AbstractRestVerticleTest {
 
   private static final String OCLC_INSTANCE_UUID_MATCH_PROFILE_ID = "31dbb554-0826-48ec-a0a4-3c55293d4dee";
   private static final String DEFAULT_DELETE_MARC_AUTHORITY_MATCH_PROFILE_ID = "4be5d1d2-1f5a-42ff-a9bd-fc90609d94b6";
@@ -26,7 +25,7 @@ public class DefaultMatchProfileTest extends AbstractRestVerticleTest{
   public void shouldAddAndRemoveTagsDefaultProfile() {
     Tags tags = new Tags().withTagList(Arrays.asList("Lorem", "ipsum"));
     var profile = getMatchProfileById(OCLC_INSTANCE_UUID_MATCH_PROFILE_ID);
-//    Add tags to default profile
+    // Add tags to default profile
     RestAssured.given()
       .spec(spec)
       .body(new MatchProfileUpdateDto().withProfile(profile.withTags(tags)))
@@ -37,7 +36,7 @@ public class DefaultMatchProfileTest extends AbstractRestVerticleTest{
       .body("tags.tagList", is(tags.getTagList()));
 
     profile = getMatchProfileById(OCLC_INSTANCE_UUID_MATCH_PROFILE_ID);
-//    Delete tags from default profile
+    // Delete tags from default profile
     RestAssured.given()
       .spec(spec)
       .body(new MatchProfileUpdateDto().withProfile(profile.withTags(new Tags().withTagList(Collections.emptyList()))))

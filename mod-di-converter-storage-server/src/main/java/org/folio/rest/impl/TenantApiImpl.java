@@ -5,6 +5,12 @@ import io.vertx.core.Context;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
+import java.io.IOException;
+import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
+import java.util.List;
+import java.util.Map;
+import javax.ws.rs.core.Response;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
@@ -16,40 +22,57 @@ import org.folio.services.migration.ProfileMigrationService;
 import org.folio.spring.SpringContextUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 
-import javax.ws.rs.core.Response;
-import java.io.IOException;
-import java.io.InputStream;
-import java.nio.charset.StandardCharsets;
-import java.util.List;
-import java.util.Map;
-
-public class ModTenantAPI extends TenantAPI {
+public class TenantApiImpl extends TenantAPI {
 
   private static final Logger LOGGER = LogManager.getLogger();
-  private static final String DEFAULT_OCLC_JOB_PROFILE_SQL = "templates/db_scripts/defaultData/default_oclc_job_profile.sql";
-  private static final String DEFAULT_OCLC_UPDATE_JOB_PROFILE_SQL = "templates/db_scripts/defaultData/default_oclc_update_job_profile.sql";
-  private static final String DEFAULT_MARC_FIELD_PROTECTION_SETTINGS_SQL = "templates/db_scripts/defaultData/default_marc_field_protection_settings.sql";
-  private static final String DEFAULT_QM_INSTANCE_AND_SRS_MARC_BIB_CREATE_JOB_PROFILE = "templates/db_scripts/defaultData/default_qm_instance_and_srs_marc_bib_create_job_profile.sql";
-  private static final String DEFAULT_QM_HOLDINGS_AND_SRS_MARC_HOLDINGS_CREATE_JOB_PROFILE = "templates/db_scripts/defaultData/default_qm_holdings_and_srs_marc_holdings_create_job_profile.sql";
-  private static final String UPDATE_DEFAULT_QM_INSTANCE_AND_SRS_MARC_BIB_CREATE_JOB_PROFILE = "templates/db_scripts/defaultData/default_update_qm_instance_and_srs_marc_bib_create_job_profile.sql";
-  private static final String DEFAULT_INSTANCE_AND_MARC_BIB_CREATE_JOB_PROFILE = "templates/db_scripts/defaultData/default_instance_and_marc_bib_create_job_profile.sql";
-  private static final String DEFAULT_EDIFACT_MAPPING_PROFILES = "templates/db_scripts/defaultData/default_edifact_mapping_profiles.sql";
-  private static final String DEFAULT_MARC_AUTHORITY_CREATE_JOB_PROFILE = "templates/db_scripts/defaultData/default_marc_authority_job_profile.sql";
-  private static final String DEFAULT_MARC_HOLDINGS_CREATE_JOB_PROFILE = "templates/db_scripts/defaultData/default_marc_holdings_job_profile.sql";
-  private static final String DEFAULT_UPDATE_MARC_AUTHORITY_JOB_PROFILE = "templates/db_scripts/defaultData/default_update_marc_authority_job_profile.sql";
-  private static final String DEFAULT_UPDATE_MARC_HOLDINGS_JOB_PROFILE = "templates/db_scripts/defaultData/default_update_marc_holdings_job_profile.sql";
-  private static final String DEFAULT_UPDATE_QM_SRS_MARC_HOLDINGS_JOB_PROFILE = "templates/db_scripts/defaultData/default_update_qm_holdings_and_srs_marc_holdings_create_job_profile.sql";
-  private static final String DEFAULT_UPDATE_INSTANCE_AND_MARC_BIB_CREATE_JOB_PROFILE = "templates/db_scripts/defaultData/default_update_instance_and_marc_bib_create_job_profile.sql";
-  private static final String DEFAULT_UPDATE_OCLC_JOB_PROFILE_SQL = "templates/db_scripts/defaultData/default_update_oclc_job_profile.sql";
-  private static final String DEFAULT_UPDATE_OCLC_UPDATE_JOB_PROFILE_SQL = "templates/db_scripts/defaultData/default_update_oclc_update_job_profile.sql";
-  private static final String DEFAULT_UPDATE_EDIFACT_MAPPING_PROFILES = "templates/db_scripts/defaultData/default_update_edifact_mapping_profiles.sql";
-  private static final String DEFAULT_DELETE_MARC_AUTHORITY_JOB_PROFILES = "templates/db_scripts/defaultData/default_delete_marc_authority_job_profile.sql";
-  private static final String DEFAULT_QM_AUTHORITY_UPDATE_JOB_PROFILE = "templates/db_scripts/defaultData/default_qm_authority_update_job_profile.sql";
-  private static final String DEFAULT_QM_MARC_BIB_UPDATE_JOB_PROFILE = "templates/db_scripts/defaultData/default_qm_marc_bib_update_job_profile.sql";
-  private static final String DEFAULT_QM_HOLDINGS_UPDATE_JOB_PROFILE = "templates/db_scripts/defaultData/default_qm_holdings_update_job_profile.sql";
-  private static final String DEFAULT_QM_AUTHORITY_CREATE_JOB_PROFILE = "templates/db_scripts/defaultData/default_qm_authority_create_job_profile.sql";
-  private static final String DEFAULT_ECS_INSTANCE_AND_MARC_BIB_CREATE_JOB_PROFILE = "templates/db_scripts/defaultData/default_ecs_instance_and_marc_bib_create_job_profile.sql";
-  private static final String DEFAULT_MOSAIC_EDIFACT_MAPPING_PROFILE = "templates/db_scripts/defaultData/default_mosaic_edifact_mapping_profile.sql";
+  private static final String DEFAULT_OCLC_JOB_PROFILE_SQL =
+    "templates/db_scripts/defaultData/default_oclc_job_profile.sql";
+  private static final String DEFAULT_OCLC_UPDATE_JOB_PROFILE_SQL =
+    "templates/db_scripts/defaultData/default_oclc_update_job_profile.sql";
+  private static final String DEFAULT_MARC_FIELD_PROTECTION_SETTINGS_SQL =
+    "templates/db_scripts/defaultData/default_marc_field_protection_settings.sql";
+  private static final String DEFAULT_QM_INSTANCE_AND_SRS_MARC_BIB_CREATE_JOB_PROFILE =
+    "templates/db_scripts/defaultData/default_qm_instance_and_srs_marc_bib_create_job_profile.sql";
+  private static final String DEFAULT_QM_HOLDINGS_AND_SRS_MARC_HOLDINGS_CREATE_JOB_PROFILE =
+    "templates/db_scripts/defaultData/default_qm_holdings_and_srs_marc_holdings_create_job_profile.sql";
+  private static final String UPDATE_DEFAULT_QM_INSTANCE_AND_SRS_MARC_BIB_CREATE_JOB_PROFILE =
+    "templates/db_scripts/defaultData/default_update_qm_instance_and_srs_marc_bib_create_job_profile.sql";
+  private static final String DEFAULT_INSTANCE_AND_MARC_BIB_CREATE_JOB_PROFILE =
+    "templates/db_scripts/defaultData/default_instance_and_marc_bib_create_job_profile.sql";
+  private static final String DEFAULT_EDIFACT_MAPPING_PROFILES =
+    "templates/db_scripts/defaultData/default_edifact_mapping_profiles.sql";
+  private static final String DEFAULT_MARC_AUTHORITY_CREATE_JOB_PROFILE =
+    "templates/db_scripts/defaultData/default_marc_authority_job_profile.sql";
+  private static final String DEFAULT_MARC_HOLDINGS_CREATE_JOB_PROFILE =
+    "templates/db_scripts/defaultData/default_marc_holdings_job_profile.sql";
+  private static final String DEFAULT_UPDATE_MARC_AUTHORITY_JOB_PROFILE =
+    "templates/db_scripts/defaultData/default_update_marc_authority_job_profile.sql";
+  private static final String DEFAULT_UPDATE_MARC_HOLDINGS_JOB_PROFILE =
+    "templates/db_scripts/defaultData/default_update_marc_holdings_job_profile.sql";
+  private static final String DEFAULT_UPDATE_QM_SRS_MARC_HOLDINGS_JOB_PROFILE =
+    "templates/db_scripts/defaultData/default_update_qm_holdings_and_srs_marc_holdings_create_job_profile.sql";
+  private static final String DEFAULT_UPDATE_INSTANCE_AND_MARC_BIB_CREATE_JOB_PROFILE =
+    "templates/db_scripts/defaultData/default_update_instance_and_marc_bib_create_job_profile.sql";
+  private static final String DEFAULT_UPDATE_OCLC_JOB_PROFILE_SQL =
+    "templates/db_scripts/defaultData/default_update_oclc_job_profile.sql";
+  private static final String DEFAULT_UPDATE_OCLC_UPDATE_JOB_PROFILE_SQL =
+    "templates/db_scripts/defaultData/default_update_oclc_update_job_profile.sql";
+  private static final String DEFAULT_UPDATE_EDIFACT_MAPPING_PROFILES =
+    "templates/db_scripts/defaultData/default_update_edifact_mapping_profiles.sql";
+  private static final String DEFAULT_DELETE_MARC_AUTHORITY_JOB_PROFILES =
+    "templates/db_scripts/defaultData/default_delete_marc_authority_job_profile.sql";
+  private static final String DEFAULT_QM_AUTHORITY_UPDATE_JOB_PROFILE =
+    "templates/db_scripts/defaultData/default_qm_authority_update_job_profile.sql";
+  private static final String DEFAULT_QM_MARC_BIB_UPDATE_JOB_PROFILE =
+    "templates/db_scripts/defaultData/default_qm_marc_bib_update_job_profile.sql";
+  private static final String DEFAULT_QM_HOLDINGS_UPDATE_JOB_PROFILE =
+    "templates/db_scripts/defaultData/default_qm_holdings_update_job_profile.sql";
+  private static final String DEFAULT_QM_AUTHORITY_CREATE_JOB_PROFILE =
+    "templates/db_scripts/defaultData/default_qm_authority_create_job_profile.sql";
+  private static final String DEFAULT_ECS_INSTANCE_AND_MARC_BIB_CREATE_JOB_PROFILE =
+    "templates/db_scripts/defaultData/default_ecs_instance_and_marc_bib_create_job_profile.sql";
+  private static final String DEFAULT_MOSAIC_EDIFACT_MAPPING_PROFILE =
+    "templates/db_scripts/defaultData/default_mosaic_edifact_mapping_profile.sql";
   private static final String RENAME_MODULE = "templates/db_scripts/rename_module.sql";
 
   private static final String TENANT_PLACEHOLDER = "${myuniversity}";
@@ -58,14 +81,16 @@ public class ModTenantAPI extends TenantAPI {
   @Autowired
   ProfileMigrationService profileMigrationService;
 
-  public ModTenantAPI() { //NOSONAR
+  public TenantApiImpl() { //NOSONAR
     SpringContextUtil.autowireDependencies(this, Vertx.currentContext());
   }
+
   @Override
-  public void postTenant(TenantAttributes tenantAttributes, Map<String, String> headers, Handler<AsyncResult<Response>> handler, Context context) {
+  public void postTenant(TenantAttributes tenantAttributes, Map<String, String> headers,
+                         Handler<AsyncResult<Response>> handler, Context context) {
     Future<Void> future = tenantAttributes.getModuleTo() != null
-      ? runSqlScript(RENAME_MODULE, headers, context).mapEmpty()
-      : Future.succeededFuture();
+                          ? runSqlScript(RENAME_MODULE, headers, context).mapEmpty()
+                          : Future.succeededFuture();
 
     future.onComplete(x -> super.postTenant(tenantAttributes, headers, handler, context));
   }
@@ -126,5 +151,4 @@ public class ModTenantAPI extends TenantAPI {
       return Future.failedFuture(e);
     }
   }
-
 }

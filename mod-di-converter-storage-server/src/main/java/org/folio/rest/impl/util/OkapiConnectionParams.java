@@ -4,7 +4,7 @@ import io.vertx.core.MultiMap;
 import java.util.Map;
 
 /**
- * Wrapper class for Okapi connection params
+ * Wrapper class for Okapi connection params.
  */
 public final class OkapiConnectionParams {
   public static final String OKAPI_TENANT_HEADER = "x-okapi-tenant";

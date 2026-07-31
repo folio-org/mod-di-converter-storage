@@ -2,6 +2,9 @@ package org.folio.dao.snapshot;
 
 import io.vertx.core.Future;
 import io.vertx.core.json.JsonObject;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Optional;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -13,15 +16,12 @@ import org.folio.rest.jaxrs.model.ReactToType;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Repository;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Optional;
-
 /**
- * Implementation for Profile snapshot DAO
+ * Implementation for Profile snapshot DAO.
  */
 @Repository
 public class ProfileSnapshotDaoImpl implements ProfileSnapshotDao {
+
   private static final Logger logger = LogManager.getLogger();
   private static final String TABLE_NAME = "profile_snapshots";
   private static final String GET_PROFILE_SNAPSHOT = "select get_profile_snapshot('%s', '%s', '%s', '%s');";
@@ -37,7 +37,8 @@ public class ProfileSnapshotDaoImpl implements ProfileSnapshotDao {
       return pgClientFactory.createInstance(tenantId)
         .getById(TABLE_NAME, id, ProfileSnapshotWrapper.class)
         .map(Optional::ofNullable)
-        .onFailure(e -> logger.warn("getById:: Error querying {} by id", ProfileSnapshotWrapper.class.getSimpleName(), e));
+        .onFailure(e -> logger.warn("getById:: Error querying {} by id",
+          ProfileSnapshotWrapper.class.getSimpleName(), e));
     } catch (Exception e) {
       logger.warn("getById:: Error querying {} by id", ProfileSnapshotWrapper.class.getSimpleName(), e);
       return Future.failedFuture(e);
@@ -49,18 +50,20 @@ public class ProfileSnapshotDaoImpl implements ProfileSnapshotDao {
     try {
       return pgClientFactory.createInstance(tenantId)
         .save(TABLE_NAME, entity.getId(), entity)
-        .onFailure(e -> logger.warn("save:: Error saving {} with id {}", ProfileSnapshotWrapper.class.getSimpleName(), entity.getId(), e));
+        .onFailure(e -> logger.warn("save:: Error saving {} with id {}",
+          ProfileSnapshotWrapper.class.getSimpleName(), entity.getId(), e));
     } catch (Exception e) {
       logger.warn("save:: Error saving {} with id {}", ProfileSnapshotWrapper.class.getSimpleName(), entity.getId(), e);
       return Future.failedFuture(e);
     }
   }
 
-  public Future<List<ProfileAssociation>> getSnapshotAssociations(String profileId, ProfileType profileType, String jobProfileId, String tenantId) {
-
+  public Future<List<ProfileAssociation>> getSnapshotAssociations(String profileId, ProfileType profileType,
+                                                                  String jobProfileId, String tenantId) {
     try {
       SnapshotProfileType snapshotProfileType = SnapshotProfileType.valueOf(profileType.value());
-      String createSnapshotQuery = String.format(GET_PROFILE_SNAPSHOT, profileId, profileType.value(), snapshotProfileType.getTableName(), jobProfileId);
+      String createSnapshotQuery = String.format(GET_PROFILE_SNAPSHOT, profileId, profileType.value(),
+        snapshotProfileType.getTableName(), jobProfileId);
       return pgClientFactory.createInstance(tenantId).select(createSnapshotQuery)
         .map(rows -> {
           List<ProfileAssociation> snapshotAssociations = new ArrayList<>();

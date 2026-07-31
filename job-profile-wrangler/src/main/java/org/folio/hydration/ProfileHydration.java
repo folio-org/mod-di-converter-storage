@@ -1,7 +1,20 @@
 package org.folio.hydration;
 
+import static org.folio.Constants.OBJECT_MAPPER;
+
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
+import java.util.function.Function;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -30,33 +43,34 @@ import org.folio.rest.jaxrs.model.ReactToType;
 import org.jgrapht.Graph;
 import org.jgrapht.traverse.DepthFirstIterator;
 
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.Set;
-import java.util.function.Function;
-
-import static org.folio.Constants.OBJECT_MAPPER;
-
 /**
  * The ProfileHydration class is responsible for hydrating profiles in FOLIO based on a graph representation.
  * It creates match, action, mapping, and job profiles in FOLIO, establishing the necessary associations between them.
  */
 public class ProfileHydration {
   private static final Logger LOGGER = LogManager.getLogger();
-
+  private static final String PROFILE_NAME_PATTERN = "jp-%03d %s %s";
   private final FolioClient client;
-
-  private static final String profileNamePattern = "jp-%03d %s %s";
 
   public ProfileHydration(FolioClient client) {
     this.client = client;
+  }
+
+  /**
+   * Invokes the getId() method on the given object using reflection.
+   *
+   * @param obj The object to invoke the method on.
+   * @return The ID returned by the getId() method.
+   */
+  public static String invokeGetId(Object obj) {
+    try {
+      Class<?> clazz = obj.getClass();
+      Method getProfileMethod = clazz.getMethod("getId");
+      return getProfileMethod.invoke(obj).toString();
+    } catch (NoSuchMethodException | IllegalAccessException | InvocationTargetException e) {
+      LOGGER.error(e.getMessage(), e);
+      return null;
+    }
   }
 
   /**
@@ -65,6 +79,7 @@ public class ProfileHydration {
    * @param repoId The repository ID.
    * @param graph  The graph representing the profiles and their relationships.
    */
+  @SuppressWarnings("checkstyle:MethodLength")
   public Optional<Object> hydrate(int repoId, Graph<Profile, RegularEdge> graph) {
     // Generate a unique epoch for the profile names
     LocalDateTime currentDateTime = LocalDateTime.now();
@@ -72,7 +87,7 @@ public class ProfileHydration {
     String formattedDateTime = currentDateTime.format(formatter);
     @SuppressWarnings("java:S2245")
     String randomLetters = RandomStringUtils.random(5, 'A', 'Z', true, false);
-    final String EPOCH = formattedDateTime + "-" + randomLetters;
+    final String epoch = formattedDateTime + "-" + randomLetters;
 
     // Create match, action, and mapping profiles individually
     Map<Profile, Object> createdObjectsInFolio = new HashMap<>();
@@ -85,7 +100,8 @@ public class ProfileHydration {
         return -1;
       } else if (v1 instanceof ActionProfileNode && !(v2 instanceof MappingProfileNode)) {
         return -1;
-      } else if (v1 instanceof MatchProfileNode && !(v2 instanceof MappingProfileNode) && !(v2 instanceof ActionProfileNode)) {
+      } else if (v1 instanceof MatchProfileNode && !(v2 instanceof MappingProfileNode)
+                 && !(v2 instanceof ActionProfileNode)) {
         return -1;
       }
       return 1;
@@ -95,7 +111,7 @@ public class ProfileHydration {
     vertexSet.forEach(node -> {
       if (node instanceof MappingProfileNode mappingProfileNode) {
         MappingProfile mappingProfile = new MappingProfile()
-          .withName(String.format(profileNamePattern, repoId, EPOCH, mappingProfileNode.id()))
+          .withName(String.format(PROFILE_NAME_PATTERN, repoId, epoch, mappingProfileNode.id()))
           .withIncomingRecordType(EntityType.fromValue(mappingProfileNode.getAttributes().get("incomingRecordType")))
           .withExistingRecordType(EntityType.fromValue(mappingProfileNode.getAttributes().get("existingRecordType")));
         createProfileInFolio(mappingProfileNode, new MappingProfileUpdateDto().withProfile(mappingProfile),
@@ -103,7 +119,7 @@ public class ProfileHydration {
           client::createMappingProfile, createdObjectsInFolio);
       } else if (node instanceof ActionProfileNode actionProfileNode) {
         ActionProfile actionProfile = new ActionProfile()
-          .withName(String.format(profileNamePattern, repoId, EPOCH, actionProfileNode.id()))
+          .withName(String.format(PROFILE_NAME_PATTERN, repoId, epoch, actionProfileNode.id()))
           .withAction(ActionProfile.Action.fromValue(actionProfileNode.getAttributes().get("action")))
           .withFolioRecord(ActionProfile.FolioRecord.fromValue(actionProfileNode.getAttributes().get("folioRecord")));
 
@@ -128,10 +144,11 @@ public class ProfileHydration {
           client::createActionProfile, createdObjectsInFolio);
       } else if (node instanceof MatchProfileNode matchProfileNode) {
         MatchProfile matchProfile = new MatchProfile()
-          .withName(String.format(profileNamePattern, repoId, EPOCH, matchProfileNode.id()))
+          .withName(String.format(PROFILE_NAME_PATTERN, repoId, epoch, matchProfileNode.id()))
           .withIncomingRecordType(EntityType.fromValue(matchProfileNode.getAttributes().get("incomingRecordType")))
           .withExistingRecordType(EntityType.fromValue(matchProfileNode.getAttributes().get("existingRecordType")));
-        createProfileInFolio(matchProfileNode, new MatchProfileUpdateDto().withProfile(matchProfile), MatchProfileUpdateDto.class,
+        createProfileInFolio(matchProfileNode, new MatchProfileUpdateDto().withProfile(matchProfile),
+          MatchProfileUpdateDto.class,
           client::createMatchProfile, createdObjectsInFolio);
       }
     });
@@ -145,7 +162,7 @@ public class ProfileHydration {
     jobProfile.ifPresent(profile -> jobProfileUpdateDto.setProfile(
       new JobProfile()
         .withDataType(JobProfile.DataType.fromValue(profile.getAttributes().get("dataType")))
-        .withName(String.format("jp-%03d %s", repoId, EPOCH))
+        .withName(String.format("jp-%03d %s", repoId, epoch))
     ));
 
     if (jobProfile.isEmpty() || jobProfileUpdateDto.getProfile() == null) {
@@ -206,48 +223,6 @@ public class ProfileHydration {
   }
 
   /**
-   * Creates a profile in FOLIO using the provided update DTO and creator function.
-   *
-   * @param node                        The profile node.
-   * @param updateDto                   The update DTO for the profile.
-   * @param updateDtoClassType          The class type of the update DTO.
-   * @param creator                     The function to create the profile in FOLIO.
-   * @param correspondingObjectsInFolio The map to store the created objects in FOLIO.
-   * @param <U>                         The type of the update DTO.
-   */
-  private <U> void createProfileInFolio(Profile node, U updateDto, Class<U> updateDtoClassType,
-                                        Function<String, Optional<JsonNode>> creator,
-                                        Map<Profile, Object> correspondingObjectsInFolio) {
-    try {
-      String bodyAsString = OBJECT_MAPPER.writeValueAsString(updateDto);
-      Optional<JsonNode> jsonNodeOptional = creator.apply(bodyAsString);
-      if (jsonNodeOptional.isEmpty()) return;
-
-      U createdUpdateDto = OBJECT_MAPPER.treeToValue(jsonNodeOptional.get(), updateDtoClassType);
-      correspondingObjectsInFolio.put(node, createdUpdateDto);
-    } catch (JsonProcessingException e) {
-      LOGGER.error(e.getMessage(), e);
-    }
-  }
-
-  /**
-   * Invokes the getId() method on the given object using reflection.
-   *
-   * @param obj The object to invoke the method on.
-   * @return The ID returned by the getId() method.
-   */
-  public static String invokeGetId(Object obj) {
-    try {
-      Class<?> clazz = obj.getClass();
-      Method getProfileMethod = clazz.getMethod("getId");
-      return getProfileMethod.invoke(obj).toString();
-    } catch (NoSuchMethodException | IllegalAccessException | InvocationTargetException e) {
-      LOGGER.error(e.getMessage(), e);
-      return null;
-    }
-  }
-
-  /**
    * Returns the ProfileType based on the given Profile object.
    *
    * @param profile The Profile object.
@@ -264,5 +239,32 @@ public class ProfileHydration {
       return ProfileType.JOB_PROFILE;
     }
     return null;
+  }
+
+  /**
+   * Creates a profile in FOLIO using the provided update DTO and creator function.
+   *
+   * @param node                        The profile node.
+   * @param updateDto                   The update DTO for the profile.
+   * @param updateDtoClassType          The class type of the update DTO.
+   * @param creator                     The function to create the profile in FOLIO.
+   * @param correspondingObjectsInFolio The map to store the created objects in FOLIO.
+   * @param <U>                         The type of the update DTO.
+   */
+  private <U> void createProfileInFolio(Profile node, U updateDto, Class<U> updateDtoClassType,
+                                        Function<String, Optional<JsonNode>> creator,
+                                        Map<Profile, Object> correspondingObjectsInFolio) {
+    try {
+      String bodyAsString = OBJECT_MAPPER.writeValueAsString(updateDto);
+      Optional<JsonNode> jsonNodeOptional = creator.apply(bodyAsString);
+      if (jsonNodeOptional.isEmpty()) {
+        return;
+      }
+
+      U createdUpdateDto = OBJECT_MAPPER.treeToValue(jsonNodeOptional.get(), updateDtoClassType);
+      correspondingObjectsInFolio.put(node, createdUpdateDto);
+    } catch (JsonProcessingException e) {
+      LOGGER.error(e.getMessage(), e);
+    }
   }
 }

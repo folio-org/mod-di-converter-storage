@@ -9,7 +9,7 @@ import org.folio.rest.resource.interfaces.InitAPI;
 import org.folio.spring.SpringContextUtil;
 import org.folio.spring.config.ApplicationConfig;
 
-public class InitAPIImpl implements InitAPI {
+public class InitApiImpl implements InitAPI {
 
   @Override
   public void init(Vertx vertx, Context context, Handler<AsyncResult<Boolean>> handler) {

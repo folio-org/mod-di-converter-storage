@@ -1,8 +1,14 @@
 package org.folio.services.migration;
 
+import static java.lang.String.format;
+
 import io.vertx.core.Context;
 import io.vertx.core.Future;
 import io.vertx.core.Promise;
+import java.io.IOException;
+import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
+import java.util.Map;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
@@ -11,34 +17,32 @@ import org.folio.dao.PostgresClientFactory;
 import org.folio.dao.association.ProfileWrapperDao;
 import org.folio.rest.impl.util.OkapiConnectionParams;
 import org.folio.rest.persist.PostgresClient;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-import java.io.IOException;
-import java.io.InputStream;
-import java.nio.charset.StandardCharsets;
-import java.util.Map;
-
-import static java.lang.String.format;
-
 /**
+ * -
  * todo:
  * This class is going be removed after all migration processes will finish in all envs.
  * think about what needs to be done with masterProfileId and detailProfileId.
- * */
+ *
+ */
 @Service
 public class ProfileMigrationServiceImpl implements ProfileMigrationService {
   private static final Logger LOGGER = LogManager.getLogger();
   private static final String INIT_WRAPPERS = "templates/db_scripts/associations-migration/init_wrappers.sql";
-  private static final String REMOVE_WRAPPERS = "templates/db_scripts/associations-migration/clean_profile_wrappers.sql";
+  private static final String REMOVE_WRAPPERS =
+    "templates/db_scripts/associations-migration/clean_profile_wrappers.sql";
   private static final String TENANT_PLACEHOLDER = "${myuniversity}";
   private static final String MODULE_PLACEHOLDER = "${mymodule}";
   private static final String SYSTEM_TABLE_NAME = "metadata_internal";
 
-  @Autowired
-  protected PostgresClientFactory pgClientFactory;
-  @Autowired
-  private ProfileWrapperDao profileWrapperDao;
+  protected final PostgresClientFactory pgClientFactory;
+  private final ProfileWrapperDao profileWrapperDao;
+
+  public ProfileMigrationServiceImpl(PostgresClientFactory pgClientFactory, ProfileWrapperDao profileWrapperDao) {
+    this.pgClientFactory = pgClientFactory;
+    this.profileWrapperDao = profileWrapperDao;
+  }
 
   @Override
   public Future<Boolean> migrateDataImportProfiles(Map<String, String> headers, Context context) {
@@ -75,8 +79,6 @@ public class ProfileMigrationServiceImpl implements ProfileMigrationService {
   }
 
   private Future<Boolean> runScript(String tenantId, String sqlPath) {
-    Promise<Boolean> promise = Promise.promise();
-
     InputStream inputStream = this.getClass().getClassLoader().getResourceAsStream(sqlPath);
 
     if (inputStream == null) {
@@ -95,6 +97,7 @@ public class ProfileMigrationServiceImpl implements ProfileMigrationService {
       return Future.failedFuture(format("Data will not be migrated: %s is empty", sqlPath));
     }
     String moduleName = PostgresClient.getModuleName();
+    Promise<Boolean> promise = Promise.promise();
     sqlScript = sqlScript.replace(TENANT_PLACEHOLDER, tenantId).replace(MODULE_PLACEHOLDER, moduleName);
     pgClientFactory.createInstance(tenantId).runSQLFile(sqlScript, false)
       .onSuccess(e -> {

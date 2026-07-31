@@ -1,8 +1,13 @@
 package org.folio.unit.snapshot;
 
+import static org.folio.rest.jaxrs.model.ProfileType.ACTION_PROFILE;
+import static org.folio.rest.jaxrs.model.ProfileType.JOB_PROFILE;
+import static org.folio.rest.jaxrs.model.ProfileType.MATCH_PROFILE;
+
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
-
+import java.util.List;
+import java.util.UUID;
 import org.folio.dao.ProfileDao;
 import org.folio.dao.snapshot.ProfileSnapshotDao;
 import org.folio.rest.jaxrs.model.ActionProfile;
@@ -21,13 +26,6 @@ import org.junit.After;
 import org.junit.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 
-import java.util.List;
-import java.util.UUID;
-
-import static org.folio.rest.jaxrs.model.ProfileType.ACTION_PROFILE;
-import static org.folio.rest.jaxrs.model.ProfileType.JOB_PROFILE;
-import static org.folio.rest.jaxrs.model.ProfileType.MATCH_PROFILE;
-
 public class ProfileSnapshotDaoTest extends AbstractUnitTest {
 
   private static final String SNAPSHOTS_TABLE_NAME = "profile_snapshots";
@@ -37,6 +35,7 @@ public class ProfileSnapshotDaoTest extends AbstractUnitTest {
   private static final String ASSOCIATIONS_TABLE_NAME = "profile_associations";
   private static final String MAPPING_PROFILES_TABLE_NAME = "mapping_profiles";
   private static final String MATCH_PROFILES_TABLE_NAME = "match_profiles";
+
   @Autowired
   private ProfileDao<JobProfile, JobProfileCollection> jobProfileDao;
   @Autowired
@@ -63,31 +62,10 @@ public class ProfileSnapshotDaoTest extends AbstractUnitTest {
     Async async = context.async();
     // given
     JobProfile jobProfile = new JobProfile().withId(UUID.randomUUID().toString());
-/*    ActionProfile actionProfile = new ActionProfile().withId(UUID.randomUUID().toString());
-    ProfileAssociation jobToAction1Association = new ProfileAssociation()
-      .withId(UUID.randomUUID().toString())
-      .withOrder(1)
-      .withMasterProfileId(jobProfile.getId())
-      .withMasterProfileType(ProfileType.JOB_PROFILE)
-      .withDetailProfileId(actionProfile.getId())
-      .withDetailProfileType(ProfileType.ACTION_PROFILE);*/
     // when
     jobProfileDao.saveProfile(jobProfile, TENANT_ID).onComplete(savedJobProfileAr -> {
       context.assertTrue(savedJobProfileAr.succeeded());
       async.complete();
-/*      actionProfileDao.saveProfile(actionProfile, TENANT_ID).onComplete(savedActionProfileAr -> {
-        context.assertTrue(savedActionProfileAr.succeeded());
-        commonProfileAssociationService.save(jobToAction1Association, JOB_PROFILE, ACTION_PROFILE, TENANT_ID).onComplete(savedAssociationAr -> {
-          context.assertTrue(savedAssociationAr.succeeded());
-          dao.getSnapshotAssociations(jobProfile.getId(), JOB_PROFILE, jobProfile.getId(), TENANT_ID).onComplete(associationsAr -> {
-            // then
-            context.assertTrue(associationsAr.succeeded());
-            List<ProfileAssociation> profileSnapshotAssociations = associationsAr.result();
-            context.assertEquals(2, profileSnapshotAssociations.size());
-            async.complete();
-          });
-        });
-      });*/
     });
   }
 
@@ -111,14 +89,15 @@ public class ProfileSnapshotDaoTest extends AbstractUnitTest {
         context.assertTrue(savedActionProfileAr.succeeded());
         commonProfileAssociationService.save(matchToAction1Association, TENANT_ID).onComplete(savedAssociationAr -> {
           context.assertTrue(savedAssociationAr.succeeded());
-          dao.getSnapshotAssociations(matchProfile.getId(), MATCH_PROFILE, matchProfile.getId(), TENANT_ID).onComplete(associationsAr -> {
-            // then
-            context.assertTrue(associationsAr.succeeded());
-            List<ProfileAssociation> profileSnapshotAssociations = associationsAr.result();
-            context.assertEquals(1, profileSnapshotAssociations.size());
-            context.assertEquals(MATCH_PROFILE, profileSnapshotAssociations.get(0).getDetailProfileType());
-            async.complete();
-          });
+          dao.getSnapshotAssociations(matchProfile.getId(), MATCH_PROFILE, matchProfile.getId(), TENANT_ID)
+            .onComplete(associationsAr -> {
+              // then
+              context.assertTrue(associationsAr.succeeded());
+              List<ProfileAssociation> profileSnapshotAssociations = associationsAr.result();
+              context.assertEquals(1, profileSnapshotAssociations.size());
+              context.assertEquals(MATCH_PROFILE, profileSnapshotAssociations.getFirst().getDetailProfileType());
+              async.complete();
+            });
         });
       });
     });
@@ -132,15 +111,16 @@ public class ProfileSnapshotDaoTest extends AbstractUnitTest {
     // when
     actionProfileDao.saveProfile(actionProfile, TENANT_ID).onComplete(savedActionProfileAr -> {
       context.assertTrue(savedActionProfileAr.succeeded());
-      dao.getSnapshotAssociations(actionProfile.getId(), ACTION_PROFILE, actionProfile.getId(), TENANT_ID).onComplete(associationsAr -> {
-        // then
-        context.assertTrue(associationsAr.succeeded());
-        List<ProfileAssociation> profileSnapshotAssociations = associationsAr.result();
-        context.assertEquals(1, profileSnapshotAssociations.size());
-        context.assertEquals(ACTION_PROFILE, profileSnapshotAssociations.get(0).getDetailProfileType());
-        context.assertEquals(actionProfile.getId(), profileSnapshotAssociations.get(0).getDetailProfileId());
-        async.complete();
-      });
+      dao.getSnapshotAssociations(actionProfile.getId(), ACTION_PROFILE, actionProfile.getId(), TENANT_ID)
+        .onComplete(associationsAr -> {
+          // then
+          context.assertTrue(associationsAr.succeeded());
+          List<ProfileAssociation> profileSnapshotAssociations = associationsAr.result();
+          context.assertEquals(1, profileSnapshotAssociations.size());
+          context.assertEquals(ACTION_PROFILE, profileSnapshotAssociations.getFirst().getDetailProfileType());
+          context.assertEquals(actionProfile.getId(), profileSnapshotAssociations.getFirst().getDetailProfileId());
+          async.complete();
+        });
     });
   }
 
@@ -148,17 +128,17 @@ public class ProfileSnapshotDaoTest extends AbstractUnitTest {
   public void afterTest(TestContext context) {
     Async async = context.async();
     PostgresClient pgClient = PostgresClient.getInstance(vertx, TENANT_ID);
-      pgClient.delete(ASSOCIATIONS_TABLE_NAME, new Criterion(), event1 ->
-        pgClient.delete(PROFILE_WRAPPERS_TABLE_NAME, new Criterion(), event2 ->
-          pgClient.delete(SNAPSHOTS_TABLE_NAME, new Criterion(), event3 ->
-            pgClient.delete(JOB_PROFILES_TABLE_NAME, new Criterion(), event4 ->
-              pgClient.delete(MATCH_PROFILES_TABLE_NAME, new Criterion(), event5 ->
-                pgClient.delete(ACTION_PROFILES_TABLE_NAME, new Criterion(), event6 ->
-                  pgClient.delete(MAPPING_PROFILES_TABLE_NAME, new Criterion(), event7 -> {
-                    if (event7.failed()) {
-                      context.fail(event7.cause());
-                    }
-                    async.complete();
-                  })))))));
+    pgClient.delete(ASSOCIATIONS_TABLE_NAME, new Criterion(), event1 ->
+      pgClient.delete(PROFILE_WRAPPERS_TABLE_NAME, new Criterion(), event2 ->
+        pgClient.delete(SNAPSHOTS_TABLE_NAME, new Criterion(), event3 ->
+          pgClient.delete(JOB_PROFILES_TABLE_NAME, new Criterion(), event4 ->
+            pgClient.delete(MATCH_PROFILES_TABLE_NAME, new Criterion(), event5 ->
+              pgClient.delete(ACTION_PROFILES_TABLE_NAME, new Criterion(), event6 ->
+                pgClient.delete(MAPPING_PROFILES_TABLE_NAME, new Criterion(), event7 -> {
+                  if (event7.failed()) {
+                    context.fail(event7.cause());
+                  }
+                  async.complete();
+                })))))));
   }
 }

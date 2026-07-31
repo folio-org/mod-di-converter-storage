@@ -1,10 +1,16 @@
 package org.folio.dao.association;
 
+import static org.apache.commons.lang3.StringUtils.isNotBlank;
+import static org.folio.dao.sql.SelectBuilder.parseQuery;
+import static org.folio.dao.sql.SelectBuilder.putInQuotes;
+
 import io.vertx.core.Future;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.sqlclient.Row;
 import io.vertx.sqlclient.RowSet;
+import java.util.ArrayList;
+import java.util.List;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.folio.dao.PostgresClientFactory;
@@ -18,13 +24,6 @@ import org.folio.rest.jaxrs.model.ProfileType;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Repository;
 
-import java.util.ArrayList;
-import java.util.List;
-
-import static org.apache.commons.lang3.StringUtils.isNotBlank;
-import static org.folio.dao.sql.SelectBuilder.parseQuery;
-import static org.folio.dao.sql.SelectBuilder.putInQuotes;
-
 @Repository
 public class MasterDetailAssociationDaoImpl implements MasterDetailAssociationDao {
 
@@ -33,7 +32,8 @@ public class MasterDetailAssociationDaoImpl implements MasterDetailAssociationDa
   /**
    * This query selects detail profiles by master profile id.
    */
-  private static final String RETRIEVES_DETAILS_SQL = "SELECT detail_id, detail_type, detail, detailwrapperid FROM associations_view";
+  private static final String RETRIEVES_DETAILS_SQL =
+    "SELECT detail_id, detail_type, detail, detailwrapperid FROM associations_view";
   /**
    * This query selects master profiles by detail profile id.
    */
@@ -51,7 +51,9 @@ public class MasterDetailAssociationDaoImpl implements MasterDetailAssociationDa
   protected PostgresClientFactory pgClientFactory;
 
   @Override
-  public Future<List<ProfileSnapshotWrapper>> getDetailProfilesByMasterId(String masterId, ProfileType detailType, String query, int offset, int limit, String tenantId) {
+  public Future<List<ProfileSnapshotWrapper>> getDetailProfilesByMasterId(String masterId, ProfileType detailType,
+                                                                          String query, int offset, int limit,
+                                                                          String tenantId) {
     SelectBuilder selectBuilder = new SelectBuilder(RETRIEVES_DETAILS_SQL)
       .where()
       .equals(MASTER_ID_FIELD, putInQuotes(masterId));
@@ -67,6 +69,27 @@ public class MasterDetailAssociationDaoImpl implements MasterDetailAssociationDa
     selectBuilder.limit(limit).offset(offset);
 
     return select(tenantId, selectBuilder.toString()).map(this::mapToDetails);
+  }
+
+  @Override
+  public Future<List<ProfileSnapshotWrapper>> getMasterProfilesByDetailId(String detailId, ProfileType masterType,
+                                                                          String query, int offset, int limit,
+                                                                          String tenantId) {
+    SelectBuilder selectBuilder = new SelectBuilder(RETRIEVES_MASTERS_SQL)
+      .where()
+      .equals(DETAIL_ID_FIELD, putInQuotes(detailId));
+
+    if (masterType != null) {
+      selectBuilder.and().equals(MASTER_TYPE_FIELD, putInQuotes(masterType.value()));
+    }
+
+    if (isNotBlank(query)) {
+      selectBuilder.and().appendQuery(parseQuery("associations_view.master->(0)", query));
+    }
+
+    selectBuilder.limit(limit).offset(offset);
+
+    return select(tenantId, selectBuilder.toString()).map(this::mapToMasters);
   }
 
   /**
@@ -105,26 +128,6 @@ public class MasterDetailAssociationDaoImpl implements MasterDetailAssociationDa
       case MAPPING_PROFILE -> object.mapTo(MappingProfile.class);
       default -> throw new IllegalStateException("Can not find profile by content type: " + contentType.toString());
     };
-  }
-
-
-  @Override
-  public Future<List<ProfileSnapshotWrapper>> getMasterProfilesByDetailId(String detailId, ProfileType masterType, String query, int offset, int limit, String tenantId) {
-    SelectBuilder selectBuilder = new SelectBuilder(RETRIEVES_MASTERS_SQL)
-      .where()
-      .equals(DETAIL_ID_FIELD, putInQuotes(detailId));
-
-    if (masterType != null) {
-      selectBuilder.and().equals(MASTER_TYPE_FIELD, putInQuotes(masterType.value()));
-    }
-
-    if (isNotBlank(query)) {
-      selectBuilder.and().appendQuery(parseQuery("associations_view.master->(0)", query));
-    }
-
-    selectBuilder.limit(limit).offset(offset);
-
-    return select(tenantId, selectBuilder.toString()).map(this::mapToMasters);
   }
 
   /**

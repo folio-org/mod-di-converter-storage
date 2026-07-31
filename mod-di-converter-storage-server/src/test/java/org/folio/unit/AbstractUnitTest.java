@@ -83,11 +83,11 @@ public abstract class AbstractUnitTest {
       .onFailure(context::fail);
   }
 
+  @After
+  public abstract void afterTest(TestContext context);
+
   private static String constructModuleName() {
     String result = ModuleName.getModuleName().replace("_", "-");
     return result + "-" + ModuleName.getModuleVersion();
   }
-
-  @After
-  public abstract void afterTest(TestContext context);
 }

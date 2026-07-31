@@ -7,12 +7,16 @@ import org.folio.rest.persist.interfaces.Results;
 import org.springframework.stereotype.Component;
 
 /**
- * Data access object for {@link MatchProfile}
+ * Data access object for {@link MatchProfile}.
  */
 @Component
 public class MatchProfileDaoImpl extends AbstractProfileDao<MatchProfile, MatchProfileCollection> {
 
   private static final String MATCH_PROFILES_TABLE_NAME = "match_profiles";
+
+  protected MatchProfileDaoImpl(PostgresClientFactory pgClientFactory) {
+    super(pgClientFactory);
+  }
 
   @Override
   String getTableName() {

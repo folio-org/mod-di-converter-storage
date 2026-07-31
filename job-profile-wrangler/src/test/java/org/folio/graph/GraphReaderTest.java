@@ -1,6 +1,16 @@
 package org.folio.graph;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
+
 import com.google.common.io.Resources;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.util.List;
+import java.util.Optional;
 import org.folio.RepoObject;
 import org.folio.graph.edges.RegularEdge;
 import org.folio.graph.nodes.Profile;
@@ -11,44 +21,35 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 
-import java.io.IOException;
-import java.nio.charset.StandardCharsets;
-import java.util.List;
-import java.util.Optional;
-
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotEquals;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertTrue;
-
 public class GraphReaderTest {
 
   public static final String REPO_PATH;
-  private static final TemporaryFolder tempDir = new TemporaryFolder();
+
+  private static final TemporaryFolder TEMP_DIR = new TemporaryFolder();
+  private static Integer repoId;
 
   static {
     try {
-      tempDir.create();
+      TEMP_DIR.create();
     } catch (IOException e) {
       throw new RuntimeException(e);
     }
-    REPO_PATH = tempDir.getRoot().getAbsolutePath();
+    REPO_PATH = TEMP_DIR.getRoot().getAbsolutePath();
   }
-
-  private static Integer repoId;
 
   @BeforeClass
   public static void setup() throws IOException {
     String content = Resources.toString(Resources.getResource("job_profile_snapshot.json"), StandardCharsets.UTF_8);
     Optional<RepoObject> repoObject = RepoImport.fromString(REPO_PATH, content);
-    if (repoObject.isEmpty()) throw new RuntimeException("Could not create object in repo");
+    if (repoObject.isEmpty()) {
+      throw new RuntimeException("Could not create object in repo");
+    }
     repoId = repoObject.get().repoId();
   }
 
   @AfterClass
   public static void cleanup() {
-    tempDir.delete();
+    TEMP_DIR.delete();
   }
 
   @Test
@@ -70,8 +71,7 @@ public class GraphReaderTest {
   public void search() {
     List<Graph<Profile, RegularEdge>> graphs = GraphReader.readAll(REPO_PATH);
     assertNotNull(graphs);
-    assertNotEquals(graphs.size(), 0);
-    assertTrue(GraphReader.search(REPO_PATH, graphs.get(0)).isPresent());
+    assertNotEquals(0, graphs.size());
+    assertTrue(GraphReader.search(REPO_PATH, graphs.getFirst()).isPresent());
   }
-
 }

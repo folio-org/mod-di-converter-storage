@@ -3,7 +3,13 @@ package org.folio.graph.nodes;
 import java.util.Comparator;
 import java.util.Map;
 
-public record MappingProfileNode(String id, String incomingRecordType, String existingRecordType, int order) implements Profile {
+public record MappingProfileNode(
+  String id,
+  String incomingRecordType,
+  String existingRecordType,
+  int order
+) implements Profile {
+
   @Override
   public String getName() {
     return "Mapping Profile";

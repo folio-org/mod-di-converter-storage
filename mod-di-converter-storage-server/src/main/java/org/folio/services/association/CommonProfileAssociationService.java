@@ -5,6 +5,11 @@ import io.vertx.core.Future;
 import io.vertx.core.Handler;
 import io.vertx.core.Promise;
 import io.vertx.core.json.Json;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.folio.dao.ProfileDao;
@@ -26,37 +31,38 @@ import org.folio.rest.jaxrs.model.ProfileSnapshotWrapper;
 import org.folio.rest.jaxrs.model.ProfileType;
 import org.folio.rest.jaxrs.model.ProfileWrapper;
 import org.folio.rest.jaxrs.model.ReactToType;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Optional;
-import java.util.UUID;
-
-
 /**
- * Generic implementation of the {@link ProfileAssociationService}
+ * Generic implementation of the {@link ProfileAssociationService}.
  */
 @Service
 public class CommonProfileAssociationService implements ProfileAssociationService {
   private static final Logger LOGGER = LogManager.getLogger();
 
-  @Autowired
-  private ProfileDao<JobProfile, JobProfileCollection> jobProfileDao;
-  @Autowired
-  private ProfileDao<ActionProfile, ActionProfileCollection> actionProfileDao;
-  @Autowired
-  private ProfileDao<MappingProfile, MappingProfileCollection> mappingProfileDao;
-  @Autowired
-  private ProfileDao<MatchProfile, MatchProfileCollection> matchProfileDao;
-  @Autowired
-  private ProfileAssociationDao profileAssociationDao;
-  @Autowired
-  private ProfileWrapperDao profileWrapperDao;
-  @Autowired
-  private MasterDetailAssociationDao masterDetailAssociationDao;
+  private final ProfileDao<JobProfile, JobProfileCollection> jobProfileDao;
+  private final ProfileDao<ActionProfile, ActionProfileCollection> actionProfileDao;
+  private final ProfileDao<MappingProfile, MappingProfileCollection> mappingProfileDao;
+  private final ProfileDao<MatchProfile, MatchProfileCollection> matchProfileDao;
+  private final ProfileAssociationDao profileAssociationDao;
+  private final ProfileWrapperDao profileWrapperDao;
+  private final MasterDetailAssociationDao masterDetailAssociationDao;
+
+  public CommonProfileAssociationService(ProfileDao<JobProfile, JobProfileCollection> jobProfileDao,
+                                         ProfileDao<ActionProfile, ActionProfileCollection> actionProfileDao,
+                                         ProfileDao<MappingProfile, MappingProfileCollection> mappingProfileDao,
+                                         ProfileDao<MatchProfile, MatchProfileCollection> matchProfileDao,
+                                         ProfileAssociationDao profileAssociationDao,
+                                         ProfileWrapperDao profileWrapperDao,
+                                         MasterDetailAssociationDao masterDetailAssociationDao) {
+    this.jobProfileDao = jobProfileDao;
+    this.actionProfileDao = actionProfileDao;
+    this.mappingProfileDao = mappingProfileDao;
+    this.matchProfileDao = matchProfileDao;
+    this.profileAssociationDao = profileAssociationDao;
+    this.profileWrapperDao = profileWrapperDao;
+    this.masterDetailAssociationDao = masterDetailAssociationDao;
+  }
 
   @Override
   public Future<ProfileAssociationCollection> getAll(ProfileType masterType, ProfileType detailType, String tenantId) {
@@ -81,7 +87,9 @@ public class CommonProfileAssociationService implements ProfileAssociationServic
     wrapAssociationProfiles(profileAssociations, tenantId)
       .onSuccess(wrappedAssociations -> {
         List<Future<ProfileAssociation>> futureList = new ArrayList<>();
-        profileAssociations.forEach(association -> futureList.add(profileAssociationDao.save(association, tenantId).map(association)));
+        profileAssociations.forEach(association -> futureList.add(profileAssociationDao.save(association, tenantId)
+          .map(association))
+        );
         Future.all(futureList).onComplete(ar -> {
           if (ar.succeeded()) {
             result.complete(profileAssociations);
@@ -93,86 +101,9 @@ public class CommonProfileAssociationService implements ProfileAssociationServic
     return result.future();
   }
 
-  /**
-   * Processes a list of {@link ProfileAssociation} objects to ensure each association has its corresponding
-   * master and detail profile wrappers properly set up. This method iterates through each profile association,
-   * checking if the master and detail profiles have corresponding wrapper IDs. If a wrapper ID is missing,
-   * the method attempts to create a new wrapper for that profile and update the association with the new wrapper ID.
-   * This ensures that each profile association is linked to its respective master and detail profile wrappers,
-   * facilitating further operations on these associations.
-   * <p>
-   * This method performs the following steps for each {@link ProfileAssociation} in the provided list:
-   * <ul>
-   *     <li>Checks if the master profile ID is non-null and lacks a corresponding master wrapper ID. If so,
-   *     it either retrieves the existing wrapper ID from a local cache or creates a new wrapper, updating
-   *     the association with the new master wrapper ID.</li>
-   *     <li>Repeats the above step for the detail profile, ensuring it also has a corresponding detail wrapper ID.</li>
-   * </ul>
-   * <p>
-   * If the input list of profile associations is null, the method returns a failed future with an appropriate error message.
-   * If the list is empty, it returns a succeeded future with no further action, as there are no associations to process.
-   *
-   * @param profileAssociations the list of {@link ProfileAssociation} objects to be processed. Can be null or empty.
-   * @param tenantId the tenant ID used for scoping the operations within a specific tenant's data.
-   * @return a {@link Future<Void>} that indicates the completion of the operation. The future fails if the input list is null
-   *         or if any error occurs during the processing of the profile associations. Otherwise, it succeeds once all associations
-   *         have been processed and their corresponding wrappers are properly set.
-   */
-  public Future<Void> wrapAssociationProfiles(List<ProfileAssociation> profileAssociations,
-                                              String tenantId) {
-
-    if (profileAssociations == null) {
-      return Future.failedFuture("Associations list is null");
-    }
-    if (profileAssociations.isEmpty()) {
-      return Future.succeededFuture();
-    }
-
-    HashMap<String, String> profileIdToWrapperId = new HashMap<>();
-    Future<Void> future = Future.succeededFuture();
-    for (ProfileAssociation profileAssociation : profileAssociations) {
-      future = future
-        .compose(ar -> {
-          if (profileAssociation.getMasterProfileId() != null && profileAssociation.getMasterWrapperId() == null) {
-            if (profileIdToWrapperId.containsKey(profileAssociation.getMasterProfileId())) {
-              profileAssociation.setMasterWrapperId(profileIdToWrapperId.get(profileAssociation.getMasterProfileId()));
-            } else {
-              return saveWrapper(tenantId, profileAssociation.getMasterProfileType(), profileAssociation.getMasterProfileId())
-                .onFailure(th -> LOGGER.error("wrapAssociationProfiles:: Something happened while saving master wrapper for association: {}", Json.encode(profileAssociation), th))
-                .compose(result -> {
-                  profileIdToWrapperId.put(result.getProfileId(), result.getId());
-                  profileAssociation.setMasterWrapperId(result.getId());
-                  return Future.succeededFuture();
-                });
-            }
-          }
-          return Future.succeededFuture();
-        })
-        .compose(ar -> {
-          if (profileAssociation.getDetailProfileId() != null && profileAssociation.getDetailWrapperId() == null) {
-            return saveWrapper(tenantId, profileAssociation.getDetailProfileType(), profileAssociation.getDetailProfileId())
-              .onFailure(th -> LOGGER.error("wrapAssociationProfiles:: Something happened while saving detail wrapper for association: {}", Json.encode(profileAssociation),  th))
-              .compose(result -> {
-                profileIdToWrapperId.put(result.getProfileId(), result.getId());
-                profileAssociation.setDetailWrapperId(result.getId());
-                return Future.succeededFuture();
-              });
-          }
-          return Future.succeededFuture();
-        });
-    }
-    return future;
-  }
-
-  private Future<ProfileWrapper> saveWrapper(String tenantId, ProfileType profileType, String profileId) {
-    ProfileWrapper profileWrapper = new ProfileWrapper().withId(UUID.randomUUID().toString())
-      .withProfileType(profileType)
-      .withProfileId(profileId);
-    return profileWrapperDao.save(profileWrapper, tenantId).map(profileWrapper);
-  }
-
   @Override
-  public Future<ProfileAssociation> update(ProfileAssociation entity, ProfileType masterType, ProfileType detailType, OkapiConnectionParams params) {
+  public Future<ProfileAssociation> update(ProfileAssociation entity, ProfileType masterType, ProfileType detailType,
+                                           OkapiConnectionParams params) {
     return profileWrapperDao.deleteById(entity.getMasterProfileId(), params.getTenantId())
       .compose(e -> profileWrapperDao.deleteById(entity.getDetailProfileId(), params.getTenantId()))
       .compose(r -> {
@@ -198,13 +129,24 @@ public class CommonProfileAssociationService implements ProfileAssociationServic
   }
 
   @Override
-  public Future<Optional<ProfileSnapshotWrapper>> findDetails(String masterId, ProfileType masterType, ProfileType detailType, String query, int offset, int limit, String tenantId) {
+  public Future<Boolean> delete(String masterWrapperId, String detailWrapperId, ProfileType masterType,
+                                ProfileType detailType,
+                                String jobProfileId, ReactToType reactTo, Integer order, String tenantId) {
+    return profileAssociationDao.delete(masterWrapperId, detailWrapperId, masterType, detailType, jobProfileId, reactTo,
+      order, tenantId);
+  }
+
+  @Override
+  public Future<Optional<ProfileSnapshotWrapper>> findDetails(String masterId, ProfileType masterType,
+                                                              ProfileType detailType, String query, int offset,
+                                                              int limit, String tenantId) {
     Promise<Optional<ProfileSnapshotWrapper>> result = Promise.promise();
 
     masterDetailAssociationDao.getDetailProfilesByMasterId(masterId, detailType, query, offset, limit, tenantId)
       .onComplete(ar -> {
         if (ar.failed()) {
-          LOGGER.warn("findDetails:: Could not get details profiles by master id '{}', for the tenant '{}'", masterId, tenantId);
+          LOGGER.warn("findDetails:: Could not get details profiles by master id '{}', for the tenant '{}'",
+            masterId, tenantId);
           result.fail(ar.cause());
         }
         List<ProfileSnapshotWrapper> details = ar.result();
@@ -216,13 +158,16 @@ public class CommonProfileAssociationService implements ProfileAssociationServic
   }
 
   @Override
-  public Future<Optional<ProfileSnapshotWrapper>> findMasters(String detailId, ProfileType detailType, ProfileType masterType, String query, int offset, int limit, String tenantId) {
+  public Future<Optional<ProfileSnapshotWrapper>> findMasters(String detailId, ProfileType detailType,
+                                                              ProfileType masterType, String query, int offset,
+                                                              int limit, String tenantId) {
     Promise<Optional<ProfileSnapshotWrapper>> result = Promise.promise();
 
     masterDetailAssociationDao.getMasterProfilesByDetailId(detailId, masterType, query, offset, limit, tenantId)
       .onComplete(ar -> {
         if (ar.failed()) {
-          LOGGER.warn("findMasters:: Could not get master profiles by detail id '{}', for the tenant '{}'", detailId, tenantId);
+          LOGGER.warn("findMasters:: Could not get master profiles by detail id '{}', for the tenant '{}'",
+            detailId, tenantId);
           result.fail(ar.cause());
         }
         ProfileSnapshotWrapper wrapper = getProfileSnapshotWrapper(detailId, detailType, ar.result());
@@ -233,13 +178,8 @@ public class CommonProfileAssociationService implements ProfileAssociationServic
   }
 
   @Override
-  public Future<Boolean> delete(String masterWrapperId, String detailWrapperId, ProfileType masterType, ProfileType detailType,
-                                String jobProfileId, ReactToType reactTo, Integer order, String tenantId) {
-    return profileAssociationDao.delete(masterWrapperId, detailWrapperId, masterType, detailType, jobProfileId, reactTo, order, tenantId);
-  }
-
-  @Override
-  public Future<Boolean> deleteByMasterWrapperId(String wrapperId, ProfileType masterType, ProfileType detailType, String tenantId) {
+  public Future<Boolean> deleteByMasterWrapperId(String wrapperId, ProfileType masterType, ProfileType detailType,
+                                                 String tenantId) {
     return profileAssociationDao.deleteByMasterWrapperId(wrapperId, masterType, detailType, tenantId);
   }
 
@@ -252,26 +192,116 @@ public class CommonProfileAssociationService implements ProfileAssociationServic
   }
 
   /**
+   * Processes a list of {@link ProfileAssociation} objects to ensure each association has its corresponding
+   * master and detail profile wrappers properly set up. This method iterates through each profile association,
+   * checking if the master and detail profiles have corresponding wrapper IDs. If a wrapper ID is missing,
+   * the method attempts to create a new wrapper for that profile and update the association with the new wrapper ID.
+   * This ensures that each profile association is linked to its respective master and detail profile wrappers,
+   * facilitating further operations on these associations.
+   *
+   * <p>
+   * This method performs the following steps for each {@link ProfileAssociation} in the provided list:
+   * <ul>
+   *     <li>Checks if the master profile ID is non-null and lacks a corresponding master wrapper ID. If so,
+   *     it either retrieves the existing wrapper ID from a local cache or creates a new wrapper, updating
+   *     the association with the new master wrapper ID.</li>
+   *     <li>Repeats the above step for the detail profile, ensuring it also has a corresponding detail wrapper ID.</li>
+   * </ul>
+   *
+   * <p>
+   * If the input list of profile associations is null,
+   * the method returns a failed future with an appropriate error message.
+   * If the list is empty, it returns a succeeded future with no further action,
+   * as there are no associations to process.
+   *
+   * @param profileAssociations the list of {@link ProfileAssociation} objects to be processed. Can be null or empty.
+   * @param tenantId            the tenant ID used for scoping the operations within a specific tenant's data.
+   * @return a {@link Future<Void>} that indicates the completion of the operation.
+   *   The future fails if the input list is null or if any error occurs during the processing of
+   *   the profile associations. Otherwise, it succeeds once all associations have been processed
+   *   and their corresponding wrappers are properly set.
+   */
+  public Future<Void> wrapAssociationProfiles(List<ProfileAssociation> profileAssociations,
+                                              String tenantId) {
+
+    if (profileAssociations == null) {
+      return Future.failedFuture("Associations list is null");
+    }
+    if (profileAssociations.isEmpty()) {
+      return Future.succeededFuture();
+    }
+
+    HashMap<String, String> profileIdToWrapperId = new HashMap<>();
+    Future<Void> future = Future.succeededFuture();
+    for (ProfileAssociation profileAssociation : profileAssociations) {
+      future = future
+        .compose(ar -> {
+          if (profileAssociation.getMasterProfileId() != null && profileAssociation.getMasterWrapperId() == null) {
+            if (profileIdToWrapperId.containsKey(profileAssociation.getMasterProfileId())) {
+              profileAssociation.setMasterWrapperId(profileIdToWrapperId.get(profileAssociation.getMasterProfileId()));
+            } else {
+              return saveWrapper(tenantId, profileAssociation.getMasterProfileType(),
+                profileAssociation.getMasterProfileId())
+                .onFailure(th -> LOGGER.error(
+                  "wrapAssociationProfiles:: Something happened while saving master wrapper for association: {}",
+                  Json.encode(profileAssociation), th))
+                .compose(result -> {
+                  profileIdToWrapperId.put(result.getProfileId(), result.getId());
+                  profileAssociation.setMasterWrapperId(result.getId());
+                  return Future.succeededFuture();
+                });
+            }
+          }
+          return Future.succeededFuture();
+        })
+        .compose(ar -> {
+          if (profileAssociation.getDetailProfileId() != null && profileAssociation.getDetailWrapperId() == null) {
+            return saveWrapper(tenantId, profileAssociation.getDetailProfileType(),
+              profileAssociation.getDetailProfileId())
+              .onFailure(th -> LOGGER.error(
+                "wrapAssociationProfiles:: Something happened while saving detail wrapper for association: {}",
+                Json.encode(profileAssociation), th))
+              .compose(result -> {
+                profileIdToWrapperId.put(result.getProfileId(), result.getId());
+                profileAssociation.setDetailWrapperId(result.getId());
+                return Future.succeededFuture();
+              });
+          }
+          return Future.succeededFuture();
+        });
+    }
+    return future;
+  }
+
+  private Future<ProfileWrapper> saveWrapper(String tenantId, ProfileType profileType, String profileId) {
+    ProfileWrapper profileWrapper = new ProfileWrapper().withId(UUID.randomUUID().toString())
+      .withProfileType(profileType)
+      .withProfileId(profileId);
+    return profileWrapperDao.save(profileWrapper, tenantId).map(profileWrapper);
+  }
+
+  /**
    * Retrieves profile by profile id and profile type and then fill profile wrapper with the instance.
    *
    * @param tenantId a tenant id.
    * @param result   a result future.
    * @param wrapper  a profile wrapper.
    */
-  private void fillProfile(String tenantId, Promise<Optional<ProfileSnapshotWrapper>> result, ProfileSnapshotWrapper wrapper) {
+  private void fillProfile(String tenantId, Promise<Optional<ProfileSnapshotWrapper>> result,
+                           ProfileSnapshotWrapper wrapper) {
     String profileId = wrapper.getId();
     ProfileType profileType = wrapper.getContentType();
 
-    if (profileType == ProfileType.JOB_PROFILE) {
-      jobProfileDao.getProfileById(profileId, tenantId).onComplete(fillSnapshotWrapperContent(result, wrapper));
-    } else if (profileType == ProfileType.ACTION_PROFILE) {
-      actionProfileDao.getProfileById(profileId, tenantId).onComplete(fillSnapshotWrapperContent(result, wrapper));
-    } else if (profileType == ProfileType.MAPPING_PROFILE) {
-      mappingProfileDao.getProfileById(profileId, tenantId).onComplete(fillSnapshotWrapperContent(result, wrapper));
-    } else if (profileType == ProfileType.MATCH_PROFILE) {
-      matchProfileDao.getProfileById(profileId, tenantId).onComplete(fillSnapshotWrapperContent(result, wrapper));
-    } else {
-      result.complete(Optional.empty());
+    switch (profileType) {
+      case ProfileType.JOB_PROFILE ->
+        jobProfileDao.getProfileById(profileId, tenantId).onComplete(fillSnapshotWrapperContent(result, wrapper));
+      case ProfileType.ACTION_PROFILE ->
+        actionProfileDao.getProfileById(profileId, tenantId).onComplete(fillSnapshotWrapperContent(result, wrapper));
+      case ProfileType.MAPPING_PROFILE ->
+        mappingProfileDao.getProfileById(profileId, tenantId).onComplete(fillSnapshotWrapperContent(result, wrapper));
+      case ProfileType.MATCH_PROFILE ->
+        matchProfileDao.getProfileById(profileId, tenantId).onComplete(fillSnapshotWrapperContent(result, wrapper));
+      default -> result.complete(Optional.empty());
     }
   }
 
@@ -283,7 +313,8 @@ public class CommonProfileAssociationService implements ProfileAssociationServic
    * @param children    a list of children
    * @return profile wrapper
    */
-  private ProfileSnapshotWrapper getProfileSnapshotWrapper(String profileId, ProfileType profileType, List<ProfileSnapshotWrapper> children) {
+  private ProfileSnapshotWrapper getProfileSnapshotWrapper(String profileId, ProfileType profileType,
+                                                           List<ProfileSnapshotWrapper> children) {
     ProfileSnapshotWrapper wrapper = new ProfileSnapshotWrapper();
     wrapper.setChildSnapshotWrappers(children);
     wrapper.setId(profileId);
@@ -292,14 +323,16 @@ public class CommonProfileAssociationService implements ProfileAssociationServic
   }
 
   /**
-   * Fills a profile wrapper with a profile instance if it's present otherwise it will complete result future with empty optional.
+   * Fills a profile wrapper with a profile instance
+   * if it's present otherwise it will complete result future with empty optional.
    *
    * @param result  a future result.
    * @param wrapper a profile wrapper.
    * @param <T>     a profile type.
    * @return the handler.
    */
-  private <T> Handler<AsyncResult<Optional<T>>> fillSnapshotWrapperContent(Promise<Optional<ProfileSnapshotWrapper>> result, ProfileSnapshotWrapper wrapper) {
+  private <T> Handler<AsyncResult<Optional<T>>> fillSnapshotWrapperContent(
+    Promise<Optional<ProfileSnapshotWrapper>> result, ProfileSnapshotWrapper wrapper) {
     return asyncResult -> {
       if (asyncResult.failed()) {
         LOGGER.warn("fillWrapperContent:: Could not get a profile", asyncResult.cause());

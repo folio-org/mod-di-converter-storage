@@ -2,7 +2,6 @@ package org.folio.services.migration;
 
 import io.vertx.core.Context;
 import io.vertx.core.Future;
-
 import java.util.Map;
 
 /**
@@ -12,6 +11,7 @@ public interface ProfileMigrationService {
 
   /**
    * Migrate all data-import profiles to wrappers-based mechanism.
+   *
    * @param headers - headers
    * @param context - context
    * @return - future with result. True if successful, false otherwise

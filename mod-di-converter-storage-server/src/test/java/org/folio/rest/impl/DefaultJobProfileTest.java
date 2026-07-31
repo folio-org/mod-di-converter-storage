@@ -1,26 +1,25 @@
 package org.folio.rest.impl;
 
-import io.restassured.RestAssured;
-import io.vertx.ext.unit.junit.VertxUnitRunner;
-import org.apache.http.HttpStatus;
-import org.folio.rest.jaxrs.model.ProfileSnapshotWrapper;
-import org.folio.rest.jaxrs.model.Tags;
-import org.folio.rest.jaxrs.model.JobProfile;
-import org.folio.rest.jaxrs.model.JobProfileUpdateDto;
-import org.hamcrest.Matchers;
-import org.hamcrest.core.Is;
-import org.junit.Assert;
-import org.junit.Test;
-import org.junit.runner.RunWith;
-
-import java.util.Arrays;
-import java.util.Collections;
-
 import static org.folio.rest.impl.JobProfileTest.JOB_PROFILES_PATH;
 import static org.folio.rest.impl.snapshot.JobProfileSnapshotTest.PROFILE_SNAPSHOT_PATH;
 import static org.folio.rest.impl.snapshot.JobProfileSnapshotTest.PROFILE_TYPE_PARAM;
 import static org.folio.rest.jaxrs.model.ProfileType.JOB_PROFILE;
 import static org.hamcrest.Matchers.is;
+
+import io.restassured.RestAssured;
+import io.vertx.ext.unit.junit.VertxUnitRunner;
+import java.util.Arrays;
+import java.util.Collections;
+import org.apache.http.HttpStatus;
+import org.folio.rest.jaxrs.model.JobProfile;
+import org.folio.rest.jaxrs.model.JobProfileUpdateDto;
+import org.folio.rest.jaxrs.model.ProfileSnapshotWrapper;
+import org.folio.rest.jaxrs.model.Tags;
+import org.hamcrest.Matchers;
+import org.hamcrest.core.Is;
+import org.junit.Assert;
+import org.junit.Test;
+import org.junit.runner.RunWith;
 
 @RunWith(VertxUnitRunner.class)
 public class DefaultJobProfileTest extends AbstractRestVerticleTest {
@@ -68,18 +67,18 @@ public class DefaultJobProfileTest extends AbstractRestVerticleTest {
   }
 
   @Test
-  public void shouldReturnQMMarcBibProfileOnGetById() {
-    shouldReturnQMProfilesOnGetById(DEFAULT_QM_MARC_BIB_UPDATE_JOB_PROFILE_ID, "quickMARC - Default Update instance");
+  public void shouldReturnQmMarcBibProfileOnGetById() {
+    shouldReturnQmProfilesOnGetById(DEFAULT_QM_MARC_BIB_UPDATE_JOB_PROFILE_ID, "quickMARC - Default Update instance");
   }
 
   @Test
-  public void shouldReturnQMAuthorityProfileOnGetById() {
-    shouldReturnQMProfilesOnGetById(DEFAULT_QM_AUTHORITY_UPDATE_JOB_PROFILE_ID, "quickMARC - Default Update authority");
+  public void shouldReturnQmAuthorityProfileOnGetById() {
+    shouldReturnQmProfilesOnGetById(DEFAULT_QM_AUTHORITY_UPDATE_JOB_PROFILE_ID, "quickMARC - Default Update authority");
   }
 
   @Test
-  public void shouldReturnQMHoldingsProfileOnGetById() {
-    shouldReturnQMProfilesOnGetById(DEFAULT_QM_HOLDINGS_UPDATE_JOB_PROFILE_ID, "quickMARC - Default Update holdings");
+  public void shouldReturnQmHoldingsProfileOnGetById() {
+    shouldReturnQmProfilesOnGetById(DEFAULT_QM_HOLDINGS_UPDATE_JOB_PROFILE_ID, "quickMARC - Default Update holdings");
   }
 
   @Test
@@ -135,7 +134,7 @@ public class DefaultJobProfileTest extends AbstractRestVerticleTest {
   public void shouldAddAndRemoveTagsDefaultProfile() {
     Tags tags = new Tags().withTagList(Arrays.asList("Lorem", "ipsum"));
     var profile = getJobProfileById(DEFAULT_MARC_AUTHORITY_PROFILE_ID);
-//    Add tags to default profile
+    // Add tags to default profile
     RestAssured.given()
       .spec(spec)
       .body(new JobProfileUpdateDto().withProfile(profile.withTags(tags)))
@@ -146,7 +145,7 @@ public class DefaultJobProfileTest extends AbstractRestVerticleTest {
       .body("tags.tagList", Is.is(tags.getTagList()));
 
     profile = getJobProfileById(DEFAULT_MARC_AUTHORITY_PROFILE_ID);
-//    Delete tags from default profile
+    // Delete tags from default profile
     RestAssured.given()
       .spec(spec)
       .body(new JobProfileUpdateDto().withProfile(profile.withTags(new Tags().withTagList(Collections.emptyList()))))
@@ -157,7 +156,7 @@ public class DefaultJobProfileTest extends AbstractRestVerticleTest {
       .body("tags.tagList", Is.is(Matchers.empty()));
   }
 
-  private void shouldReturnQMProfilesOnGetById(String url, String expectedName) {
+  private void shouldReturnQmProfilesOnGetById(String url, String expectedName) {
     final var profile = getJobProfileById(url);
     Assert.assertEquals(expectedName, profile.getName());
     Assert.assertEquals(JobProfile.DataType.MARC, profile.getDataType());
@@ -170,5 +169,4 @@ public class DefaultJobProfileTest extends AbstractRestVerticleTest {
       .get(JOB_PROFILES_PATH + "/" + id)
       .then().extract().as(JobProfile.class);
   }
-
 }

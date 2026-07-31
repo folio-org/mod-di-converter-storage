@@ -16,10 +16,12 @@ public class RegularEdge extends DefaultEdge {
     return label;
   }
 
+  @Override
   public Object getSource() {
     return super.getSource();
   }
 
+  @Override
   public Object getTarget() {
     return super.getTarget();
   }
@@ -36,14 +38,20 @@ public class RegularEdge extends DefaultEdge {
 
   @Override
   public boolean equals(Object o) {
-    if (this == o) return true;
-    if (o == null || getClass() != o.getClass()) return false;
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
 
     RegularEdge that = (RegularEdge) o;
     if (!label.equals(that.label)) {
       return false;
     } else if (!getSource().equals(that.getSource())) {
       return false;
-    } else return getTarget().equals(that.getTarget());
+    } else {
+      return getTarget().equals(that.getTarget());
+    }
   }
 }

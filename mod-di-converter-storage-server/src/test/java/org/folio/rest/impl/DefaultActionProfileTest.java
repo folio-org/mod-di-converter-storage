@@ -1,7 +1,12 @@
 package org.folio.rest.impl;
 
+import static org.folio.rest.impl.ActionProfileTest.ACTION_PROFILES_PATH;
+import static org.hamcrest.core.Is.is;
+
 import io.restassured.RestAssured;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
+import java.util.Arrays;
+import java.util.Collections;
 import org.apache.http.HttpStatus;
 import org.folio.rest.jaxrs.model.ActionProfile;
 import org.folio.rest.jaxrs.model.ActionProfileUpdateDto;
@@ -9,12 +14,6 @@ import org.folio.rest.jaxrs.model.Tags;
 import org.hamcrest.Matchers;
 import org.junit.Test;
 import org.junit.runner.RunWith;
-
-import java.util.Arrays;
-import java.util.Collections;
-
-import static org.folio.rest.impl.ActionProfileTest.ACTION_PROFILES_PATH;
-import static org.hamcrest.core.Is.is;
 
 @RunWith(VertxUnitRunner.class)
 public class DefaultActionProfileTest extends AbstractRestVerticleTest {
@@ -25,7 +24,7 @@ public class DefaultActionProfileTest extends AbstractRestVerticleTest {
   public void shouldAddAndRemoveTagsDefaultProfile() {
     Tags tags = new Tags().withTagList(Arrays.asList("Lorem", "ipsum"));
     var profile = getActionProfileById(DEFAULT_CREATE_AUTHORITIES_ACTION_PROFILE_ID);
-//    Add tags to default profile
+    // Add tags to default profile
     RestAssured.given()
       .spec(spec)
       .body(new ActionProfileUpdateDto().withProfile(profile.withTags(tags)))
@@ -36,7 +35,7 @@ public class DefaultActionProfileTest extends AbstractRestVerticleTest {
       .body("tags.tagList", is(tags.getTagList()));
 
     profile = getActionProfileById(DEFAULT_CREATE_AUTHORITIES_ACTION_PROFILE_ID);
-//    Delete tags from default profile
+    // Delete tags from default profile
     RestAssured.given()
       .spec(spec)
       .body(new ActionProfileUpdateDto().withProfile(profile.withTags(new Tags().withTagList(Collections.emptyList()))))
