@@ -8,7 +8,6 @@ import org.apache.commons.lang3.StringUtils;
 import org.folio.cql2pgjson.CQL2PgJSON;
 import org.folio.cql2pgjson.model.SqlSelect;
 
-
 public class SelectBuilder {
   private final StringBuilder query;
 
@@ -20,7 +19,7 @@ public class SelectBuilder {
    * For example:
    * "SELECT detail_id, detail_type, detail FROM associations_view"
    *
-   * @param selectStatement
+   * @param selectStatement select statement
    */
   public SelectBuilder(String selectStatement) {
     this.query = new StringBuilder(selectStatement);
@@ -50,7 +49,9 @@ public class SelectBuilder {
    * cql query <i>"name=testActionProfile"</i> produces the following result:
    * <br>
    * <br>
-   * lower(f_unaccent(associations_view.detail -> (0) ->> 'name')) ~ lower(f_unaccent('(^|[[:punct:]]|[[:space:]]|(?=[[:punct:]]|[[:space:]]))testActionProfile($|[[:punct:]]|[[:space:]]|(?<=[[:punct:]]|[[:space:]]))'))
+   * lower(f_unaccent(associations_view.detail -> (0) ->> 'name'))
+   * ~ lower(f_unaccent('(^|[[:punct:]]|[[:space:]]|(?=[[:punct:]]|[[:space:]]))
+   * testActionProfile($|[[:punct:]]|[[:space:]]|(?<=[[:punct:]]|[[:space:]]))'))
    * <br>
    * <br>
    * If a table filed stores json (not array of jsons) we need to specify only this field (<i>action_profiles.jsonb</i>)
@@ -63,7 +64,8 @@ public class SelectBuilder {
     StringBuilder parsedQuery = new StringBuilder();
     if (isNotBlank(query)) {
       try {
-        //here is jsonField is a jsonb array field and (0) is first element in the array, so this way we search in a json.
+        //here is jsonField is a jsonb array field and (0) is first element in the array,
+        // so this way we search in a json.
         SqlSelect select = new CQL2PgJSON(jsonField).toSql(query);
         parsedQuery
           .append("(")
@@ -182,7 +184,7 @@ public class SelectBuilder {
   }
 
   private boolean isEmpty(StringBuilder sqlQuery) {
-    return sqlQuery.length() == 0;
+    return sqlQuery.isEmpty();
   }
 
   private boolean isNotEmpty(StringBuilder sqlQuery) {

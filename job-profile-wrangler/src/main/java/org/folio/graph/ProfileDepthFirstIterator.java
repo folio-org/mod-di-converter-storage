@@ -1,23 +1,22 @@
 package org.folio.graph;
 
+import java.util.Comparator;
+import java.util.LinkedHashSet;
+import java.util.Set;
+import java.util.stream.Collectors;
 import org.folio.graph.edges.RegularEdge;
 import org.folio.graph.nodes.Profile;
 import org.jgrapht.Graph;
 import org.jgrapht.traverse.DepthFirstIterator;
 
-import java.util.Comparator;
-import java.util.LinkedHashSet;
-import java.util.Set;
-import java.util.stream.Collectors;
-
 public class ProfileDepthFirstIterator extends DepthFirstIterator<Profile, RegularEdge> {
 
-  private static final Comparator<Integer> intComparator = Comparator.comparingInt(Integer::intValue);
-  private static final Comparator<RegularEdge> edgeComparator = (edge1, edge2) -> {
+  private static final Comparator<Integer> INT_COMPARATOR = Comparator.comparingInt(Integer::intValue);
+  private static final Comparator<RegularEdge> EDGE_COMPARATOR = (edge1, edge2) -> {
     Profile source1 = (Profile) edge1.getSource();
     Profile source2 = (Profile) edge2.getSource();
     // Compare the source vertices of the edges lexicographically
-    return intComparator.compare(source1.getOrder(), source2.getOrder());
+    return INT_COMPARATOR.compare(source1.getOrder(), source2.getOrder());
   };
 
   public ProfileDepthFirstIterator(Graph<Profile, RegularEdge> g, Profile startVertex) {
@@ -34,7 +33,7 @@ public class ProfileDepthFirstIterator extends DepthFirstIterator<Profile, Regul
   protected Set<RegularEdge> selectOutgoingEdges(Profile vertex) {
     Set<RegularEdge> regularEdges = super.selectOutgoingEdges(vertex);
     return regularEdges.stream()
-      .sorted(edgeComparator)
+      .sorted(EDGE_COMPARATOR)
       .collect(Collectors.toCollection(LinkedHashSet::new));
   }
 }

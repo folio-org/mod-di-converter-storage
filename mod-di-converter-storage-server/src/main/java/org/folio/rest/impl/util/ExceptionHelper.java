@@ -1,22 +1,21 @@
 package org.folio.rest.impl.util;
 
-import io.vertx.core.Promise;
+import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
+import static javax.ws.rs.core.Response.Status.CONFLICT;
+import static javax.ws.rs.core.Response.Status.INTERNAL_SERVER_ERROR;
+import static javax.ws.rs.core.Response.Status.NOT_FOUND;
+
+import java.util.concurrent.atomic.AtomicReference;
+import javax.ws.rs.BadRequestException;
+import javax.ws.rs.NotFoundException;
+import javax.ws.rs.core.MediaType;
+import javax.ws.rs.core.Response;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.folio.HttpStatus;
 import org.folio.rest.tools.utils.ValidationHelper;
 import org.folio.services.exception.ConflictException;
 import org.folio.services.exception.UnprocessableEntityException;
-
-import javax.ws.rs.BadRequestException;
-import javax.ws.rs.NotFoundException;
-import javax.ws.rs.core.MediaType;
-import javax.ws.rs.core.Response;
-
-import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
-import static javax.ws.rs.core.Response.Status.CONFLICT;
-import static javax.ws.rs.core.Response.Status.INTERNAL_SERVER_ERROR;
-import static javax.ws.rs.core.Response.Status.NOT_FOUND;
 
 public final class ExceptionHelper {
 
@@ -50,19 +49,23 @@ public final class ExceptionHelper {
         .entity(throwable.getMessage())
         .build();
     }
+
     LOGGER.error("{}", throwable.getMessage(), throwable);
-    Promise<Response> validationFuture = Promise.promise();
-    ValidationHelper.handleError(throwable, validationFuture);
-    if (validationFuture.future().isComplete()) {
-      Response response = validationFuture.future().result();
-      if (response.getStatus() == INTERNAL_SERVER_ERROR.getStatusCode()) {
-        LOGGER.warn(throwable.getMessage(), throwable);
+    AtomicReference<Response> container = new AtomicReference<>();
+    ValidationHelper.handleError(throwable, validationFuture -> {
+      if (validationFuture.succeeded()) {
+        Response response = validationFuture.result();
+        container.set(response);
+        if (response.getStatus() == INTERNAL_SERVER_ERROR.getStatusCode()) {
+          LOGGER.warn(throwable.getMessage(), throwable);
+        }
+      } else {
+        container.set(Response.status(INTERNAL_SERVER_ERROR.getStatusCode())
+          .type(MediaType.TEXT_PLAIN)
+          .entity(INTERNAL_SERVER_ERROR.getReasonPhrase())
+          .build());
       }
-      return response;
-    }
-    return Response.status(INTERNAL_SERVER_ERROR.getStatusCode())
-      .type(MediaType.TEXT_PLAIN)
-      .entity(INTERNAL_SERVER_ERROR.getReasonPhrase())
-      .build();
+    });
+    return container.get();
   }
 }

@@ -1,42 +1,10 @@
 package org.folio.rest.impl;
 
-import com.google.common.collect.Lists;
-import io.restassured.RestAssured;
-import io.restassured.response.Response;
-import io.restassured.response.ValidatableResponse;
-import io.vertx.core.json.JsonObject;
-import io.vertx.ext.unit.Async;
-import io.vertx.ext.unit.TestContext;
-import io.vertx.ext.unit.junit.VertxUnitRunner;
-import org.apache.http.HttpStatus;
-import org.folio.rest.jaxrs.model.ActionProfile;
-import org.folio.rest.jaxrs.model.ActionProfileUpdateDto;
-import org.folio.rest.jaxrs.model.EntityType;
-import org.folio.rest.jaxrs.model.MappingDetail;
-import org.folio.rest.jaxrs.model.MappingProfile;
-import org.folio.rest.jaxrs.model.MappingProfileUpdateDto;
-import org.folio.rest.jaxrs.model.MappingRule;
-import org.folio.rest.jaxrs.model.ProfileAssociation;
-import org.folio.rest.jaxrs.model.ProfileType;
-import org.folio.rest.jaxrs.model.ProfileSnapshotWrapper;
-import org.folio.rest.jaxrs.model.ReactToType;
-import org.folio.rest.jaxrs.model.Tags;
-import org.folio.rest.persist.Criteria.Criterion;
-import org.folio.rest.persist.PostgresClient;
-import org.junit.Assert;
-import org.junit.Test;
-import org.junit.runner.RunWith;
-
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
-import java.util.UUID;
-
 import static org.folio.rest.impl.ActionProfileTest.ACTION_PROFILES_PATH;
 import static org.folio.rest.impl.ActionProfileTest.ACTION_PROFILES_TABLE_NAME;
 import static org.folio.rest.jaxrs.model.ActionProfile.Action.CREATE;
-import static org.folio.rest.jaxrs.model.ActionProfile.Action.UPDATE;
 import static org.folio.rest.jaxrs.model.ActionProfile.Action.MODIFY;
+import static org.folio.rest.jaxrs.model.ActionProfile.Action.UPDATE;
 import static org.folio.rest.jaxrs.model.ActionProfile.FolioRecord.INSTANCE;
 import static org.folio.rest.jaxrs.model.ActionProfile.FolioRecord.MARC_BIBLIOGRAPHIC;
 import static org.folio.rest.jaxrs.model.ProfileType.ACTION_PROFILE;
@@ -49,28 +17,39 @@ import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.notNullValue;
 
+import com.google.common.collect.Lists;
+import io.restassured.RestAssured;
+import io.restassured.response.Response;
+import io.restassured.response.ValidatableResponse;
+import io.vertx.core.json.JsonObject;
+import io.vertx.ext.unit.Async;
+import io.vertx.ext.unit.TestContext;
+import io.vertx.ext.unit.junit.VertxUnitRunner;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
+import java.util.UUID;
+import org.apache.http.HttpStatus;
+import org.folio.rest.jaxrs.model.ActionProfile;
+import org.folio.rest.jaxrs.model.ActionProfileUpdateDto;
+import org.folio.rest.jaxrs.model.EntityType;
+import org.folio.rest.jaxrs.model.MappingDetail;
+import org.folio.rest.jaxrs.model.MappingProfile;
+import org.folio.rest.jaxrs.model.MappingProfileUpdateDto;
+import org.folio.rest.jaxrs.model.MappingRule;
+import org.folio.rest.jaxrs.model.ProfileAssociation;
+import org.folio.rest.jaxrs.model.ProfileSnapshotWrapper;
+import org.folio.rest.jaxrs.model.ProfileType;
+import org.folio.rest.jaxrs.model.ReactToType;
+import org.folio.rest.jaxrs.model.Tags;
+import org.folio.rest.persist.Criteria.Criterion;
+import org.folio.rest.persist.PostgresClient;
+import org.junit.Assert;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+
 @RunWith(VertxUnitRunner.class)
 public class MappingProfileTest extends AbstractRestVerticleTest {
-
-  static final String MAPPING_PROFILES_TABLE_NAME = "mapping_profiles";
-  static final String MAPPING_PROFILES_PATH = "/data-import-profiles/mappingProfiles";
-  private static final String ASSOCIATED_PROFILES_PATH = "/data-import-profiles/profileAssociations";
-  private static final String JOB_PROFILES_TABLE_NAME = "job_profiles";
-  private static final String ASSOCIATIONS_TABLE = "profile_associations";
-  static final String MATCH_PROFILES_TABLE_NAME = "match_profiles";
-  private static final String PROFILE_WRAPPERS_TABLE = "profile_wrappers";
-
-  private static final String MAPPING_PROFILE_UUID = "608ab35e-5f8b-49c3-bcf1-1fb5e57d5130";
-  private final List<String> defaultMappingProfileIds = Arrays.asList(
-    "d0ebbc2e-2f0f-11eb-adc1-0242ac120002", //OCLC_CREATE_MAPPING_PROFILE_ID
-    "862000b9-84ea-4cae-a223-5fc0552f2b42", //OCLC_UPDATE_MAPPING_PROFILE_ID
-    "f90864ef-8030-480f-a43f-8cdd21233252", //OCLC_UPDATE_MARC_BIB_MAPPING_PROFILE_ID
-    "991c0300-44a6-47e3-8ea2-b01bb56a38cc", //DEFAULT_CREATE_DERIVE_INSTANCE_MAPPING_PROFILE_ID
-    "e0fbaad5-10c0-40d5-9228-498b351dbbaa", //DEFAULT_CREATE_DERIVE_HOLDINGS_MAPPING_PROFILE_ID
-    "13cf7adf-c7a7-4c2e-838f-14d0ac36ec0a", //DEFAULT_CREATE_HOLDINGS_MAPPING_PROFILE_ID
-    "6a0ec1de-68eb-4833-bdbf-0741db25c314",
-    "6a0ec1de-68eb-4833-bdbf-0741db85c314" //DEFAULT_CREATE_AUTHORITIES_MAPPING_PROFILE_ID
-  );
 
   public static MappingProfileUpdateDto mappingProfile_1 = new MappingProfileUpdateDto()
     .withProfile(new MappingProfile().withName("Bla")
@@ -87,71 +66,84 @@ public class MappingProfileTest extends AbstractRestVerticleTest {
       .withTags(new Tags().withTagList(Collections.singletonList("lorem")))
       .withIncomingRecordType(EntityType.MARC_BIBLIOGRAPHIC)
       .withExistingRecordType(EntityType.INSTANCE));
-  public static MappingProfileUpdateDto mappingProfile_4 = new MappingProfileUpdateDto()
-    .withProfile(new MappingProfile().withId(MAPPING_PROFILE_UUID).withName("OLA")
-      .withTags(new Tags().withTagList(Arrays.asList("lorem", "ipsum")))
-      .withIncomingRecordType(EntityType.MARC_BIBLIOGRAPHIC)
-      .withExistingRecordType(EntityType.INSTANCE));
-
   public static MappingProfileUpdateDto mappingProfile_5 = new MappingProfileUpdateDto()
     .withProfile(new MappingProfile().withName("B'oom")
       .withTags(new Tags().withTagList(Arrays.asList("lorem", "ipsum", "dolor")))
       .withIncomingRecordType(EntityType.MARC_BIBLIOGRAPHIC)
       .withExistingRecordType(EntityType.INSTANCE));
-
-  private static final MappingProfileUpdateDto mappingProfileNotEmptyChildAndParent = new MappingProfileUpdateDto()
-    .withProfile(new MappingProfile()
-      .withName("Mapping profile with child and parent")
+  static final String MAPPING_PROFILES_TABLE_NAME = "mapping_profiles";
+  static final String MAPPING_PROFILES_PATH = "/data-import-profiles/mappingProfiles";
+  static final String MATCH_PROFILES_TABLE_NAME = "match_profiles";
+  private static final String ASSOCIATED_PROFILES_PATH = "/data-import-profiles/profileAssociations";
+  private static final String JOB_PROFILES_TABLE_NAME = "job_profiles";
+  private static final String ASSOCIATIONS_TABLE = "profile_associations";
+  private static final String PROFILE_WRAPPERS_TABLE = "profile_wrappers";
+  private static final String MAPPING_PROFILE_UUID = "608ab35e-5f8b-49c3-bcf1-1fb5e57d5130";
+  public static MappingProfileUpdateDto mappingProfile_4 = new MappingProfileUpdateDto()
+    .withProfile(new MappingProfile().withId(MAPPING_PROFILE_UUID).withName("OLA")
+      .withTags(new Tags().withTagList(Arrays.asList("lorem", "ipsum")))
       .withIncomingRecordType(EntityType.MARC_BIBLIOGRAPHIC)
-      .withExistingRecordType(EntityType.INSTANCE)
-      .withChildProfiles(List.of(new ProfileSnapshotWrapper().withId(UUID.randomUUID().toString())))
-      .withParentProfiles(List.of(new ProfileSnapshotWrapper().withId(UUID.randomUUID().toString()))));
-
-
-  private static final List<MappingRule> fields = Lists.newArrayList(new MappingRule()
+      .withExistingRecordType(EntityType.INSTANCE));
+  private static final MappingProfileUpdateDto MAPPING_PROFILE_NOT_EMPTY_CHILD_AND_PARENT =
+    new MappingProfileUpdateDto()
+      .withProfile(new MappingProfile()
+        .withName("Mapping profile with child and parent")
+        .withIncomingRecordType(EntityType.MARC_BIBLIOGRAPHIC)
+        .withExistingRecordType(EntityType.INSTANCE)
+        .withChildProfiles(List.of(new ProfileSnapshotWrapper().withId(UUID.randomUUID().toString())))
+        .withParentProfiles(List.of(new ProfileSnapshotWrapper().withId(UUID.randomUUID().toString()))));
+  private static final List<MappingRule> FIELDS = Lists.newArrayList(new MappingRule()
     .withName("repeatableField")
     .withPath("instance.repeatableField[]")
     .withValue("")
     .withEnabled("true")
     .withRepeatableFieldAction(MappingRule.RepeatableFieldAction.DELETE_EXISTING)
     .withSubfields(Collections.emptyList()));
-
-  private static final MappingProfileUpdateDto mappingProfileWithEmptySubfieldsAndDeleteExistingAction = new MappingProfileUpdateDto()
-    .withProfile(new MappingProfile().withName("Fooooo")
-      .withTags(new Tags().withTagList(Collections.singletonList("lorem")))
-      .withIncomingRecordType(EntityType.MARC_BIBLIOGRAPHIC)
-      .withExistingRecordType(EntityType.INSTANCE)
-      .withMappingDetails(new MappingDetail().withMappingFields(fields)));
-
-  private static final List<MappingRule> fields2 = Lists.newArrayList(new MappingRule()
+  private static final MappingProfileUpdateDto MAPPING_PROFILE_WITH_EMPTY_SUBFIELDS_AND_DELETE_EXISTING_ACTION =
+    new MappingProfileUpdateDto()
+      .withProfile(new MappingProfile().withName("Fooooo")
+        .withTags(new Tags().withTagList(Collections.singletonList("lorem")))
+        .withIncomingRecordType(EntityType.MARC_BIBLIOGRAPHIC)
+        .withExistingRecordType(EntityType.INSTANCE)
+        .withMappingDetails(new MappingDetail().withMappingFields(FIELDS)));
+  private static final List<MappingRule> FIELDS_2 = Lists.newArrayList(new MappingRule()
     .withName("repeatableField")
     .withPath("instance.repeatableField[]")
     .withValue("")
     .withEnabled("true")
     .withRepeatableFieldAction(null)
     .withSubfields(Collections.emptyList()));
-
-  private static final MappingProfileUpdateDto mappingProfileWithEmptySubfieldsAndEmptyAction = new MappingProfileUpdateDto()
-    .withProfile(new MappingProfile().withName("Fooooo")
-      .withTags(new Tags().withTagList(Collections.singletonList("lorem")))
-      .withIncomingRecordType(EntityType.MARC_BIBLIOGRAPHIC)
-      .withExistingRecordType(EntityType.INSTANCE)
-      .withMappingDetails(new MappingDetail().withMappingFields(fields2)));
-
-  private static final List<MappingRule> fields3 = Lists.newArrayList(new MappingRule()
+  private static final MappingProfileUpdateDto MAPPING_PROFILE_WITH_EMPTY_SUBFIELDS_AND_EMPTY_ACTION =
+    new MappingProfileUpdateDto()
+      .withProfile(new MappingProfile().withName("Fooooo")
+        .withTags(new Tags().withTagList(Collections.singletonList("lorem")))
+        .withIncomingRecordType(EntityType.MARC_BIBLIOGRAPHIC)
+        .withExistingRecordType(EntityType.INSTANCE)
+        .withMappingDetails(new MappingDetail().withMappingFields(FIELDS_2)));
+  private static final List<MappingRule> FIELDS_3 = Lists.newArrayList(new MappingRule()
     .withName("repeatableField")
     .withPath("instance.repeatableField[]")
     .withValue("")
     .withEnabled("true")
     .withRepeatableFieldAction(MappingRule.RepeatableFieldAction.EXTEND_EXISTING)
     .withSubfields(Collections.emptyList()));
-
-  private static final MappingProfileUpdateDto mappingProfileWithEmptySubfieldsAndNotDeleteExistingAction = new MappingProfileUpdateDto()
-    .withProfile(new MappingProfile().withName("Fooooo")
-      .withTags(new Tags().withTagList(Collections.singletonList("lorem")))
-      .withIncomingRecordType(EntityType.MARC_BIBLIOGRAPHIC)
-      .withExistingRecordType(EntityType.INSTANCE)
-      .withMappingDetails(new MappingDetail().withMappingFields(fields3)));
+  private static final MappingProfileUpdateDto MAPPING_PROFILE_WITH_EMPTY_SUBFIELDS_AND_NOT_DELETE_EXISTING_ACTION =
+    new MappingProfileUpdateDto()
+      .withProfile(new MappingProfile().withName("Fooooo")
+        .withTags(new Tags().withTagList(Collections.singletonList("lorem")))
+        .withIncomingRecordType(EntityType.MARC_BIBLIOGRAPHIC)
+        .withExistingRecordType(EntityType.INSTANCE)
+        .withMappingDetails(new MappingDetail().withMappingFields(FIELDS_3)));
+  private final List<String> defaultMappingProfileIds = Arrays.asList(
+    "d0ebbc2e-2f0f-11eb-adc1-0242ac120002", //OCLC_CREATE_MAPPING_PROFILE_ID
+    "862000b9-84ea-4cae-a223-5fc0552f2b42", //OCLC_UPDATE_MAPPING_PROFILE_ID
+    "f90864ef-8030-480f-a43f-8cdd21233252", //OCLC_UPDATE_MARC_BIB_MAPPING_PROFILE_ID
+    "991c0300-44a6-47e3-8ea2-b01bb56a38cc", //DEFAULT_CREATE_DERIVE_INSTANCE_MAPPING_PROFILE_ID
+    "e0fbaad5-10c0-40d5-9228-498b351dbbaa", //DEFAULT_CREATE_DERIVE_HOLDINGS_MAPPING_PROFILE_ID
+    "13cf7adf-c7a7-4c2e-838f-14d0ac36ec0a", //DEFAULT_CREATE_HOLDINGS_MAPPING_PROFILE_ID
+    "6a0ec1de-68eb-4833-bdbf-0741db25c314",
+    "6a0ec1de-68eb-4833-bdbf-0741db85c314" //DEFAULT_CREATE_AUTHORITIES_MAPPING_PROFILE_ID
+  );
 
   @Test
   public void shouldReturnEmptyListOnGet() {
@@ -315,33 +307,35 @@ public class MappingProfileTest extends AbstractRestVerticleTest {
   public void shouldCreateProfileOnPostWithoutRepeatableSubfieldsAndDeleteExistingAction() {
     RestAssured.given()
       .spec(spec)
-      .body(mappingProfileWithEmptySubfieldsAndDeleteExistingAction)
+      .body(MAPPING_PROFILE_WITH_EMPTY_SUBFIELDS_AND_DELETE_EXISTING_ACTION)
       .when()
       .post(MAPPING_PROFILES_PATH)
       .then()
       .statusCode(HttpStatus.SC_CREATED)
-      .body("profile.name", is(mappingProfileWithEmptySubfieldsAndDeleteExistingAction.getProfile().getName()))
-      .body("profile.tags.tagList", is(mappingProfileWithEmptySubfieldsAndDeleteExistingAction.getProfile().getTags().getTagList()));
+      .body("profile.name", is(MAPPING_PROFILE_WITH_EMPTY_SUBFIELDS_AND_DELETE_EXISTING_ACTION.getProfile().getName()))
+      .body("profile.tags.tagList",
+        is(MAPPING_PROFILE_WITH_EMPTY_SUBFIELDS_AND_DELETE_EXISTING_ACTION.getProfile().getTags().getTagList()));
   }
 
   @Test
   public void shouldCreateProfileOnPostWithoutRepeatableSubfieldsAndEmptyAction() {
     RestAssured.given()
       .spec(spec)
-      .body(mappingProfileWithEmptySubfieldsAndEmptyAction)
+      .body(MAPPING_PROFILE_WITH_EMPTY_SUBFIELDS_AND_EMPTY_ACTION)
       .when()
       .post(MAPPING_PROFILES_PATH)
       .then()
       .statusCode(HttpStatus.SC_CREATED)
-      .body("profile.name", is(mappingProfileWithEmptySubfieldsAndEmptyAction.getProfile().getName()))
-      .body("profile.tags.tagList", is(mappingProfileWithEmptySubfieldsAndEmptyAction.getProfile().getTags().getTagList()));
+      .body("profile.name", is(MAPPING_PROFILE_WITH_EMPTY_SUBFIELDS_AND_EMPTY_ACTION.getProfile().getName()))
+      .body("profile.tags.tagList",
+        is(MAPPING_PROFILE_WITH_EMPTY_SUBFIELDS_AND_EMPTY_ACTION.getProfile().getTags().getTagList()));
   }
 
   @Test
   public void shouldNotCreateProfileOnPostWithoutRepeatableSubfieldsAndWithoutDeleteExistingAction() {
     RestAssured.given()
       .spec(spec)
-      .body(mappingProfileWithEmptySubfieldsAndNotDeleteExistingAction)
+      .body(MAPPING_PROFILE_WITH_EMPTY_SUBFIELDS_AND_NOT_DELETE_EXISTING_ACTION)
       .when()
       .post(MAPPING_PROFILES_PATH)
       .then()
@@ -593,6 +587,7 @@ public class MappingProfileTest extends AbstractRestVerticleTest {
   }
 
   @Test
+  @SuppressWarnings("checkstyle:MethodLength")
   public void shouldCreateProfileOnPostAndReplaceExistingAssociationWithActionProfile() {
     MappingProfileUpdateDto mappingProfile1 = RestAssured.given()
       .spec(spec)
@@ -643,7 +638,7 @@ public class MappingProfileTest extends AbstractRestVerticleTest {
             new ProfileAssociation()
               .withMasterProfileType(ProfileType.ACTION_PROFILE)
               .withDetailProfileType(ProfileType.MAPPING_PROFILE)
-              .withMasterWrapperId(actionProfile.getAddedRelations().get(0).getMasterWrapperId())
+              .withMasterWrapperId(actionProfile.getAddedRelations().getFirst().getMasterWrapperId())
               .withMasterProfileId(actionProfile.getProfile().getId())
           )
         )
@@ -669,6 +664,7 @@ public class MappingProfileTest extends AbstractRestVerticleTest {
   }
 
   @Test
+  @SuppressWarnings("checkstyle:MethodLength")
   public void shouldUpdateProfileOnPutAndReplaceExistingAssociationWithActionProfile() {
     MappingProfileUpdateDto mappingProfile1 = RestAssured.given()
       .spec(spec)
@@ -705,7 +701,7 @@ public class MappingProfileTest extends AbstractRestVerticleTest {
       .statusCode(HttpStatus.SC_CREATED)
       .extract().body().as(ActionProfileUpdateDto.class);
 
-    String masterWrapperId =  RestAssured.given()
+    String masterWrapperId = RestAssured.given()
       .spec(spec)
       .queryParam("master", ACTION_PROFILE.value())
       .queryParam("detail", MAPPING_PROFILE.value())
@@ -717,8 +713,8 @@ public class MappingProfileTest extends AbstractRestVerticleTest {
       .body("profileAssociations[0].masterProfileId", is(actionProfile.getProfile().getId()))
       .body("profileAssociations[0].detailProfileId", is(mappingProfile1.getProfile().getId()))
       .body("profileAssociations[0].masterWrapperId", notNullValue())
-      .extract().
-       path("profileAssociations[0].masterWrapperId");
+      .extract()
+      .path("profileAssociations[0].masterWrapperId");
 
     mappingProfile2.getProfile().setName("mapping profile 2");
     RestAssured.given()
@@ -754,6 +750,7 @@ public class MappingProfileTest extends AbstractRestVerticleTest {
   }
 
   @Test
+  @SuppressWarnings("checkstyle:MethodLength")
   public void shouldUpdateProfileAssociationsOnPut() {
     var actionProfileDto = postActionProfile(new ActionProfileUpdateDto()
       .withProfile(new ActionProfile()
@@ -786,7 +783,7 @@ public class MappingProfileTest extends AbstractRestVerticleTest {
           .withMasterProfileId(actionProfileDto.getProfile().getId())
           .withDetailProfileType(ProfileType.MAPPING_PROFILE)
           .withReactTo(ReactToType.MATCH)
-          .withDetailProfileId(mappingProfileDto.getAddedRelations().get(0).getDetailProfileId()))))
+          .withDetailProfileId(mappingProfileDto.getAddedRelations().getFirst().getDetailProfileId()))))
       .when()
       .put(MAPPING_PROFILES_PATH + "/" + mappingProfileDto.getProfile().getId())
       .then()
@@ -810,6 +807,7 @@ public class MappingProfileTest extends AbstractRestVerticleTest {
   }
 
   @Test
+  @SuppressWarnings("checkstyle:MethodLength")
   public void shouldReuseExistingActionWrapperId() {
     var actionProfileDto = postActionProfile(new ActionProfileUpdateDto()
       .withProfile(new ActionProfile()
@@ -903,7 +901,8 @@ public class MappingProfileTest extends AbstractRestVerticleTest {
       .statusCode(HttpStatus.SC_UNPROCESSABLE_ENTITY)
       .body("errors", hasItem(
         hasEntry(is("message"),
-          is("Action profile 'Test Action Profile' can not be linked to this Mapping profile. FolioRecord and ExistingRecordType types are different")
+          is("Action profile 'Test Action Profile' can not be linked to this Mapping profile. "
+             + "FolioRecord and ExistingRecordType types are different")
         )));
   }
 
@@ -934,12 +933,15 @@ public class MappingProfileTest extends AbstractRestVerticleTest {
       .statusCode(HttpStatus.SC_UNPROCESSABLE_ENTITY)
       .body("errors", hasItem(
         hasEntry(is("message"),
-          is("Unable to complete requested change. MARC Update Action profiles can only be linked with MARC Update " +
-            "Mapping profiles and MARC Modify Action profiles can only be linked with MARC Modify Mapping profiles. Please ensure your Action and Mapping profiles are of like types and try again.")
+          is("Unable to complete requested change. "
+             + "MARC Update Action profiles can only be linked with MARC Update "
+             + "Mapping profiles and MARC Modify Action profiles can only be linked with MARC Modify Mapping profiles. "
+             + "Please ensure your Action and Mapping profiles are of like types and try again.")
         )));
   }
 
   @Test
+  @SuppressWarnings("checkstyle:MethodLength")
   public void shouldNotUpdateMappingProfilesWhenDifferentFolioRecordAndUpdateRecordTypeWhenRecordTypesAreDifferent() {
     var actionProfileUpdateDto = postActionProfile(new ActionProfileUpdateDto()
       .withProfile(new ActionProfile()
@@ -984,7 +986,8 @@ public class MappingProfileTest extends AbstractRestVerticleTest {
       .statusCode(HttpStatus.SC_UNPROCESSABLE_ENTITY)
       .body("errors", hasItem(
         hasEntry(is("message"),
-          is("Action profile 'Test Action Profile1' can not be linked to this Mapping profile. FolioRecord and ExistingRecordType types are different")
+          is("Action profile 'Test Action Profile1' can not be linked to this Mapping profile. "
+             + "FolioRecord and ExistingRecordType types are different")
         )));
 
     RestAssured.given()
@@ -1044,8 +1047,10 @@ public class MappingProfileTest extends AbstractRestVerticleTest {
       .statusCode(HttpStatus.SC_UNPROCESSABLE_ENTITY)
       .body("errors", hasItem(
         hasEntry(is("message"),
-          is("Unable to complete requested change. MARC Update Action profiles can only be linked with MARC Update " +
-            "Mapping profiles and MARC Modify Action profiles can only be linked with MARC Modify Mapping profiles. Please ensure your Action and Mapping profiles are of like types and try again.")
+          is("Unable to complete requested change. "
+             + "MARC Update Action profiles can only be linked with MARC Update "
+             + "Mapping profiles and MARC Modify Action profiles can only be linked with MARC Modify Mapping profiles. "
+             + "Please ensure your Action and Mapping profiles are of like types and try again.")
         )));
   }
 
@@ -1054,7 +1059,7 @@ public class MappingProfileTest extends AbstractRestVerticleTest {
     createProfiles();
     RestAssured.given()
       .spec(spec)
-      .body(mappingProfileNotEmptyChildAndParent)
+      .body(MAPPING_PROFILE_NOT_EMPTY_CHILD_AND_PARENT)
       .when()
       .post(MAPPING_PROFILES_PATH)
       .then()
@@ -1079,7 +1084,7 @@ public class MappingProfileTest extends AbstractRestVerticleTest {
     createProfiles();
     RestAssured.given()
       .spec(spec)
-      .body(mappingProfileNotEmptyChildAndParent)
+      .body(MAPPING_PROFILE_NOT_EMPTY_CHILD_AND_PARENT)
       .when()
       .put(MAPPING_PROFILES_PATH + "/" + createdProfile.getProfile().getId())
       .then()
@@ -1088,21 +1093,8 @@ public class MappingProfileTest extends AbstractRestVerticleTest {
       .body("errors[1].message", is("The field mapping profile read-only 'parent' field should be empty"));
   }
 
-  private void createProfiles() {
-    List<MappingProfileUpdateDto> mappingProfilesToPost = Arrays.asList(mappingProfile_1, mappingProfile_2, mappingProfile_3);
-    for (MappingProfileUpdateDto profile : mappingProfilesToPost) {
-      RestAssured.given()
-        .spec(spec)
-        .body(profile)
-        .when()
-        .post(MAPPING_PROFILES_PATH)
-        .then()
-        .statusCode(HttpStatus.SC_CREATED);
-    }
-  }
-
   @Override
-  public void clearTables(TestContext context) {
+  protected void clearTables(TestContext context) {
     Async async = context.async();
     PostgresClient pgClient = PostgresClient.getInstance(vertx, TENANT_ID);
     pgClient.delete(ASSOCIATIONS_TABLE, new Criterion(), event1 ->
@@ -1118,4 +1110,17 @@ public class MappingProfileTest extends AbstractRestVerticleTest {
               }))))));
   }
 
+  private void createProfiles() {
+    List<MappingProfileUpdateDto> mappingProfilesToPost =
+      Arrays.asList(mappingProfile_1, mappingProfile_2, mappingProfile_3);
+    for (MappingProfileUpdateDto profile : mappingProfilesToPost) {
+      RestAssured.given()
+        .spec(spec)
+        .body(profile)
+        .when()
+        .post(MAPPING_PROFILES_PATH)
+        .then()
+        .statusCode(HttpStatus.SC_CREATED);
+    }
+  }
 }

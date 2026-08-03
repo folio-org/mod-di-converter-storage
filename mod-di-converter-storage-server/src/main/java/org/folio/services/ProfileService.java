@@ -1,13 +1,14 @@
 package org.folio.services;
 
 import io.vertx.core.Future;
+import java.util.List;
+import java.util.Optional;
 import org.folio.rest.impl.util.OkapiConnectionParams;
 import org.folio.rest.jaxrs.model.EntityTypeCollection;
-
-import java.util.Optional;
+import org.folio.rest.jaxrs.model.ProfileAssociation;
 
 /**
- * Generic Profile Service
+ * Generic Profile Service.
  *
  * @param <T> type of the entity
  * @param <S> type of the collection of T entities
@@ -15,7 +16,7 @@ import java.util.Optional;
 public interface ProfileService<T, S, D> {
 
   /**
-   * Searches for T entities
+   * Searches for T entities.
    *
    * @param showHidden    indicates to return T entities marked as hidden or not
    * @param query         query from URL
@@ -25,10 +26,11 @@ public interface ProfileService<T, S, D> {
    * @param tenantId      tenant id
    * @return future with S, a collection of T entities
    */
-  Future<S> getProfiles(boolean withRelations, boolean showHidden, String query, int offset, int limit, String tenantId);
+  Future<S> getProfiles(boolean withRelations, boolean showHidden, String query, int offset, int limit,
+                        String tenantId);
 
   /**
-   * Searches for T by id
+   * Searches for T by id.
    *
    * @param id            Profile id
    * @param tenantId      tenant id
@@ -38,25 +40,25 @@ public interface ProfileService<T, S, D> {
   Future<Optional<T>> getProfileById(String id, boolean withRelations, String tenantId);
 
   /**
-   * Saves T entity
+   * Saves T entity.
    *
    * @param profileDto Profile DTO to save
-   * @param params  {@link OkapiConnectionParams}
+   * @param params     {@link OkapiConnectionParams}
    * @return future with saved entity
    */
   Future<T> saveProfile(D profileDto, OkapiConnectionParams params);
 
   /**
-   * Updates D with given id
+   * Updates D with given id.
    *
    * @param profileDto Profile DTO to update
-   * @param params  {@link OkapiConnectionParams}
+   * @param params     {@link OkapiConnectionParams}
    * @return future with updated entity
    */
   Future<T> updateProfile(D profileDto, OkapiConnectionParams params);
 
   /**
-   * Search in database profile with the same name which contains in specified profile
+   * Search in database profile with the same name which contains in specified profile.
    *
    * @param profile  - T entity
    * @param tenantId - tenant id from request
@@ -65,7 +67,7 @@ public interface ProfileService<T, S, D> {
   Future<Boolean> isProfileExistByProfileName(T profile, String tenantId);
 
   /**
-   * Search in database profile with the same id which contains in specified profile
+   * Search in database profile with the same id which contains in specified profile.
    *
    * @param profile  - T entity
    * @param tenantId - tenant id from request
@@ -74,7 +76,7 @@ public interface ProfileService<T, S, D> {
   Future<Boolean> isProfileExistByProfileId(T profile, String tenantId);
 
   /**
-   * Hard deletes profile by its id
+   * Hard deletes profile by its id.
    *
    * @param id       Profile id
    * @param tenantId tenant id from request
@@ -83,14 +85,14 @@ public interface ProfileService<T, S, D> {
   Future<Boolean> hardDeleteProfile(String id, String tenantId);
 
   /**
-   * Returns {@link EntityTypeCollection}
+   * Returns {@link EntityTypeCollection}.
    *
    * @return future with {@link EntityTypeCollection}
    */
   Future<EntityTypeCollection> getEntityTypes();
 
   /**
-   * Returns name of specified profile
+   * Returns name of specified profile.
    *
    * @param profile - profile entity
    * @return - profile name
@@ -98,17 +100,33 @@ public interface ProfileService<T, S, D> {
   String getProfileName(T profile);
 
   /**
-   * Checks is profile contains child profiles
+   * Returns added relations to specified profile update dto.
    *
-   * @param profile  - T entity
+   * @param profileUpdateDto - profile update dto entity
+   * @return - profile update dto
+   */
+  List<ProfileAssociation> getAddedRelations(D profileUpdateDto);
+
+  /**
+   * Set deleted relations to specified profile update dto.
+   *
+   * @param profileUpdateDto - profile update dto entity
+   * @return - profile update dto
+   */
+  D withDeletedRelations(D profileUpdateDto, List<ProfileAssociation> profileAssociations);
+
+  /**
+   * Checks is profile contains child profiles.
+   *
+   * @param profile - T entity
    * @return - boolean value. True if profile contains child profiles
    */
   Future<Boolean> isProfileContainsChildProfiles(T profile);
 
   /**
-   * Checks is profile contains parent profiles
+   * Checks is profile contains parent profiles.
    *
-   * @param profile  - T entity
+   * @param profile - T entity
    * @return - boolean value. True if profile contains parent profiles
    */
   Future<Boolean> isProfileContainsParentProfiles(T profile);

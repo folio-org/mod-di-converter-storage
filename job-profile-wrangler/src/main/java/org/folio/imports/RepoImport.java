@@ -1,7 +1,10 @@
 package org.folio.imports;
 
+import static org.folio.Constants.OBJECT_MAPPER;
+
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
+import java.util.Optional;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.folio.RepoObject;
@@ -19,31 +22,24 @@ import org.folio.http.FolioClient;
 import org.jgrapht.Graph;
 import org.jgrapht.graph.SimpleDirectedGraph;
 
-import java.util.Optional;
-
-import static org.folio.Constants.OBJECT_MAPPER;
-
 public class RepoImport implements Runnable {
+
   private static final Logger LOGGER = LogManager.getLogger();
+
+  private static final String CONTENT_PATH = "content";
+  private static final String DATA_TYPE_PATH = "dataType";
+  private static final String PROFILE_WRAPPER_ID_PATH = "profileWrapperId";
+  private static final String ORDER_PATH = "order";
+  private static final String INCOMING_RECORD_TYPE_PATH = "incomingRecordType";
+  private static final String EXISTING_RECORD_TYPE_PATH = "existingRecordType";
+  private static final String CHILD_SNAPSHOT_WRAPPERS_PATH = "childSnapshotWrappers";
+
   private final FolioClient client;
   private final String repoPath;
-
 
   public RepoImport(FolioClient client, String repoPath) {
     this.client = client;
     this.repoPath = repoPath;
-  }
-
-  @Override
-  public void run() {
-    client.getJobProfiles()
-      .forEach(profile -> {
-        String profileId = profile.get("id").asText();
-        Optional<JsonNode> jobProfileSnapshotOptional = client.getJobProfileSnapshot(profileId);
-        jobProfileSnapshotOptional.ifPresent(json -> fromString(repoPath, json));
-      });
-
-    LOGGER.info("DONE");
   }
 
   public static Optional<RepoObject> fromString(String repoPath, String json) throws JsonProcessingException {
@@ -67,47 +63,59 @@ public class RepoImport implements Runnable {
     return Optional.empty();
   }
 
+  @Override
+  public void run() {
+    client.getJobProfiles()
+      .forEach(profile -> {
+        String profileId = profile.get("id").asText();
+        Optional<JsonNode> jobProfileSnapshotOptional = client.getJobProfileSnapshot(profileId);
+        jobProfileSnapshotOptional.ifPresent(json -> fromString(repoPath, json));
+      });
+
+    LOGGER.info("DONE");
+  }
+
   private static Optional<Profile> addProfileToGraph(Graph<Profile, RegularEdge> graph, JsonNode profileSnapshot) {
     String contentType = profileSnapshot.path("contentType").asText();
 
     return switch (contentType) {
       case "JOB_PROFILE" -> {
-        String dataType = profileSnapshot.path("content").path("dataType").asText();
-        String id = profileSnapshot.path("profileWrapperId").asText();
-        int order = profileSnapshot.path("order").asInt();
+        String dataType = profileSnapshot.path(CONTENT_PATH).path(DATA_TYPE_PATH).asText();
+        String id = profileSnapshot.path(PROFILE_WRAPPER_ID_PATH).asText();
+        int order = profileSnapshot.path(ORDER_PATH).asInt();
         JobProfileNode node = new JobProfileNode(id, dataType, order);
         graph.addVertex(node);
         addChildProfilesToGraph(graph, profileSnapshot, node);
         yield Optional.of(node);
       }
       case "MATCH_PROFILE" -> {
-        String incomingRecordType = profileSnapshot.path("content").path("incomingRecordType").asText();
-        String existingRecordType = profileSnapshot.path("content").path("existingRecordType").asText();
-        String id = profileSnapshot.path("profileWrapperId").asText();
-        int order = profileSnapshot.path("order").asInt();
+        String incomingRecordType = profileSnapshot.path(CONTENT_PATH).path(INCOMING_RECORD_TYPE_PATH).asText();
+        String existingRecordType = profileSnapshot.path(CONTENT_PATH).path(EXISTING_RECORD_TYPE_PATH).asText();
+        String id = profileSnapshot.path(PROFILE_WRAPPER_ID_PATH).asText();
+        int order = profileSnapshot.path(ORDER_PATH).asInt();
         MatchProfileNode node = new MatchProfileNode(id, incomingRecordType, existingRecordType, order);
         graph.addVertex(node);
         addChildMatchProfilesToGraph(graph, profileSnapshot, node);
         yield Optional.of(node);
       }
       case "ACTION_PROFILE" -> {
-        String folioRecord = profileSnapshot.path("content").path("folioRecord").asText();
-        String actionType = profileSnapshot.path("content").path("action").asText();
-        String id = profileSnapshot.path("profileWrapperId").asText();
-        int order = profileSnapshot.path("order").asInt();
+        String folioRecord = profileSnapshot.path(CONTENT_PATH).path("folioRecord").asText();
+        String actionType = profileSnapshot.path(CONTENT_PATH).path("action").asText();
+        String id = profileSnapshot.path(PROFILE_WRAPPER_ID_PATH).asText();
+        int order = profileSnapshot.path(ORDER_PATH).asInt();
         ActionProfileNode node = new ActionProfileNode(id, actionType, folioRecord, order);
         graph.addVertex(node);
         addChildProfilesToGraph(graph, profileSnapshot, node);
         yield Optional.of(node);
       }
       case "MAPPING_PROFILE" -> {
-        String incomingRecordType = profileSnapshot.path("content").path("incomingRecordType").asText();
-        String existingRecordType = profileSnapshot.path("content").path("existingRecordType").asText();
-        String id = profileSnapshot.path("profileWrapperId").asText();
-        int order = profileSnapshot.path("order").asInt();
+        String incomingRecordType = profileSnapshot.path(CONTENT_PATH).path(INCOMING_RECORD_TYPE_PATH).asText();
+        String existingRecordType = profileSnapshot.path(CONTENT_PATH).path(EXISTING_RECORD_TYPE_PATH).asText();
+        String id = profileSnapshot.path(PROFILE_WRAPPER_ID_PATH).asText();
+        int order = profileSnapshot.path(ORDER_PATH).asInt();
         MappingProfileNode node = new MappingProfileNode(id, incomingRecordType, existingRecordType, order);
         graph.addVertex(node);
-        JsonNode childSnapshotWrappers = profileSnapshot.get("childSnapshotWrappers");
+        JsonNode childSnapshotWrappers = profileSnapshot.get(CHILD_SNAPSHOT_WRAPPERS_PATH);
         if (childSnapshotWrappers != null && childSnapshotWrappers.isArray() && !childSnapshotWrappers.isEmpty()) {
           LOGGER.warn("Found {} childSnapshotWrappers for mapping profile: {}", childSnapshotWrappers.size(), node);
         }
@@ -117,8 +125,9 @@ public class RepoImport implements Runnable {
     };
   }
 
-  private static void addChildProfilesToGraph(Graph<Profile, RegularEdge> graph, JsonNode profileSnapshot, Profile node) {
-    JsonNode childSnapshotWrappers = profileSnapshot.get("childSnapshotWrappers");
+  private static void addChildProfilesToGraph(Graph<Profile, RegularEdge> graph, JsonNode profileSnapshot,
+                                              Profile node) {
+    JsonNode childSnapshotWrappers = profileSnapshot.get(CHILD_SNAPSHOT_WRAPPERS_PATH);
     if (childSnapshotWrappers != null && childSnapshotWrappers.isArray()) {
       for (JsonNode childSnapshotWrapper : childSnapshotWrappers) {
         Optional<Profile> profile = addProfileToGraph(graph, childSnapshotWrapper);
@@ -127,8 +136,9 @@ public class RepoImport implements Runnable {
     }
   }
 
-  private static void addChildMatchProfilesToGraph(Graph<Profile, RegularEdge> graph, JsonNode profileSnapshot, MatchProfileNode node) {
-    JsonNode childSnapshotWrappers = profileSnapshot.get("childSnapshotWrappers");
+  private static void addChildMatchProfilesToGraph(Graph<Profile, RegularEdge> graph, JsonNode profileSnapshot,
+                                                   MatchProfileNode node) {
+    JsonNode childSnapshotWrappers = profileSnapshot.get(CHILD_SNAPSHOT_WRAPPERS_PATH);
     if (childSnapshotWrappers != null && childSnapshotWrappers.isArray()) {
       for (JsonNode childSnapshotWrapper : childSnapshotWrappers) {
         Optional<Profile> profile = addProfileToGraph(graph, childSnapshotWrapper);

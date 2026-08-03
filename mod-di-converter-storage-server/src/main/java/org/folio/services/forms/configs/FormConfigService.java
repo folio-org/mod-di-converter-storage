@@ -1,18 +1,17 @@
 package org.folio.services.forms.configs;
 
 import io.vertx.core.Future;
+import java.util.Optional;
 import org.folio.rest.jaxrs.model.FormConfig;
 import org.folio.rest.jaxrs.model.FormConfigCollection;
 
-import java.util.Optional;
-
 /**
- * FormConfig service interface
+ * FormConfig service interface.
  */
 public interface FormConfigService {
 
   /**
-   * Saves formConfig
+   * Saves formConfig.
    *
    * @param formConfig entity to save
    * @param tenantId   tenant id
@@ -21,7 +20,7 @@ public interface FormConfigService {
   Future<FormConfig> save(FormConfig formConfig, String tenantId);
 
   /**
-   * Searches for all formConfig entities
+   * Searches for all formConfig entities.
    *
    * @param tenantId tenant id
    * @return future with {@link FormConfigCollection}
@@ -29,7 +28,7 @@ public interface FormConfigService {
   Future<FormConfigCollection> getAll(String tenantId);
 
   /**
-   * Searches for formConfig by formName
+   * Searches for formConfig by formName.
    *
    * @param formName form name
    * @param tenantId tenant id
@@ -38,7 +37,7 @@ public interface FormConfigService {
   Future<FormConfig> getByFormName(String formName, String tenantId);
 
   /**
-   * Updates formConfig entity by formName in database
+   * Updates formConfig entity by formName in database.
    *
    * @param formConfig entity to update
    * @param tenantId   tenant id
@@ -47,7 +46,7 @@ public interface FormConfigService {
   Future<FormConfig> update(FormConfig formConfig, String tenantId);
 
   /**
-   * Deletes formConfig entity by formName in database
+   * Deletes formConfig entity by formName in database.
    *
    * @param formName form name
    * @param tenantId tenant id

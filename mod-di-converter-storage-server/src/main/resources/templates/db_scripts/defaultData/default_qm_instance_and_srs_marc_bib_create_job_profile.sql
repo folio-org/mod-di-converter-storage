@@ -107,15 +107,7 @@ INSERT INTO ${myuniversity}_${mymodule}.mapping_profiles (id, jsonb) values
 				"path": "instance.statusId",
 				"value": "",
 				"enabled": "true",
-				"subfields": [],
-				"acceptedValues": {
-					"26f5208e-110a-4394-be29-1569a8c84a65": "Uncataloged",
-					"2a340d34-6b70-443a-bb1b-1b8d1c65d862": "Other",
-					"52a2ff34-2a12-420d-8539-21aa8d3cf5d8": "Batch Loaded",
-					"9634a5ab-9228-4703-baf2-4d12ebc77d56": "Cataloged",
-					"daf2681c-25af-4202-a3fa-e58fdf806183": "Temporary",
-					"f5cc2ab6-bb92-4cab-b83f-5a3d09261a41": "Not yet assigned"
-				}
+				"subfields": []
 			}, {
 				"name": "modeOfIssuanceId",
 				"path": "instance.modeOfIssuanceId",
@@ -276,30 +268,6 @@ INSERT INTO ${myuniversity}_${mymodule}.mapping_profiles (id, jsonb) values
 	"marcFieldProtectionSettings": []
 }
 ') ON CONFLICT DO NOTHING;
-
-INSERT INTO ${myuniversity}_${mymodule}.job_to_action_profiles (id, jsonb) values
-    ('b168efb3-1443-400b-9bc6-bc7dc2d3050a',
-'{
-	"id": "b168efb3-1443-400b-9bc6-bc7dc2d3050a",
-	"order": 0,
-	"triggered": false,
-	"detailProfileId": "f8e58651-f651-485d-aead-d2fa8700e2d1",
-	"masterProfileId": "6409dcff-71fa-433a-bc6a-e70ad38a9604",
-	"detailProfileType": "ACTION_PROFILE",
-	"masterProfileType": "JOB_PROFILE"
-}') ON CONFLICT DO NOTHING;
-
-INSERT INTO ${myuniversity}_${mymodule}.action_to_mapping_profiles (id, jsonb) values
-    ('85375360-9430-4bb1-a64a-197aee7c9400',
-'{
-	"id": "85375360-9430-4bb1-a64a-197aee7c9400",
-	"order": 0,
-	"triggered": false,
-	"detailProfileId": "991c0300-44a6-47e3-8ea2-b01bb56a38cc",
-	"masterProfileId": "f8e58651-f651-485d-aead-d2fa8700e2d1",
-	"detailProfileType": "MAPPING_PROFILE",
-	"masterProfileType": "ACTION_PROFILE"
-}') ON CONFLICT DO NOTHING;
 
 DO $$
 DECLARE

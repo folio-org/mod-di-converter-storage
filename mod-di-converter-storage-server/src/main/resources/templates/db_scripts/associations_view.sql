@@ -34,23 +34,3 @@ CREATE OR REPLACE VIEW associations_view
     WHERE ASSOCIATION.JSONB ->> 'detailProfileType' = 'ACTION_PROFILE'
     	AND ASSOCIATION.JSONB ->> 'masterProfileType' = 'MATCH_PROFILE'
     GROUP BY ASSOCIATION.ID, MASTER.ID, DETAIL.ID, DETAIL.JSONB;
-
--- Script to create rule which will triggered upon delete query to associations_view view.
-CREATE OR REPLACE RULE delete_associations_with_details AS
-  ON DELETE TO associations_view
-  DO INSTEAD (
-    DELETE FROM action_to_action_profiles WHERE OLD.master_id IN
-      (SELECT action_profile_id FROM profile_wrappers WHERE id = action_to_action_profiles.masterwrapperid);
-    DELETE FROM action_to_mapping_profiles WHERE OLD.master_id IN
-      (SELECT action_profile_id FROM profile_wrappers WHERE id = action_to_mapping_profiles.masterwrapperid);
-    DELETE FROM action_to_match_profiles WHERE OLD.master_id IN
-      (SELECT action_profile_id FROM profile_wrappers WHERE id = action_to_match_profiles.masterwrapperid);
-    DELETE FROM job_to_action_profiles WHERE OLD.master_id IN
-      (SELECT job_profile_id FROM profile_wrappers WHERE id = job_to_action_profiles.masterwrapperid);
-    DELETE FROM job_to_match_profiles WHERE OLD.master_id IN
-      (SELECT job_profile_id FROM profile_wrappers WHERE id = job_to_match_profiles.masterwrapperid);
-    DELETE FROM match_to_action_profiles WHERE OLD.master_id IN
-      (SELECT match_profile_id FROM profile_wrappers WHERE id = match_to_action_profiles.masterwrapperid);
-    DELETE FROM match_to_match_profiles WHERE OLD.master_id IN
-      (SELECT match_profile_id FROM profile_wrappers WHERE id = match_to_match_profiles.masterwrapperid);
-    );

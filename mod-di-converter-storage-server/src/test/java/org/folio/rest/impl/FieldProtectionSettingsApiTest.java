@@ -1,11 +1,19 @@
 package org.folio.rest.impl;
 
+import static org.hamcrest.Matchers.empty;
+import static org.hamcrest.Matchers.everyItem;
+import static org.hamcrest.Matchers.is;
+import static org.hamcrest.Matchers.notNullValue;
+
 import io.restassured.RestAssured;
 import io.restassured.response.Response;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
+import java.util.Arrays;
+import java.util.List;
+import java.util.UUID;
 import org.apache.http.HttpStatus;
 import org.folio.rest.jaxrs.model.MarcFieldProtectionSetting;
 import org.folio.rest.persist.Criteria.Criterion;
@@ -14,36 +22,26 @@ import org.junit.Assert;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
-import java.util.Arrays;
-import java.util.List;
-import java.util.UUID;
-
-import static org.hamcrest.Matchers.empty;
-import static org.hamcrest.Matchers.everyItem;
-import static org.hamcrest.Matchers.is;
-import static org.hamcrest.Matchers.notNullValue;
-
 @RunWith(VertxUnitRunner.class)
 public class FieldProtectionSettingsApiTest extends AbstractRestVerticleTest {
 
-  private static final String FIELD_PROTECTION_SETTINGS_PATH = "/field-protection-settings/marc";
   public static final String MARC_FIELD_PROTECTION_SETTINGS_TABLE = "marc_field_protection_settings";
-
-  private static final MarcFieldProtectionSetting setting_1 = new MarcFieldProtectionSetting()
+  private static final String FIELD_PROTECTION_SETTINGS_PATH = "/field-protection-settings/marc";
+  private static final MarcFieldProtectionSetting SETTING_1 = new MarcFieldProtectionSetting()
     .withField("001")
     .withIndicator1("")
     .withIndicator2("")
     .withSubfield("")
     .withData("*")
     .withSource(MarcFieldProtectionSetting.Source.SYSTEM);
-  private static final MarcFieldProtectionSetting setting_2 = new MarcFieldProtectionSetting()
+  private static final MarcFieldProtectionSetting SETTING_2 = new MarcFieldProtectionSetting()
     .withField("999")
     .withIndicator1("f")
     .withIndicator2("f")
     .withSubfield("*")
     .withData("*")
     .withSource(MarcFieldProtectionSetting.Source.SYSTEM);
-  private static final MarcFieldProtectionSetting setting_3 = new MarcFieldProtectionSetting()
+  private static final MarcFieldProtectionSetting SETTING_3 = new MarcFieldProtectionSetting()
     .withField("500")
     .withIndicator1("a")
     .withIndicator2("a")
@@ -65,7 +63,7 @@ public class FieldProtectionSettingsApiTest extends AbstractRestVerticleTest {
 
   @Test
   public void shouldReturnAllSettingsOnGetWhenNoQueryIsSpecified() {
-    List<MarcFieldProtectionSetting> settingsToPost = Arrays.asList(setting_1, setting_2, setting_3);
+    List<MarcFieldProtectionSetting> settingsToPost = Arrays.asList(SETTING_1, SETTING_2, SETTING_3);
     for (MarcFieldProtectionSetting setting : settingsToPost) {
       RestAssured.given()
         .spec(spec)
@@ -87,7 +85,7 @@ public class FieldProtectionSettingsApiTest extends AbstractRestVerticleTest {
 
   @Test
   public void shouldReturnSettingsWithSourceSystem() {
-    List<MarcFieldProtectionSetting> settingsToPost = Arrays.asList(setting_1, setting_2, setting_3);
+    List<MarcFieldProtectionSetting> settingsToPost = Arrays.asList(SETTING_1, SETTING_2, SETTING_3);
     for (MarcFieldProtectionSetting setting : settingsToPost) {
       RestAssured.given()
         .spec(spec)
@@ -110,7 +108,7 @@ public class FieldProtectionSettingsApiTest extends AbstractRestVerticleTest {
 
   @Test
   public void shouldReturnLimitedCollectionOnGetWithLimit() {
-    List<MarcFieldProtectionSetting> settingsToPost = Arrays.asList(setting_1, setting_2, setting_3);
+    List<MarcFieldProtectionSetting> settingsToPost = Arrays.asList(SETTING_1, SETTING_2, SETTING_3);
     for (MarcFieldProtectionSetting setting : settingsToPost) {
       RestAssured.given()
         .spec(spec)
@@ -144,7 +142,7 @@ public class FieldProtectionSettingsApiTest extends AbstractRestVerticleTest {
 
   @Test
   public void shouldReturnBadRequestOnPostWhenInvalidFieldPassedInBody() {
-    JsonObject setting = JsonObject.mapFrom(setting_1)
+    JsonObject setting = JsonObject.mapFrom(SETTING_1)
       .put("invalidField", "value");
 
     RestAssured.given()
@@ -160,17 +158,17 @@ public class FieldProtectionSettingsApiTest extends AbstractRestVerticleTest {
   public void shouldCreateSettingOnPost() {
     RestAssured.given()
       .spec(spec)
-      .body(setting_3)
+      .body(SETTING_3)
       .when()
       .post(FIELD_PROTECTION_SETTINGS_PATH)
       .then()
       .statusCode(HttpStatus.SC_CREATED)
       .body("id", notNullValue())
-      .body("field", is(setting_3.getField()))
-      .body("indicator1", is(setting_3.getIndicator1()))
-      .body("indicator2", is(setting_3.getIndicator2()))
-      .body("subfield", is(setting_3.getSubfield()))
-      .body("data", is(setting_3.getData()));
+      .body("field", is(SETTING_3.getField()))
+      .body("indicator1", is(SETTING_3.getIndicator1()))
+      .body("indicator2", is(SETTING_3.getIndicator2()))
+      .body("subfield", is(SETTING_3.getSubfield()))
+      .body("data", is(SETTING_3.getData()));
   }
 
   @Test
@@ -186,7 +184,7 @@ public class FieldProtectionSettingsApiTest extends AbstractRestVerticleTest {
 
   @Test
   public void shouldReturnBadRequestOnPutWhenInvalidFieldPassedInBody() {
-    JsonObject invalidFileExtension = JsonObject.mapFrom(setting_1)
+    JsonObject invalidFileExtension = JsonObject.mapFrom(SETTING_1)
       .put("invalidField", "value");
 
     RestAssured.given()
@@ -202,7 +200,7 @@ public class FieldProtectionSettingsApiTest extends AbstractRestVerticleTest {
   public void shouldReturnNotFoundOnPutWhenSettingDoesNotExist() {
     RestAssured.given()
       .spec(spec)
-      .body(setting_3)
+      .body(SETTING_3)
       .when()
       .put(FIELD_PROTECTION_SETTINGS_PATH + "/" + UUID.randomUUID())
       .then()
@@ -213,7 +211,7 @@ public class FieldProtectionSettingsApiTest extends AbstractRestVerticleTest {
   public void shouldReturnBadRequestIfSourceSystemOnUpdate() {
     Response createResponse = RestAssured.given()
       .spec(spec)
-      .body(setting_1)
+      .body(SETTING_1)
       .when()
       .post(FIELD_PROTECTION_SETTINGS_PATH);
     Assert.assertEquals(HttpStatus.SC_CREATED, createResponse.statusCode());
@@ -234,7 +232,7 @@ public class FieldProtectionSettingsApiTest extends AbstractRestVerticleTest {
     Async async = context.async();
     Response createResponse = RestAssured.given()
       .spec(spec)
-      .body(setting_3)
+      .body(SETTING_3)
       .when()
       .post(FIELD_PROTECTION_SETTINGS_PATH);
     Assert.assertEquals(HttpStatus.SC_CREATED, createResponse.statusCode());
@@ -273,7 +271,7 @@ public class FieldProtectionSettingsApiTest extends AbstractRestVerticleTest {
   public void shouldReturnExistingFileExtensionOnGetById() {
     Response createResponse = RestAssured.given()
       .spec(spec)
-      .body(setting_3)
+      .body(SETTING_3)
       .when()
       .post(FIELD_PROTECTION_SETTINGS_PATH);
     Assert.assertEquals(HttpStatus.SC_CREATED, createResponse.statusCode());
@@ -308,7 +306,7 @@ public class FieldProtectionSettingsApiTest extends AbstractRestVerticleTest {
     Async async = testContext.async();
     Response createResponse = RestAssured.given()
       .spec(spec)
-      .body(setting_3)
+      .body(SETTING_3)
       .when()
       .post(FIELD_PROTECTION_SETTINGS_PATH);
     Assert.assertEquals(HttpStatus.SC_CREATED, createResponse.statusCode());
@@ -330,7 +328,7 @@ public class FieldProtectionSettingsApiTest extends AbstractRestVerticleTest {
     Async async = testContext.async();
     Response createResponse = RestAssured.given()
       .spec(spec)
-      .body(setting_1)
+      .body(SETTING_1)
       .when()
       .post(FIELD_PROTECTION_SETTINGS_PATH);
     Assert.assertEquals(HttpStatus.SC_CREATED, createResponse.statusCode());
@@ -348,7 +346,7 @@ public class FieldProtectionSettingsApiTest extends AbstractRestVerticleTest {
   }
 
   @Override
-  public void clearTables(TestContext context) {
+  protected void clearTables(TestContext context) {
     Async async = context.async();
     PostgresClient pgClient = PostgresClient.getInstance(vertx, TENANT_ID);
     pgClient.delete(MARC_FIELD_PROTECTION_SETTINGS_TABLE, new Criterion(), ar -> {
@@ -358,6 +356,5 @@ public class FieldProtectionSettingsApiTest extends AbstractRestVerticleTest {
       async.complete();
     });
   }
-
 }
 

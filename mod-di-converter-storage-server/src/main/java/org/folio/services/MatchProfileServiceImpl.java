@@ -1,7 +1,12 @@
 package org.folio.services;
 
 import io.vertx.core.Future;
+import java.util.Arrays;
+import java.util.List;
+import java.util.UUID;
 import org.apache.commons.lang3.StringUtils;
+import org.folio.dao.ProfileDao;
+import org.folio.dao.association.ProfileWrapperDao;
 import org.folio.rest.impl.util.OkapiConnectionParams;
 import org.folio.rest.jaxrs.model.MatchProfile;
 import org.folio.rest.jaxrs.model.MatchProfileCollection;
@@ -9,40 +14,44 @@ import org.folio.rest.jaxrs.model.MatchProfileUpdateDto;
 import org.folio.rest.jaxrs.model.ProfileAssociation;
 import org.folio.rest.jaxrs.model.ProfileSnapshotWrapper;
 import org.folio.rest.jaxrs.model.ProfileType;
-import org.springframework.stereotype.Component;
+import org.folio.services.association.CommonProfileAssociationService;
+import org.folio.services.association.ProfileAssociationService;
+import org.springframework.stereotype.Service;
 
-import java.util.Arrays;
-import java.util.List;
-import java.util.UUID;
-
-@Component
-public class MatchProfileServiceImpl extends AbstractProfileService<MatchProfile, MatchProfileCollection, MatchProfileUpdateDto> {
+@Service
+public class MatchProfileServiceImpl
+  extends AbstractProfileService<MatchProfile, MatchProfileCollection, MatchProfileUpdateDto> {
+  @SuppressWarnings("java:S6418") // Suppress warning about 'AUTH' detection meaning potentially hard-coded secret
+  private static final String DEFAULT_DELETE_MARC_AUTHORITY_MATCH_PROFILE_ID = "4be5d1d2-1f5a-42ff-a9bd-fc90609d94b6";
   private static final List<String> DEFAULT_MATCH_PROFILES = Arrays.asList(
     "d27d71ce-8a1e-44c6-acea-96961b5592c6", //OCLC_MARC_MARC_MATCH_PROFILE_ID
     "31dbb554-0826-48ec-a0a4-3c55293d4dee", //OCLC_INSTANCE_UUID_MATCH_PROFILE_ID
-    "4be5d1d2-1f5a-42ff-a9bd-fc90609d94b6",  //DEFAULT_DELETE_MARC_AUTHORITY_MATCH_PROFILE_ID
     "91cec42a-260d-4a8c-a9fb-90d9435ca2f4", //DEFAULT_QM_MARC_BIB_UPDATE_MATCH_PROFILE_ID
     "2a599369-817f-4fe8-bae2-f3e3987990fe", //DEFAULT_QM_HOLDINGS_UPDATE_MATCH_PROFILE_ID
     "aff72eae-847c-4a97-b7b9-c1ddb8cdcbbf"  //DEFAULT_QM_AUTHORITY_UPDATE_MATCH_PROFILE_ID
-    );
+  );
 
-  @Override
-  MatchProfile setProfileId(MatchProfile profile) {
-    String profileId = profile.getId();
-    return profile.withId(StringUtils.isBlank(profileId) ?
-      UUID.randomUUID().toString() : profileId);
-  }
-
-  @Override
-  Future<MatchProfile> setUserInfoForProfile(MatchProfile profile, OkapiConnectionParams params) {
-    profile.setMetadata(getMetadata(params.getHeaders()));
-    return lookupUser(profile.getMetadata().getUpdatedByUserId(), params)
-      .compose(userInfo -> Future.succeededFuture(profile.withUserInfo(userInfo)));
+  public MatchProfileServiceImpl(ProfileAssociationService profileAssociationService,
+                                 CommonProfileAssociationService associationService,
+                                 ProfileDao<MatchProfile, MatchProfileCollection> profileDao,
+                                 ProfileWrapperDao profileWrapperDao) {
+    super(profileAssociationService, associationService, profileDao, profileWrapperDao);
   }
 
   @Override
   public String getProfileName(MatchProfile profile) {
     return profile.getName();
+  }
+
+  @Override
+  public List<ProfileAssociation> getAddedRelations(MatchProfileUpdateDto profileUpdateDto) {
+    return profileUpdateDto.getAddedRelations();
+  }
+
+  @Override
+  public MatchProfileUpdateDto withDeletedRelations(MatchProfileUpdateDto profileUpdateDto,
+                                                    List<ProfileAssociation> profileAssociations) {
+    return profileUpdateDto.withDeletedRelations(profileAssociations);
   }
 
   @Override
@@ -111,5 +120,24 @@ public class MatchProfileServiceImpl extends AbstractProfileService<MatchProfile
   @Override
   protected List<String> getDefaultProfiles() {
     return DEFAULT_MATCH_PROFILES;
+  }
+
+  @Override
+  protected boolean canDeleteProfile(String profileId) {
+    return !DEFAULT_DELETE_MARC_AUTHORITY_MATCH_PROFILE_ID.equals(profileId) && super.canDeleteProfile(profileId);
+  }
+
+  @Override
+  MatchProfile setProfileId(MatchProfile profile) {
+    String profileId = profile.getId();
+    return profile.withId(StringUtils.isBlank(profileId)
+                          ? UUID.randomUUID().toString() : profileId);
+  }
+
+  @Override
+  Future<MatchProfile> setUserInfoForProfile(MatchProfile profile, OkapiConnectionParams params) {
+    profile.setMetadata(getMetadata(params.getHeaders()));
+    return lookupUser(profile.getMetadata().getUpdatedByUserId(), params)
+      .compose(userInfo -> Future.succeededFuture(profile.withUserInfo(userInfo)));
   }
 }

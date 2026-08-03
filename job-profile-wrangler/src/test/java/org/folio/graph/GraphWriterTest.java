@@ -1,5 +1,11 @@
 package org.folio.graph;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
+
+import java.io.File;
+import java.io.IOException;
+import java.util.Optional;
 import org.folio.graph.edges.RegularEdge;
 import org.folio.graph.nodes.ActionProfileNode;
 import org.folio.graph.nodes.JobProfileNode;
@@ -10,13 +16,6 @@ import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
-
-import java.io.File;
-import java.io.IOException;
-import java.util.Optional;
-
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
 
 public class GraphWriterTest {
 

@@ -1,44 +1,5 @@
 package org.folio.rest.impl;
 
-import com.google.common.collect.Lists;
-import io.restassured.RestAssured;
-import io.restassured.response.Response;
-import io.vertx.core.Future;
-import io.vertx.core.Promise;
-import io.vertx.core.json.JsonObject;
-import io.vertx.ext.unit.Async;
-import io.vertx.ext.unit.TestContext;
-import io.vertx.ext.unit.junit.VertxUnitRunner;
-import org.apache.commons.lang3.StringUtils;
-import org.apache.http.HttpStatus;
-import org.folio.rest.jaxrs.model.ActionProfile;
-import org.folio.rest.jaxrs.model.ActionProfileUpdateDto;
-import org.folio.rest.jaxrs.model.EntityType;
-import org.folio.rest.jaxrs.model.Field;
-import org.folio.rest.jaxrs.model.JobProfileUpdateDto;
-import org.folio.rest.jaxrs.model.MappingProfileUpdateDto;
-import org.folio.rest.jaxrs.model.MatchDetail;
-import org.folio.rest.jaxrs.model.MatchExpression;
-import org.folio.rest.jaxrs.model.MatchProfile;
-import org.folio.rest.jaxrs.model.MatchProfileUpdateDto;
-import org.folio.rest.jaxrs.model.ProfileAssociation;
-import org.folio.rest.jaxrs.model.ProfileSnapshotWrapper;
-import org.folio.rest.jaxrs.model.ProfileType;
-import org.folio.rest.jaxrs.model.Qualifier;
-import org.folio.rest.jaxrs.model.Tags;
-import org.folio.rest.jaxrs.model.ReactToType;
-import org.folio.rest.persist.Criteria.Criterion;
-import org.folio.rest.persist.PostgresClient;
-import org.junit.Assert;
-import org.junit.Test;
-import org.junit.runner.RunWith;
-
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
-import java.util.UUID;
-
 import static org.folio.rest.impl.ActionProfileTest.ACTION_PROFILES_PATH;
 import static org.folio.rest.impl.ActionProfileTest.actionProfile_1;
 import static org.folio.rest.impl.JobProfileTest.JOB_PROFILES_PATH;
@@ -66,6 +27,44 @@ import static org.hamcrest.Matchers.hasItem;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.notNullValue;
 
+import com.google.common.collect.Lists;
+import io.restassured.RestAssured;
+import io.restassured.response.Response;
+import io.vertx.core.Future;
+import io.vertx.core.Promise;
+import io.vertx.core.json.JsonObject;
+import io.vertx.ext.unit.Async;
+import io.vertx.ext.unit.TestContext;
+import io.vertx.ext.unit.junit.VertxUnitRunner;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
+import java.util.UUID;
+import org.apache.commons.lang3.StringUtils;
+import org.apache.http.HttpStatus;
+import org.folio.rest.jaxrs.model.ActionProfile;
+import org.folio.rest.jaxrs.model.ActionProfileUpdateDto;
+import org.folio.rest.jaxrs.model.EntityType;
+import org.folio.rest.jaxrs.model.Field;
+import org.folio.rest.jaxrs.model.JobProfileUpdateDto;
+import org.folio.rest.jaxrs.model.MappingProfileUpdateDto;
+import org.folio.rest.jaxrs.model.MatchDetail;
+import org.folio.rest.jaxrs.model.MatchExpression;
+import org.folio.rest.jaxrs.model.MatchProfile;
+import org.folio.rest.jaxrs.model.MatchProfileUpdateDto;
+import org.folio.rest.jaxrs.model.ProfileAssociation;
+import org.folio.rest.jaxrs.model.ProfileSnapshotWrapper;
+import org.folio.rest.jaxrs.model.ProfileType;
+import org.folio.rest.jaxrs.model.Qualifier;
+import org.folio.rest.jaxrs.model.ReactToType;
+import org.folio.rest.jaxrs.model.Tags;
+import org.folio.rest.persist.Criteria.Criterion;
+import org.folio.rest.persist.PostgresClient;
+import org.junit.Assert;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+
 @RunWith(VertxUnitRunner.class)
 public class MatchProfileTest extends AbstractRestVerticleTest {
   static final String MATCH_PROFILES_PATH = "/data-import-profiles/matchProfiles";
@@ -74,34 +73,39 @@ public class MatchProfileTest extends AbstractRestVerticleTest {
 
   private static final String PROFILE_WRAPPERS_TABLE = "profile_wrappers";
 
-  private List<String> defaultMatchedProfileIds = Arrays.asList(
+  private static final List<String> DEFAULT_MATCH_PROFILE_IDS_RESTRICTED_FOR_UPDATE = List.of(
+    "d27d71ce-8a1e-44c6-acea-96961b5592c6", //OCLC_MARC_MARC_MATCH_PROFILE_ID
+    "31dbb554-0826-48ec-a0a4-3c55293d4dee"  //OCLC_INSTANCE_UUID_MATCH_PROFILE_ID
+  );
+
+  private static final List<String> DEFAULT_MATCH_PROFILE_IDS_RESTRICTED_FOR_DELETION = List.of(
     "d27d71ce-8a1e-44c6-acea-96961b5592c6", //OCLC_MARC_MARC_MATCH_PROFILE_ID
     "31dbb554-0826-48ec-a0a4-3c55293d4dee", //OCLC_INSTANCE_UUID_MATCH_PROFILE_ID
     "4be5d1d2-1f5a-42ff-a9bd-fc90609d94b6"  //DEFAULT_DELETE_MARC_AUTHORITY_MATCH_PROFILE_ID
   );
 
-  private static MatchProfileUpdateDto matchProfile_1 = new MatchProfileUpdateDto()
+  private static final MatchProfileUpdateDto MATCH_PROFILE_1 = new MatchProfileUpdateDto()
     .withProfile(new MatchProfile().withName("Bla")
       .withTags(new Tags().withTagList(Arrays.asList("lorem", "ipsum", "dolor")))
       .withIncomingRecordType(EntityType.MARC_BIBLIOGRAPHIC)
       .withExistingRecordType(EntityType.MARC_BIBLIOGRAPHIC));
-  private static MatchProfileUpdateDto matchProfile_2 = new MatchProfileUpdateDto()
+  private static final MatchProfileUpdateDto MATCH_PROFILE_2 = new MatchProfileUpdateDto()
     .withProfile(new MatchProfile().withName("Boo")
       .withTags(new Tags().withTagList(Arrays.asList("lorem", "ipsum")))
       .withIncomingRecordType(EntityType.MARC_BIBLIOGRAPHIC)
       .withExistingRecordType(EntityType.MARC_BIBLIOGRAPHIC));
-  private static MatchProfileUpdateDto matchProfile_3 = new MatchProfileUpdateDto()
+  private static final MatchProfileUpdateDto MATCH_PROFILE_3 = new MatchProfileUpdateDto()
     .withProfile(new MatchProfile().withName("Foo")
       .withTags(new Tags().withTagList(Collections.singletonList("lorem")))
       .withIncomingRecordType(EntityType.MARC_BIBLIOGRAPHIC)
       .withExistingRecordType(EntityType.MARC_BIBLIOGRAPHIC));
-  private static MatchProfileUpdateDto matchProfile_4 = new MatchProfileUpdateDto()
+  private static final MatchProfileUpdateDto MATCH_PROFILE_4 = new MatchProfileUpdateDto()
     .withProfile(new MatchProfile().withId(MATCH_PROFILE_UUID).withName("OLA")
       .withTags(new Tags().withTagList(Arrays.asList("lorem", "ipsum")))
       .withIncomingRecordType(EntityType.MARC_BIBLIOGRAPHIC)
       .withExistingRecordType(EntityType.MARC_BIBLIOGRAPHIC));
 
-  private static MatchProfileUpdateDto matchProfileNotEmptyChildAndParent = new MatchProfileUpdateDto()
+  private static final MatchProfileUpdateDto MATCH_PROFILE_NOT_EMPTY_CHILD_AND_PARENT = new MatchProfileUpdateDto()
     .withProfile(new MatchProfile()
       .withName("Match profile with child and parent")
       .withIncomingRecordType(EntityType.MARC_BIBLIOGRAPHIC)
@@ -142,7 +146,7 @@ public class MatchProfileTest extends AbstractRestVerticleTest {
     RestAssured.given()
       .spec(spec)
       .when()
-      .get(MATCH_PROFILES_PATH + "?withRelations=true&query=id=" + ids.get(0))
+      .get(MATCH_PROFILES_PATH + "?withRelations=true&query=id=" + ids.getFirst())
       .then()
       .statusCode(HttpStatus.SC_OK).log().all()
       .body("totalRecords", is(1))
@@ -158,7 +162,7 @@ public class MatchProfileTest extends AbstractRestVerticleTest {
     RestAssured.given()
       .spec(spec)
       .when()
-      .get(MATCH_PROFILES_PATH + "/" + ids.get(0) + "?withRelations=true")
+      .get(MATCH_PROFILES_PATH + "/" + ids.getFirst() + "?withRelations=true")
       .then().log().all()
       .statusCode(HttpStatus.SC_OK).log().all()
       .body("childProfiles*.id", everyItem(is(notNullValue())))
@@ -224,10 +228,10 @@ public class MatchProfileTest extends AbstractRestVerticleTest {
   @Test
   public void shouldReturnBadRequestOnPutWithDefaultProfiles() {
     createProfiles();
-    for (String id : defaultMatchedProfileIds) {
+    for (String id : DEFAULT_MATCH_PROFILE_IDS_RESTRICTED_FOR_UPDATE) {
       RestAssured.given()
         .spec(spec)
-        .body(matchProfile_1)
+        .body(MATCH_PROFILE_1)
         .when()
         .put(MATCH_PROFILES_PATH + "/" + id)
         .then()
@@ -238,7 +242,7 @@ public class MatchProfileTest extends AbstractRestVerticleTest {
   @Test
   public void shouldReturnBadRequestOnDeleteWithDefaultProfiles() {
     createProfiles();
-    for (String id : defaultMatchedProfileIds) {
+    for (String id : DEFAULT_MATCH_PROFILE_IDS_RESTRICTED_FOR_DELETION) {
       RestAssured.given()
         .spec(spec)
         .when()
@@ -252,20 +256,20 @@ public class MatchProfileTest extends AbstractRestVerticleTest {
   public void shouldCreateProfileOnPost() {
     RestAssured.given()
       .spec(spec)
-      .body(matchProfile_1)
+      .body(MATCH_PROFILE_1)
       .when()
       .post(MATCH_PROFILES_PATH)
       .then()
       .statusCode(HttpStatus.SC_CREATED)
-      .body("profile.name", is(matchProfile_1.getProfile().getName()))
-      .body("profile.tags.tagList", is(matchProfile_1.getProfile().getTags().getTagList()))
+      .body("profile.name", is(MATCH_PROFILE_1.getProfile().getName()))
+      .body("profile.tags.tagList", is(MATCH_PROFILE_1.getProfile().getTags().getTagList()))
       .body("profile.userInfo.lastName", is("Doe"))
       .body("profile.userInfo.firstName", is("Jane"))
       .body("profile.userInfo.userName", is("@janedoe"));
 
     RestAssured.given()
       .spec(spec)
-      .body(matchProfile_1)
+      .body(MATCH_PROFILE_1)
       .when()
       .post(MATCH_PROFILES_PATH)
       .then()
@@ -276,13 +280,13 @@ public class MatchProfileTest extends AbstractRestVerticleTest {
   public void shouldCreateProfileWithGivenIdOnPost() {
     RestAssured.given()
       .spec(spec)
-      .body(matchProfile_4)
+      .body(MATCH_PROFILE_4)
       .when()
       .post(MATCH_PROFILES_PATH)
       .then()
       .statusCode(HttpStatus.SC_CREATED)
-      .body("profile.name", is(matchProfile_4.getProfile().getName()))
-      .body("profile.tags.tagList", is(matchProfile_4.getProfile().getTags().getTagList()))
+      .body("profile.name", is(MATCH_PROFILE_4.getProfile().getName()))
+      .body("profile.tags.tagList", is(MATCH_PROFILE_4.getProfile().getTags().getTagList()))
       .body("profile.userInfo.lastName", is("Doe"))
       .body("profile.userInfo.firstName", is("Jane"))
       .body("profile.userInfo.userName", is("@janedoe"));
@@ -316,7 +320,7 @@ public class MatchProfileTest extends AbstractRestVerticleTest {
   public void shouldReturnNotFoundOnPut() {
     RestAssured.given()
       .spec(spec)
-      .body(matchProfile_2)
+      .body(MATCH_PROFILE_2)
       .when()
       .put(MATCH_PROFILES_PATH + "/" + UUID.randomUUID())
       .then()
@@ -339,7 +343,7 @@ public class MatchProfileTest extends AbstractRestVerticleTest {
     Assert.assertEquals(HttpStatus.SC_CREATED, createResponse.statusCode());
     MatchProfileUpdateDto createdProfile = createResponse.body().as(MatchProfileUpdateDto.class);
 
-    createdProfile.getProfile().setName(matchProfile_1.getProfile().getName());
+    createdProfile.getProfile().setName(MATCH_PROFILE_1.getProfile().getName());
     RestAssured.given()
       .spec(spec)
       .body(createdProfile)
@@ -354,7 +358,7 @@ public class MatchProfileTest extends AbstractRestVerticleTest {
     clearTables(context);
     Response createResponse = RestAssured.given()
       .spec(spec)
-      .body(matchProfile_2)
+      .body(MATCH_PROFILE_2)
       .when()
       .post(MATCH_PROFILES_PATH);
     Assert.assertEquals(HttpStatus.SC_CREATED, createResponse.statusCode());
@@ -391,7 +395,7 @@ public class MatchProfileTest extends AbstractRestVerticleTest {
   public void shouldReturnProfileOnGetById() {
     Response createResponse = RestAssured.given()
       .spec(spec)
-      .body(matchProfile_3)
+      .body(MATCH_PROFILE_3)
       .when()
       .post(MATCH_PROFILES_PATH);
     Assert.assertEquals(HttpStatus.SC_CREATED, createResponse.statusCode());
@@ -425,7 +429,7 @@ public class MatchProfileTest extends AbstractRestVerticleTest {
   public void shouldReturnBadRequestOnDeleteProfileAssociatedWithOtherProfiles() {
     Response createResponse = RestAssured.given()
       .spec(spec)
-      .body(matchProfile_1)
+      .body(MATCH_PROFILE_1)
       .when()
       .post(MATCH_PROFILES_PATH);
     Assert.assertEquals(HttpStatus.SC_CREATED, createResponse.statusCode());
@@ -433,7 +437,7 @@ public class MatchProfileTest extends AbstractRestVerticleTest {
 
     createResponse = RestAssured.given()
       .spec(spec)
-      .body(matchProfile_2)
+      .body(MATCH_PROFILE_2)
       .when()
       .post(MATCH_PROFILES_PATH);
     Assert.assertEquals(HttpStatus.SC_CREATED, createResponse.statusCode());
@@ -467,7 +471,7 @@ public class MatchProfileTest extends AbstractRestVerticleTest {
   public void shouldHardDeleteProfileOnDeletion() {
     Response createResponse = RestAssured.given()
       .spec(spec)
-      .body(matchProfile_2)
+      .body(MATCH_PROFILE_2)
       .when()
       .post(MATCH_PROFILES_PATH);
     Assert.assertEquals(HttpStatus.SC_CREATED, createResponse.statusCode());
@@ -489,19 +493,20 @@ public class MatchProfileTest extends AbstractRestVerticleTest {
   }
 
   @Test
+  @SuppressWarnings("checkstyle:MethodLength")
   public void shouldDeleteAssociationsWithDetailProfilesOnDelete() {
     Response createResponse = RestAssured.given()
       .spec(spec)
-      .body(matchProfile_1)
+      .body(MATCH_PROFILE_1)
       .when()
       .post(MATCH_PROFILES_PATH);
     Assert.assertEquals(HttpStatus.SC_CREATED, createResponse.statusCode());
-    MatchProfileUpdateDto profileToDelete = createResponse.body().as(MatchProfileUpdateDto.class);
+    final MatchProfileUpdateDto profileToDelete = createResponse.body().as(MatchProfileUpdateDto.class);
 
     // creation detail-profiles
     createResponse = RestAssured.given()
       .spec(spec)
-      .body(matchProfile_2)
+      .body(MATCH_PROFILE_2)
       .when()
       .post(MATCH_PROFILES_PATH);
     Assert.assertEquals(HttpStatus.SC_CREATED, createResponse.statusCode());
@@ -529,7 +534,7 @@ public class MatchProfileTest extends AbstractRestVerticleTest {
           .withMasterProfileId(profileToDelete.getProfile().getId())
           .withMasterProfileType(ProfileType.MATCH_PROFILE)
           .withDetailProfileType(ProfileType.MATCH_PROFILE),
-      MATCH_PROFILE, MATCH_PROFILE);
+        MATCH_PROFILE, MATCH_PROFILE);
 
     ProfileAssociation matchToActionAssociation =
       postProfileAssociation(
@@ -537,7 +542,7 @@ public class MatchProfileTest extends AbstractRestVerticleTest {
           .withMasterProfileId(profileToDelete.getProfile().getId())
           .withMasterProfileType(ProfileType.MATCH_PROFILE)
           .withDetailProfileType(ProfileType.ACTION_PROFILE),
-      MATCH_PROFILE, ACTION_PROFILE);
+        MATCH_PROFILE, ACTION_PROFILE);
 
     // deleting match profile
     RestAssured.given()
@@ -601,6 +606,7 @@ public class MatchProfileTest extends AbstractRestVerticleTest {
   }
 
   @Test
+  @SuppressWarnings("checkstyle:MethodLength")
   public void shouldCreateProfileWithMatchDetailsOnPost() {
     MatchDetail matchDetail = new MatchDetail()
       .withIncomingRecordType(EntityType.MARC_BIBLIOGRAPHIC)
@@ -648,11 +654,11 @@ public class MatchProfileTest extends AbstractRestVerticleTest {
 
     // assert matchDetail
     Assert.assertEquals(1, receivedMatchProfile.getMatchDetails().size());
-MatchDetail receivedMatchDetail1 = receivedMatchProfile.getMatchDetails().get(0);
+    MatchDetail receivedMatchDetail1 = receivedMatchProfile.getMatchDetails().getFirst();
     Assert.assertEquals(receivedMatchDetail1.getIncomingRecordType(), matchDetail.getIncomingRecordType());
     Assert.assertEquals(receivedMatchDetail1.getExistingRecordType(), matchDetail.getExistingRecordType());
 
-// assert incomingMatchExpression
+    // assert incomingMatchExpression
     Assert.assertEquals(receivedMatchDetail1.getIncomingMatchExpression().getDataValueType(),
       matchDetail.getIncomingMatchExpression().getDataValueType());
 
@@ -672,23 +678,23 @@ MatchDetail receivedMatchDetail1 = receivedMatchProfile.getMatchDetails().get(0)
     // assert matchCriterion
     Assert.assertEquals(receivedMatchDetail1.getMatchCriterion(), matchDetail.getMatchCriterion());
 
-// assert existingMatchExpression
+    // assert existingMatchExpression
     Assert.assertEquals(receivedMatchDetail1.getExistingMatchExpression().getDataValueType(),
       matchDetail.getExistingMatchExpression().getDataValueType());
     Assert.assertEquals(1, receivedMatchDetail1.getExistingMatchExpression().getFields().size());
-    Assert.assertEquals(receivedMatchDetail1.getExistingMatchExpression().getFields().get(0).getLabel(),
-      matchDetail.getExistingMatchExpression().getFields().get(0).getLabel());
-    Assert.assertEquals(receivedMatchDetail1.getExistingMatchExpression().getFields().get(0).getValue(),
-      matchDetail.getExistingMatchExpression().getFields().get(0).getValue());
+    Assert.assertEquals(receivedMatchDetail1.getExistingMatchExpression().getFields().getFirst().getLabel(),
+      matchDetail.getExistingMatchExpression().getFields().getFirst().getLabel());
+    Assert.assertEquals(receivedMatchDetail1.getExistingMatchExpression().getFields().getFirst().getValue(),
+      matchDetail.getExistingMatchExpression().getFields().getFirst().getValue());
     Assert.assertEquals(receivedMatchDetail1.getExistingMatchExpression().getQualifier().getComparisonPart(),
       matchDetail.getExistingMatchExpression().getQualifier().getComparisonPart());
   }
 
   @Test
-  public void shouldReturnBadRequestWhenChildOrParentIsNotEmptyOnPost(TestContext context) {
+  public void shouldReturnBadRequestWhenChildOrParentIsNotEmptyOnPost() {
     RestAssured.given()
       .spec(spec)
-      .body(matchProfileNotEmptyChildAndParent)
+      .body(MATCH_PROFILE_NOT_EMPTY_CHILD_AND_PARENT)
       .when()
       .post(MATCH_PROFILES_PATH)
       .then()
@@ -698,10 +704,10 @@ MatchDetail receivedMatchDetail1 = receivedMatchProfile.getMatchDetails().get(0)
   }
 
   @Test
-  public void shouldReturnBadRequestWhenChildOrParentIsNotEmptyOnPut(TestContext context) {
+  public void shouldReturnBadRequestWhenChildOrParentIsNotEmptyOnPut() {
     Response createResponse = RestAssured.given()
       .spec(spec)
-      .body(matchProfile_2)
+      .body(MATCH_PROFILE_2)
       .when()
       .post(MATCH_PROFILES_PATH);
     Assert.assertEquals(HttpStatus.SC_CREATED, createResponse.statusCode());
@@ -709,7 +715,7 @@ MatchDetail receivedMatchDetail1 = receivedMatchProfile.getMatchDetails().get(0)
 
     RestAssured.given()
       .spec(spec)
-      .body(matchProfileNotEmptyChildAndParent)
+      .body(MATCH_PROFILE_NOT_EMPTY_CHILD_AND_PARENT)
       .when()
       .put(MATCH_PROFILES_PATH + "/" + matchProfile.getProfile().getId())
       .then()
@@ -718,8 +724,26 @@ MatchDetail receivedMatchDetail1 = receivedMatchProfile.getMatchDetails().get(0)
       .body("errors[1].message", is("Match profile read-only 'parent' field should be empty"));
   }
 
+  @Override
+  protected void clearTables(TestContext context) {
+    Async async = context.async();
+    deleteTable(ASSOCIATIONS_TABLE)
+      .compose(e -> deleteTable(PROFILE_WRAPPERS_TABLE))
+      .compose(e -> deleteTable(ACTION_PROFILES_TABLE))
+      .compose(e -> deleteTable(JOB_PROFILES_TABLE))
+      .compose(e -> deleteTable(MAPPING_PROFILES_TABLE))
+      .compose(e -> deleteTable(MATCH_PROFILES_TABLE))
+      .onComplete(clearAr -> {
+        if (clearAr.failed()) {
+          context.fail(clearAr.cause());
+        }
+        async.complete();
+      });
+    async.awaitSuccess();
+  }
+
   private List<String> createProfiles() {
-    List<MatchProfileUpdateDto> matchProfilesToPost = Arrays.asList(matchProfile_1, matchProfile_2, matchProfile_3);
+    List<MatchProfileUpdateDto> matchProfilesToPost = Arrays.asList(MATCH_PROFILE_1, MATCH_PROFILE_2, MATCH_PROFILE_3);
     List<String> ids = new ArrayList<>();
     for (MatchProfileUpdateDto profile : matchProfilesToPost) {
       ids.add(RestAssured.given()
@@ -733,14 +757,25 @@ MatchDetail receivedMatchDetail1 = receivedMatchProfile.getMatchDetails().get(0)
     return ids;
   }
 
+  @SuppressWarnings("checkstyle:MethodLength")
   private void createProfilesTree(List<String> profilesIds) {
     String nameForProfiles = "tree";
-    List<JobProfileUpdateDto> jobProfiles = Arrays.asList(jobProfile_1, jobProfile_1, jobProfile_1);
-    List<ActionProfileUpdateDto> actionProfiles = Arrays.asList(actionProfile_1, actionProfile_1, actionProfile_1);
-    List<MappingProfileUpdateDto> mappingProfiles = Arrays.asList(mappingProfile_1, mappingProfile_2, mappingProfile_3);
-    List<JobProfileUpdateDto> created = new ArrayList<>();
-    List<MappingProfileUpdateDto> createdMappings = new ArrayList<>();
-    List<ActionProfileUpdateDto> createdActions = new ArrayList<>();
+    JobProfileUpdateDto clonedJobProfile1 = JsonObject.mapFrom(jobProfile_1).mapTo(JobProfileUpdateDto.class);
+    ActionProfileUpdateDto clonedActionProfile1 =
+      JsonObject.mapFrom(actionProfile_1).mapTo(ActionProfileUpdateDto.class);
+    MappingProfileUpdateDto clonedMappingProfile1 =
+      JsonObject.mapFrom(mappingProfile_1).mapTo(MappingProfileUpdateDto.class);
+    MappingProfileUpdateDto clonedMappingProfile2 =
+      JsonObject.mapFrom(mappingProfile_2).mapTo(MappingProfileUpdateDto.class);
+    MappingProfileUpdateDto clonedMappingProfile3 =
+      JsonObject.mapFrom(mappingProfile_3).mapTo(MappingProfileUpdateDto.class);
+
+    final var jobProfiles = Arrays.asList(clonedJobProfile1, clonedJobProfile1, clonedJobProfile1);
+    final var actionProfiles = Arrays.asList(clonedActionProfile1, clonedActionProfile1, clonedActionProfile1);
+    final var mappingProfiles = Arrays.asList(clonedMappingProfile1, clonedMappingProfile2, clonedMappingProfile3);
+    final List<JobProfileUpdateDto> created = new ArrayList<>();
+    final List<MappingProfileUpdateDto> createdMappings = new ArrayList<>();
+    final List<ActionProfileUpdateDto> createdActions = new ArrayList<>();
     int i;
     i = 0;
     for (MappingProfileUpdateDto profile : mappingProfiles) {
@@ -854,7 +889,8 @@ MatchDetail receivedMatchDetail1 = receivedMatchProfile.getMatchDetails().get(0)
     }
   }
 
-  private ProfileAssociation postProfileAssociation(ProfileAssociation profileAssociation, ProfileType masterType, ProfileType detailType) {
+  private ProfileAssociation postProfileAssociation(ProfileAssociation profileAssociation, ProfileType masterType,
+                                                    ProfileType detailType) {
     Response createResponse = RestAssured.given()
       .spec(spec)
       .queryParam("master", masterType.value())
@@ -864,24 +900,6 @@ MatchDetail receivedMatchDetail1 = receivedMatchProfile.getMatchDetails().get(0)
       .post(ASSOCIATED_PROFILES_PATH);
     Assert.assertEquals(HttpStatus.SC_CREATED, createResponse.statusCode());
     return createResponse.body().as(ProfileAssociation.class);
-  }
-
-  @Override
-  public void clearTables(TestContext context) {
-    Async async = context.async();
-    deleteTable(ASSOCIATIONS_TABLE)
-      .compose(e -> deleteTable(PROFILE_WRAPPERS_TABLE))
-      .compose(e -> deleteTable(ACTION_PROFILES_TABLE))
-      .compose(e -> deleteTable(JOB_PROFILES_TABLE))
-      .compose(e -> deleteTable(MAPPING_PROFILES_TABLE))
-      .compose(e -> deleteTable(MATCH_PROFILES_TABLE))
-      .onComplete(clearAr -> {
-        if (clearAr.failed()) {
-          context.fail(clearAr.cause());
-        }
-        async.complete();
-      });
-    async.awaitSuccess();
   }
 
   private Future<Void> deleteTable(String tableName) {

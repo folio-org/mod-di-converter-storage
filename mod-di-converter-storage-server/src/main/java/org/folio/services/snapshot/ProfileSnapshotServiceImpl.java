@@ -1,5 +1,7 @@
 package org.folio.services.snapshot;
 
+import static org.folio.rest.jaxrs.model.ProfileType.JOB_PROFILE;
+
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
@@ -7,6 +9,14 @@ import io.vertx.core.Context;
 import io.vertx.core.Future;
 import io.vertx.core.Promise;
 import io.vertx.core.Vertx;
+import jakarta.validation.constraints.NotNull;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Optional;
+import java.util.Set;
+import java.util.UUID;
+import java.util.concurrent.Executor;
+import java.util.concurrent.ForkJoinPool;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -21,42 +31,45 @@ import org.folio.rest.jaxrs.model.ProfileType;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-import jakarta.validation.constraints.NotNull;
-
-import java.util.HashSet;
-import java.util.List;
-import java.util.Optional;
-import java.util.Set;
-import java.util.UUID;
-import java.util.concurrent.Executor;
-import java.util.concurrent.ForkJoinPool;
-
-import static org.folio.rest.jaxrs.model.ProfileType.JOB_PROFILE;
-
 /**
- * Implementation for Profile snapshot service
+ * Implementation for Profile snapshot service.
  */
 @Service
 public class ProfileSnapshotServiceImpl implements ProfileSnapshotService {
   private static final Logger LOGGER = LogManager.getLogger();
   private final ProfileSnapshotDao profileSnapshotDao;
   private final Cache<String, ProfileSnapshotWrapper> profileSnapshotWrapperCache;
-  private final Executor cacheExecutor = runnable -> {
-    Context context = Vertx.currentContext();
-    if (context != null) {
-      context.runOnContext(ar -> runnable.run());
-    } else {
-      // The common pool below is used because it is the  default executor for caffeine
-      ForkJoinPool.commonPool().execute(runnable);
-    }
-  };
 
   public ProfileSnapshotServiceImpl(@Autowired ProfileSnapshotDao profileSnapshotDao) {
     this.profileSnapshotDao = profileSnapshotDao;
+    Executor cacheExecutor = runnable -> {
+      Context context = Vertx.currentContext();
+      if (context != null) {
+        context.runOnContext(ar -> runnable.run());
+      } else {
+        // The common pool below is used because it is the  default executor for caffeine
+        ForkJoinPool.commonPool().execute(runnable);
+      }
+    };
     this.profileSnapshotWrapperCache = Caffeine.newBuilder()
       .maximumSize(20)
       .executor(cacheExecutor)
       .build();
+  }
+
+  /**
+   * Method converts an Object 'content' field to concrete Profile class doing the same for all the child wrappers.
+   * to concrete Profile class. The class resolution happens by 'content type' field.
+   *
+   * @param wrapper the given ProfileSnapshotWrapper
+   * @return ProfileSnapshotWrapper with converted 'content' field
+   */
+  public static ProfileSnapshotWrapper convertProfileSnapshotWrapperContent(@NotNull ProfileSnapshotWrapper wrapper) {
+    wrapper.setContent(convertContentByType(wrapper.getContent(), wrapper.getContentType()));
+    for (ProfileSnapshotWrapper child : wrapper.getChildSnapshotWrappers()) {
+      convertProfileSnapshotWrapperContent(child);
+    }
+    return wrapper;
   }
 
   @Override
@@ -93,7 +106,8 @@ public class ProfileSnapshotServiceImpl implements ProfileSnapshotService {
   }
 
   @Override
-  public Future<ProfileSnapshotWrapper> constructSnapshot(String profileId, ProfileType profileType, String jobProfileId, String tenantId) {
+  public Future<ProfileSnapshotWrapper> constructSnapshot(String profileId, ProfileType profileType,
+                                                          String jobProfileId, String tenantId) {
     return getSnapshotAssociations(profileId, profileType, jobProfileId, tenantId)
       .compose(snapshotAssociations -> {
         if (CollectionUtils.isEmpty(snapshotAssociations)) {
@@ -107,7 +121,8 @@ public class ProfileSnapshotServiceImpl implements ProfileSnapshotService {
   }
 
   @Override
-  public Future<List<ProfileAssociation>> getSnapshotAssociations(String profileId, ProfileType profileType, String jobProfileId, String tenantId) {
+  public Future<List<ProfileAssociation>> getSnapshotAssociations(String profileId, ProfileType profileType,
+                                                                  String jobProfileId, String tenantId) {
     return profileSnapshotDao.getSnapshotAssociations(profileId, profileType, jobProfileId, tenantId);
   }
 
@@ -121,7 +136,8 @@ public class ProfileSnapshotServiceImpl implements ProfileSnapshotService {
     /* We need to remove duplicates to avoid double-appearance of the same child profiles in diamond inheritance */
     removeDuplicatesByAssociationId(snapshotAssociations);
 
-    Optional<ProfileAssociation> optionalRootItem = snapshotAssociations.stream().filter(item -> item.getMasterProfileId() == null).findFirst();
+    Optional<ProfileAssociation> optionalRootItem =
+      snapshotAssociations.stream().filter(item -> item.getMasterProfileId() == null).findFirst();
     if (optionalRootItem.isPresent()) {
       ProfileAssociation rootAssociation = optionalRootItem.get();
       ProfileSnapshotWrapper rootWrapper = new ProfileSnapshotWrapper();
@@ -134,7 +150,8 @@ public class ProfileSnapshotServiceImpl implements ProfileSnapshotService {
       rootWrapper.setProfileWrapperId(rootAssociation.getDetailWrapperId());
       rootWrapper.setContentType(rootAssociation.getDetailProfileType());
       rootWrapper.setContent(convertContentByType(rootAssociation.getDetail(), rootAssociation.getDetailProfileType()));
-      fillChildSnapshotWrappers(rootAssociation.getDetailWrapperId(), rootWrapper.getChildSnapshotWrappers(), snapshotAssociations);
+      fillChildSnapshotWrappers(rootAssociation.getDetailWrapperId(), rootWrapper.getChildSnapshotWrappers(),
+        snapshotAssociations);
       return rootWrapper;
     } else {
       throw new IllegalArgumentException("Can not find the root item in snapshot associations list");
@@ -147,10 +164,11 @@ public class ProfileSnapshotServiceImpl implements ProfileSnapshotService {
    * and falls into recursion passing child profile just been found (Depth-first traversal algorithm).
    *
    * @param parentWrapperId      parent wrapper profile id
-   * @param childWrappers collection of child snapshot wrappers linked to given parent id
+   * @param childWrappers        collection of child snapshot wrappers linked to given parent id
    * @param snapshotAssociations collection of profile associations
    */
-  private void fillChildSnapshotWrappers(String parentWrapperId, List<ProfileSnapshotWrapper> childWrappers, List<ProfileAssociation> snapshotAssociations) {
+  private void fillChildSnapshotWrappers(String parentWrapperId, List<ProfileSnapshotWrapper> childWrappers,
+                                         List<ProfileAssociation> snapshotAssociations) {
     if (parentWrapperId != null) {
       for (ProfileAssociation snapshotAssociation : snapshotAssociations) {
         if (parentWrapperId.equals(snapshotAssociation.getMasterWrapperId())) {
@@ -159,41 +177,28 @@ public class ProfileSnapshotServiceImpl implements ProfileSnapshotService {
           childWrapper.setProfileId(snapshotAssociation.getDetailProfileId());
           childWrapper.setProfileWrapperId(snapshotAssociation.getDetailWrapperId());
           childWrapper.setContentType(snapshotAssociation.getDetailProfileType());
-          childWrapper.setContent(convertContentByType(snapshotAssociation.getDetail(), snapshotAssociation.getDetailProfileType()));
+          childWrapper.setContent(
+            convertContentByType(snapshotAssociation.getDetail(), snapshotAssociation.getDetailProfileType()));
           if (snapshotAssociation.getReactTo() != null) {
             childWrapper.setReactTo(snapshotAssociation.getReactTo());
           }
           childWrapper.setOrder(snapshotAssociation.getOrder());
           childWrappers.add(childWrapper);
-          fillChildSnapshotWrappers(snapshotAssociation.getDetailWrapperId(), childWrapper.getChildSnapshotWrappers(), snapshotAssociations);
+          fillChildSnapshotWrappers(snapshotAssociation.getDetailWrapperId(), childWrapper.getChildSnapshotWrappers(),
+            snapshotAssociations);
         }
       }
     }
   }
 
   /**
-   * Removes the associations with the same id
+   * Removes the associations with the same id.
    *
    * @param snapshotAssociations collection of snapshot associations (rows)
    */
   private void removeDuplicatesByAssociationId(List<ProfileAssociation> snapshotAssociations) {
-    Set<String> duplicates = new HashSet<>(snapshotAssociations.size());
+    Set<String> duplicates = HashSet.newHashSet(snapshotAssociations.size());
     snapshotAssociations.removeIf(current -> !duplicates.add(current.getId()));
-  }
-
-  /**
-   * Method converts an Object 'content' field to concrete Profile class doing the same for all the child wrappers.
-   * to concrete Profile class. The class resolution happens by 'content type' field.
-   *
-   * @param wrapper the given ProfileSnapshotWrapper
-   * @return ProfileSnapshotWrapper with converted 'content' field
-   */
-  public static ProfileSnapshotWrapper convertProfileSnapshotWrapperContent(@NotNull ProfileSnapshotWrapper wrapper) {
-    wrapper.setContent(convertContentByType(wrapper.getContent(), wrapper.getContentType()));
-    for (ProfileSnapshotWrapper child : wrapper.getChildSnapshotWrappers()) {
-      convertProfileSnapshotWrapperContent(child);
-    }
-    return wrapper;
   }
 
   /**
@@ -204,14 +209,15 @@ public class ProfileSnapshotServiceImpl implements ProfileSnapshotService {
    * @param <T>         concrete class of the Profile
    * @return concrete class of the Profile
    */
-  private static  <T> T convertContentByType(Object content, ProfileType contentType) {
+  @SuppressWarnings("unchecked")
+  private static <T> T convertContentByType(Object content, ProfileType contentType) {
     ObjectMapper mapper = new ObjectMapper();
-      return switch (contentType) {
-          case JOB_PROFILE -> (T) mapper.convertValue(content, JobProfile.class);
-          case MATCH_PROFILE -> (T) mapper.convertValue(content, MatchProfile.class);
-          case ACTION_PROFILE -> (T) mapper.convertValue(content, ActionProfile.class);
-          case MAPPING_PROFILE -> (T) mapper.convertValue(content, MappingProfile.class);
-          default -> throw new IllegalStateException("Can not find profile by snapshot content type: " + contentType);
-      };
+    return switch (contentType) {
+      case JOB_PROFILE -> (T) mapper.convertValue(content, JobProfile.class);
+      case MATCH_PROFILE -> (T) mapper.convertValue(content, MatchProfile.class);
+      case ACTION_PROFILE -> (T) mapper.convertValue(content, ActionProfile.class);
+      case MAPPING_PROFILE -> (T) mapper.convertValue(content, MappingProfile.class);
+      default -> throw new IllegalStateException("Can not find profile by snapshot content type: " + contentType);
+    };
   }
 }

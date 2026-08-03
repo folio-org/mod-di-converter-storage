@@ -107,15 +107,7 @@ INSERT INTO ${myuniversity}_${mymodule}.mapping_profiles (id, jsonb) values
 				"path": "instance.statusId",
 				"value": "",
 				"enabled": "true",
-				"subfields": [],
-				"acceptedValues": {
-					"26f5208e-110a-4394-be29-1569a8c84a65": "Uncataloged",
-					"2a340d34-6b70-443a-bb1b-1b8d1c65d862": "Other",
-					"52a2ff34-2a12-420d-8539-21aa8d3cf5d8": "Batch Loaded",
-					"9634a5ab-9228-4703-baf2-4d12ebc77d56": "Cataloged",
-					"daf2681c-25af-4202-a3fa-e58fdf806183": "Temporary",
-					"f5cc2ab6-bb92-4cab-b83f-5a3d09261a41": "Not yet assigned"
-				}
+				"subfields": []
 			}, {
 				"name": "modeOfIssuanceId",
 				"path": "instance.modeOfIssuanceId",
@@ -282,30 +274,6 @@ INSERT INTO ${myuniversity}_${mymodule}.mapping_profiles (id, jsonb) values
 		"updatedByUserId": "00000000-0000-0000-0000-000000000000",
 		"updatedByUsername": "System"
   }
-}') ON CONFLICT DO NOTHING;
-
-INSERT INTO ${myuniversity}_${mymodule}.job_to_action_profiles (id, jsonb) values
-('d0ebbdbe-2f0f-11eb-adc1-0242ac120002',
-'{
-	"id": "d0ebbdbe-2f0f-11eb-adc1-0242ac120002",
-	"order": 0,
-	"triggered": false,
-	"detailProfileId": "d0ebba8a-2f0f-11eb-adc1-0242ac120002",
-	"masterProfileId": "d0ebb7b0-2f0f-11eb-adc1-0242ac120002",
-	"detailProfileType": "ACTION_PROFILE",
-	"masterProfileType": "JOB_PROFILE"
-}') ON CONFLICT DO NOTHING;
-
-INSERT INTO ${myuniversity}_${mymodule}.action_to_mapping_profiles (id, jsonb) values
-('d0ebbec2-2f0f-11eb-adc1-0242ac120002',
-'{
-	"id": "d0ebbec2-2f0f-11eb-adc1-0242ac120002",
-	"order": 0,
-	"triggered": false,
-	"detailProfileId": "d0ebbc2e-2f0f-11eb-adc1-0242ac120002",
-	"masterProfileId": "d0ebba8a-2f0f-11eb-adc1-0242ac120002",
-	"detailProfileType": "MAPPING_PROFILE",
-	"masterProfileType": "ACTION_PROFILE"
 }') ON CONFLICT DO NOTHING;
 
 DO

@@ -1,5 +1,10 @@
 package org.folio.rest.impl;
 
+import static org.hamcrest.Matchers.empty;
+import static org.hamcrest.Matchers.hasSize;
+import static org.hamcrest.Matchers.is;
+import static org.hamcrest.Matchers.notNullValue;
+
 import io.restassured.RestAssured;
 import io.vertx.core.json.Json;
 import io.vertx.core.json.JsonObject;
@@ -13,13 +18,8 @@ import org.folio.rest.persist.PostgresClient;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
-import static org.hamcrest.Matchers.empty;
-import static org.hamcrest.Matchers.hasSize;
-import static org.hamcrest.Matchers.is;
-import static org.hamcrest.Matchers.notNullValue;
-
 @RunWith(VertxUnitRunner.class)
-public class FormsConfigsApiTest extends AbstractRestVerticleTest{
+public class FormsConfigsApiTest extends AbstractRestVerticleTest {
 
   public static final String FORMS_CONFIGS_PATH = "/converter-storage/forms/configs";
   public static final String FORMS_CONFIGS_TABLE = "forms_configs";
@@ -192,7 +192,7 @@ public class FormsConfigsApiTest extends AbstractRestVerticleTest{
   }
 
   @Override
-  public void clearTables(TestContext context) {
+  protected void clearTables(TestContext context) {
     Async async = context.async();
     PostgresClient pgClient = PostgresClient.getInstance(vertx, TENANT_ID);
     pgClient.delete(FORMS_CONFIGS_TABLE, new Criterion(), ar -> {

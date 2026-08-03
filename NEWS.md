@@ -1,6 +1,60 @@
-## 2024-xx-xx 2.3.0
+## v2.6.0 XXXX-XX-XX
+
+### Features
+* Set Authority DELETE job/action/field mapping profiles to display via Settings > Data import ([MODDICONV-436](https://folio-org.atlassian.net/browse/MODDICONV-436))
+
+### Tech Dept
+* Add checkstyle validation to the build
+
+### Dependencies
+* Bump `log4j-bom` from `2.24.3` to `2.26.1`
+* Bump `vertx-stack-depchain` from `5.0.5` to `5.1.5`
+* Bump `spring-framework-bom` from `7.0.6` to `7.0.8`
+* Bump `mockito-core` from `5.21.0` to `5.23.0`
+* Bump `rest-assured` from `5.5.1` to `6.0.1`
+* Bump `caffeine` from `3.2.0` to `3.2.4`
+* Bump `wiremock` from `3.12.1` to `3.13.2`
+* Bump `testcontainers` from `1.20.6` to `2.0.5`
+* Bump `aspectjrt` and `aspectjtools` from `1.9.22.1` to `1.9.25.1`
+* Bump `jgrapht-core` and `jgrapht-io` from `1.5.2` to `1.5.3`
+* Bump `okhttp` from `4.12.0` to `5.4.0`
+* Bump `maven-compiler-plugin` from `3.14.0` to `3.15.0`
+* Bump `versions-maven-plugin` from `2.18.0` to `2.21.0`
+* Bump `maven-surefire-plugin` from `3.5.4` to `3.5.6`
+* Bump `exec-maven-plugin` from `3.5.0` to `3.6.3`
+* Bump `maven-resources-plugin` from `3.3.1` to `3.5.0`
+* Bump `maven-release-plugin` from `3.1.1` to `3.3.1`
+* Bump `build-helper-maven-plugin` from `3.6.0` to `3.6.1`
+* Bump `properties-maven-plugin` from `1.2.1` to `1.3.0`
+* Bump `maven-shade-plugin` from `3.6.0` to `3.6.2`
+* Add `maven-checkstyle-plugin 3.6.0`
+* Add `folio-java-checkstyle 1.2.0`
+* Add `checkstyle 13.7.0`
+
+## 2025-04-14 2.5.0
+* [MODDICONV-425](https://folio-org.atlassian.net/browse/MODDICONV-425) Create new Default Mapping profile for Mosaic invoices
+* [MODDICONV-429](https://folio-org.atlassian.net/browse/MODDICONV-429) Upgrade module to Vert.x 5.0
+* [MODDICONV-427](https://folio-org.atlassian.net/browse/MODDICONV-427) Delete old association tables
+
+## 2025-03-13 2.4.0
+* [MODDATAIMP-1102](https://folio-org.atlassian.net/browse/MODDATAIMP-1102) Empty contributor and vendor reference properties created in order when no values in incoming record
+* [MODDICONV-409](https://folio-org.atlassian.net/browse/MODDICONV-409) Update to Java 21 mod-di-converter-storage Sunflower R1 2025
+
+## 2024-10-29 2.3.0
 * [MODDICONV-312](https://folio-org.atlassian.net/browse/MODDICONV-312) Create general associations table
 * [MODDICONV-373](https://folio-org.atlassian.net/browse/MODDICONV-373) Disallow create/update of a job profile without actions
+* [MODDICONV-391](https://issues.folio.org/browse/MODDICONV-391) Create migration script for Order mapping profiles
+* [MODDICONV-399](https://folio-org.atlassian.net/browse/MODDICONV-399) Upgrade Spring from 5.3.23 to 6.1.13
+* [MODDICONV-393](https://folio-org.atlassian.net/browse/MODDICONV-393) Fix inconsistencies in permission namings
+* [MODDICONV-396](https://folio-org.atlassian.net/browse/MODDICONV-396) Remove accepted values from Instance, Holdings, Items and Orders mapping profiles
+* [MODDICONV-403](https://folio-org.atlassian.net/browse/MODDICONV-403) mod-di-converter-storage Ramsons 2024 R2 - RMB v35.3.x update
+* [MODDICONV-374](https://folio-org.atlassian.net/browse/MODDICONV-374) Validate Job Profiles with Modify action at create
+* [MODDICONV-380](https://folio-org.atlassian.net/browse/MODDICONV-380) Validate Job Profile with Modify action at Update
+* [MODDICONV-388](https://folio-org.atlassian.net/browse/MODDICONV-388) Allow hard delete of Data Import Profiles
+* [MODDICONV-389](https://folio-org.atlassian.net/browse/MODDICONV-389) Remove deprecated default job profile 'Create MARC Bibs'
+* [MODDICONV-390](https://folio-org.atlassian.net/browse/MODDICONV-390) Move data import profile validation to service layer
+* [MODDICONV-286](https://folio-org.atlassian.net/browse/MODDICONV-286) Allow Job Profiles To Be Imported
+* [MODDICONV-392](https://folio-org.atlassian.net/browse/MODDICONV-392) Overlay existing profile during job profile import
 
 ## 2024-03-20 2.2.0
 * [MODDICORE-398](https://folio-org.atlassian.net/browse/MODDICORE-398) Upgrade mod-di-converter-storage to RMB 35.2.0, Vert.x 4.5.4

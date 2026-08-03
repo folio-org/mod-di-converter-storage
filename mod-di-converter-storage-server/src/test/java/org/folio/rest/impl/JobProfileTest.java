@@ -30,6 +30,7 @@ import static org.hamcrest.Matchers.is;
 
 import io.restassured.RestAssured;
 import io.restassured.response.Response;
+import io.vertx.core.Future;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
@@ -67,31 +68,10 @@ import org.junit.runner.RunWith;
 @RunWith(VertxUnitRunner.class)
 public class JobProfileTest extends AbstractRestVerticleTest {
 
-  private static final String JOB_PROFILES_TABLE_NAME = "job_profiles";
   static final String JOB_PROFILES_PATH = "/data-import-profiles/jobProfiles";
-  private static final String ASSOCIATED_PROFILES_PATH = "/data-import-profiles/profileAssociations";
-  private static final String PROFILE_WRAPPERS_TABLE_NAME = "profile_wrappers";
   static final String MAPPING_PROFILES_TABLE_NAME = "mapping_profiles";
-  private static final String ASSOCIATIONS_TABLE = "profile_associations";
   static final String MATCH_PROFILES_TABLE_NAME = "match_profiles";
-  private static final String SNAPSHOTS_TABLE_NAME = "profile_snapshots";
-  private static final String PROFILE_WRAPPERS_TABLE = "profile_wrappers";
   static final String MAPPING_PROFILES_PATH = "/data-import-profiles/mappingProfiles";
-
-  private static final String JOB_PROFILE_UUID = "b81c283c-131d-4470-ab91-e92bb415c000";
-  private static final String DEFAULT_CREATE_SRS_MARC_AUTHORITY_JOB_PROFILE_ID = "6eefa4c6-bbf7-4845-ad82-de7fc5abd0e3";
-  private final List<String> defaultJobProfileIds = Arrays.asList(
-    "d0ebb7b0-2f0f-11eb-adc1-0242ac120002", //OCLC_CREATE_INSTANCE_JOB_PROFILE_ID
-    "91f9b8d6-d80e-4727-9783-73fb53e3c786", //OCLC_UPDATE_INSTANCE_JOB_PROFILE_ID
-    "fa0262c7-5816-48d0-b9b3-7b7a862a5bc7", //DEFAULT_CREATE_DERIVE_HOLDINGS_JOB_PROFILE_ID
-    "6409dcff-71fa-433a-bc6a-e70ad38a9604", //DEFAULT_CREATE_DERIVE_INSTANCE_JOB_PROFILE_ID
-    "80898dee-449f-44dd-9c8e-37d5eb469b1d", //DEFAULT_CREATE_HOLDINGS_AND_SRS_MARC_HOLDINGS_JOB_PROFILE_ID
-    "1a338fcd-3efc-4a03-b007-394eeb0d5fb9", //DEFAULT_DELETE_MARC_AUTHORITY_JOB_PROFILE_ID
-    "cf6f2718-5aa5-482a-bba5-5bc9b75614da", //DEFAULT_QM_MARC_BIB_UPDATE_JOB_PROFILE_ID
-    "6cb347c6-c0b0-4363-89fc-32cedede87ba", //DEFAULT_QM_HOLDINGS_UPDATE_JOB_PROFILE_ID
-    "c7fcbc40-c4c0-411d-b569-1fc6bc142a92",
-    "6eefa4c6-bbf7-4845-ad82-de7fc4abd0e3"  //DEFAULT_QM_AUTHORITY_CREATE_JOB_PROFILE_ID
-  );
 
   static JobProfileUpdateDto jobProfile_1 = new JobProfileUpdateDto()
     .withProfile(new JobProfile().withName("Bla")
@@ -105,16 +85,6 @@ public class JobProfileTest extends AbstractRestVerticleTest {
     .withProfile(new JobProfile().withName("Foo")
       .withTags(new Tags().withTagList(Collections.singletonList("lorem")))
       .withDataType(MARC));
-  static JobProfileUpdateDto jobProfile_4 = new JobProfileUpdateDto()
-    .withProfile(new JobProfile().withId(JOB_PROFILE_UUID)
-      .withName("OLA")
-      .withTags(new Tags().withTagList(Arrays.asList("lorem", "ipsum", "dolor")))
-      .withDataType(MARC));
-  static JobProfileUpdateDto jobProfile_5 = new JobProfileUpdateDto()
-    .withProfile(new JobProfile().withId(DEFAULT_CREATE_SRS_MARC_AUTHORITY_JOB_PROFILE_ID)
-      .withName("Default - Create SRS MARC Authority")
-      .withDescription("Default job profile for creating MARC authority records.")
-      .withDataType(MARC));
   static JobProfileUpdateDto jobProfileNotEmptyChildAndParent = new JobProfileUpdateDto()
     .withProfile(new JobProfile()
       .withName("Job profile with child and parent")
@@ -122,6 +92,40 @@ public class JobProfileTest extends AbstractRestVerticleTest {
       .withDataType(MARC)
       .withChildProfiles(List.of(new ProfileSnapshotWrapper().withId(UUID.randomUUID().toString())))
       .withParentProfiles(List.of(new ProfileSnapshotWrapper().withId(UUID.randomUUID().toString()))));
+
+  private static final String JOB_PROFILES_TABLE_NAME = "job_profiles";
+  private static final String ASSOCIATED_PROFILES_PATH = "/data-import-profiles/profileAssociations";
+  private static final String PROFILE_WRAPPERS_TABLE_NAME = "profile_wrappers";
+  private static final String ASSOCIATIONS_TABLE = "profile_associations";
+  private static final String SNAPSHOTS_TABLE_NAME = "profile_snapshots";
+  private static final String PROFILE_WRAPPERS_TABLE = "profile_wrappers";
+  private static final String JOB_PROFILE_UUID = "b81c283c-131d-4470-ab91-e92bb415c000";
+
+  static JobProfileUpdateDto jobProfile_4 = new JobProfileUpdateDto()
+    .withProfile(new JobProfile().withId(JOB_PROFILE_UUID)
+      .withName("OLA")
+      .withTags(new Tags().withTagList(Arrays.asList("lorem", "ipsum", "dolor")))
+      .withDataType(MARC));
+
+  private static final String DEFAULT_CREATE_SRS_MARC_AUTHORITY_JOB_PROFILE_ID = "6eefa4c6-bbf7-4845-ad82-de7fc5abd0e3";
+  static JobProfileUpdateDto jobProfile_5 = new JobProfileUpdateDto()
+    .withProfile(new JobProfile().withId(DEFAULT_CREATE_SRS_MARC_AUTHORITY_JOB_PROFILE_ID)
+      .withName("Default - Create SRS MARC Authority")
+      .withDescription("Default job profile for creating MARC authority records.")
+      .withDataType(MARC));
+
+  private final List<String> defaultJobProfileIds = Arrays.asList(
+    "d0ebb7b0-2f0f-11eb-adc1-0242ac120002", //OCLC_CREATE_INSTANCE_JOB_PROFILE_ID
+    "91f9b8d6-d80e-4727-9783-73fb53e3c786", //OCLC_UPDATE_INSTANCE_JOB_PROFILE_ID
+    "fa0262c7-5816-48d0-b9b3-7b7a862a5bc7", //DEFAULT_CREATE_DERIVE_HOLDINGS_JOB_PROFILE_ID
+    "6409dcff-71fa-433a-bc6a-e70ad38a9604", //DEFAULT_CREATE_DERIVE_INSTANCE_JOB_PROFILE_ID
+    "80898dee-449f-44dd-9c8e-37d5eb469b1d", //DEFAULT_CREATE_HOLDINGS_AND_SRS_MARC_HOLDINGS_JOB_PROFILE_ID
+    "1a338fcd-3efc-4a03-b007-394eeb0d5fb9", //DEFAULT_DELETE_MARC_AUTHORITY_JOB_PROFILE_ID
+    "cf6f2718-5aa5-482a-bba5-5bc9b75614da", //DEFAULT_QM_MARC_BIB_UPDATE_JOB_PROFILE_ID
+    "6cb347c6-c0b0-4363-89fc-32cedede87ba", //DEFAULT_QM_HOLDINGS_UPDATE_JOB_PROFILE_ID
+    "c7fcbc40-c4c0-411d-b569-1fc6bc142a92",
+    "6eefa4c6-bbf7-4845-ad82-de7fc4abd0e3"  //DEFAULT_QM_AUTHORITY_CREATE_JOB_PROFILE_ID
+  );
 
   @Test
   public void shouldReturnEmptyListOnGet() {
@@ -204,8 +208,10 @@ public class JobProfileTest extends AbstractRestVerticleTest {
       .body("totalRecords", is(3))
       .extract().body().as(JobProfileCollection.class).getJobProfiles();
 
-    Assert.assertTrue(jobProfileList.get(0).getMetadata().getCreatedDate().after(jobProfileList.get(1).getMetadata().getCreatedDate()));
-    Assert.assertTrue(jobProfileList.get(1).getMetadata().getCreatedDate().after(jobProfileList.get(2).getMetadata().getCreatedDate()));
+    Assert.assertTrue(
+      jobProfileList.get(0).getMetadata().getCreatedDate().after(jobProfileList.get(1).getMetadata().getCreatedDate()));
+    Assert.assertTrue(
+      jobProfileList.get(1).getMetadata().getCreatedDate().after(jobProfileList.get(2).getMetadata().getCreatedDate()));
   }
 
   @Test
@@ -249,170 +255,6 @@ public class JobProfileTest extends AbstractRestVerticleTest {
     }
   }
 
-  private JobProfileUpdateDto createJobProfile(JobProfileUpdateDto jobProfileUpdateDto,
-                                               String actionName,
-                                               String mappingName) {
-    var actionProfileIdCreate = UUID.randomUUID().toString();
-    RestAssured.given()
-      .spec(spec)
-      .body(new ActionProfileUpdateDto()
-        .withProfile(new ActionProfile().withName(actionName)
-          .withId(actionProfileIdCreate)
-          .withAction(CREATE)
-          .withFolioRecord(INSTANCE)))
-      .when()
-      .post(ACTION_PROFILES_PATH)
-      .then()
-      .statusCode(HttpStatus.SC_CREATED);
-
-    String mappingProfileIdCreate = UUID.randomUUID().toString();
-    RestAssured.given()
-      .spec(spec)
-      .body(new MappingProfileUpdateDto()
-        .withProfile(new MappingProfile().withName(mappingName)
-          .withId(mappingProfileIdCreate)
-          .withIncomingRecordType(EntityType.MARC_BIBLIOGRAPHIC)
-          .withExistingRecordType(EntityType.INSTANCE))
-        .withAddedRelations(
-          List.of(
-            new ProfileAssociation()
-              .withMasterProfileId(actionProfileIdCreate)
-              .withDetailProfileId(mappingProfileIdCreate)
-              .withMasterProfileType(ACTION_PROFILE)
-              .withDetailProfileType(MAPPING_PROFILE)
-              .withOrder(0))))
-      .when()
-      .post(MAPPING_PROFILES_PATH)
-      .then()
-      .statusCode(HttpStatus.SC_CREATED);
-
-    var validAssociation = new ProfileAssociation()
-      .withMasterProfileId(jobProfileUpdateDto.getId())
-      .withDetailProfileId(actionProfileIdCreate)
-      .withMasterProfileType(JOB_PROFILE)
-      .withDetailProfileType(ACTION_PROFILE)
-      .withOrder(0);
-
-    return jobProfileUpdateDto.withAddedRelations(List.of(validAssociation));
-  }
-
-  private <T> JobProfileUpdateDto createJobProfile(JobProfileUpdateDto jobProfileUpdateDto,
-                                               ProfileWrapper<T> profileWrapper, String url, ProfileType detailProfileType) {
-    T profile = RestAssured.given()
-      .spec(spec)
-      .body(profileWrapper.getProfile())
-      .when()
-      .post(url)
-      .then().log().all()
-      .statusCode(HttpStatus.SC_CREATED)
-      .and()
-      .extract().body().as(profileWrapper.getProfileType());
-    profileWrapper.setProfile(profile);
-
-    var association = new ProfileAssociation()
-      .withMasterProfileId(jobProfileUpdateDto.getProfile().getId())
-      .withDetailProfileId(profileWrapper.getId())
-      .withMasterProfileType(JOB_PROFILE)
-      .withDetailProfileType(detailProfileType)
-      .withOrder(0);
-
-    return jobProfileUpdateDto.withAddedRelations(List.of(association));
-  }
-
-  private JobProfileUpdateDto createJobProfileWithAction(JobProfileUpdateDto jobProfileUpdateDto,
-                                                         ActionProfileUpdateDto actionProfileUpdateDto,
-                                                         MappingProfileUpdateDto mappingProfileUpdateDto) {
-    var mappingProfile = RestAssured.given()
-      .spec(spec)
-      .body(mappingProfileUpdateDto)
-      .when()
-      .post(MAPPING_PROFILES_PATH)
-      .then()
-      .statusCode(HttpStatus.SC_CREATED)
-      .extract().as(MappingProfileUpdateDto.class);
-
-    var actionProfile = RestAssured.given()
-      .spec(spec)
-      .body(actionProfileUpdateDto)
-      .when()
-      .post(ACTION_PROFILES_PATH)
-      .then()
-      .statusCode(HttpStatus.SC_CREATED)
-      .extract().as(ActionProfileUpdateDto.class);
-
-    var actionToMappingAssociation = new ProfileAssociation()
-      .withMasterProfileId(actionProfile.getProfile().getId())
-      .withDetailProfileId(mappingProfile.getProfile().getId())
-      .withMasterProfileType(ACTION_PROFILE)
-      .withDetailProfileType(MAPPING_PROFILE)
-      .withOrder(0);
-
-    var jobToActionAssociation = new ProfileAssociation()
-      .withMasterProfileId(jobProfileUpdateDto.getId())
-      .withDetailProfileId(actionProfile.getProfile().getId())
-      .withMasterProfileType(JOB_PROFILE)
-      .withDetailProfileType(ACTION_PROFILE)
-      .withOrder(1);
-
-    return jobProfileUpdateDto.withAddedRelations(List.of(jobToActionAssociation, actionToMappingAssociation));
-  }
-
-  private JobProfileUpdateDto createJobProfileWithMatch(JobProfileUpdateDto jobProfileUpdateDto,
-                                                        MatchProfileUpdateDto matchProfileUpdateDto,
-                                                        ActionProfileUpdateDto actionProfileUpdateDto,
-                                                        MappingProfileUpdateDto mappingProfileUpdateDto) {
-    var mappingProfile = RestAssured.given()
-      .spec(spec)
-      .body(mappingProfileUpdateDto)
-      .when()
-      .post(MAPPING_PROFILES_PATH)
-      .then()
-      .statusCode(HttpStatus.SC_CREATED)
-      .extract().as(MappingProfileUpdateDto.class);
-
-    var matchProfile = RestAssured.given()
-      .spec(spec)
-      .body(matchProfileUpdateDto)
-      .when()
-      .post(MATCH_PROFILES_PATH)
-      .then()
-      .statusCode(HttpStatus.SC_CREATED)
-      .extract().as(MatchProfileUpdateDto.class);
-
-    var actionProfile = RestAssured.given()
-      .spec(spec)
-      .body(actionProfileUpdateDto)
-      .when()
-      .post(ACTION_PROFILES_PATH)
-      .then()
-      .statusCode(HttpStatus.SC_CREATED)
-      .extract().as(ActionProfileUpdateDto.class);
-
-    var jobToMatchAssociation = new ProfileAssociation()
-      .withMasterProfileId(jobProfileUpdateDto.getId())
-      .withDetailProfileId(matchProfile.getId())
-      .withMasterProfileType(JOB_PROFILE)
-      .withDetailProfileType(MATCH_PROFILE)
-      .withOrder(1);
-
-    var jobToActionAssociation = new ProfileAssociation()
-      .withMasterProfileId(matchProfile.getId())
-      .withDetailProfileId(actionProfile.getId())
-      .withMasterProfileType(MATCH_PROFILE)
-      .withDetailProfileType(ACTION_PROFILE)
-      .withOrder(1);
-
-    var actionToMappingAssociation = new ProfileAssociation()
-      .withMasterProfileId(actionProfile.getId())
-      .withDetailProfileId(mappingProfile.getId())
-      .withMasterProfileType(ACTION_PROFILE)
-      .withDetailProfileType(MAPPING_PROFILE)
-      .withOrder(1);
-
-    return jobProfileUpdateDto
-      .withAddedRelations(List.of(jobToMatchAssociation, jobToActionAssociation, actionToMappingAssociation));
-  }
-
   @Test
   public void shouldCreateProfileOnPost() {
     var jobProfile = createJobProfile(jobProfile_1, "testActionCreate", "testMappingCreate");
@@ -437,7 +279,7 @@ public class JobProfileTest extends AbstractRestVerticleTest {
       .post(JOB_PROFILES_PATH)
       .then().log().all()
       .statusCode(HttpStatus.SC_UNPROCESSABLE_ENTITY)
-      .body("errors[0].message", is("Job profile 'tree2' already exists"));
+      .body("errors[0].message", is("Job profile 'Bla' already exists"));
   }
 
   @Test
@@ -542,8 +384,9 @@ public class JobProfileTest extends AbstractRestVerticleTest {
       .statusCode(HttpStatus.SC_UNPROCESSABLE_ENTITY)
       .body("errors", hasItem(
         hasEntry(is("message"),
-          is(String.format("ActionProfile with id '%s' and action UPDATE requires linked MatchProfile", actionProfileId)))
-        ));
+          is(String.format("ActionProfile with id '%s' and action UPDATE requires linked MatchProfile",
+            actionProfileId)))
+      ));
   }
 
   @Test
@@ -589,6 +432,7 @@ public class JobProfileTest extends AbstractRestVerticleTest {
   }
 
   @Test
+  @SuppressWarnings("checkstyle:MethodLength")
   public void shouldReturnBadRequestOnPostJobProfileWithTwoModifyActions() {
     var actionProfileId = UUID.randomUUID().toString();
     var jobId = UUID.randomUUID().toString();
@@ -661,8 +505,8 @@ public class JobProfileTest extends AbstractRestVerticleTest {
       ));
   }
 
-
   @Test
+  @SuppressWarnings("checkstyle:MethodLength")
   public void shouldReturnBadRequestOnPutJobProfileWithStandaloneModifyAction() {
     var actionProfileIdCreate = UUID.randomUUID().toString();
     var actionProfileIdModify = UUID.randomUUID().toString();
@@ -751,7 +595,6 @@ public class JobProfileTest extends AbstractRestVerticleTest {
       .withMasterProfileType(JOB_PROFILE)
       .withOrder(1);
 
-
     JobProfileUpdateDto jobProfileUpdateDto = RestAssured.given()
       .spec(spec)
       .body(new JobProfileUpdateDto()
@@ -765,8 +608,6 @@ public class JobProfileTest extends AbstractRestVerticleTest {
       .then()
       .statusCode(HttpStatus.SC_CREATED)
       .extract().as(JobProfileUpdateDto.class);
-
-
 
     var deleteAssociation = new ProfileAssociation()
       .withDetailProfileType(ACTION_PROFILE)
@@ -796,6 +637,7 @@ public class JobProfileTest extends AbstractRestVerticleTest {
   }
 
   @Test
+  @SuppressWarnings("checkstyle:MethodLength")
   public void shouldReturnBadRequestOnPutJobProfileWithStandaloneModifyActionAfterMatch() {
     var actionProfileIdCreate = UUID.randomUUID().toString();
     var actionProfileIdModify = UUID.randomUUID().toString();
@@ -946,6 +788,7 @@ public class JobProfileTest extends AbstractRestVerticleTest {
   }
 
   @Test
+  @SuppressWarnings("checkstyle:MethodLength")
   public void shouldReturnBadRequestOnPostJobProfileWithStandaloneModifyActionAfterMatch() {
     var actionProfileId = UUID.randomUUID().toString();
     var matchProfileId = UUID.randomUUID().toString();
@@ -1088,7 +931,7 @@ public class JobProfileTest extends AbstractRestVerticleTest {
 
     jobProfile.getProfile().setDescription("test");
     jobProfile.getProfile().setDataType(DELIMITED);
-    jobProfile.getAddedRelations().get(0).setId(UUID.randomUUID().toString());
+    jobProfile.getAddedRelations().getFirst().setId(UUID.randomUUID().toString());
 
     RestAssured.given()
       .spec(spec)
@@ -1121,7 +964,7 @@ public class JobProfileTest extends AbstractRestVerticleTest {
     jobProfile.getProfile().setName("updated name");
     jobProfile.getProfile().setDescription("updated description");
     jobProfile.getProfile().setDataType(EDIFACT);
-    jobProfile.getAddedRelations().get(0).setId(UUID.randomUUID().toString());
+    jobProfile.getAddedRelations().getFirst().setId(UUID.randomUUID().toString());
 
     RestAssured.given()
       .spec(spec)
@@ -1137,6 +980,7 @@ public class JobProfileTest extends AbstractRestVerticleTest {
   }
 
   @Test
+  @SuppressWarnings("checkstyle:MethodLength")
   public void shouldUpdateProfileAssociationsOnPut() {
     var jobUpdateDto = new JobProfileUpdateDto()
       .withProfile(new JobProfile()
@@ -1184,7 +1028,7 @@ public class JobProfileTest extends AbstractRestVerticleTest {
       .body(
         jobProfileToUpdate
           .withAddedRelations(null)
-          .withDeletedRelations(List.of(jobProfile.getAddedRelations().get(0))))
+          .withDeletedRelations(List.of(jobProfile.getAddedRelations().getFirst())))
       .when()
       .put(JOB_PROFILES_PATH + "/" + jobProfile.getProfile().getId())
       .then()
@@ -1283,7 +1127,8 @@ public class JobProfileTest extends AbstractRestVerticleTest {
       .statusCode(HttpStatus.SC_UNPROCESSABLE_ENTITY);
   }
 
-    @Test
+  @Test
+  @SuppressWarnings("checkstyle:MethodLength")
   public void shouldUnlinkOneActionProfileFromTwoIdenticalOnes() {
 
     //create action profile
@@ -1337,18 +1182,18 @@ public class JobProfileTest extends AbstractRestVerticleTest {
           .withName("testJob")
           .withDataType(MARC))
         .withAddedRelations(List.of(
-          new ProfileAssociation()
-            .withMasterProfileId(jobProfileId)
-            .withDetailProfileId(actionProfile.getId())
-            .withMasterProfileType(JOB_PROFILE)
-            .withDetailProfileType(ACTION_PROFILE)
-            .withOrder(0),
-          new ProfileAssociation()
-            .withMasterProfileId(jobProfileId)
-            .withDetailProfileId(actionProfile.getId())
-            .withMasterProfileType(JOB_PROFILE)
-            .withDetailProfileType(ACTION_PROFILE)
-            .withOrder(1)
+            new ProfileAssociation()
+              .withMasterProfileId(jobProfileId)
+              .withDetailProfileId(actionProfile.getId())
+              .withMasterProfileType(JOB_PROFILE)
+              .withDetailProfileType(ACTION_PROFILE)
+              .withOrder(0),
+            new ProfileAssociation()
+              .withMasterProfileId(jobProfileId)
+              .withDetailProfileId(actionProfile.getId())
+              .withMasterProfileType(JOB_PROFILE)
+              .withDetailProfileType(ACTION_PROFILE)
+              .withOrder(1)
           )
         )
       )
@@ -1372,7 +1217,7 @@ public class JobProfileTest extends AbstractRestVerticleTest {
     RestAssured.given()
       .spec(spec)
       .body(jobProfile
-        .withDeletedRelations(List.of(profileAssociationCollection.getProfileAssociations().get(0)))
+        .withDeletedRelations(List.of(profileAssociationCollection.getProfileAssociations().getFirst()))
         .withAddedRelations(emptyList())
       )
       .when()
@@ -1394,11 +1239,10 @@ public class JobProfileTest extends AbstractRestVerticleTest {
       .statusCode(HttpStatus.SC_OK)
       .extract().body().as(ProfileAssociationCollection.class);
     Assert.assertEquals(1, profileAssociationCollection.getTotalRecords().intValue());
-
   }
 
-
   @Test
+  @SuppressWarnings("checkstyle:MethodLength")
   public void shouldUnlinkActionsMirrorAssociationsWithEqualsMatchProfiles() {
 
     JobProfileUpdateDto jobProfileBody = createJobProfile(new JobProfileUpdateDto()
@@ -1426,15 +1270,15 @@ public class JobProfileTest extends AbstractRestVerticleTest {
           .withName("testMatch")
           .withIncomingRecordType(EntityType.MARC_BIBLIOGRAPHIC)
           .withExistingRecordType(EntityType.INSTANCE)
-          ).withAddedRelations(
+        ).withAddedRelations(
           List.of(
             new ProfileAssociation()
               .withMasterProfileId(jobProfile.getProfile().getId())
               .withDetailProfileId(matchProfileId)
               .withMasterProfileType(JOB_PROFILE)
               .withDetailProfileType(MATCH_PROFILE)
-              .withOrder(0)
-            ,new ProfileAssociation()
+              .withOrder(0),
+            new ProfileAssociation()
               .withMasterProfileId(jobProfile.getProfile().getId())
               .withDetailProfileId(matchProfileId)
               .withMasterProfileType(JOB_PROFILE)
@@ -1447,100 +1291,100 @@ public class JobProfileTest extends AbstractRestVerticleTest {
       .statusCode(HttpStatus.SC_CREATED)
       .extract().as(MatchProfileUpdateDto.class);
 
-     //create action profile
-     String actionProfileId = UUID.randomUUID().toString();
-     ActionProfileUpdateDto actionProfile = RestAssured.given()
-       .spec(spec)
-       .body(new ActionProfileUpdateDto()
-         .withProfile(new ActionProfile().withName("testAction")
-           .withId(actionProfileId)
-           .withAction(CREATE)
-           .withFolioRecord(INSTANCE))
-       )
-       .when()
-       .post(ACTION_PROFILES_PATH)
-       .then()
-       .statusCode(HttpStatus.SC_CREATED)
-       .extract().as(ActionProfileUpdateDto.class);
+    //create action profile
+    String actionProfileId = UUID.randomUUID().toString();
+    ActionProfileUpdateDto actionProfile = RestAssured.given()
+      .spec(spec)
+      .body(new ActionProfileUpdateDto()
+        .withProfile(new ActionProfile().withName("testAction")
+          .withId(actionProfileId)
+          .withAction(CREATE)
+          .withFolioRecord(INSTANCE))
+      )
+      .when()
+      .post(ACTION_PROFILES_PATH)
+      .then()
+      .statusCode(HttpStatus.SC_CREATED)
+      .extract().as(ActionProfileUpdateDto.class);
 
-     String mappingProfileId = UUID.randomUUID().toString();
-     RestAssured.given()
-       .spec(spec)
-       .body(new MappingProfileUpdateDto()
-         .withProfile(new MappingProfile().withName("testMapping")
-           .withId(mappingProfileId)
-           .withIncomingRecordType(EntityType.MARC_BIBLIOGRAPHIC)
-           .withExistingRecordType(EntityType.INSTANCE))
-         .withAddedRelations(
-           List.of(
-             new ProfileAssociation()
-               .withMasterProfileId(actionProfile.getId())
-               .withDetailProfileId(mappingProfileId)
-               .withMasterProfileType(ACTION_PROFILE)
-               .withDetailProfileType(ProfileType.MAPPING_PROFILE)
-               .withOrder(0)
-             )
-         )
-       )
-       .when()
-       .post(MAPPING_PROFILES_PATH)
-       .then()
-       .statusCode(HttpStatus.SC_CREATED)
-       .extract().as(MappingProfileUpdateDto.class);
+    String mappingProfileId = UUID.randomUUID().toString();
+    RestAssured.given()
+      .spec(spec)
+      .body(new MappingProfileUpdateDto()
+        .withProfile(new MappingProfile().withName("testMapping")
+          .withId(mappingProfileId)
+          .withIncomingRecordType(EntityType.MARC_BIBLIOGRAPHIC)
+          .withExistingRecordType(EntityType.INSTANCE))
+        .withAddedRelations(
+          List.of(
+            new ProfileAssociation()
+              .withMasterProfileId(actionProfile.getId())
+              .withDetailProfileId(mappingProfileId)
+              .withMasterProfileType(ACTION_PROFILE)
+              .withDetailProfileType(ProfileType.MAPPING_PROFILE)
+              .withOrder(0)
+          )
+        )
+      )
+      .when()
+      .post(MAPPING_PROFILES_PATH)
+      .then()
+      .statusCode(HttpStatus.SC_CREATED)
+      .extract().as(MappingProfileUpdateDto.class);
 
-     ProfileAssociation match1ToMatchAction =
-       new ProfileAssociation()
-         .withMasterProfileId(matchProfile.getAddedRelations().get(0).getDetailProfileId())
-         .withDetailProfileId(actionProfileId)
-         .withMasterProfileType(MATCH_PROFILE)
-         .withDetailProfileType(ACTION_PROFILE)
-         .withMasterWrapperId(matchProfile.getAddedRelations().get(0).getDetailWrapperId())
-         .withOrder(0)
-         .withReactTo(MATCH);
+    ProfileAssociation match1ToMatchAction =
+      new ProfileAssociation()
+        .withMasterProfileId(matchProfile.getAddedRelations().get(0).getDetailProfileId())
+        .withDetailProfileId(actionProfileId)
+        .withMasterProfileType(MATCH_PROFILE)
+        .withDetailProfileType(ACTION_PROFILE)
+        .withMasterWrapperId(matchProfile.getAddedRelations().get(0).getDetailWrapperId())
+        .withOrder(0)
+        .withReactTo(MATCH);
 
-     ProfileAssociation match1ToNonMatchAction =
-       new ProfileAssociation()
-         .withMasterProfileId(matchProfile.getAddedRelations().get(0).getDetailProfileId())
-         .withDetailProfileId(actionProfileId)
-         .withMasterProfileType(MATCH_PROFILE)
-         .withDetailProfileType(ACTION_PROFILE)
-         .withMasterWrapperId(matchProfile.getAddedRelations().get(0).getDetailWrapperId())
-         .withOrder(0)
-         .withReactTo(NON_MATCH);
+    ProfileAssociation match1ToNonMatchAction =
+      new ProfileAssociation()
+        .withMasterProfileId(matchProfile.getAddedRelations().get(0).getDetailProfileId())
+        .withDetailProfileId(actionProfileId)
+        .withMasterProfileType(MATCH_PROFILE)
+        .withDetailProfileType(ACTION_PROFILE)
+        .withMasterWrapperId(matchProfile.getAddedRelations().get(0).getDetailWrapperId())
+        .withOrder(0)
+        .withReactTo(NON_MATCH);
 
-     ProfileAssociation match2ToMatchAction =
-       new ProfileAssociation()
-         .withMasterProfileId(matchProfile.getAddedRelations().get(1).getDetailProfileId())
-         .withDetailProfileId(actionProfileId)
-         .withMasterProfileType(MATCH_PROFILE)
-         .withDetailProfileType(ACTION_PROFILE)
-         .withMasterWrapperId(matchProfile.getAddedRelations().get(1).getDetailWrapperId())
-         .withOrder(0)
-         .withReactTo(MATCH);
+    ProfileAssociation match2ToMatchAction =
+      new ProfileAssociation()
+        .withMasterProfileId(matchProfile.getAddedRelations().get(1).getDetailProfileId())
+        .withDetailProfileId(actionProfileId)
+        .withMasterProfileType(MATCH_PROFILE)
+        .withDetailProfileType(ACTION_PROFILE)
+        .withMasterWrapperId(matchProfile.getAddedRelations().get(1).getDetailWrapperId())
+        .withOrder(0)
+        .withReactTo(MATCH);
 
-     ProfileAssociation match2ToNonMatchAction =
-       new ProfileAssociation()
-         .withMasterProfileId(matchProfile.getAddedRelations().get(1).getDetailProfileId())
-         .withDetailProfileId(actionProfileId)
-         .withMasterProfileType(MATCH_PROFILE)
-         .withDetailProfileType(ACTION_PROFILE)
-         .withMasterWrapperId(matchProfile.getAddedRelations().get(1).getDetailWrapperId())
-         .withOrder(0)
-         .withReactTo(NON_MATCH);
+    ProfileAssociation match2ToNonMatchAction =
+      new ProfileAssociation()
+        .withMasterProfileId(matchProfile.getAddedRelations().get(1).getDetailProfileId())
+        .withDetailProfileId(actionProfileId)
+        .withMasterProfileType(MATCH_PROFILE)
+        .withDetailProfileType(ACTION_PROFILE)
+        .withMasterWrapperId(matchProfile.getAddedRelations().get(1).getDetailWrapperId())
+        .withOrder(0)
+        .withReactTo(NON_MATCH);
 
-     RestAssured.given()
-       .spec(spec)
-       .body(jobProfile.withAddedRelations(
-         List.of(match1ToMatchAction, match1ToNonMatchAction, match2ToMatchAction, match2ToNonMatchAction)
-       ))
-       .when()
-       .put(JOB_PROFILES_PATH + "/" + jobProfile.getProfile().getId())
-       .then()
-       .statusCode(HttpStatus.SC_OK)
-       .body("id", is(jobProfile.getProfile().getId()))
-       .body("name", is(jobProfile.getProfile().getName()))
-       .body("dataType", is(jobProfile.getProfile().getDataType().value()))
-       .extract().body().asPrettyString();
+    RestAssured.given()
+      .spec(spec)
+      .body(jobProfile.withAddedRelations(
+        List.of(match1ToMatchAction, match1ToNonMatchAction, match2ToMatchAction, match2ToNonMatchAction)
+      ))
+      .when()
+      .put(JOB_PROFILES_PATH + "/" + jobProfile.getProfile().getId())
+      .then()
+      .statusCode(HttpStatus.SC_OK)
+      .body("id", is(jobProfile.getProfile().getId()))
+      .body("name", is(jobProfile.getProfile().getName()))
+      .body("dataType", is(jobProfile.getProfile().getDataType().value()))
+      .extract().body().asPrettyString();
 
     Object resp2 = RestAssured.given()
       .spec(spec)
@@ -1552,46 +1396,46 @@ public class JobProfileTest extends AbstractRestVerticleTest {
     Assert.assertNotNull(resp2);
 
     ProfileAssociationCollection profileAssociationCollection = RestAssured.given()
-       .spec(spec)
-       .queryParam("master", MATCH_PROFILE.value())
-       .queryParam("detail", ACTION_PROFILE.value())
-       .when()
-       .get(ASSOCIATED_PROFILES_PATH)
-       .then()
-       .statusCode(HttpStatus.SC_OK)
-       .extract().body().as(ProfileAssociationCollection.class);
-    Assert.assertEquals(4,profileAssociationCollection.getTotalRecords().intValue());
+      .spec(spec)
+      .queryParam("master", MATCH_PROFILE.value())
+      .queryParam("detail", ACTION_PROFILE.value())
+      .when()
+      .get(ASSOCIATED_PROFILES_PATH)
+      .then()
+      .statusCode(HttpStatus.SC_OK)
+      .extract().body().as(ProfileAssociationCollection.class);
+    Assert.assertEquals(4, profileAssociationCollection.getTotalRecords().intValue());
 
-     RestAssured.given()
-       .spec(spec)
-       .body(jobProfile
-         .withAddedRelations(null)
-         .withDeletedRelations(List.of(profileAssociationCollection.getProfileAssociations().get(0)))
-       )
-       .when()
-       .put(JOB_PROFILES_PATH + "/" + jobProfile.getProfile().getId())
-       .then()
-       .statusCode(HttpStatus.SC_OK)
-       .body("id", is(jobProfile.getProfile().getId()))
-       .body("name", is(jobProfile.getProfile().getName()))
-       .body("dataType", is(jobProfile.getProfile().getDataType().value()))
-       .extract().body().asPrettyString();
+    RestAssured.given()
+      .spec(spec)
+      .body(jobProfile
+        .withAddedRelations(null)
+        .withDeletedRelations(List.of(profileAssociationCollection.getProfileAssociations().getFirst()))
+      )
+      .when()
+      .put(JOB_PROFILES_PATH + "/" + jobProfile.getProfile().getId())
+      .then()
+      .statusCode(HttpStatus.SC_OK)
+      .body("id", is(jobProfile.getProfile().getId()))
+      .body("name", is(jobProfile.getProfile().getName()))
+      .body("dataType", is(jobProfile.getProfile().getDataType().value()))
+      .extract().body().asPrettyString();
 
-     profileAssociationCollection = RestAssured.given()
-       .spec(spec)
-       .queryParam("master", MATCH_PROFILE.value())
-       .queryParam("detail", ACTION_PROFILE.value())
-       .when()
-       .get(ASSOCIATED_PROFILES_PATH)
-       .then()
-       .statusCode(HttpStatus.SC_OK)
-       .extract().body().as(ProfileAssociationCollection.class);
-     Assert.assertEquals(3, profileAssociationCollection.getTotalRecords().intValue());
+    profileAssociationCollection = RestAssured.given()
+      .spec(spec)
+      .queryParam("master", MATCH_PROFILE.value())
+      .queryParam("detail", ACTION_PROFILE.value())
+      .when()
+      .get(ASSOCIATED_PROFILES_PATH)
+      .then()
+      .statusCode(HttpStatus.SC_OK)
+      .extract().body().as(ProfileAssociationCollection.class);
+    Assert.assertEquals(3, profileAssociationCollection.getTotalRecords().intValue());
 
-     ProfileAssociation profileAssociation2deleteWithNullOrder =
-       profileAssociationCollection.getProfileAssociations().get(0).withOrder(null);
+    ProfileAssociation profileAssociation2deleteWithNullOrder =
+      profileAssociationCollection.getProfileAssociations().getFirst().withOrder(null);
 
-     RestAssured.given()
+    RestAssured.given()
       .spec(spec)
       .body(jobProfile
         .withAddedRelations(null)
@@ -1660,7 +1504,8 @@ public class JobProfileTest extends AbstractRestVerticleTest {
       .statusCode(HttpStatus.SC_UNPROCESSABLE_ENTITY)
       .body("errors", hasItem(
         hasEntry(is("message"),
-          is(String.format("ActionProfile with id '%s' and action UPDATE requires linked MatchProfile", actionProfileId)))
+          is(String.format("ActionProfile with id '%s' and action UPDATE requires linked MatchProfile",
+            actionProfileId)))
       ));
   }
 
@@ -1754,7 +1599,8 @@ public class JobProfileTest extends AbstractRestVerticleTest {
         .withIncomingRecordType(EntityType.MARC_BIBLIOGRAPHIC)
         .withExistingRecordType(EntityType.INSTANCE));
 
-    JobProfileUpdateDto jobProfile = createJobProfile(jobProfile_1, new MatchProfileWrapper(matchUpdateDto), MATCH_PROFILES_PATH, MATCH_PROFILE);
+    JobProfileUpdateDto jobProfile =
+      createJobProfile(jobProfile_1, new MatchProfileWrapper(matchUpdateDto), MATCH_PROFILES_PATH, MATCH_PROFILE);
 
     RestAssured.given()
       .spec(spec)
@@ -1816,6 +1662,7 @@ public class JobProfileTest extends AbstractRestVerticleTest {
   }
 
   @Test
+  @SuppressWarnings("checkstyle:MethodLength")
   public void shouldReturnBadRequestOnPutWithStandaloneModifyActionAfterMatch() {
     var actionProfileId = UUID.randomUUID().toString();
     var matchProfileId = UUID.randomUUID().toString();
@@ -1867,7 +1714,8 @@ public class JobProfileTest extends AbstractRestVerticleTest {
 
     RestAssured.given()
       .spec(spec)
-      .body(jobProfileToUpdate.withAddedRelations(List.of(invalidAssociationMatchToJobProfile, invalidAssociationActionToMatch)))
+      .body(jobProfileToUpdate.withAddedRelations(
+        List.of(invalidAssociationMatchToJobProfile, invalidAssociationActionToMatch)))
       .when()
       .put(JOB_PROFILES_PATH + "/" + jobProfileToUpdate.getProfile().getId())
       .then()
@@ -1879,6 +1727,7 @@ public class JobProfileTest extends AbstractRestVerticleTest {
   }
 
   @Test
+  @SuppressWarnings("checkstyle:MethodLength")
   public void shouldDeleteAssociationsWithDetailProfilesOnDelete() {
     // creation detail-profiles
     String actionProfileId = UUID.randomUUID().toString();
@@ -1969,12 +1818,12 @@ public class JobProfileTest extends AbstractRestVerticleTest {
 
     ProfileAssociation jobToActionAssociation =
       postProfileAssociation(new ProfileAssociation()
-        .withId(UUID.randomUUID().toString())
-        .withDetailProfileId(actionProfile.getProfile().getId())
-        .withMasterProfileId(jobProfileId)
-        .withMasterProfileType(JOB_PROFILE)
-        .withDetailProfileType(ACTION_PROFILE)
-        .withOrder(1),
+          .withId(UUID.randomUUID().toString())
+          .withDetailProfileId(actionProfile.getProfile().getId())
+          .withMasterProfileId(jobProfileId)
+          .withMasterProfileType(JOB_PROFILE)
+          .withDetailProfileType(ACTION_PROFILE)
+          .withOrder(1),
         JOB_PROFILE, ACTION_PROFILE);
 
     // deleting job profile
@@ -2077,7 +1926,7 @@ public class JobProfileTest extends AbstractRestVerticleTest {
   public void shouldCreateProfileOnPostWhenWasDeletedProfileWithSameNameBefore() {
     JobProfileUpdateDto jobProfile = new JobProfileUpdateDto()
       .withProfile(new JobProfile().withName("profileName")
-      .withDataType(MARC));
+        .withDataType(MARC));
 
     JobProfileUpdateDto jobProfileToDelete = createJobProfile(jobProfile, "createAction", "createMapping");
 
@@ -2955,6 +2804,194 @@ public class JobProfileTest extends AbstractRestVerticleTest {
       ));
   }
 
+  @Override
+  protected void clearTables(TestContext context) {
+    Async async = context.async();
+    PostgresClient pgClient = PostgresClient.getInstance(vertx, TENANT_ID);
+
+    Future.succeededFuture()
+      .compose(v -> pgClient.delete(ASSOCIATIONS_TABLE, new Criterion()))
+      .compose(v -> pgClient.delete(SNAPSHOTS_TABLE_NAME, new Criterion()))
+      .compose(v -> pgClient.delete(PROFILE_WRAPPERS_TABLE_NAME, new Criterion()))
+      .compose(v -> pgClient.delete(JOB_PROFILES_TABLE_NAME, new Criterion()))
+      .compose(v -> pgClient.delete(MATCH_PROFILES_TABLE_NAME, new Criterion()))
+      .compose(v -> pgClient.delete(ACTION_PROFILES_TABLE_NAME, new Criterion()))
+      .compose(v -> pgClient.delete(MAPPING_PROFILES_TABLE_NAME, new Criterion()))
+      .compose(v -> pgClient.delete(PROFILE_WRAPPERS_TABLE, new Criterion()))
+      .onComplete(ar -> {
+        if (ar.succeeded()) {
+          async.complete();
+        } else {
+          context.fail(ar.cause());
+        }
+      });
+  }
+
+  private JobProfileUpdateDto createJobProfile(JobProfileUpdateDto jobProfileUpdateDto,
+                                               String actionName,
+                                               String mappingName) {
+    var actionProfileIdCreate = UUID.randomUUID().toString();
+    RestAssured.given()
+      .spec(spec)
+      .body(new ActionProfileUpdateDto()
+        .withProfile(new ActionProfile().withName(actionName)
+          .withId(actionProfileIdCreate)
+          .withAction(CREATE)
+          .withFolioRecord(INSTANCE)))
+      .when()
+      .post(ACTION_PROFILES_PATH)
+      .then()
+      .statusCode(HttpStatus.SC_CREATED);
+
+    String mappingProfileIdCreate = UUID.randomUUID().toString();
+    RestAssured.given()
+      .spec(spec)
+      .body(new MappingProfileUpdateDto()
+        .withProfile(new MappingProfile().withName(mappingName)
+          .withId(mappingProfileIdCreate)
+          .withIncomingRecordType(EntityType.MARC_BIBLIOGRAPHIC)
+          .withExistingRecordType(EntityType.INSTANCE))
+        .withAddedRelations(
+          List.of(
+            new ProfileAssociation()
+              .withMasterProfileId(actionProfileIdCreate)
+              .withDetailProfileId(mappingProfileIdCreate)
+              .withMasterProfileType(ACTION_PROFILE)
+              .withDetailProfileType(MAPPING_PROFILE)
+              .withOrder(0))))
+      .when()
+      .post(MAPPING_PROFILES_PATH)
+      .then()
+      .statusCode(HttpStatus.SC_CREATED);
+
+    var validAssociation = new ProfileAssociation()
+      .withMasterProfileId(jobProfileUpdateDto.getId())
+      .withDetailProfileId(actionProfileIdCreate)
+      .withMasterProfileType(JOB_PROFILE)
+      .withDetailProfileType(ACTION_PROFILE)
+      .withOrder(0);
+
+    return jobProfileUpdateDto.withAddedRelations(List.of(validAssociation));
+  }
+
+  private <T> JobProfileUpdateDto createJobProfile(JobProfileUpdateDto jobProfileUpdateDto,
+                                                   ProfileWrapper<T> profileWrapper, String url,
+                                                   ProfileType detailProfileType) {
+    T profile = RestAssured.given()
+      .spec(spec)
+      .body(profileWrapper.getProfile())
+      .when()
+      .post(url)
+      .then().log().all()
+      .statusCode(HttpStatus.SC_CREATED)
+      .and()
+      .extract().body().as(profileWrapper.getProfileType());
+    profileWrapper.setProfile(profile);
+
+    var association = new ProfileAssociation()
+      .withMasterProfileId(jobProfileUpdateDto.getProfile().getId())
+      .withDetailProfileId(profileWrapper.getId())
+      .withMasterProfileType(JOB_PROFILE)
+      .withDetailProfileType(detailProfileType)
+      .withOrder(0);
+
+    return jobProfileUpdateDto.withAddedRelations(List.of(association));
+  }
+
+  private JobProfileUpdateDto createJobProfileWithAction(JobProfileUpdateDto jobProfileUpdateDto,
+                                                         ActionProfileUpdateDto actionProfileUpdateDto,
+                                                         MappingProfileUpdateDto mappingProfileUpdateDto) {
+    var mappingProfile = RestAssured.given()
+      .spec(spec)
+      .body(mappingProfileUpdateDto)
+      .when()
+      .post(MAPPING_PROFILES_PATH)
+      .then()
+      .statusCode(HttpStatus.SC_CREATED)
+      .extract().as(MappingProfileUpdateDto.class);
+
+    var actionProfile = RestAssured.given()
+      .spec(spec)
+      .body(actionProfileUpdateDto)
+      .when()
+      .post(ACTION_PROFILES_PATH)
+      .then()
+      .statusCode(HttpStatus.SC_CREATED)
+      .extract().as(ActionProfileUpdateDto.class);
+
+    var actionToMappingAssociation = new ProfileAssociation()
+      .withMasterProfileId(actionProfile.getProfile().getId())
+      .withDetailProfileId(mappingProfile.getProfile().getId())
+      .withMasterProfileType(ACTION_PROFILE)
+      .withDetailProfileType(MAPPING_PROFILE)
+      .withOrder(0);
+
+    var jobToActionAssociation = new ProfileAssociation()
+      .withMasterProfileId(jobProfileUpdateDto.getId())
+      .withDetailProfileId(actionProfile.getProfile().getId())
+      .withMasterProfileType(JOB_PROFILE)
+      .withDetailProfileType(ACTION_PROFILE)
+      .withOrder(1);
+
+    return jobProfileUpdateDto.withAddedRelations(List.of(jobToActionAssociation, actionToMappingAssociation));
+  }
+
+  private JobProfileUpdateDto createJobProfileWithMatch(JobProfileUpdateDto jobProfileUpdateDto,
+                                                        MatchProfileUpdateDto matchProfileUpdateDto,
+                                                        ActionProfileUpdateDto actionProfileUpdateDto,
+                                                        MappingProfileUpdateDto mappingProfileUpdateDto) {
+    var mappingProfile = RestAssured.given()
+      .spec(spec)
+      .body(mappingProfileUpdateDto)
+      .when()
+      .post(MAPPING_PROFILES_PATH)
+      .then()
+      .statusCode(HttpStatus.SC_CREATED)
+      .extract().as(MappingProfileUpdateDto.class);
+
+    var matchProfile = RestAssured.given()
+      .spec(spec)
+      .body(matchProfileUpdateDto)
+      .when()
+      .post(MATCH_PROFILES_PATH)
+      .then()
+      .statusCode(HttpStatus.SC_CREATED)
+      .extract().as(MatchProfileUpdateDto.class);
+
+    var actionProfile = RestAssured.given()
+      .spec(spec)
+      .body(actionProfileUpdateDto)
+      .when()
+      .post(ACTION_PROFILES_PATH)
+      .then()
+      .statusCode(HttpStatus.SC_CREATED)
+      .extract().as(ActionProfileUpdateDto.class);
+
+    var jobToMatchAssociation = new ProfileAssociation()
+      .withMasterProfileId(jobProfileUpdateDto.getId())
+      .withDetailProfileId(matchProfile.getId())
+      .withMasterProfileType(JOB_PROFILE)
+      .withDetailProfileType(MATCH_PROFILE)
+      .withOrder(1);
+
+    var jobToActionAssociation = new ProfileAssociation()
+      .withMasterProfileId(matchProfile.getId())
+      .withDetailProfileId(actionProfile.getId())
+      .withMasterProfileType(MATCH_PROFILE)
+      .withDetailProfileType(ACTION_PROFILE)
+      .withOrder(1);
+
+    var actionToMappingAssociation = new ProfileAssociation()
+      .withMasterProfileId(actionProfile.getId())
+      .withDetailProfileId(mappingProfile.getId())
+      .withMasterProfileType(ACTION_PROFILE)
+      .withDetailProfileType(MAPPING_PROFILE)
+      .withOrder(1);
+
+    return jobProfileUpdateDto
+      .withAddedRelations(List.of(jobToMatchAssociation, jobToActionAssociation, actionToMappingAssociation));
+  }
+
   private void createProfiles() {
     List<Tuple> jobProfilesToPost = Arrays.asList(
       Tuple.of(jobProfile_1, "actionCreate1", "mappingCreate1"),
@@ -2975,7 +3012,8 @@ public class JobProfileTest extends AbstractRestVerticleTest {
     }
   }
 
-  private ProfileAssociation postProfileAssociation(ProfileAssociation profileAssociation, ProfileType masterType, ProfileType detailType) {
+  private ProfileAssociation postProfileAssociation(ProfileAssociation profileAssociation, ProfileType masterType,
+                                                    ProfileType detailType) {
     Response createResponse = RestAssured.given()
       .spec(spec)
       .queryParam("master", masterType.value())
@@ -2985,24 +3023,5 @@ public class JobProfileTest extends AbstractRestVerticleTest {
       .post(ASSOCIATED_PROFILES_PATH);
     Assert.assertEquals(HttpStatus.SC_CREATED, createResponse.statusCode());
     return createResponse.body().as(ProfileAssociation.class);
-  }
-
-  @Override
-  public void clearTables(TestContext context) {
-    Async async = context.async();
-    PostgresClient pgClient = PostgresClient.getInstance(vertx, TENANT_ID);
-    pgClient.delete(ASSOCIATIONS_TABLE, new Criterion(), event1 ->
-      pgClient.delete(SNAPSHOTS_TABLE_NAME, new Criterion(), event2 ->
-        pgClient.delete(PROFILE_WRAPPERS_TABLE_NAME, new Criterion(), event3 ->
-          pgClient.delete(JOB_PROFILES_TABLE_NAME, new Criterion(), event4 ->
-            pgClient.delete(MATCH_PROFILES_TABLE_NAME, new Criterion(), event5 ->
-              pgClient.delete(ACTION_PROFILES_TABLE_NAME, new Criterion(), event6 ->
-                  pgClient.delete(MAPPING_PROFILES_TABLE_NAME, new Criterion(), event7 ->
-                      pgClient.delete(PROFILE_WRAPPERS_TABLE, new Criterion(), event8 -> {
-                        if (event7.failed()) {
-                        context.fail(event7.cause());
-                      }
-                      async.complete();
-                    }))))))));
   }
 }
