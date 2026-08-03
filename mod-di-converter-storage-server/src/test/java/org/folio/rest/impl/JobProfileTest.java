@@ -27,6 +27,7 @@ import static org.hamcrest.Matchers.everyItem;
 import static org.hamcrest.Matchers.hasEntry;
 import static org.hamcrest.Matchers.hasItem;
 import static org.hamcrest.Matchers.is;
+import static org.junit.Assert.assertEquals;
 
 import io.restassured.RestAssured;
 import io.restassured.response.Response;
@@ -45,6 +46,7 @@ import org.apache.http.HttpStatus;
 import org.folio.rest.impl.association.wrapper.MatchProfileWrapper;
 import org.folio.rest.impl.association.wrapper.ProfileWrapper;
 import org.folio.rest.jaxrs.model.ActionProfile;
+import org.folio.rest.jaxrs.model.ActionProfile.FolioRecord;
 import org.folio.rest.jaxrs.model.ActionProfileUpdateDto;
 import org.folio.rest.jaxrs.model.EntityType;
 import org.folio.rest.jaxrs.model.JobProfile;
@@ -926,7 +928,7 @@ public class JobProfileTest extends AbstractRestVerticleTest {
       .body(jobProfile2)
       .when()
       .post(JOB_PROFILES_PATH);
-    Assert.assertEquals(HttpStatus.SC_CREATED, createResponse.statusCode());
+    assertEquals(HttpStatus.SC_CREATED, createResponse.statusCode());
     JobProfileUpdateDto jobProfile = createResponse.body().as(JobProfileUpdateDto.class);
 
     jobProfile.getProfile().setDescription("test");
@@ -958,7 +960,7 @@ public class JobProfileTest extends AbstractRestVerticleTest {
       .body(jobProfile5)
       .when()
       .post(JOB_PROFILES_PATH);
-    Assert.assertEquals(HttpStatus.SC_CREATED, createResponse.statusCode());
+    assertEquals(HttpStatus.SC_CREATED, createResponse.statusCode());
     JobProfileUpdateDto jobProfile = createResponse.body().as(JobProfileUpdateDto.class);
 
     jobProfile.getProfile().setName("updated name");
@@ -1065,7 +1067,7 @@ public class JobProfileTest extends AbstractRestVerticleTest {
       .body(jobProfile2)
       .when()
       .post(JOB_PROFILES_PATH);
-    Assert.assertEquals(HttpStatus.SC_CREATED, createResponse.statusCode());
+    assertEquals(HttpStatus.SC_CREATED, createResponse.statusCode());
     JobProfileUpdateDto jobProfile = createResponse.body().as(JobProfileUpdateDto.class);
 
     JsonObject jobProfileJson = JsonObject.mapFrom(jobProfile)
@@ -1098,7 +1100,7 @@ public class JobProfileTest extends AbstractRestVerticleTest {
       .body(jobProfile3)
       .when()
       .post(JOB_PROFILES_PATH);
-    Assert.assertEquals(HttpStatus.SC_CREATED, createResponse.statusCode());
+    assertEquals(HttpStatus.SC_CREATED, createResponse.statusCode());
     JobProfileUpdateDto jobProfile = createResponse.body().as(JobProfileUpdateDto.class);
 
     RestAssured.given()
@@ -1212,7 +1214,7 @@ public class JobProfileTest extends AbstractRestVerticleTest {
       .then()
       .statusCode(HttpStatus.SC_OK)
       .extract().body().as(ProfileAssociationCollection.class);
-    Assert.assertEquals(2, profileAssociationCollection.getTotalRecords().intValue());
+    assertEquals(2, profileAssociationCollection.getTotalRecords().intValue());
 
     RestAssured.given()
       .spec(spec)
@@ -1238,7 +1240,7 @@ public class JobProfileTest extends AbstractRestVerticleTest {
       .then()
       .statusCode(HttpStatus.SC_OK)
       .extract().body().as(ProfileAssociationCollection.class);
-    Assert.assertEquals(1, profileAssociationCollection.getTotalRecords().intValue());
+    assertEquals(1, profileAssociationCollection.getTotalRecords().intValue());
   }
 
   @Test
@@ -1404,7 +1406,7 @@ public class JobProfileTest extends AbstractRestVerticleTest {
       .then()
       .statusCode(HttpStatus.SC_OK)
       .extract().body().as(ProfileAssociationCollection.class);
-    Assert.assertEquals(4, profileAssociationCollection.getTotalRecords().intValue());
+    assertEquals(4, profileAssociationCollection.getTotalRecords().intValue());
 
     RestAssured.given()
       .spec(spec)
@@ -1430,7 +1432,7 @@ public class JobProfileTest extends AbstractRestVerticleTest {
       .then()
       .statusCode(HttpStatus.SC_OK)
       .extract().body().as(ProfileAssociationCollection.class);
-    Assert.assertEquals(3, profileAssociationCollection.getTotalRecords().intValue());
+    assertEquals(3, profileAssociationCollection.getTotalRecords().intValue());
 
     ProfileAssociation profileAssociation2deleteWithNullOrder =
       profileAssociationCollection.getProfileAssociations().getFirst().withOrder(null);
@@ -1459,7 +1461,7 @@ public class JobProfileTest extends AbstractRestVerticleTest {
       .then()
       .statusCode(HttpStatus.SC_OK)
       .extract().body().as(ProfileAssociationCollection.class);
-    Assert.assertEquals(2, profileAssociationCollection.getTotalRecords().intValue());
+    assertEquals(2, profileAssociationCollection.getTotalRecords().intValue());
   }
 
   @Test
@@ -1872,7 +1874,7 @@ public class JobProfileTest extends AbstractRestVerticleTest {
       .body(newJobProfile)
       .when()
       .post(JOB_PROFILES_PATH);
-    Assert.assertEquals(HttpStatus.SC_CREATED, createResponse.statusCode());
+    assertEquals(HttpStatus.SC_CREATED, createResponse.statusCode());
     JobProfileUpdateDto createdJobProfile = createResponse.body().as(JobProfileUpdateDto.class);
 
     createdJobProfile.getProfile().setName(jobProfile_1.getProfile().getName());
@@ -1985,7 +1987,7 @@ public class JobProfileTest extends AbstractRestVerticleTest {
       .body(jobProfileUpdateDto)
       .when()
       .post(JOB_PROFILES_PATH);
-    Assert.assertEquals(HttpStatus.SC_CREATED, createResponse.statusCode());
+    assertEquals(HttpStatus.SC_CREATED, createResponse.statusCode());
     JobProfileUpdateDto jobProfile = createResponse.body().as(JobProfileUpdateDto.class);
 
     RestAssured.given()
@@ -2000,57 +2002,19 @@ public class JobProfileTest extends AbstractRestVerticleTest {
   }
 
   @Test
+  @SuppressWarnings("checkstyle:LineLength")
   public void shouldReturnCreatedOnPostJobProfileWithDeleteMarcAuthorityActionAsFirstActionUnderMarcAuthorityMatchProfile() {
-    var jobProfileId = UUID.randomUUID().toString();
+    final var jobProfileId = UUID.randomUUID().toString();
     var matchProfileId = UUID.randomUUID().toString();
     var actionProfileId = UUID.randomUUID().toString();
     var mappingProfileId = UUID.randomUUID().toString();
 
-    RestAssured.given()
-      .spec(spec)
-      .body(new MappingProfileUpdateDto()
-        .withProfile(new MappingProfile().withName("Delete MARC-Authority")
-          .withId(mappingProfileId)
-          .withIncomingRecordType(EntityType.MARC_AUTHORITY)
-          .withExistingRecordType(EntityType.MARC_AUTHORITY)))
-      .when()
-      .post(MAPPING_PROFILES_PATH)
-      .then()
-      .statusCode(HttpStatus.SC_CREATED)
-      .extract().as(MappingProfileUpdateDto.class);
-
-    RestAssured.given()
-      .spec(spec)
-      .body(new ActionProfileUpdateDto()
-        .withProfile(new ActionProfile()
-          .withId(actionProfileId)
-          .withName("Delete MARC-Authority")
-          .withAction(DELETE)
-          .withFolioRecord(MARC_AUTHORITY))
-        .withAddedRelations(List.of(new ProfileAssociation()
-          .withMasterProfileType(ACTION_PROFILE)
-          .withDetailProfileType(ProfileType.MAPPING_PROFILE)
-          .withMasterProfileId(actionProfileId)
-          .withDetailProfileId(mappingProfileId)
-          .withOrder(0))))
-      .when()
-      .post(ACTION_PROFILES_PATH)
-      .then()
-      .log().all()
-      .statusCode(HttpStatus.SC_CREATED);
-
-    RestAssured.given()
-      .spec(spec)
-      .body(new MatchProfileUpdateDto()
-        .withProfile(new MatchProfile()
-          .withId(matchProfileId)
-          .withName("Match MARC-Authority")
-          .withIncomingRecordType(EntityType.MARC_AUTHORITY)
-          .withExistingRecordType(EntityType.MARC_AUTHORITY)))
-      .when()
-      .post(MATCH_PROFILES_PATH)
-      .then()
-      .statusCode(HttpStatus.SC_CREATED);
+    postMappingProfile(mappingProfileId, "Delete MARC-Authority",
+      EntityType.MARC_AUTHORITY, EntityType.MARC_AUTHORITY);
+    postActionProfileWithMapping(actionProfileId, "Delete MARC-Authority",
+      DELETE, MARC_AUTHORITY, mappingProfileId);
+    postMatchProfile(matchProfileId, "Match MARC-Authority",
+      EntityType.MARC_AUTHORITY, EntityType.MARC_AUTHORITY);
 
     var jobToMatchAssociation = new ProfileAssociation()
       .withMasterProfileType(JOB_PROFILE)
@@ -2087,31 +2051,9 @@ public class JobProfileTest extends AbstractRestVerticleTest {
     var matchProfileId = UUID.randomUUID().toString();
     var actionProfileId = UUID.randomUUID().toString();
 
-    RestAssured.given()
-      .spec(spec)
-      .body(new MatchProfileUpdateDto()
-        .withProfile(new MatchProfile()
-          .withId(matchProfileId)
-          .withName("Match Marc-Authority")
-          .withIncomingRecordType(EntityType.MARC_AUTHORITY)
-          .withExistingRecordType(EntityType.MARC_AUTHORITY)))
-      .when()
-      .post(MATCH_PROFILES_PATH)
-      .then()
-      .statusCode(HttpStatus.SC_CREATED);
-
-    RestAssured.given()
-      .spec(spec)
-      .body(new ActionProfileUpdateDto()
-        .withProfile(new ActionProfile()
-          .withId(actionProfileId)
-          .withName("Delete MARC-Authority")
-          .withAction(DELETE)
-          .withFolioRecord(MARC_AUTHORITY)))
-      .when()
-      .post(ACTION_PROFILES_PATH)
-      .then()
-      .statusCode(HttpStatus.SC_CREATED);
+    postMatchProfile(matchProfileId, "Match Marc-Authority",
+      EntityType.MARC_AUTHORITY, EntityType.MARC_AUTHORITY);
+    postActionProfile(actionProfileId, "Delete MARC-Authority", DELETE, MARC_AUTHORITY);
 
     var jobToMatchAssociation = new ProfileAssociation()
       .withMasterProfileType(JOB_PROFILE)
@@ -2119,7 +2061,6 @@ public class JobProfileTest extends AbstractRestVerticleTest {
       .withDetailProfileType(MATCH_PROFILE)
       .withDetailProfileId(matchProfileId)
       .withOrder(0);
-
     var matchToActionAssociation = new ProfileAssociation()
       .withMasterProfileType(MATCH_PROFILE)
       .withMasterProfileId(matchProfileId)
@@ -2127,7 +2068,7 @@ public class JobProfileTest extends AbstractRestVerticleTest {
       .withDetailProfileId(actionProfileId)
       .withReactTo(NON_MATCH)
       .withOrder(0);
-    Assert.assertEquals(NON_MATCH, matchToActionAssociation.getReactTo());
+    assertEquals(NON_MATCH, matchToActionAssociation.getReactTo());
 
     RestAssured.given()
       .spec(spec)
@@ -2149,49 +2090,15 @@ public class JobProfileTest extends AbstractRestVerticleTest {
 
   @Test
   public void shouldReturnUnprocessableEntityOnPostJobProfileIfDeleteMarcAuthorityNotFirstInMatchBranch() {
-    var jobProfileId = UUID.randomUUID().toString();
+    final var jobProfileId = UUID.randomUUID().toString();
     var matchProfileId = UUID.randomUUID().toString();
     var updateActionProfileId = UUID.randomUUID().toString();
     var deleteActionProfileId = UUID.randomUUID().toString();
 
-    RestAssured.given()
-      .spec(spec)
-      .body(new MatchProfileUpdateDto()
-        .withProfile(new MatchProfile()
-          .withId(matchProfileId)
-          .withName("Match Marc-Authority")
-          .withIncomingRecordType(EntityType.MARC_AUTHORITY)
-          .withExistingRecordType(EntityType.MARC_AUTHORITY)))
-      .when()
-      .post(MATCH_PROFILES_PATH)
-      .then()
-      .statusCode(HttpStatus.SC_CREATED);
-
-    RestAssured.given()
-      .spec(spec)
-      .body(new ActionProfileUpdateDto()
-        .withProfile(new ActionProfile()
-          .withId(updateActionProfileId)
-          .withName("Update Marc-Authority")
-          .withAction(UPDATE)
-          .withFolioRecord(MARC_AUTHORITY)))
-      .when()
-      .post(ACTION_PROFILES_PATH)
-      .then()
-      .statusCode(HttpStatus.SC_CREATED);
-
-    RestAssured.given()
-      .spec(spec)
-      .body(new ActionProfileUpdateDto()
-        .withProfile(new ActionProfile()
-          .withId(deleteActionProfileId)
-          .withName("Delete MARC-Authority")
-          .withAction(DELETE)
-          .withFolioRecord(MARC_AUTHORITY)))
-      .when()
-      .post(ACTION_PROFILES_PATH)
-      .then()
-      .statusCode(HttpStatus.SC_CREATED);
+    postMatchProfile(matchProfileId, "Match Marc-Authority",
+      EntityType.MARC_AUTHORITY, EntityType.MARC_AUTHORITY);
+    postActionProfile(updateActionProfileId, "Update Marc-Authority", UPDATE, MARC_AUTHORITY);
+    postActionProfile(deleteActionProfileId, "Delete MARC-Authority", DELETE, MARC_AUTHORITY);
 
     var jobToMatchAssociation = new ProfileAssociation()
       .withMasterProfileType(JOB_PROFILE)
@@ -2199,7 +2106,6 @@ public class JobProfileTest extends AbstractRestVerticleTest {
       .withDetailProfileType(MATCH_PROFILE)
       .withDetailProfileId(matchProfileId)
       .withOrder(0);
-
     var matchToUpdateActionAssociation = new ProfileAssociation()
       .withMasterProfileType(MATCH_PROFILE)
       .withMasterProfileId(matchProfileId)
@@ -2207,7 +2113,6 @@ public class JobProfileTest extends AbstractRestVerticleTest {
       .withDetailProfileId(updateActionProfileId)
       .withReactTo(MATCH)
       .withOrder(0);
-
     var matchToDeleteActionAssociation = new ProfileAssociation()
       .withMasterProfileType(MATCH_PROFILE)
       .withMasterProfileId(matchProfileId)
@@ -2223,7 +2128,8 @@ public class JobProfileTest extends AbstractRestVerticleTest {
           .withId(jobProfileId)
           .withName("Delete MARC-Authority")
           .withDataType(MARC))
-        .withAddedRelations(List.of(jobToMatchAssociation, matchToUpdateActionAssociation, matchToDeleteActionAssociation)))
+        .withAddedRelations(List.of(
+          jobToMatchAssociation, matchToUpdateActionAssociation, matchToDeleteActionAssociation)))
       .when()
       .post(JOB_PROFILES_PATH)
       .then()
@@ -2233,36 +2139,15 @@ public class JobProfileTest extends AbstractRestVerticleTest {
   }
 
   @Test
+  @SuppressWarnings("checkstyle:LineLength")
   public void shouldReturnUnprocessableEntityOnPostJobProfileWithDeleteMarcAuthorityUnderNonMarcAuthorityMatchProfile() {
     var jobProfileId = UUID.randomUUID().toString();
     var matchProfileId = UUID.randomUUID().toString();
     var actionProfileId = UUID.randomUUID().toString();
 
-    RestAssured.given()
-      .spec(spec)
-      .body(new MatchProfileUpdateDto()
-        .withProfile(new MatchProfile()
-          .withId(matchProfileId)
-          .withName("Match Marc-Bib")
-          .withIncomingRecordType(EntityType.MARC_BIBLIOGRAPHIC)
-          .withExistingRecordType(EntityType.MARC_BIBLIOGRAPHIC)))
-      .when()
-      .post(MATCH_PROFILES_PATH)
-      .then()
-      .statusCode(HttpStatus.SC_CREATED);
-
-    RestAssured.given()
-      .spec(spec)
-      .body(new ActionProfileUpdateDto()
-        .withProfile(new ActionProfile()
-          .withId(actionProfileId)
-          .withName("Delete MARC-Authority")
-          .withAction(DELETE)
-          .withFolioRecord(MARC_AUTHORITY)))
-      .when()
-      .post(ACTION_PROFILES_PATH)
-      .then()
-      .statusCode(HttpStatus.SC_CREATED);
+    postMatchProfile(matchProfileId, "Match Marc-Bib",
+      EntityType.MARC_BIBLIOGRAPHIC, EntityType.MARC_BIBLIOGRAPHIC);
+    postActionProfile(actionProfileId, "Delete MARC-Authority", DELETE, MARC_AUTHORITY);
 
     var jobToMatchAssociation = new ProfileAssociation()
       .withMasterProfileType(JOB_PROFILE)
@@ -2270,7 +2155,6 @@ public class JobProfileTest extends AbstractRestVerticleTest {
       .withDetailProfileType(MATCH_PROFILE)
       .withDetailProfileId(matchProfileId)
       .withOrder(0);
-
     var matchToActionAssociation = new ProfileAssociation()
       .withMasterProfileType(MATCH_PROFILE)
       .withMasterProfileId(matchProfileId)
@@ -2306,57 +2190,13 @@ public class JobProfileTest extends AbstractRestVerticleTest {
     var deleteActionProfileId = UUID.randomUUID().toString();
     var deleteMappingProfileId = UUID.randomUUID().toString();
 
-    RestAssured.given()
-      .spec(spec)
-      .body(new MappingProfileUpdateDto()
-        .withProfile(new MappingProfile()
-          .withId(updateMappingProfileId)
-          .withName("Update MARC-Authority")
-          .withIncomingRecordType(EntityType.MARC_AUTHORITY)
-          .withExistingRecordType(EntityType.MARC_AUTHORITY)))
-      .when()
-      .post(MAPPING_PROFILES_PATH)
-      .then()
-      .statusCode(HttpStatus.SC_CREATED);
-
-    RestAssured.given()
-      .spec(spec)
-      .body(new ActionProfileUpdateDto()
-        .withProfile(new ActionProfile()
-          .withId(updateActionProfileId)
-          .withName("Update Marc-Authority")
-          .withAction(UPDATE)
-          .withFolioRecord(MARC_AUTHORITY))
-        .withAddedRelations(List.of(new ProfileAssociation()
-          .withMasterProfileType(ACTION_PROFILE)
-          .withDetailProfileType(ProfileType.MAPPING_PROFILE)
-          .withMasterProfileId(updateActionProfileId)
-          .withDetailProfileId(updateMappingProfileId)
-          .withOrder(0))))
-      .when()
-      .post(ACTION_PROFILES_PATH)
-      .then()
-      .statusCode(HttpStatus.SC_CREATED);
-
-    RestAssured.given()
-      .spec(spec)
-      .body(new MatchProfileUpdateDto()
-        .withProfile(new MatchProfile()
-          .withId(matchProfileId)
-          .withName("Match Marc-Authority")
-          .withIncomingRecordType(EntityType.MARC_AUTHORITY)
-          .withExistingRecordType(EntityType.MARC_AUTHORITY)))
-      .when()
-      .post(MATCH_PROFILES_PATH)
-      .then()
-      .statusCode(HttpStatus.SC_CREATED);
-
-    var jobToMatchAssociation = new ProfileAssociation()
-      .withMasterProfileType(JOB_PROFILE)
-      .withMasterProfileId(jobProfileId)
-      .withDetailProfileType(MATCH_PROFILE)
-      .withDetailProfileId(matchProfileId)
-      .withOrder(0);
+    var jobProfileToUpdate = postBaseJobProfileWithMatchAndUpdateAction(jobProfileId, matchProfileId,
+      updateActionProfileId, MARC_AUTHORITY,
+      updateMappingProfileId, EntityType.MARC_AUTHORITY, EntityType.MARC_AUTHORITY);
+    postMappingProfile(deleteMappingProfileId, "Delete MARC-Authority",
+      EntityType.MARC_AUTHORITY, EntityType.MARC_AUTHORITY);
+    postActionProfileWithMapping(deleteActionProfileId, "Delete MARC-Authority",
+      DELETE, MARC_AUTHORITY, deleteMappingProfileId);
 
     var matchToUpdateActionAssociation = new ProfileAssociation()
       .withMasterProfileType(MATCH_PROFILE)
@@ -2365,53 +2205,6 @@ public class JobProfileTest extends AbstractRestVerticleTest {
       .withDetailProfileId(updateActionProfileId)
       .withReactTo(MATCH)
       .withOrder(0);
-
-    var jobProfileToUpdate = RestAssured.given()
-      .spec(spec)
-      .body(new JobProfileUpdateDto()
-        .withProfile(new JobProfile()
-          .withId(jobProfileId)
-          .withName("Delete MARC-Authority")
-          .withDataType(MARC))
-        .withAddedRelations(List.of(jobToMatchAssociation, matchToUpdateActionAssociation)))
-      .when()
-      .post(JOB_PROFILES_PATH)
-      .then()
-      .statusCode(HttpStatus.SC_CREATED)
-      .extract().as(JobProfileUpdateDto.class);
-
-    RestAssured.given()
-      .spec(spec)
-      .body(new MappingProfileUpdateDto()
-        .withProfile(new MappingProfile()
-          .withId(deleteMappingProfileId)
-          .withName("Delete MARC-Authority")
-          .withIncomingRecordType(EntityType.MARC_AUTHORITY)
-          .withExistingRecordType(EntityType.MARC_AUTHORITY)))
-      .when()
-      .post(MAPPING_PROFILES_PATH)
-      .then()
-      .statusCode(HttpStatus.SC_CREATED);
-
-    RestAssured.given()
-      .spec(spec)
-      .body(new ActionProfileUpdateDto()
-        .withProfile(new ActionProfile()
-          .withId(deleteActionProfileId)
-          .withName("Delete MARC-Authority")
-          .withAction(DELETE)
-          .withFolioRecord(MARC_AUTHORITY))
-        .withAddedRelations(List.of(new ProfileAssociation()
-          .withMasterProfileType(ACTION_PROFILE)
-          .withDetailProfileType(ProfileType.MAPPING_PROFILE)
-          .withMasterProfileId(deleteActionProfileId)
-          .withDetailProfileId(deleteMappingProfileId)
-          .withOrder(0))))
-      .when()
-      .post(ACTION_PROFILES_PATH)
-      .then()
-      .statusCode(HttpStatus.SC_CREATED);
-
     var matchToDeleteActionAssociation = new ProfileAssociation()
       .withMasterProfileType(MATCH_PROFILE)
       .withMasterProfileId(matchProfileId)
@@ -2440,89 +2233,12 @@ public class JobProfileTest extends AbstractRestVerticleTest {
     var deleteActionProfileId = UUID.randomUUID().toString();
     var deleteMappingProfileId = UUID.randomUUID().toString();
 
-    RestAssured.given()
-      .spec(spec)
-      .body(new MappingProfileUpdateDto()
-        .withProfile(new MappingProfile()
-          .withId(updateMappingProfileId)
-          .withName("Update MARC-Authority")
-          .withIncomingRecordType(EntityType.MARC_AUTHORITY)
-          .withExistingRecordType(EntityType.MARC_AUTHORITY)))
-      .when()
-      .post(MAPPING_PROFILES_PATH)
-      .then()
-      .statusCode(HttpStatus.SC_CREATED);
-
-    RestAssured.given()
-      .spec(spec)
-      .body(new ActionProfileUpdateDto()
-        .withProfile(new ActionProfile()
-          .withId(actionProfileId)
-          .withName("Update Marc-Authority")
-          .withAction(UPDATE)
-          .withFolioRecord(MARC_AUTHORITY))
-        .withAddedRelations(List.of(new ProfileAssociation()
-          .withMasterProfileType(ACTION_PROFILE)
-          .withDetailProfileType(ProfileType.MAPPING_PROFILE)
-          .withMasterProfileId(actionProfileId)
-          .withDetailProfileId(updateMappingProfileId)
-          .withOrder(0))))
-      .when()
-      .post(ACTION_PROFILES_PATH)
-      .then()
-      .statusCode(HttpStatus.SC_CREATED);
-
-    RestAssured.given()
-      .spec(spec)
-      .body(new MatchProfileUpdateDto()
-        .withProfile(new MatchProfile()
-          .withId(matchProfileId)
-          .withName("Match Marc-Authority")
-          .withIncomingRecordType(EntityType.MARC_AUTHORITY)
-          .withExistingRecordType(EntityType.MARC_AUTHORITY)))
-      .when()
-      .post(MATCH_PROFILES_PATH)
-      .then()
-      .statusCode(HttpStatus.SC_CREATED);
-
-    RestAssured.given()
-      .spec(spec)
-      .body(new MappingProfileUpdateDto()
-        .withProfile(new MappingProfile()
-          .withId(deleteMappingProfileId)
-          .withName("Delete MARC-Authority mapping")
-          .withIncomingRecordType(EntityType.MARC_AUTHORITY)
-          .withExistingRecordType(EntityType.MARC_AUTHORITY)))
-      .when()
-      .post(MAPPING_PROFILES_PATH)
-      .then()
-      .statusCode(HttpStatus.SC_CREATED);
-
-    RestAssured.given()
-      .spec(spec)
-      .body(new ActionProfileUpdateDto()
-        .withProfile(new ActionProfile()
-          .withId(deleteActionProfileId)
-          .withName("Delete MARC-Authority")
-          .withAction(DELETE)
-          .withFolioRecord(MARC_AUTHORITY))
-        .withAddedRelations(List.of(new ProfileAssociation()
-          .withMasterProfileType(ACTION_PROFILE)
-          .withDetailProfileType(ProfileType.MAPPING_PROFILE)
-          .withMasterProfileId(deleteActionProfileId)
-          .withDetailProfileId(deleteMappingProfileId)
-          .withOrder(0))))
-      .when()
-      .post(ACTION_PROFILES_PATH)
-      .then()
-      .statusCode(HttpStatus.SC_CREATED);
-
-    var jobToMatchAssociation = new ProfileAssociation()
-      .withMasterProfileType(JOB_PROFILE)
-      .withMasterProfileId(jobProfileId)
-      .withDetailProfileType(MATCH_PROFILE)
-      .withDetailProfileId(matchProfileId)
-      .withOrder(0);
+    var jobProfileToUpdate = postBaseJobProfileWithMatchAndUpdateAction(jobProfileId, matchProfileId,
+      actionProfileId, MARC_AUTHORITY, updateMappingProfileId, EntityType.MARC_AUTHORITY, EntityType.MARC_AUTHORITY);
+    postMappingProfile(deleteMappingProfileId, "Delete MARC-Authority mapping",
+      EntityType.MARC_AUTHORITY, EntityType.MARC_AUTHORITY);
+    postActionProfileWithMapping(deleteActionProfileId, "Delete MARC-Authority",
+      DELETE, MARC_AUTHORITY, deleteMappingProfileId);
 
     var matchToUpdateActionAssociation = new ProfileAssociation()
       .withMasterProfileType(MATCH_PROFILE)
@@ -2531,21 +2247,6 @@ public class JobProfileTest extends AbstractRestVerticleTest {
       .withDetailProfileId(actionProfileId)
       .withReactTo(MATCH)
       .withOrder(0);
-
-    var jobProfileToUpdate = RestAssured.given()
-      .spec(spec)
-      .body(new JobProfileUpdateDto()
-        .withProfile(new JobProfile()
-          .withId(jobProfileId)
-          .withName("Delete MARC-Authority")
-          .withDataType(MARC))
-        .withAddedRelations(List.of(jobToMatchAssociation, matchToUpdateActionAssociation)))
-      .when()
-      .post(JOB_PROFILES_PATH)
-      .then()
-      .statusCode(HttpStatus.SC_CREATED)
-      .extract().as(JobProfileUpdateDto.class);
-
     var matchToDeleteActionAssociation = new ProfileAssociation()
       .withMasterProfileType(MATCH_PROFILE)
       .withMasterProfileId(matchProfileId)
@@ -2577,57 +2278,10 @@ public class JobProfileTest extends AbstractRestVerticleTest {
     var updateMappingProfileId = UUID.randomUUID().toString();
     var deleteActionProfileId = UUID.randomUUID().toString();
 
-    RestAssured.given()
-      .spec(spec)
-      .body(new MatchProfileUpdateDto()
-        .withProfile(new MatchProfile()
-          .withId(matchProfileId)
-          .withName("Match Marc-Authority")
-          .withIncomingRecordType(EntityType.MARC_AUTHORITY)
-          .withExistingRecordType(EntityType.MARC_AUTHORITY)))
-      .when()
-      .post(MATCH_PROFILES_PATH)
-      .then()
-      .statusCode(HttpStatus.SC_CREATED);
-
-    RestAssured.given()
-      .spec(spec)
-      .body(new MappingProfileUpdateDto()
-        .withProfile(new MappingProfile()
-          .withId(updateMappingProfileId)
-          .withName("Update MARC-Authority")
-          .withIncomingRecordType(EntityType.MARC_AUTHORITY)
-          .withExistingRecordType(EntityType.MARC_AUTHORITY)))
-      .when()
-      .post(MAPPING_PROFILES_PATH)
-      .then()
-      .statusCode(HttpStatus.SC_CREATED);
-
-    RestAssured.given()
-      .spec(spec)
-      .body(new ActionProfileUpdateDto()
-        .withProfile(new ActionProfile()
-          .withId(updateActionProfileId)
-          .withName("Update Marc-Authority")
-          .withAction(UPDATE)
-          .withFolioRecord(MARC_AUTHORITY))
-        .withAddedRelations(List.of(new ProfileAssociation()
-          .withMasterProfileType(ACTION_PROFILE)
-          .withDetailProfileType(ProfileType.MAPPING_PROFILE)
-          .withMasterProfileId(updateActionProfileId)
-          .withDetailProfileId(updateMappingProfileId)
-          .withOrder(0))))
-      .when()
-      .post(ACTION_PROFILES_PATH)
-      .then()
-      .statusCode(HttpStatus.SC_CREATED);
-
-    var jobToMatchAssociation = new ProfileAssociation()
-      .withMasterProfileType(JOB_PROFILE)
-      .withMasterProfileId(jobProfileId)
-      .withDetailProfileType(MATCH_PROFILE)
-      .withDetailProfileId(matchProfileId)
-      .withOrder(0);
+    var jobProfileToUpdate = postBaseJobProfileWithMatchAndUpdateAction(jobProfileId, matchProfileId,
+      updateActionProfileId, MARC_AUTHORITY, updateMappingProfileId,
+      EntityType.MARC_AUTHORITY, EntityType.MARC_AUTHORITY);
+    postActionProfile(deleteActionProfileId, "Delete MARC-Authority", DELETE, MARC_AUTHORITY);
 
     var matchToUpdateActionAssociation = new ProfileAssociation()
       .withMasterProfileType(MATCH_PROFILE)
@@ -2636,34 +2290,6 @@ public class JobProfileTest extends AbstractRestVerticleTest {
       .withDetailProfileId(updateActionProfileId)
       .withReactTo(MATCH)
       .withOrder(0);
-
-    var jobProfileToUpdate = RestAssured.given()
-      .spec(spec)
-      .body(new JobProfileUpdateDto()
-        .withProfile(new JobProfile()
-          .withId(jobProfileId)
-          .withName("Delete MARC-Authority")
-          .withDataType(MARC))
-        .withAddedRelations(List.of(jobToMatchAssociation, matchToUpdateActionAssociation)))
-      .when()
-      .post(JOB_PROFILES_PATH)
-      .then()
-      .statusCode(HttpStatus.SC_CREATED)
-      .extract().as(JobProfileUpdateDto.class);
-
-    RestAssured.given()
-      .spec(spec)
-      .body(new ActionProfileUpdateDto()
-        .withProfile(new ActionProfile()
-          .withId(deleteActionProfileId)
-          .withName("Delete MARC-Authority")
-          .withAction(DELETE)
-          .withFolioRecord(MARC_AUTHORITY)))
-      .when()
-      .post(ACTION_PROFILES_PATH)
-      .then()
-      .statusCode(HttpStatus.SC_CREATED);
-
     var matchToDeleteActionAssociation = new ProfileAssociation()
       .withMasterProfileType(MATCH_PROFILE)
       .withMasterProfileId(matchProfileId)
@@ -2693,57 +2319,10 @@ public class JobProfileTest extends AbstractRestVerticleTest {
     var updateMappingProfileId = UUID.randomUUID().toString();
     var deleteActionProfileId = UUID.randomUUID().toString();
 
-    RestAssured.given()
-      .spec(spec)
-      .body(new MappingProfileUpdateDto()
-        .withProfile(new MappingProfile()
-          .withId(updateMappingProfileId)
-          .withName("Update MARC-Authority")
-          .withIncomingRecordType(EntityType.MARC_AUTHORITY)
-          .withExistingRecordType(EntityType.MARC_AUTHORITY)))
-      .when()
-      .post(MAPPING_PROFILES_PATH)
-      .then()
-      .statusCode(HttpStatus.SC_CREATED);
-
-    RestAssured.given()
-      .spec(spec)
-      .body(new ActionProfileUpdateDto()
-        .withProfile(new ActionProfile()
-          .withId(actionProfileId)
-          .withName("Update Marc-Authority")
-          .withAction(UPDATE)
-          .withFolioRecord(MARC_AUTHORITY))
-        .withAddedRelations(List.of(new ProfileAssociation()
-          .withMasterProfileType(ACTION_PROFILE)
-          .withDetailProfileType(ProfileType.MAPPING_PROFILE)
-          .withMasterProfileId(actionProfileId)
-          .withDetailProfileId(updateMappingProfileId)
-          .withOrder(0))))
-      .when()
-      .post(ACTION_PROFILES_PATH)
-      .then()
-      .statusCode(HttpStatus.SC_CREATED);
-
-    RestAssured.given()
-      .spec(spec)
-      .body(new MatchProfileUpdateDto()
-        .withProfile(new MatchProfile()
-          .withId(marcBibMatchProfileId)
-          .withName("Match Marc-Bib")
-          .withIncomingRecordType(EntityType.MARC_BIBLIOGRAPHIC)
-          .withExistingRecordType(EntityType.MARC_BIBLIOGRAPHIC)))
-      .when()
-      .post(MATCH_PROFILES_PATH)
-      .then()
-      .statusCode(HttpStatus.SC_CREATED);
-
-    var jobToMarcBibMatchAssociation = new ProfileAssociation()
-      .withMasterProfileType(JOB_PROFILE)
-      .withMasterProfileId(jobProfileId)
-      .withDetailProfileType(MATCH_PROFILE)
-      .withDetailProfileId(marcBibMatchProfileId)
-      .withOrder(1);
+    var jobProfileToUpdate = postBaseJobProfileWithMatchAndUpdateAction(jobProfileId, marcBibMatchProfileId,
+      actionProfileId, MARC_BIBLIOGRAPHIC, updateMappingProfileId,
+      EntityType.MARC_BIBLIOGRAPHIC, EntityType.MARC_BIBLIOGRAPHIC);
+    postActionProfile(deleteActionProfileId, "Delete MARC-Authority", DELETE, MARC_AUTHORITY);
 
     var matchToUpdateActionAssociation = new ProfileAssociation()
       .withMasterProfileType(MATCH_PROFILE)
@@ -2752,34 +2331,6 @@ public class JobProfileTest extends AbstractRestVerticleTest {
       .withDetailProfileId(actionProfileId)
       .withReactTo(MATCH)
       .withOrder(0);
-
-    var jobProfileToUpdate = RestAssured.given()
-      .spec(spec)
-      .body(new JobProfileUpdateDto()
-        .withProfile(new JobProfile()
-          .withId(jobProfileId)
-          .withName("Delete MARC-Authority")
-          .withDataType(MARC))
-        .withAddedRelations(List.of(jobToMarcBibMatchAssociation, matchToUpdateActionAssociation)))
-      .when()
-      .post(JOB_PROFILES_PATH)
-      .then()
-      .statusCode(HttpStatus.SC_CREATED)
-      .extract().as(JobProfileUpdateDto.class);
-
-    RestAssured.given()
-      .spec(spec)
-      .body(new ActionProfileUpdateDto()
-        .withProfile(new ActionProfile()
-          .withId(deleteActionProfileId)
-          .withName("Delete MARC-Authority")
-          .withAction(DELETE)
-          .withFolioRecord(MARC_AUTHORITY)))
-      .when()
-      .post(ACTION_PROFILES_PATH)
-      .then()
-      .statusCode(HttpStatus.SC_CREATED);
-
     var marcBibMatchToDeleteActionAssociation = new ProfileAssociation()
       .withMasterProfileType(MATCH_PROFILE)
       .withMasterProfileId(marcBibMatchProfileId)
@@ -3021,7 +2572,113 @@ public class JobProfileTest extends AbstractRestVerticleTest {
       .body(profileAssociation)
       .when()
       .post(ASSOCIATED_PROFILES_PATH);
-    Assert.assertEquals(HttpStatus.SC_CREATED, createResponse.statusCode());
+    assertEquals(HttpStatus.SC_CREATED, createResponse.statusCode());
     return createResponse.body().as(ProfileAssociation.class);
+  }
+
+  private void postMappingProfile(String id, String name, EntityType incomingRecordType,
+                                  EntityType existingRecordType) {
+    RestAssured.given()
+      .spec(spec)
+      .body(new MappingProfileUpdateDto()
+        .withProfile(new MappingProfile()
+          .withId(id)
+          .withName(name)
+          .withIncomingRecordType(incomingRecordType)
+          .withExistingRecordType(existingRecordType)))
+      .when()
+      .post(MAPPING_PROFILES_PATH)
+      .then()
+      .statusCode(HttpStatus.SC_CREATED);
+  }
+
+  private void postActionProfile(String id, String name, ActionProfile.Action action, FolioRecord recordType) {
+    RestAssured.given()
+      .spec(spec)
+      .body(new ActionProfileUpdateDto()
+        .withProfile(new ActionProfile()
+          .withId(id)
+          .withName(name)
+          .withAction(action)
+          .withFolioRecord(recordType)))
+      .when()
+      .post(ACTION_PROFILES_PATH)
+      .then()
+      .statusCode(HttpStatus.SC_CREATED);
+  }
+
+  private void postActionProfileWithMapping(String actionProfileId, String name, ActionProfile.Action action,
+                                            FolioRecord recordType, String mappingProfileId) {
+    RestAssured.given()
+      .spec(spec)
+      .body(new ActionProfileUpdateDto()
+        .withProfile(new ActionProfile()
+          .withId(actionProfileId)
+          .withName(name)
+          .withAction(action)
+          .withFolioRecord(recordType))
+        .withAddedRelations(List.of(new ProfileAssociation()
+          .withMasterProfileType(ACTION_PROFILE)
+          .withDetailProfileType(ProfileType.MAPPING_PROFILE)
+          .withMasterProfileId(actionProfileId)
+          .withDetailProfileId(mappingProfileId)
+          .withOrder(0))))
+      .when()
+      .post(ACTION_PROFILES_PATH)
+      .then()
+      .statusCode(HttpStatus.SC_CREATED);
+  }
+
+  private void postMatchProfile(String id, String name, EntityType incomingRecordType, EntityType existingRecordType) {
+    RestAssured.given()
+      .spec(spec)
+      .body(new MatchProfileUpdateDto()
+        .withProfile(new MatchProfile()
+          .withId(id)
+          .withName(name)
+          .withIncomingRecordType(incomingRecordType)
+          .withExistingRecordType(existingRecordType)))
+      .when()
+      .post(MATCH_PROFILES_PATH)
+      .then()
+      .statusCode(HttpStatus.SC_CREATED);
+  }
+
+  private JobProfileUpdateDto postBaseJobProfileWithMatchAndUpdateAction(
+    String jobProfileId, String matchProfileId, String actionId, FolioRecord folioRecordType, String mappingId,
+    EntityType incomingRecordType, EntityType existingRecordType) {
+
+    postMappingProfile(mappingId, "Update " + incomingRecordType.value(), incomingRecordType, existingRecordType);
+    postActionProfileWithMapping(actionId, "Update " + incomingRecordType.value(), UPDATE, folioRecordType, mappingId);
+    postMatchProfile(matchProfileId, "Match " + incomingRecordType.value(), incomingRecordType, existingRecordType);
+
+    var jobToMatchAssociation = new ProfileAssociation()
+      .withMasterProfileType(JOB_PROFILE)
+      .withMasterProfileId(jobProfileId)
+      .withDetailProfileType(MATCH_PROFILE)
+      .withDetailProfileId(matchProfileId)
+      .withOrder(0);
+
+    var matchToActionAssociation = new ProfileAssociation()
+      .withMasterProfileType(MATCH_PROFILE)
+      .withMasterProfileId(matchProfileId)
+      .withDetailProfileType(ACTION_PROFILE)
+      .withDetailProfileId(actionId)
+      .withReactTo(MATCH)
+      .withOrder(0);
+
+    return RestAssured.given()
+      .spec(spec)
+      .body(new JobProfileUpdateDto()
+        .withProfile(new JobProfile()
+          .withId(jobProfileId)
+          .withName("Test job profile")
+          .withDataType(MARC))
+        .withAddedRelations(List.of(jobToMatchAssociation, matchToActionAssociation)))
+      .when()
+      .post(JOB_PROFILES_PATH)
+      .then()
+      .statusCode(HttpStatus.SC_CREATED)
+      .extract().as(JobProfileUpdateDto.class);
   }
 }
