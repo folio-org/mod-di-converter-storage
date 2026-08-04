@@ -137,18 +137,18 @@ public class JobProfileSnapshotTest extends AbstractRestVerticleTest {
   protected void clearTables(TestContext context) {
     Async async = context.async();
     PostgresClient pgClient = PostgresClient.getInstance(vertx, TENANT_ID);
-    pgClient.delete(SNAPSHOTS_TABLE_NAME, new Criterion(), event1 ->
-      pgClient.delete(ASSOCIATIONS_TABLE, new Criterion(), event2 ->
-        pgClient.delete(PROFILE_WRAPPERS_TABLE, new Criterion(), event3 ->
-          pgClient.delete(JOB_PROFILES_TABLE_NAME, new Criterion(), event4 ->
-            pgClient.delete(MATCH_PROFILES_TABLE_NAME, new Criterion(), event5 ->
-              pgClient.delete(ACTION_PROFILES_TABLE_NAME, new Criterion(), event6 ->
-                pgClient.delete(MAPPING_PROFILES_TABLE_NAME, new Criterion(), event7 -> {
-                  if (event7.failed()) {
-                    context.fail(event7.cause());
-                  }
-                  async.complete();
-                })))))));
+    pgClient.delete(SNAPSHOTS_TABLE_NAME, new Criterion())
+      .compose(v -> pgClient.delete(ASSOCIATIONS_TABLE, new Criterion()))
+      .compose(v -> pgClient.delete(PROFILE_WRAPPERS_TABLE, new Criterion()))
+      .compose(v -> pgClient.delete(JOB_PROFILES_TABLE_NAME, new Criterion()))
+      .compose(v -> pgClient.delete(MATCH_PROFILES_TABLE_NAME, new Criterion()))
+      .compose(v -> pgClient.delete(ACTION_PROFILES_TABLE_NAME, new Criterion()))
+      .compose(v -> pgClient.delete(MAPPING_PROFILES_TABLE_NAME, new Criterion()))
+      .onComplete(ar -> {
+        context.assertTrue(ar.succeeded());
+        async.complete();
+      });
+    async.awaitSuccess(30000);
   }
 
   @Test
