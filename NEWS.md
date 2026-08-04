@@ -2,6 +2,7 @@
 
 ### Features
 * Set Authority DELETE job/action/field mapping profiles to display via Settings > Data import ([MODDICONV-436](https://folio-org.atlassian.net/browse/MODDICONV-436))
+* Add validation for DELETE JobProfiles ([MODDICONV-437](https://folio-org.atlassian.net/browse/MODDICONV-437))
 
 ### Tech Dept
 * Add checkstyle validation to the build
