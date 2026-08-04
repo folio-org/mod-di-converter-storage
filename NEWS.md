@@ -5,6 +5,7 @@
 * Add validation for DELETE JobProfiles ([MODDICONV-437](https://folio-org.atlassian.net/browse/MODDICONV-437))
 
 ### Tech Dept
+* Delete default quickMarc profiles ([MODDICONV-445](https://folio-org.atlassian.net/browse/MODDICONV-445))
 * Add checkstyle validation to the build
 
 ### Dependencies
