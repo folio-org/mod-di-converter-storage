@@ -4,6 +4,7 @@
 * Set Authority DELETE job/action/field mapping profiles to display via Settings > Data import ([MODDICONV-436](https://folio-org.atlassian.net/browse/MODDICONV-436))
 
 ### Tech Dept
+* Delete default quickMarc profiles ([MODDICONV-445](https://folio-org.atlassian.net/browse/MODDICONV-445))
 * Add checkstyle validation to the build
 
 ### Dependencies
