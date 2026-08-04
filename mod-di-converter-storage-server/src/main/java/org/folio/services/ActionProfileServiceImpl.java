@@ -34,6 +34,8 @@ import org.springframework.stereotype.Component;
 public class ActionProfileServiceImpl
   extends AbstractProfileService<ActionProfile, ActionProfileCollection, ActionProfileUpdateDto> {
 
+  public static final String INVALID_ACTION_PROFILE_DELETE_ACTION_TYPE =
+    "Action profile with DELETE action is only allowed for MARC_AUTHORITY record type";
   private static final Logger LOGGER = LogManager.getLogger();
   private static final String INVALID_ACTION_PROFILE_ACTION_TYPE =
     "Can't create ActionProfile for MARC Bib record type with Create action";
@@ -204,6 +206,12 @@ public class ActionProfileServiceImpl
           LOGGER.warn("validateActionProfile:: {}", INVALID_ACTION_PROFILE_ACTION_TYPE);
           errors.withTotalRecords(errors.getTotalRecords() + 1).getErrors()
             .add(new Error().withMessage(INVALID_ACTION_PROFILE_ACTION_TYPE));
+        }
+        if (ActionProfile.Action.DELETE == actionProfile.getAction()
+          && ActionProfile.FolioRecord.MARC_AUTHORITY != actionProfile.getFolioRecord()) {
+          LOGGER.warn("validateActionProfile:: {}", INVALID_ACTION_PROFILE_DELETE_ACTION_TYPE);
+          errors.withTotalRecords(errors.getTotalRecords() + 1).getErrors()
+            .add(new Error().withMessage(INVALID_ACTION_PROFILE_DELETE_ACTION_TYPE));
         }
         return errors;
       });
