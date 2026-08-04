@@ -20,8 +20,8 @@
     }
   }, {
     "id" : "6409dcff-71fa-433a-bc6a-e70ad38a9604",
-    "name" : "quickMARC - Derive a new SRS MARC Bib and Instance",
-    "description" : "This job profile is used by the quickMARC Derive action to create a new SRS MARC Bib record and corresponding Inventory Instance. It cannot be edited or deleted.",
+    "name" : "Derive a new SRS MARC Bib and Instance",
+    "description" : "This job profile is used by the Derive action to create a new SRS MARC Bib record and corresponding Inventory Instance",
     "dataType" : "MARC",
     "userInfo" : {
       "firstName" : "System",

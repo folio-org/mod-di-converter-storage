@@ -1,9 +1,6 @@
 package org.folio.rest.impl;
 
 import static org.folio.rest.impl.JobProfileTest.JOB_PROFILES_PATH;
-import static org.folio.rest.impl.snapshot.JobProfileSnapshotTest.PROFILE_SNAPSHOT_PATH;
-import static org.folio.rest.impl.snapshot.JobProfileSnapshotTest.PROFILE_TYPE_PARAM;
-import static org.folio.rest.jaxrs.model.ProfileType.JOB_PROFILE;
 import static org.hamcrest.Matchers.is;
 
 import io.restassured.RestAssured;
@@ -13,7 +10,6 @@ import java.util.Collections;
 import org.apache.http.HttpStatus;
 import org.folio.rest.jaxrs.model.JobProfile;
 import org.folio.rest.jaxrs.model.JobProfileUpdateDto;
-import org.folio.rest.jaxrs.model.ProfileSnapshotWrapper;
 import org.folio.rest.jaxrs.model.Tags;
 import org.hamcrest.Matchers;
 import org.hamcrest.core.Is;
@@ -26,11 +22,6 @@ public class DefaultJobProfileTest extends AbstractRestVerticleTest {
 
   private static final String DEFAULT_MARC_AUTHORITY_PROFILE_ID = "6eefa4c6-bbf7-4845-ad82-de7fc5abd0e3";
   private static final String DEFAULT_MARC_HOLDINGS_PROFILE_ID = "80898dee-449f-44dd-9c8e-37d5eb469b1d";
-  private static final String DEFAULT_DERIVE_MARC_HOLDINGS_PROFILE_ID = "fa0262c7-5816-48d0-b9b3-7b7a862a5bc7";
-  private static final String DEFAULT_QM_MARC_BIB_UPDATE_JOB_PROFILE_ID = "cf6f2718-5aa5-482a-bba5-5bc9b75614da";
-  private static final String DEFAULT_QM_HOLDINGS_UPDATE_JOB_PROFILE_ID = "6cb347c6-c0b0-4363-89fc-32cedede87ba";
-  private static final String DEFAULT_QM_AUTHORITY_UPDATE_JOB_PROFILE_ID = "c7fcbc40-c4c0-411d-b569-1fc6bc142a92";
-  private static final String DEFAULT_QM_AUTHORITY_CREATE_JOB_PROFILE_ID = "6eefa4c6-bbf7-4845-ad82-de7fc4abd0e3";
 
   @Test
   public void shouldReturnDefaultProfilesListOnGet() {
@@ -40,7 +31,7 @@ public class DefaultJobProfileTest extends AbstractRestVerticleTest {
       .get(JOB_PROFILES_PATH)
       .then()
       .statusCode(HttpStatus.SC_OK)
-      .body("totalRecords", is(8));
+      .body("totalRecords", is(6));
   }
 
   @Test
@@ -51,82 +42,20 @@ public class DefaultJobProfileTest extends AbstractRestVerticleTest {
       .get(JOB_PROFILES_PATH + "?showHidden=true")
       .then()
       .statusCode(HttpStatus.SC_OK)
-      .body("totalRecords", is(13));
+      .body("totalRecords", is(7));
   }
 
   @Test
   public void shouldReturnMarcAuthorityProfileOnGetById() {
-    final var profile = RestAssured.given()
-      .spec(spec)
-      .when()
-      .get(JOB_PROFILES_PATH + "/" + DEFAULT_MARC_AUTHORITY_PROFILE_ID)
-      .then()
-      .statusCode(HttpStatus.SC_OK).extract().as(JobProfile.class);
+    final var profile = getJobProfileById(DEFAULT_MARC_AUTHORITY_PROFILE_ID);
     Assert.assertEquals("Default - Create SRS MARC Authority", profile.getName());
     Assert.assertEquals(JobProfile.DataType.MARC, profile.getDataType());
   }
 
   @Test
-  public void shouldReturnQmMarcBibProfileOnGetById() {
-    shouldReturnQmProfilesOnGetById(DEFAULT_QM_MARC_BIB_UPDATE_JOB_PROFILE_ID, "quickMARC - Default Update instance");
-  }
-
-  @Test
-  public void shouldReturnQmAuthorityProfileOnGetById() {
-    shouldReturnQmProfilesOnGetById(DEFAULT_QM_AUTHORITY_UPDATE_JOB_PROFILE_ID, "quickMARC - Default Update authority");
-  }
-
-  @Test
-  public void shouldReturnQmHoldingsProfileOnGetById() {
-    shouldReturnQmProfilesOnGetById(DEFAULT_QM_HOLDINGS_UPDATE_JOB_PROFILE_ID, "quickMARC - Default Update holdings");
-  }
-
-  @Test
   public void shouldReturnMarcHoldingsProfileOnGetById() {
-    final var profile = RestAssured.given()
-      .spec(spec)
-      .when()
-      .get(JOB_PROFILES_PATH + "/" + DEFAULT_MARC_HOLDINGS_PROFILE_ID)
-      .then()
-      .statusCode(HttpStatus.SC_OK).extract().as(JobProfile.class);
+    final var profile = getJobProfileById(DEFAULT_MARC_HOLDINGS_PROFILE_ID);
     Assert.assertEquals("Default - Create Holdings and SRS MARC Holdings", profile.getName());
-    Assert.assertEquals(JobProfile.DataType.MARC, profile.getDataType());
-  }
-
-  @Test
-  public void shouldReturnAuthorityCreateProfileOnGetById() {
-    final var profile = RestAssured.given()
-      .spec(spec)
-      .when()
-      .get(JOB_PROFILES_PATH + "/" + DEFAULT_QM_AUTHORITY_CREATE_JOB_PROFILE_ID)
-      .then()
-      .statusCode(HttpStatus.SC_OK).extract().as(JobProfile.class);
-    Assert.assertEquals("quickMARC - Default Create authority", profile.getName());
-    Assert.assertEquals(JobProfile.DataType.MARC, profile.getDataType());
-  }
-
-  @Test
-  public void shouldReturnAuthorityCreateProfileSnapshotOnGetById() {
-    final var profile = RestAssured.given()
-      .spec(spec)
-      .when()
-      .queryParam(PROFILE_TYPE_PARAM, JOB_PROFILE.value())
-      .get(PROFILE_SNAPSHOT_PATH + "/" + DEFAULT_QM_AUTHORITY_CREATE_JOB_PROFILE_ID)
-      .then()
-      .statusCode(HttpStatus.SC_OK).extract().as(ProfileSnapshotWrapper.class);
-    Assert.assertEquals(1, profile.getChildSnapshotWrappers().size());
-    Assert.assertNotNull(profile.getContent());
-  }
-
-  @Test
-  public void shouldReturnDeriveMarcHoldingsProfileOnGetById() {
-    final var profile = RestAssured.given()
-      .spec(spec)
-      .when()
-      .get(JOB_PROFILES_PATH + "/" + DEFAULT_DERIVE_MARC_HOLDINGS_PROFILE_ID)
-      .then()
-      .statusCode(HttpStatus.SC_OK).extract().as(JobProfile.class);
-    Assert.assertEquals("quickMARC - Create Holdings and SRS MARC Holdings", profile.getName());
     Assert.assertEquals(JobProfile.DataType.MARC, profile.getDataType());
   }
 
@@ -156,17 +85,12 @@ public class DefaultJobProfileTest extends AbstractRestVerticleTest {
       .body("tags.tagList", Is.is(Matchers.empty()));
   }
 
-  private void shouldReturnQmProfilesOnGetById(String url, String expectedName) {
-    final var profile = getJobProfileById(url);
-    Assert.assertEquals(expectedName, profile.getName());
-    Assert.assertEquals(JobProfile.DataType.MARC, profile.getDataType());
-  }
-
   private JobProfile getJobProfileById(String id) {
     return RestAssured.given()
       .spec(spec)
       .when()
       .get(JOB_PROFILES_PATH + "/" + id)
-      .then().extract().as(JobProfile.class);
+      .then()
+      .statusCode(HttpStatus.SC_OK).extract().as(JobProfile.class);
   }
 }
