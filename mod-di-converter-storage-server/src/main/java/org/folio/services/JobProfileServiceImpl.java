@@ -24,6 +24,7 @@ import org.folio.dao.ProfileDao;
 import org.folio.dao.association.ProfileWrapperDao;
 import org.folio.rest.impl.util.OkapiConnectionParams;
 import org.folio.rest.jaxrs.model.ActionProfile;
+import org.folio.rest.jaxrs.model.EntityType;
 import org.folio.rest.jaxrs.model.Error;
 import org.folio.rest.jaxrs.model.Errors;
 import org.folio.rest.jaxrs.model.JobProfile;
@@ -34,6 +35,7 @@ import org.folio.rest.jaxrs.model.OperationType;
 import org.folio.rest.jaxrs.model.ProfileAssociation;
 import org.folio.rest.jaxrs.model.ProfileSnapshotWrapper;
 import org.folio.rest.jaxrs.model.ProfileType;
+import org.folio.rest.jaxrs.model.ReactToType;
 import org.folio.services.association.CommonProfileAssociationService;
 import org.folio.services.association.ProfileAssociationService;
 import org.folio.services.snapshot.ProfileSnapshotService;
@@ -42,6 +44,11 @@ import org.springframework.stereotype.Component;
 @Component
 public class JobProfileServiceImpl
   extends AbstractProfileService<JobProfile, JobProfileCollection, JobProfileUpdateDto> {
+  public static final String INVALID_DELETE_MARC_AUTHORITY_ACTION_PROFILE_PLACEMENT =
+    "Delete MARC-AUTHORITY action profile must be placed in the for-matches branch "
+      + "of a match profile for MARC-AUTHORITY to MARC-AUTHORITY matching";
+  public static final String DELETE_MARC_AUTHORITY_CANNOT_BE_NEXT_TO_OTHER_ACTIONS =
+    "Delete MARC-AUTHORITY action profile cannot be placed next to other action profiles in the for-matches branch";
   private static final Logger LOGGER = LogManager.getLogger();
   private static final String LINKED_ACTION_PROFILES_WERE_NOT_FOUND =
     "Linked ActionProfiles with ids %s were not found";
@@ -294,7 +301,7 @@ public class JobProfileServiceImpl
   private List<ProfileAssociation> filterProfileAssociations(List<ProfileAssociation> profileAssociations) {
     return profileAssociations.stream()
       .filter(profileAssociation -> profileAssociation.getDetailProfileType() != ProfileType.MAPPING_PROFILE
-                                    && profileAssociation.getDetailProfileType() != ProfileType.JOB_PROFILE)
+        && profileAssociation.getDetailProfileType() != ProfileType.JOB_PROFILE)
       .collect(Collectors.toCollection(ArrayList::new));
   }
 
@@ -307,7 +314,7 @@ public class JobProfileServiceImpl
               return Objects.equals(profileAssociation.getId(), deleteAssociation.getId());
             }
             return Objects.equals(profileAssociation.getMasterWrapperId(), deleteAssociation.getMasterWrapperId())
-                   && Objects.equals(profileAssociation.getDetailWrapperId(), deleteAssociation.getDetailWrapperId());
+              && Objects.equals(profileAssociation.getDetailWrapperId(), deleteAssociation.getDetailWrapperId());
           }
         )
       );
@@ -343,6 +350,7 @@ public class JobProfileServiceImpl
         return Future.succeededFuture(existingActionProfiles);
       })
       .compose(actionProfiles -> {
+        List<Future<Void>> validationFutures = new ArrayList<>();
         actionProfileAssociations.forEach(association -> {
           ActionProfile actionProfile = actionProfiles.stream()
             .filter(profile -> profile.getId().equals(association.getDetailProfileId()))
@@ -356,8 +364,14 @@ public class JobProfileServiceImpl
             validateAddedModifyActionProfileAssociation(profileAssociations, association, actionProfile, actionProfiles,
               errors);
           }
+          if (actionProfile.getAction() == ActionProfile.Action.DELETE
+            && actionProfile.getFolioRecord() == ActionProfile.FolioRecord.MARC_AUTHORITY) {
+            validationFutures.add(
+              validateDeleteMarcAuthorityActionProfileAssociation(association, actionProfile, errors, tenantId));
+          }
         });
-        return Future.succeededFuture(new Errors().withErrors(errors).withTotalRecords(errors.size()));
+        return Future.all(validationFutures)
+          .map(v -> new Errors().withErrors(errors).withTotalRecords(errors.size()));
       });
   }
 
@@ -421,6 +435,40 @@ public class JobProfileServiceImpl
       return associationWithLowestOrder == association;
     }
     return false;
+  }
+
+  private Future<Void> validateDeleteMarcAuthorityActionProfileAssociation(ProfileAssociation association,
+                                                                           ActionProfile actionProfile,
+                                                                           List<Error> errors, String tenantId) {
+    if (association.getMasterProfileType() != MATCH_PROFILE || association.getReactTo() != ReactToType.MATCH) {
+      LOGGER.warn("validateDeleteMarcAuthorityActionProfileAssociation:: Delete MARC-AUTHORITY action "
+        + "profile {} is not placed in the for-matches branch of a match profile", actionProfile.getId());
+      errors.add(new Error().withMessage(INVALID_DELETE_MARC_AUTHORITY_ACTION_PROFILE_PLACEMENT));
+      return Future.succeededFuture();
+    }
+
+    if (association.getOrder() != 0) {
+      LOGGER.warn("validateDeleteMarcAuthorityActionProfileAssociation:: Delete MARC-AUTHORITY action "
+          + "profile {} is preceded by other action profiles in the for-matches branch (order = {})",
+        actionProfile.getId(), association.getOrder());
+      errors.add(new Error().withMessage(DELETE_MARC_AUTHORITY_CANNOT_BE_NEXT_TO_OTHER_ACTIONS));
+      return Future.succeededFuture();
+    }
+
+    return profileServiceFactory.getMatchProfileService()
+      .getProfileById(association.getMasterProfileId(), false, tenantId)
+      .compose(matchProfileOptional -> {
+        matchProfileOptional.ifPresent(matchProfile -> {
+          if (matchProfile.getIncomingRecordType() != EntityType.MARC_AUTHORITY
+            || matchProfile.getExistingRecordType() != EntityType.MARC_AUTHORITY) {
+            LOGGER.warn("validateDeleteMarcAuthorityActionProfileAssociation:: Delete MARC-AUTHORITY action "
+                + "profile {} is placed under match profile {} which is not MARC-AUTHORITY to MARC-AUTHORITY matching",
+              actionProfile.getId(), matchProfile.getId());
+            errors.add(new Error().withMessage(INVALID_DELETE_MARC_AUTHORITY_ACTION_PROFILE_PLACEMENT));
+          }
+        });
+        return Future.succeededFuture();
+      });
   }
 
   private void validateMatchProfilesAssociations(List<ProfileAssociation> actionProfileAssociations,

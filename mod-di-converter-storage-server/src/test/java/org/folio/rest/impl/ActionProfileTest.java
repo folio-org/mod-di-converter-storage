@@ -3,12 +3,15 @@ package org.folio.rest.impl;
 import static java.util.Collections.singletonList;
 import static org.folio.rest.impl.MappingProfileTest.MAPPING_PROFILES_PATH;
 import static org.folio.rest.jaxrs.model.ActionProfile.Action.CREATE;
+import static org.folio.rest.jaxrs.model.ActionProfile.Action.DELETE;
 import static org.folio.rest.jaxrs.model.ActionProfile.Action.MODIFY;
 import static org.folio.rest.jaxrs.model.ActionProfile.Action.UPDATE;
 import static org.folio.rest.jaxrs.model.ActionProfile.FolioRecord.INSTANCE;
+import static org.folio.rest.jaxrs.model.ActionProfile.FolioRecord.MARC_AUTHORITY;
 import static org.folio.rest.jaxrs.model.ActionProfile.FolioRecord.MARC_BIBLIOGRAPHIC;
 import static org.folio.rest.jaxrs.model.ProfileType.ACTION_PROFILE;
 import static org.folio.rest.jaxrs.model.ProfileType.MAPPING_PROFILE;
+import static org.folio.services.ActionProfileServiceImpl.INVALID_ACTION_PROFILE_DELETE_ACTION_TYPE;
 import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.hamcrest.Matchers.empty;
 import static org.hamcrest.Matchers.everyItem;
@@ -177,6 +180,37 @@ public class ActionProfileTest extends AbstractRestVerticleTest {
       .then()
       .statusCode(HttpStatus.SC_UNPROCESSABLE_ENTITY)
       .body("errors[0].message", is("Can't create ActionProfile for MARC Bib record type with Create action"));
+  }
+
+  @Test
+  public void shouldCreateProfileOnPostWithDeleteActionAndMarcAuthorityRecord() {
+    RestAssured.given()
+      .spec(spec)
+      .body(new ActionProfileUpdateDto()
+        .withProfile(new ActionProfile()
+          .withName("Valid Delete Action Profile")
+          .withAction(DELETE)
+          .withFolioRecord(MARC_AUTHORITY)))
+      .when()
+      .post(ACTION_PROFILES_PATH)
+      .then()
+      .statusCode(HttpStatus.SC_CREATED);
+  }
+
+  @Test
+  public void shouldReturnUnprocessableEntityOnPostWithDeleteActionAndNonMarcAuthorityRecord() {
+    RestAssured.given()
+      .spec(spec)
+      .body(new ActionProfileUpdateDto()
+        .withProfile(new ActionProfile()
+          .withName("Invalid Delete Action Profile")
+          .withAction(DELETE)
+          .withFolioRecord(INSTANCE)))
+      .when()
+      .post(ACTION_PROFILES_PATH)
+      .then()
+      .statusCode(HttpStatus.SC_UNPROCESSABLE_ENTITY)
+      .body("errors[0].message", is(INVALID_ACTION_PROFILE_DELETE_ACTION_TYPE));
   }
 
   @Test

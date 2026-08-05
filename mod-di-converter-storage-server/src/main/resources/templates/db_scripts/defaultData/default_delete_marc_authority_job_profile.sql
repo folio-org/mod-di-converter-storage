@@ -25,7 +25,6 @@ INSERT INTO ${myuniversity}_${mymodule}.action_profiles (id, jsonb) values
   "id": "fabd9a3e-33c3-49b7-864d-c5af830d9990",
   "name": "Default - Delete MARC Authority records",
   "description": "This action profile is used to delete MARC authority records. This action profile cannot be duplicated, edited, or deleted.",
-  "action": "DELETE",
   "folioRecord": "MARC_AUTHORITY",
   "hidden": false,
   "remove9Subfields": false,
@@ -155,7 +154,7 @@ BEGIN
         detail_wrapper_id, master_profile_id, detail_profile_id,
         master_profile_type, detail_profile_type, detail_order, react_to)
     VALUES
-        ('644e53c2-7be2-4ae5-bc17-131334222d39', NULL, job_wrapper_id, action_wrapper_id,
+        ('644e53c2-7be2-4ae5-bc17-131334222d39', NULL, job_wrapper_id, match_wrapper_id,
          '1a338fcd-3efc-4a03-b007-394eeb0d5fb9', '4be5d1d2-1f5a-42ff-a9bd-fc90609d94b6',
          'JOB_PROFILE', 'MATCH_PROFILE', 0, NULL) ON CONFLICT DO NOTHING;
 
