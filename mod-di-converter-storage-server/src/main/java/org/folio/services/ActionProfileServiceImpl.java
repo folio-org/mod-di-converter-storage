@@ -1,5 +1,10 @@
 package org.folio.services;
 
+import static org.folio.rest.jaxrs.model.ActionProfile.Action.CREATE;
+import static org.folio.rest.jaxrs.model.ActionProfile.Action.DELETE;
+import static org.folio.rest.jaxrs.model.ActionProfile.FolioRecord.MARC_AUTHORITY;
+import static org.folio.rest.jaxrs.model.ActionProfile.FolioRecord.MARC_BIBLIOGRAPHIC;
+
 import io.vertx.core.Future;
 import io.vertx.core.Promise;
 import io.vertx.core.json.jackson.DatabindCodec;
@@ -186,7 +191,7 @@ public class ActionProfileServiceImpl
 
   private void setDefaults(ActionProfile profile) {
     var bibInstanceProfile = profile.getFolioRecord().equals(ActionProfile.FolioRecord.INSTANCE)
-                             || profile.getFolioRecord().equals(ActionProfile.FolioRecord.MARC_BIBLIOGRAPHIC);
+                             || profile.getFolioRecord().equals(MARC_BIBLIOGRAPHIC);
     profile.setRemove9Subfields(bibInstanceProfile);
   }
 
@@ -195,14 +200,12 @@ public class ActionProfileServiceImpl
     ActionProfile actionProfile = actionProfileUpdateDto.getProfile();
     return super.validateProfile(operationType, actionProfileUpdateDto, tenantId)
       .map(errors -> {
-        if (ActionProfile.FolioRecord.MARC_BIBLIOGRAPHIC == actionProfile.getFolioRecord()
-            && ActionProfile.Action.CREATE == actionProfile.getAction()) {
+        if (MARC_BIBLIOGRAPHIC == actionProfile.getFolioRecord() && CREATE == actionProfile.getAction()) {
           LOGGER.warn("validateActionProfile:: {}", INVALID_ACTION_PROFILE_ACTION_TYPE);
           errors.withTotalRecords(errors.getTotalRecords() + 1).getErrors()
             .add(new Error().withMessage(INVALID_ACTION_PROFILE_ACTION_TYPE));
         }
-        if (ActionProfile.Action.DELETE == actionProfile.getAction()
-          && ActionProfile.FolioRecord.MARC_AUTHORITY != actionProfile.getFolioRecord()) {
+        if (DELETE == actionProfile.getAction() && MARC_AUTHORITY != actionProfile.getFolioRecord()) {
           LOGGER.warn("validateActionProfile:: {}", INVALID_ACTION_PROFILE_DELETE_ACTION_TYPE);
           errors.withTotalRecords(errors.getTotalRecords() + 1).getErrors()
             .add(new Error().withMessage(INVALID_ACTION_PROFILE_DELETE_ACTION_TYPE));
@@ -249,14 +252,14 @@ public class ActionProfileServiceImpl
     getProfileById(profileId, true, tenantId)
       .onSuccess(optionalActionProfile ->
         optionalActionProfile.ifPresentOrElse(actionProfile -> {
-            var existMappingProfiles = CollectionUtils.isEmpty(deletedRelations) ? actionProfile.getChildProfiles() :
-                                       actionProfile.getChildProfiles().stream()
-                                         .filter(profileSnapshotWrapper -> profileSnapshotWrapper.getContentType()
-                                                                           == ProfileType.MAPPING_PROFILE)
-                                         .filter(profileSnapshotWrapper -> deletedRelations.stream()
-                                           .noneMatch(rel -> Objects.equals(rel.getDetailProfileId(),
-                                             profileSnapshotWrapper.getProfileId()))
-                                         ).toList();
+          var existMappingProfiles = CollectionUtils.isEmpty(deletedRelations) ? actionProfile.getChildProfiles()
+            : actionProfile.getChildProfiles().stream()
+            .filter(profileSnapshotWrapper -> profileSnapshotWrapper.getContentType()
+              == ProfileType.MAPPING_PROFILE)
+            .filter(profileSnapshotWrapper -> deletedRelations.stream()
+              .noneMatch(rel -> Objects.equals(rel.getDetailProfileId(),
+                profileSnapshotWrapper.getProfileId()))
+            ).toList();
 
             existMappingProfiles.forEach(mappingWrapper -> {
               var mappingProfile = DatabindCodec.mapper()

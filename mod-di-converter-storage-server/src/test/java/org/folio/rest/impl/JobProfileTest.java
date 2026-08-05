@@ -61,6 +61,7 @@ import org.folio.rest.jaxrs.model.ProfileAssociationCollection;
 import org.folio.rest.jaxrs.model.ProfileSnapshotWrapper;
 import org.folio.rest.jaxrs.model.ProfileType;
 import org.folio.rest.jaxrs.model.Tags;
+import org.folio.rest.persist.Criteria.Criteria;
 import org.folio.rest.persist.Criteria.Criterion;
 import org.folio.rest.persist.PostgresClient;
 import org.junit.Assert;
@@ -100,8 +101,9 @@ public class JobProfileTest extends AbstractRestVerticleTest {
   private static final String PROFILE_WRAPPERS_TABLE_NAME = "profile_wrappers";
   private static final String ASSOCIATIONS_TABLE = "profile_associations";
   private static final String SNAPSHOTS_TABLE_NAME = "profile_snapshots";
-  private static final String PROFILE_WRAPPERS_TABLE = "profile_wrappers";
   private static final String JOB_PROFILE_UUID = "b81c283c-131d-4470-ab91-e92bb415c000";
+  private static final String DEFAULT_CREATE_SRS_MARC_AUTHORITY_JOB_PROFILE_ID = "6eefa4c6-bbf7-4845-ad82-de7fc5abd0e3";
+  private static final String DEFAULT_DELETE_MARC_AUTHORITY_ACTION_PROFILE_ID = "fabd9a3e-33c3-49b7-864d-c5af830d9990";
 
   static JobProfileUpdateDto jobProfile_4 = new JobProfileUpdateDto()
     .withProfile(new JobProfile().withId(JOB_PROFILE_UUID)
@@ -109,7 +111,6 @@ public class JobProfileTest extends AbstractRestVerticleTest {
       .withTags(new Tags().withTagList(Arrays.asList("lorem", "ipsum", "dolor")))
       .withDataType(MARC));
 
-  private static final String DEFAULT_CREATE_SRS_MARC_AUTHORITY_JOB_PROFILE_ID = "6eefa4c6-bbf7-4845-ad82-de7fc5abd0e3";
   static JobProfileUpdateDto jobProfile_5 = new JobProfileUpdateDto()
     .withProfile(new JobProfile().withId(DEFAULT_CREATE_SRS_MARC_AUTHORITY_JOB_PROFILE_ID)
       .withName("Default - Create SRS MARC Authority")
@@ -2040,6 +2041,44 @@ public class JobProfileTest extends AbstractRestVerticleTest {
   }
 
   @Test
+  @SuppressWarnings("checkstyle:LineLength")
+  public void shouldReturnCreatedOnPostJobProfileWithDefaultDeleteMarcAuthorityActionAsFirstActionUnderMarcAuthorityMatchProfile() {
+    var jobProfileId = UUID.randomUUID().toString();
+    var matchProfileId = UUID.randomUUID().toString();
+
+    postMatchProfile(matchProfileId, "Match MARC-Authority",
+      EntityType.MARC_AUTHORITY, EntityType.MARC_AUTHORITY);
+
+    var jobToMatchAssociation = new ProfileAssociation()
+      .withMasterProfileType(JOB_PROFILE)
+      .withMasterProfileId(jobProfileId)
+      .withDetailProfileType(MATCH_PROFILE)
+      .withDetailProfileId(matchProfileId)
+      .withOrder(0);
+
+    var matchToActionAssociation = new ProfileAssociation()
+      .withMasterProfileType(MATCH_PROFILE)
+      .withMasterProfileId(matchProfileId)
+      .withDetailProfileType(ACTION_PROFILE)
+      .withDetailProfileId(DEFAULT_DELETE_MARC_AUTHORITY_ACTION_PROFILE_ID)
+      .withReactTo(MATCH)
+      .withOrder(0);
+
+    RestAssured.given()
+      .spec(spec)
+      .body(new JobProfileUpdateDto()
+        .withProfile(new JobProfile()
+          .withId(jobProfileId)
+          .withName("Delete MARC-Authority")
+          .withDataType(MARC))
+        .withAddedRelations(List.of(jobToMatchAssociation, matchToActionAssociation)))
+      .when()
+      .post(JOB_PROFILES_PATH)
+      .then()
+      .statusCode(HttpStatus.SC_CREATED);
+  }
+
+  @Test
   public void shouldReturnUnprocessableEntityOnPostJobProfileWithDeleteMarcAuthorityUnderNonMatchBranch() {
     var jobProfileId = UUID.randomUUID().toString();
     var matchProfileId = UUID.randomUUID().toString();
@@ -2349,6 +2388,10 @@ public class JobProfileTest extends AbstractRestVerticleTest {
       ));
   }
 
+  /**
+   * Cleans up tables data except default action profile for MARC-AUTHORITY deletion and its wrapper because
+   * the profile is used in the tests.
+   */
   @Override
   protected void clearTables(TestContext context) {
     Async async = context.async();
@@ -2357,19 +2400,32 @@ public class JobProfileTest extends AbstractRestVerticleTest {
     Future.succeededFuture()
       .compose(v -> pgClient.delete(ASSOCIATIONS_TABLE, new Criterion()))
       .compose(v -> pgClient.delete(SNAPSHOTS_TABLE_NAME, new Criterion()))
-      .compose(v -> pgClient.delete(PROFILE_WRAPPERS_TABLE_NAME, new Criterion()))
+      .compose(v -> pgClient.delete(PROFILE_WRAPPERS_TABLE_NAME, new Criterion(getProfileWrappersDeletionCriteria())))
       .compose(v -> pgClient.delete(JOB_PROFILES_TABLE_NAME, new Criterion()))
       .compose(v -> pgClient.delete(MATCH_PROFILES_TABLE_NAME, new Criterion()))
-      .compose(v -> pgClient.delete(ACTION_PROFILES_TABLE_NAME, new Criterion()))
+      .compose(v -> pgClient.delete(ACTION_PROFILES_TABLE_NAME, new Criterion(getActionProfilesDeletionCriteria())))
       .compose(v -> pgClient.delete(MAPPING_PROFILES_TABLE_NAME, new Criterion()))
-      .compose(v -> pgClient.delete(PROFILE_WRAPPERS_TABLE, new Criterion()))
       .onComplete(ar -> {
-        if (ar.succeeded()) {
-          async.complete();
-        } else {
-          context.fail(ar.cause());
-        }
+        context.assertTrue(ar.succeeded());
+        async.complete();
       });
+    async.awaitSuccess(30000);
+  }
+
+  private static Criteria getProfileWrappersDeletionCriteria() {
+    return new Criteria()
+      .setJSONB(false)
+      .addField("action_profile_id")
+      .setOperation("!=")
+      .setVal(DEFAULT_DELETE_MARC_AUTHORITY_ACTION_PROFILE_ID);
+  }
+
+  private static Criteria getActionProfilesDeletionCriteria() {
+    return new Criteria()
+      .setJSONB(false)
+      .addField("id")
+      .setOperation("!=")
+      .setVal(DEFAULT_DELETE_MARC_AUTHORITY_ACTION_PROFILE_ID);
   }
 
   private JobProfileUpdateDto createJobProfile(JobProfileUpdateDto jobProfileUpdateDto,
