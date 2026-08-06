@@ -25,6 +25,7 @@ INSERT INTO ${myuniversity}_${mymodule}.action_profiles (id, jsonb) values
   "id": "fabd9a3e-33c3-49b7-864d-c5af830d9990",
   "name": "Default - Delete MARC Authority records",
   "description": "This action profile is used to delete MARC authority records. This action profile cannot be duplicated, edited, or deleted.",
+  "action": "DELETE",
   "folioRecord": "MARC_AUTHORITY",
   "hidden": false,
   "remove9Subfields": false,
