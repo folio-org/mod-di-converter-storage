@@ -139,7 +139,8 @@ public class MappingProfileTest extends AbstractRestVerticleTest {
     "862000b9-84ea-4cae-a223-5fc0552f2b42", //OCLC_UPDATE_MAPPING_PROFILE_ID
     "f90864ef-8030-480f-a43f-8cdd21233252", //OCLC_UPDATE_MARC_BIB_MAPPING_PROFILE_ID
     "13cf7adf-c7a7-4c2e-838f-14d0ac36ec0a", //DEFAULT_CREATE_HOLDINGS_MAPPING_PROFILE_ID
-    "6a0ec1de-68eb-4833-bdbf-0741db85c314" //DEFAULT_CREATE_AUTHORITIES_MAPPING_PROFILE_ID
+    "6a0ec1de-68eb-4833-bdbf-0741db85c314", //DEFAULT_CREATE_AUTHORITIES_MAPPING_PROFILE_ID
+    "ff029a0a-82ff-486d-b2b1-7a4ef4cb7988"  //DEFAULT_DELETE_MARC_AUTHORITY_MAPPING_PROFILE_ID
   );
 
   @Test
@@ -239,7 +240,6 @@ public class MappingProfileTest extends AbstractRestVerticleTest {
     for (String id : defaultMappingProfileIds) {
       RestAssured.given()
         .spec(spec)
-        .body(mappingProfile_1)
         .when()
         .delete(MAPPING_PROFILES_PATH + "/" + id)
         .then()
