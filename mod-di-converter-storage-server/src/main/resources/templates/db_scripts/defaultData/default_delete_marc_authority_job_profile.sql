@@ -119,11 +119,43 @@ INSERT INTO ${myuniversity}_${mymodule}.match_profiles (id, jsonb) values
 }')
 ON CONFLICT DO NOTHING;
 
+INSERT INTO ${myuniversity}_${mymodule}.mapping_profiles (id, jsonb) values
+  ('ff029a0a-82ff-486d-b2b1-7a4ef4cb7988', '{
+  "id": "ff029a0a-82ff-486d-b2b1-7a4ef4cb7988",
+  "name": "Default - Delete MARC Authority records",
+  "description": "This mapping profile is used to delete MARC authority records. This mapping profile cannot be duplicated, edited, or deleted.",
+  "incomingRecordType": "MARC_AUTHORITY",
+  "existingRecordType": "MARC_AUTHORITY",
+  "hidden": false,
+  "userInfo": {
+    "firstName": "System",
+    "lastName": "System",
+    "userName": "System"
+  },
+  "marcFieldProtectionSettings": [],
+  "parentProfiles": [],
+  "childProfiles": [],
+  "mappingDetails": {
+    "name": "marcAuthority",
+    "recordType": "MARC_AUTHORITY",
+    "marcMappingDetails": []
+  },
+  "metadata": {
+    "createdDate": "2022-02-16T14:00:00.000",
+    "updatedDate": "2022-02-16T15:00:00.462+0000",
+    "createdByUserId": "00000000-0000-0000-0000-000000000000",
+    "updatedByUserId": "00000000-0000-0000-0000-000000000000"
+  }
+}')
+ON CONFLICT DO NOTHING;
+
+
 DO
 $$
 DECLARE
     job_wrapper_id UUID;
     action_wrapper_id UUID;
+    mapping_wrapper_id UUID;
     match_wrapper_id UUID;
 BEGIN
     -- JOB_PROFILE
@@ -140,6 +172,14 @@ BEGIN
         action_wrapper_id = 'ed54fc13-aac0-40d4-b21e-dda1e6f9a03a';
         INSERT INTO ${myuniversity}_${mymodule}.profile_wrappers (id, profile_type, action_profile_id)
         VALUES (action_wrapper_id, 'ACTION_PROFILE', 'fabd9a3e-33c3-49b7-864d-c5af830d9990') ON CONFLICT DO NOTHING;
+    END IF;
+
+    -- MAPPING_PROFILE
+    SELECT id INTO mapping_wrapper_id FROM ${myuniversity}_${mymodule}.profile_wrappers WHERE mapping_profile_id = 'ff029a0a-82ff-486d-b2b1-7a4ef4cb7988';
+    IF mapping_wrapper_id IS NULL THEN
+        mapping_wrapper_id = '1961fdd8-3cb2-47b2-8f61-ecfcb08b052e';
+        INSERT INTO ${myuniversity}_${mymodule}.profile_wrappers (id, profile_type, mapping_profile_id)
+        VALUES (mapping_wrapper_id, 'MAPPING_PROFILE', 'ff029a0a-82ff-486d-b2b1-7a4ef4cb7988') ON CONFLICT DO NOTHING;
     END IF;
 
     -- MATCH_PROFILE
@@ -166,5 +206,12 @@ BEGIN
         ('e0fd6684-fa34-4493-9048-a9e01c58f782', '1a338fcd-3efc-4a03-b007-394eeb0d5fb9',
          match_wrapper_id, action_wrapper_id, '4be5d1d2-1f5a-42ff-a9bd-fc90609d94b6',
          'fabd9a3e-33c3-49b7-864d-c5af830d9990', 'MATCH_PROFILE', 'ACTION_PROFILE', 0, 'MATCH') ON CONFLICT DO NOTHING;
+
+    INSERT INTO ${myuniversity}_${mymodule}.profile_associations (id, job_profile_id, master_wrapper_id,
+            detail_wrapper_id, master_profile_id, detail_profile_id,
+            master_profile_type, detail_profile_type, detail_order, react_to)
+    VALUES
+        ('99c50f87-6d65-482e-8d06-b72770899b9b', NULL, action_wrapper_id, mapping_wrapper_id,
+         'fabd9a3e-33c3-49b7-864d-c5af830d9990', 'ff029a0a-82ff-486d-b2b1-7a4ef4cb7988', 'ACTION_PROFILE', 'MAPPING_PROFILE', 0, NULL) ON CONFLICT DO NOTHING;
 END
 $$;

@@ -54,7 +54,8 @@ public class MappingProfileServiceImpl
     "f90864ef-8030-480f-a43f-8cdd21233252", //OCLC_UPDATE_MARC_BIB_MAPPING_PROFILE_ID
     "13cf7adf-c7a7-4c2e-838f-14d0ac36ec0a", //DEFAULT_CREATE_HOLDINGS_MAPPING_PROFILE_ID
     "6a0ec1de-68eb-4833-bdbf-0741db25c314", //DEFAULT_CREATE_AUTHORITIES_MAPPING_PROFILE_ID
-    "6a0ec1de-68eb-4833-bdbf-0741db85c314"  //DEFAULT_CREATE_AUTHORITY_MAPPING_PROFILE_ID
+    "6a0ec1de-68eb-4833-bdbf-0741db85c314", //DEFAULT_CREATE_AUTHORITY_MAPPING_PROFILE_ID
+    "ff029a0a-82ff-486d-b2b1-7a4ef4cb7988"  //DEFAULT_DELETE_MARC_AUTHORITY_MAPPING_PROFILE_ID
   );
 
   private final ProfileServiceFactory profileServiceFactory;
@@ -255,15 +256,14 @@ public class MappingProfileServiceImpl
     getProfileById(profileId, true, tenantId)
       .onSuccess(optionalMappingProfile ->
         optionalMappingProfile.ifPresentOrElse(mappingProfile -> {
-            var existActionProfiles = CollectionUtils.isEmpty(deletedRelations) ? mappingProfile.getParentProfiles() :
-                                      mappingProfile.getParentProfiles().stream()
-                                        .filter(profileSnapshotWrapper -> profileSnapshotWrapper.getContentType()
-                                                                          == ACTION_PROFILE)
-                                        .filter(profileSnapshotWrapper -> deletedRelations.stream()
-                                          .noneMatch(
-                                            deletedRelation -> Objects.equals(deletedRelation.getMasterProfileId(),
-                                              profileSnapshotWrapper.getProfileId())))
-                                        .toList();
+          var existActionProfiles = CollectionUtils.isEmpty(deletedRelations) ? mappingProfile.getParentProfiles()
+            : mappingProfile.getParentProfiles().stream()
+            .filter(profileSnapshotWrapper -> profileSnapshotWrapper.getContentType()
+              == ACTION_PROFILE)
+            .filter(profileSnapshotWrapper -> deletedRelations.stream()
+              .noneMatch(deletedRelation ->
+                Objects.equals(deletedRelation.getMasterProfileId(), profileSnapshotWrapper.getProfileId())))
+            .toList();
 
             existActionProfiles.forEach(actionWrapper -> {
               var actionProfile = DatabindCodec.mapper().convertValue(actionWrapper.getContent(), ActionProfile.class);
