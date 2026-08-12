@@ -256,15 +256,14 @@ public class MappingProfileServiceImpl
     getProfileById(profileId, true, tenantId)
       .onSuccess(optionalMappingProfile ->
         optionalMappingProfile.ifPresentOrElse(mappingProfile -> {
-            var existActionProfiles = CollectionUtils.isEmpty(deletedRelations) ? mappingProfile.getParentProfiles() :
-                                      mappingProfile.getParentProfiles().stream()
-                                        .filter(profileSnapshotWrapper -> profileSnapshotWrapper.getContentType()
-                                                                          == ACTION_PROFILE)
-                                        .filter(profileSnapshotWrapper -> deletedRelations.stream()
-                                          .noneMatch(
-                                            deletedRelation -> Objects.equals(deletedRelation.getMasterProfileId(),
-                                              profileSnapshotWrapper.getProfileId())))
-                                        .toList();
+          var existActionProfiles = CollectionUtils.isEmpty(deletedRelations) ? mappingProfile.getParentProfiles()
+            : mappingProfile.getParentProfiles().stream()
+            .filter(profileSnapshotWrapper -> profileSnapshotWrapper.getContentType()
+              == ACTION_PROFILE)
+            .filter(profileSnapshotWrapper -> deletedRelations.stream()
+              .noneMatch(deletedRelation ->
+                Objects.equals(deletedRelation.getMasterProfileId(), profileSnapshotWrapper.getProfileId())))
+            .toList();
 
             existActionProfiles.forEach(actionWrapper -> {
               var actionProfile = DatabindCodec.mapper().convertValue(actionWrapper.getContent(), ActionProfile.class);

@@ -2400,10 +2400,10 @@ public class JobProfileTest extends AbstractRestVerticleTest {
     Future.succeededFuture()
       .compose(v -> pgClient.delete(ASSOCIATIONS_TABLE, new Criterion()))
       .compose(v -> pgClient.delete(SNAPSHOTS_TABLE_NAME, new Criterion()))
-      .compose(v -> pgClient.delete(PROFILE_WRAPPERS_TABLE_NAME, new Criterion(getProfileWrappersDeletionCriteria())))
+      .compose(v -> pgClient.delete(PROFILE_WRAPPERS_TABLE_NAME, getProfileWrappersDeletionCriterion()))
       .compose(v -> pgClient.delete(JOB_PROFILES_TABLE_NAME, new Criterion()))
       .compose(v -> pgClient.delete(MATCH_PROFILES_TABLE_NAME, new Criterion()))
-      .compose(v -> pgClient.delete(ACTION_PROFILES_TABLE_NAME, new Criterion(getActionProfilesDeletionCriteria())))
+      .compose(v -> pgClient.delete(ACTION_PROFILES_TABLE_NAME, getActionProfilesDeletionCriterion()))
       .compose(v -> pgClient.delete(MAPPING_PROFILES_TABLE_NAME, new Criterion()))
       .onComplete(ar -> {
         context.assertTrue(ar.succeeded());
@@ -2412,20 +2412,20 @@ public class JobProfileTest extends AbstractRestVerticleTest {
     async.awaitSuccess(30000);
   }
 
-  private static Criteria getProfileWrappersDeletionCriteria() {
-    return new Criteria()
+  private static Criterion getProfileWrappersDeletionCriterion() {
+    return new Criterion().addCriterion(new Criteria()
       .setJSONB(false)
       .addField("action_profile_id")
       .setOperation("!=")
-      .setVal(DEFAULT_DELETE_MARC_AUTHORITY_ACTION_PROFILE_ID);
+      .setVal(DEFAULT_DELETE_MARC_AUTHORITY_ACTION_PROFILE_ID));
   }
 
-  private static Criteria getActionProfilesDeletionCriteria() {
-    return new Criteria()
+  private static Criterion getActionProfilesDeletionCriterion() {
+    return new Criterion().addCriterion(new Criteria()
       .setJSONB(false)
       .addField("id")
       .setOperation("!=")
-      .setVal(DEFAULT_DELETE_MARC_AUTHORITY_ACTION_PROFILE_ID);
+      .setVal(DEFAULT_DELETE_MARC_AUTHORITY_ACTION_PROFILE_ID));
   }
 
   private JobProfileUpdateDto createJobProfile(JobProfileUpdateDto jobProfileUpdateDto,
