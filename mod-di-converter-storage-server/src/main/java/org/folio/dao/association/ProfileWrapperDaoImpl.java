@@ -45,7 +45,7 @@ public class ProfileWrapperDaoImpl implements ProfileWrapperDao {
     PROFILE_TYPE_TO_COLUMN.put(ProfileType.JOB_PROFILE.value(), JOB_PROFILE_ID);
   }
 
-  protected final PostgresClientFactory pgClientFactory;
+  private final PostgresClientFactory pgClientFactory;
 
   public ProfileWrapperDaoImpl(PostgresClientFactory pgClientFactory) {
     this.pgClientFactory = pgClientFactory;

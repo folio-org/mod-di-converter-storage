@@ -44,10 +44,10 @@ import org.springframework.stereotype.Component;
 @Component
 public class JobProfileServiceImpl
   extends AbstractProfileService<JobProfile, JobProfileCollection, JobProfileUpdateDto> {
-  public static final String INVALID_DELETE_MARC_AUTHORITY_ACTION_PROFILE_PLACEMENT =
+  private static final String INVALID_DELETE_MARC_AUTHORITY_ACTION_PROFILE_PLACEMENT =
     "Delete MARC-AUTHORITY action profile must be placed in the for-matches branch "
       + "of a match profile for MARC-AUTHORITY to MARC-AUTHORITY matching";
-  public static final String DELETE_MARC_AUTHORITY_CANNOT_BE_NEXT_TO_OTHER_ACTIONS =
+  private static final String DELETE_MARC_AUTHORITY_CANNOT_BE_NEXT_TO_OTHER_ACTIONS =
     "Delete MARC-AUTHORITY action profile cannot be placed next to other action profiles in the for-matches branch";
   private static final Logger LOGGER = LogManager.getLogger();
   private static final String LINKED_ACTION_PROFILES_WERE_NOT_FOUND =
@@ -59,14 +59,13 @@ public class JobProfileServiceImpl
   private static final String MODIFY_ACTION_CANNOT_BE_USED_RIGHT_AFTER_THE_MATCH =
     "Modify action cannot be used right after a Match";
   private static final String LINKED_MATCH_PROFILES_WERE_NOT_FOUND = "Linked MatchProfiles with ids %s were not found";
-  @SuppressWarnings("java:S6418")
-  private static final String DEFAULT_CREATE_SRS_MARC_AUTHORITY_JOB_PROFILE_ID = "6eefa4c6-bbf7-4845-ad82-de7fc5abd0e3";
 
   private static final List<String> DEFAULT_JOB_PROFILES = Arrays.asList(
     "d0ebb7b0-2f0f-11eb-adc1-0242ac120002", //OCLC_CREATE_INSTANCE_JOB_PROFILE_ID,
     "91f9b8d6-d80e-4727-9783-73fb53e3c786", //OCLC_UPDATE_INSTANCE_JOB_PROFILE_ID,
     "80898dee-449f-44dd-9c8e-37d5eb469b1d", //DEFAULT_CREATE_HOLDINGS_AND_SRS_MARC_HOLDINGS_JOB_PROFILE_ID
-    "1a338fcd-3efc-4a03-b007-394eeb0d5fb9"  //DEFAULT_DELETE_MARC_AUTHORITY_JOB_PROFILE_ID
+    "1a338fcd-3efc-4a03-b007-394eeb0d5fb9", //DEFAULT_DELETE_MARC_AUTHORITY_JOB_PROFILE_ID
+    "6eefa4c6-bbf7-4845-ad82-de7fc5abd0e3"  //DEFAULT_CREATE_SRS_MARC_AUTHORITY_JOB_PROFILE_ID
   );
 
   private final ProfileSnapshotService profileSnapshotService;
@@ -184,11 +183,6 @@ public class JobProfileServiceImpl
       validateJobProfileLinkedActionProfiles(profileDto, tenantId),
       validateJobProfileLinkedMatchProfile(profileDto, tenantId)
     );
-  }
-
-  @Override
-  protected boolean canDeleteProfile(String profileId) {
-    return !DEFAULT_CREATE_SRS_MARC_AUTHORITY_JOB_PROFILE_ID.equals(profileId) && super.canDeleteProfile(profileId);
   }
 
   @Override

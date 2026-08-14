@@ -1,24 +1,32 @@
 package org.folio.rest.impl;
 
+import static org.apache.http.HttpStatus.SC_BAD_REQUEST;
+import static org.apache.http.HttpStatus.SC_CREATED;
+import static org.apache.http.HttpStatus.SC_OK;
+import static org.apache.http.HttpStatus.SC_UNPROCESSABLE_ENTITY;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.folio.rest.jaxrs.model.ProfileType.ACTION_PROFILE;
 import static org.folio.rest.jaxrs.model.ProfileType.JOB_PROFILE;
 import static org.folio.rest.jaxrs.model.ProfileType.MAPPING_PROFILE;
+import static org.folio.support.TestUtil.ACTION_PROFILES_PATH;
+import static org.folio.support.TestUtil.JOB_PROFILES_PATH;
+import static org.folio.support.TestUtil.JOB_PROFILE_ID_PARAM;
+import static org.folio.support.TestUtil.MAPPING_PROFILES_PATH;
+import static org.folio.support.TestUtil.MATCH_PROFILES_PATH;
+import static org.folio.support.TestUtil.PROFILE_SNAPSHOT_PATH;
+import static org.folio.support.TestUtil.PROFILE_TYPE_PARAM;
+import static org.folio.support.TestUtil.readFileFromPath;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.startsWith;
 
-import io.restassured.RestAssured;
 import io.restassured.response.ExtractableResponse;
 import io.restassured.response.Response;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
-import io.vertx.ext.unit.Async;
-import io.vertx.ext.unit.TestContext;
-import io.vertx.ext.unit.junit.VertxUnitRunner;
 import java.io.IOException;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
-import org.apache.http.HttpStatus;
-import org.folio.TestUtil;
 import org.folio.rest.jaxrs.model.ActionProfile;
 import org.folio.rest.jaxrs.model.ActionProfileUpdateDto;
 import org.folio.rest.jaxrs.model.EntityType;
@@ -28,24 +36,18 @@ import org.folio.rest.jaxrs.model.MappingProfile;
 import org.folio.rest.jaxrs.model.MappingProfileUpdateDto;
 import org.folio.rest.jaxrs.model.ProfileAssociation;
 import org.folio.rest.jaxrs.model.ProfileSnapshotWrapper;
-import org.junit.Assert;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import org.folio.support.AbstractRestTest;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
 
-@RunWith(VertxUnitRunner.class)
-public class ProfileImportTest extends AbstractRestVerticleTest {
-  public static final String PROFILE_SNAPSHOT_PATH = "/data-import-profiles/profileSnapshots";
-  public static final String PROFILE_TYPE_PARAM = "profileType";
+class ProfileImportRestTest extends AbstractRestTest {
+
   private static final String PROFILE_SNAPSHOT_FILE_PATH = "src/test/resources/snapshots/";
-  private static final String JOB_PROFILES_PATH = "/data-import-profiles/jobProfiles";
-  private static final String ACTION_PROFILES_PATH = "/data-import-profiles/actionProfiles";
-  private static final String MATCH_PROFILES_PATH = "/data-import-profiles/matchProfiles";
-  private static final String MAPPING_PROFILES_PATH = "/data-import-profiles/mappingProfiles";
-  private static final String JOB_PROFILE_ID_PARAM = "jobProfileId";
 
+  @DisplayName("should import profile snapshot")
   @Test
   @SuppressWarnings("checkstyle:MethodLength")
-  public void shouldImportProfileSnapshot() throws IOException {
+  void shouldImportProfileSnapshot() throws IOException {
     String mappingProfileId = UUID.randomUUID().toString();
     String jobProfileId = UUID.randomUUID().toString();
     String matchProfileId = UUID.randomUUID().toString();
@@ -54,71 +56,47 @@ public class ProfileImportTest extends AbstractRestVerticleTest {
     JsonObject importWrapper = constructProfileWrapper(PROFILE_SNAPSHOT_FILE_PATH + "profileSnapshot.json",
       jobProfileId, matchProfileId, actionProfileId, mappingProfileId);
 
-    JsonObject postProfileSnapshotWrapper = new JsonObject(RestAssured.given()
-      .spec(spec)
-      .when()
-      .body(importWrapper.encode())
-      .post(PROFILE_SNAPSHOT_PATH)
-      .then()
-      .statusCode(HttpStatus.SC_CREATED)
+    JsonObject postProfileSnapshotWrapper = new JsonObject(postRequest(PROFILE_SNAPSHOT_PATH, importWrapper.encode())
+      .statusCode(SC_CREATED)
       .extract().body().asPrettyString());
 
     removeWrapperId(importWrapper);
     removeWrapperId(postProfileSnapshotWrapper);
 
-    Assert.assertNotEquals(postProfileSnapshotWrapper, importWrapper);
+    assertThat(postProfileSnapshotWrapper).isNotEqualTo(importWrapper);
 
-    JsonObject resultSnapshotWrapper = new JsonObject(RestAssured.given()
-      .spec(spec)
-      .when()
-      .queryParam(PROFILE_TYPE_PARAM, JOB_PROFILE.value())
-      .queryParam(JOB_PROFILE_ID_PARAM, jobProfileId)
-      .get(PROFILE_SNAPSHOT_PATH + "/" + jobProfileId)
-      .then()
-      .statusCode(HttpStatus.SC_OK)
+    JsonObject resultSnapshotWrapper = new JsonObject(getRequest(PROFILE_SNAPSHOT_PATH + "/" + jobProfileId,
+      Map.of(PROFILE_TYPE_PARAM, JOB_PROFILE.value(), JOB_PROFILE_ID_PARAM, jobProfileId))
+      .statusCode(SC_OK)
       .extract().body().asPrettyString());
 
     removeWrapperId(resultSnapshotWrapper);
 
-    Assert.assertEquals(postProfileSnapshotWrapper, resultSnapshotWrapper);
+    assertThat(postProfileSnapshotWrapper).isEqualTo(resultSnapshotWrapper);
 
     prepareProfileSnapshotToCompare(importWrapper);
     prepareProfileSnapshotToCompare(resultSnapshotWrapper);
 
-    Assert.assertEquals(importWrapper, resultSnapshotWrapper);
+    assertThat(importWrapper).isEqualTo(resultSnapshotWrapper);
 
-    RestAssured.given()
-      .spec(spec)
-      .when()
-      .get(MAPPING_PROFILES_PATH + "/" + mappingProfileId)
-      .then()
-      .statusCode(HttpStatus.SC_OK);
+    getRequest(MAPPING_PROFILES_PATH + "/" + mappingProfileId)
+      .statusCode(SC_OK);
 
-    RestAssured.given()
-      .spec(spec)
-      .when()
-      .get(ACTION_PROFILES_PATH + "/" + actionProfileId)
-      .then()
-      .statusCode(HttpStatus.SC_OK);
+    getRequest(ACTION_PROFILES_PATH + "/" + actionProfileId)
+      .statusCode(SC_OK);
 
-    RestAssured.given()
-      .spec(spec)
-      .when()
-      .get(MATCH_PROFILES_PATH + "/" + matchProfileId)
-      .then()
-      .statusCode(HttpStatus.SC_OK);
+    getRequest(MATCH_PROFILES_PATH + "/" + matchProfileId)
+      .statusCode(SC_OK);
 
-    RestAssured.given()
-      .spec(spec)
-      .when()
-      .get(JOB_PROFILES_PATH + "/" + jobProfileId)
-      .then()
-      .statusCode(HttpStatus.SC_OK);
+    getRequest(JOB_PROFILES_PATH + "/" + jobProfileId)
+      .statusCode(SC_OK);
   }
 
+  @DisplayName("should import profile and update action profile if it already exists")
   @Test
   @SuppressWarnings("checkstyle:MethodLength")
-  public void shouldImportProfileAndUpdateActionProfileIfAlreadyExist(TestContext testContext) throws IOException {
+  void shouldImportProfileAndUpdateActionProfileIfAlreadyExist()
+    throws IOException {
     String mappingProfileId = UUID.randomUUID().toString();
     String jobProfileId = UUID.randomUUID().toString();
     String matchProfileId = UUID.randomUUID().toString();
@@ -131,7 +109,7 @@ public class ProfileImportTest extends AbstractRestVerticleTest {
         .withExistingRecordType(EntityType.INSTANCE));
 
     existingMappingProfile =
-      postProfile(testContext, existingMappingProfile, MAPPING_PROFILES_PATH).body().as(MappingProfileUpdateDto.class);
+      postProfile(existingMappingProfile, MAPPING_PROFILES_PATH).body().as(MappingProfileUpdateDto.class);
 
     ActionProfileUpdateDto existingActionProfile = new ActionProfileUpdateDto()
       .withProfile(new ActionProfile().withId(actionProfileId)
@@ -145,77 +123,48 @@ public class ProfileImportTest extends AbstractRestVerticleTest {
         .withDetailProfileType(MAPPING_PROFILE)));
 
     existingActionProfile =
-      postProfile(testContext, existingActionProfile, ACTION_PROFILES_PATH).body().as(ActionProfileUpdateDto.class);
+      postProfile(existingActionProfile, ACTION_PROFILES_PATH).body().as(ActionProfileUpdateDto.class);
 
     JsonObject importWrapper = constructProfileWrapper(PROFILE_SNAPSHOT_FILE_PATH + "profileSnapshot.json",
       jobProfileId, matchProfileId, actionProfileId, mappingProfileId);
 
-    RestAssured.given()
-      .spec(spec)
-      .when()
-      .body(importWrapper.encode())
-      .post(PROFILE_SNAPSHOT_PATH)
-      .then()
-      .statusCode(HttpStatus.SC_CREATED);
+    postRequest(PROFILE_SNAPSHOT_PATH, importWrapper.encode())
+      .statusCode(SC_CREATED);
 
-    JsonObject resultSnapshotWrapper = new JsonObject(RestAssured.given()
-      .spec(spec)
-      .when()
-      .queryParam(PROFILE_TYPE_PARAM, JOB_PROFILE.value())
-      .queryParam(JOB_PROFILE_ID_PARAM, jobProfileId)
-      .get(PROFILE_SNAPSHOT_PATH + "/" + jobProfileId)
-      .then()
-      .statusCode(HttpStatus.SC_OK)
+    JsonObject resultSnapshotWrapper = new JsonObject(getRequest(PROFILE_SNAPSHOT_PATH + "/" + jobProfileId,
+      Map.of(PROFILE_TYPE_PARAM, JOB_PROFILE.value(), JOB_PROFILE_ID_PARAM, jobProfileId))
+      .statusCode(SC_OK)
       .extract().body().asPrettyString());
 
     prepareProfileSnapshotToCompare(importWrapper);
     prepareProfileSnapshotToCompare(resultSnapshotWrapper);
 
-    Assert.assertEquals(importWrapper, resultSnapshotWrapper);
+    assertThat(importWrapper).isEqualTo(resultSnapshotWrapper);
 
-    ActionProfile overlayActionProfile = RestAssured.given()
-      .spec(spec)
-      .when()
-      .get(ACTION_PROFILES_PATH + "/" + actionProfileId)
-      .then()
-      .statusCode(HttpStatus.SC_OK)
+    ActionProfile overlayActionProfile = getRequest(ACTION_PROFILES_PATH + "/" + actionProfileId)
+      .statusCode(SC_OK)
       .extract().body().as(ActionProfile.class);
 
-    Assert.assertNotEquals(overlayActionProfile.getMetadata().getUpdatedDate(),
-      existingActionProfile.getProfile().getMetadata().getUpdatedDate());
+    assertThat(overlayActionProfile.getMetadata().getUpdatedDate())
+      .isNotEqualTo(existingActionProfile.getProfile().getMetadata().getUpdatedDate());
 
-    RestAssured.given()
-      .spec(spec)
-      .when()
-      .get(MAPPING_PROFILES_PATH + "/" + mappingProfileId)
-      .then()
-      .statusCode(HttpStatus.SC_OK);
+    getRequest(MAPPING_PROFILES_PATH + "/" + mappingProfileId)
+      .statusCode(SC_OK);
 
-    RestAssured.given()
-      .spec(spec)
-      .when()
-      .get(ACTION_PROFILES_PATH + "/" + actionProfileId)
-      .then()
-      .statusCode(HttpStatus.SC_OK);
+    getRequest(ACTION_PROFILES_PATH + "/" + actionProfileId)
+      .statusCode(SC_OK);
 
-    RestAssured.given()
-      .spec(spec)
-      .when()
-      .get(MATCH_PROFILES_PATH + "/" + matchProfileId)
-      .then()
-      .statusCode(HttpStatus.SC_OK);
+    getRequest(MATCH_PROFILES_PATH + "/" + matchProfileId)
+      .statusCode(SC_OK);
 
-    RestAssured.given()
-      .spec(spec)
-      .when()
-      .get(JOB_PROFILES_PATH + "/" + jobProfileId)
-      .then()
-      .statusCode(HttpStatus.SC_OK);
+    getRequest(JOB_PROFILES_PATH + "/" + jobProfileId)
+      .statusCode(SC_OK);
   }
 
+  @DisplayName("should import profile and update job profile if it already exists")
   @Test
   @SuppressWarnings("checkstyle:MethodLength")
-  public void shouldImportProfileAndUpdateJobProfileIfAlreadyExist(TestContext testContext) throws IOException {
+  void shouldImportProfileAndUpdateJobProfileIfAlreadyExist() throws IOException {
     final String mappingProfileId = UUID.randomUUID().toString();
     final String jobProfileId = UUID.randomUUID().toString();
     final String matchProfileId = UUID.randomUUID().toString();
@@ -228,7 +177,7 @@ public class ProfileImportTest extends AbstractRestVerticleTest {
         .withExistingRecordType(EntityType.INSTANCE));
 
     existingMappingProfile =
-      postProfile(testContext, existingMappingProfile, MAPPING_PROFILES_PATH).body().as(MappingProfileUpdateDto.class);
+      postProfile(existingMappingProfile, MAPPING_PROFILES_PATH).body().as(MappingProfileUpdateDto.class);
 
     ActionProfileUpdateDto existingActionProfile = new ActionProfileUpdateDto()
       .withProfile(new ActionProfile().withId(actionProfileId)
@@ -242,7 +191,7 @@ public class ProfileImportTest extends AbstractRestVerticleTest {
         .withDetailProfileType(MAPPING_PROFILE)));
 
     existingActionProfile =
-      postProfile(testContext, existingActionProfile, ACTION_PROFILES_PATH).body().as(ActionProfileUpdateDto.class);
+      postProfile(existingActionProfile, ACTION_PROFILES_PATH).body().as(ActionProfileUpdateDto.class);
 
     JobProfileUpdateDto existingJobProfile = new JobProfileUpdateDto()
       .withProfile(new JobProfile().withId(jobProfileId)
@@ -255,94 +204,62 @@ public class ProfileImportTest extends AbstractRestVerticleTest {
         .withDetailProfileType(ACTION_PROFILE)));
 
     existingJobProfile =
-      postProfile(testContext, existingJobProfile, JOB_PROFILES_PATH).body().as(JobProfileUpdateDto.class);
+      postProfile(existingJobProfile, JOB_PROFILES_PATH).body().as(JobProfileUpdateDto.class);
 
     JsonObject importWrapper = constructProfileWrapper(PROFILE_SNAPSHOT_FILE_PATH + "profileSnapshot.json",
       jobProfileId, matchProfileId, actionProfileId, mappingProfileId);
 
-    RestAssured.given()
-      .spec(spec)
-      .when()
-      .body(importWrapper.encode())
-      .post(PROFILE_SNAPSHOT_PATH)
-      .then()
-      .statusCode(HttpStatus.SC_CREATED);
+    postRequest(PROFILE_SNAPSHOT_PATH, importWrapper.encode())
+      .statusCode(SC_CREATED);
 
-    JsonObject resultSnapshotWrapper = new JsonObject(RestAssured.given()
-      .spec(spec)
-      .when()
-      .queryParam(PROFILE_TYPE_PARAM, JOB_PROFILE.value())
-      .queryParam(JOB_PROFILE_ID_PARAM, jobProfileId)
-      .get(PROFILE_SNAPSHOT_PATH + "/" + jobProfileId)
-      .then()
-      .statusCode(HttpStatus.SC_OK)
+    JsonObject resultSnapshotWrapper = new JsonObject(getRequest(PROFILE_SNAPSHOT_PATH + "/" + jobProfileId,
+      Map.of(PROFILE_TYPE_PARAM, JOB_PROFILE.value(), JOB_PROFILE_ID_PARAM, jobProfileId))
+      .statusCode(SC_OK)
       .extract().body().asPrettyString());
 
     prepareProfileSnapshotToCompare(importWrapper);
     prepareProfileSnapshotToCompare(resultSnapshotWrapper);
 
-    Assert.assertEquals(importWrapper, resultSnapshotWrapper);
+    assertThat(importWrapper).isEqualTo(resultSnapshotWrapper);
 
-    MappingProfile overlayMappingProfile = RestAssured.given()
-      .spec(spec)
-      .when()
-      .get(MAPPING_PROFILES_PATH + "/" + mappingProfileId)
-      .then()
-      .statusCode(HttpStatus.SC_OK)
+    MappingProfile overlayMappingProfile = getRequest(MAPPING_PROFILES_PATH + "/" + mappingProfileId)
+      .statusCode(SC_OK)
       .extract().body().as(MappingProfile.class);
 
-    Assert.assertNotEquals(overlayMappingProfile.getMetadata().getUpdatedDate(),
-      existingMappingProfile.getProfile().getMetadata().getUpdatedDate());
+    assertThat(overlayMappingProfile.getMetadata().getUpdatedDate())
+      .isNotEqualTo(existingMappingProfile.getProfile().getMetadata().getUpdatedDate());
 
-    ActionProfile overlayActionProfile = RestAssured.given()
-      .spec(spec)
-      .when()
-      .get(ACTION_PROFILES_PATH + "/" + actionProfileId)
-      .then()
-      .statusCode(HttpStatus.SC_OK)
+    ActionProfile overlayActionProfile = getRequest(ACTION_PROFILES_PATH + "/" + actionProfileId)
+      .statusCode(SC_OK)
       .extract().body().as(ActionProfile.class);
 
-    Assert.assertNotEquals(overlayActionProfile.getMetadata().getUpdatedDate(),
-      existingActionProfile.getProfile().getMetadata().getUpdatedDate());
+    assertThat(overlayActionProfile.getMetadata().getUpdatedDate())
+      .isNotEqualTo(existingActionProfile.getProfile().getMetadata().getUpdatedDate());
 
-    JobProfile overlayJobProfile = RestAssured.given()
-      .spec(spec)
-      .when()
-      .get(JOB_PROFILES_PATH + "/" + jobProfileId)
-      .then()
-      .statusCode(HttpStatus.SC_OK)
+    JobProfile overlayJobProfile = getRequest(JOB_PROFILES_PATH + "/" + jobProfileId)
+      .statusCode(SC_OK)
       .extract().body().as(JobProfile.class);
 
-    Assert.assertNotEquals(overlayJobProfile.getMetadata().getUpdatedDate(),
-      existingJobProfile.getProfile().getMetadata().getUpdatedDate());
+    assertThat(overlayJobProfile.getMetadata().getUpdatedDate())
+      .isNotEqualTo(existingJobProfile.getProfile().getMetadata().getUpdatedDate());
 
-    RestAssured.given()
-      .spec(spec)
-      .when()
-      .get(MATCH_PROFILES_PATH + "/" + matchProfileId)
-      .then()
-      .statusCode(HttpStatus.SC_OK);
+    getRequest(MATCH_PROFILES_PATH + "/" + matchProfileId)
+      .statusCode(SC_OK);
   }
 
+  @DisplayName("should not import profile snapshot when content type is not JOB_PROFILE")
   @Test
-  public void shouldNotImportProfileSnapshotIfNotJobProfileType(TestContext testContext) {
+  void shouldNotImportProfileSnapshotIfNotJobProfileType() {
     ProfileSnapshotWrapper profileSnapshotWrapper =
       new ProfileSnapshotWrapper().withContentType(ACTION_PROFILE).withContent(new ActionProfile());
-    Async async = testContext.async();
-    RestAssured.given()
-      .spec(spec)
-      .when()
-      .body(profileSnapshotWrapper)
-      .post(PROFILE_SNAPSHOT_PATH)
-      .then()
-      .statusCode(HttpStatus.SC_BAD_REQUEST)
+    postRequest(PROFILE_SNAPSHOT_PATH, profileSnapshotWrapper)
+      .statusCode(SC_BAD_REQUEST)
       .body(is(String.format("Cannot import profile snapshot of %s required type is %s", ACTION_PROFILE, JOB_PROFILE)));
-
-    async.complete();
   }
 
+  @DisplayName("should return 422 Unprocessable Entity when profile snapshot fails validation during import")
   @Test
-  public void shouldValidateProfileSnapshotDuringImport(TestContext testContext) throws IOException {
+  void shouldValidateProfileSnapshotDuringImport() throws IOException {
     String mappingProfileId = UUID.randomUUID().toString();
     String jobProfileId = UUID.randomUUID().toString();
     String matchProfileId = UUID.randomUUID().toString();
@@ -352,21 +269,14 @@ public class ProfileImportTest extends AbstractRestVerticleTest {
       constructProfileWrapper(PROFILE_SNAPSHOT_FILE_PATH + "invalidProfileSnapshotAssociation.json",
         jobProfileId, matchProfileId, actionProfileId, mappingProfileId);
 
-    Async async = testContext.async();
-    RestAssured.given()
-      .spec(spec)
-      .when()
-      .body(importWrapper.encode())
-      .post(PROFILE_SNAPSHOT_PATH)
-      .then()
-      .statusCode(HttpStatus.SC_UNPROCESSABLE_ENTITY)
+    postRequest(PROFILE_SNAPSHOT_PATH, importWrapper.encode())
+      .statusCode(SC_UNPROCESSABLE_ENTITY)
       .body("errors[0].message", is("Modify action cannot be used as a standalone action"));
-
-    async.complete();
   }
 
+  @DisplayName("should return 400 Bad Request with error message when profile snapshot content is invalid")
   @Test
-  public void shouldReturnErrorMessageIfInvalidProfileContent(TestContext testContext) throws IOException {
+  void shouldReturnErrorMessageIfInvalidProfileContent() throws IOException {
     String mappingProfileId = UUID.randomUUID().toString();
     String jobProfileId = UUID.randomUUID().toString();
     String matchProfileId = UUID.randomUUID().toString();
@@ -376,23 +286,15 @@ public class ProfileImportTest extends AbstractRestVerticleTest {
       constructProfileWrapper(PROFILE_SNAPSHOT_FILE_PATH + "invalidProfileSnapshotContent.json",
         jobProfileId, matchProfileId, actionProfileId, mappingProfileId);
 
-    Async async = testContext.async();
-    RestAssured.given()
-      .spec(spec)
-      .when()
-      .body(importWrapper.encode())
-      .post(PROFILE_SNAPSHOT_PATH)
-      .then()
-      .statusCode(HttpStatus.SC_BAD_REQUEST)
+    postRequest(PROFILE_SNAPSHOT_PATH, importWrapper.encode())
+      .statusCode(SC_BAD_REQUEST)
       .body(startsWith("Cannot map profile content, error: "));
-
-    async.complete();
   }
 
   private JsonObject constructProfileWrapper(String profilePath, String jobProfileId, String matchProfileId,
                                              String actionProfileId, String mappingProfileId)
     throws IOException {
-    return new JsonObject(TestUtil.readFileFromPath(profilePath)
+    return new JsonObject(readFileFromPath(profilePath)
       .replace("#(jobProfileId)", jobProfileId)
       .replace("#(matchProfileId)", matchProfileId)
       .replace("#(actionProfileId)", actionProfileId)
@@ -433,17 +335,9 @@ public class ProfileImportTest extends AbstractRestVerticleTest {
     importWrapper.remove("metadata");
   }
 
-  private <T> ExtractableResponse<Response> postProfile(TestContext testContext, T profileDto, String profileUrl) {
-    Async async = testContext.async();
-    ExtractableResponse<Response> createdProfile = RestAssured.given()
-      .spec(spec)
-      .body(profileDto)
-      .when()
-      .post(profileUrl)
-      .then()
-      .statusCode(HttpStatus.SC_CREATED)
+  private <T> ExtractableResponse<Response> postProfile(T profileDto, String profileUrl) {
+    return postRequest(profileUrl, profileDto)
+      .statusCode(SC_CREATED)
       .extract();
-    async.complete();
-    return createdProfile;
   }
 }

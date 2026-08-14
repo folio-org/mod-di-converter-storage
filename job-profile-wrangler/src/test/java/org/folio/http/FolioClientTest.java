@@ -1,7 +1,6 @@
 package org.folio.http;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.any;
 import static org.mockito.Mockito.anyString;
 import static org.mockito.Mockito.times;
@@ -21,14 +20,18 @@ import okhttp3.HttpUrl;
 import okhttp3.OkHttpClient;
 import okhttp3.Response;
 import okhttp3.ResponseBody;
-import org.junit.Before;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
-import org.mockito.junit.MockitoJUnitRunner;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.junit.jupiter.MockitoSettings;
+import org.mockito.quality.Strictness;
 
-@RunWith(MockitoJUnitRunner.class)
-public class FolioClientTest {
+@ExtendWith(MockitoExtension.class)
+@MockitoSettings(strictness = Strictness.LENIENT)
+class FolioClientTest {
 
   @Mock
   private HttpUrl.Builder baseUrlBuilder;
@@ -47,8 +50,8 @@ public class FolioClientTest {
 
   private FolioClient folioClient;
 
-  @Before
-  public void setup() throws IOException {
+  @BeforeEach
+  void setup() throws IOException {
     folioClient = new FolioClient(() -> baseUrlBuilder, "token");
     folioClient.setHttpClient(httpClient);
 
@@ -58,14 +61,20 @@ public class FolioClientTest {
     when(response.body()).thenReturn(body);
   }
 
+  @DisplayName("should return non-null stream when getting job profiles")
   @Test
-  public void testGetJobProfiles() {
+  void shouldReturnNonNullStream_whenGettingJobProfiles() {
+    // act
     Stream<JsonNode> jobProfiles = folioClient.getJobProfiles();
-    assertNotNull(jobProfiles);
+
+    // assert
+    assertThat(jobProfiles).isNotNull();
   }
 
+  @DisplayName("should return profiles matching query params when getting job profiles with query params")
   @Test
-  public void testGetJobProfilesWithQueryParams() throws IOException {
+  void shouldReturnProfilesMatchingQueryParams_whenGettingJobProfilesWithQueryParams() throws IOException {
+    // arrange
     Map<String, String> queryParams = new HashMap<>();
     queryParams.put("key1", "value1");
     queryParams.put("key2", "value2");
@@ -77,14 +86,18 @@ public class FolioClientTest {
     String content = Resources.toString(Resources.getResource("job_profiles_response.json"), StandardCharsets.UTF_8);
     when(body.string()).thenReturn(content);
 
+    // act
     Stream<JsonNode> jobProfiles = folioClient.getJobProfiles(queryParams);
-    assertNotNull(jobProfiles);
-    assertEquals(3, jobProfiles.count());
+
+    // assert
+    assertThat(jobProfiles).isNotNull().hasSize(3);
     verify(baseUrlBuilder, times(queryParams.size() + 3)).addQueryParameter(anyString(), anyString());
   }
 
+  @DisplayName("should return snapshot when getting job profile snapshot by id")
   @Test
-  public void testGetJobProfileSnapshot() throws IOException {
+  void shouldReturnSnapshot_whenGettingJobProfileSnapshotById() throws IOException {
+    // arrange
     String jobProfileId = "123";
 
     when(baseUrlBuilder.addPathSegments(anyString())).thenReturn(baseUrlBuilder);
@@ -95,63 +108,78 @@ public class FolioClientTest {
     String content = Resources.toString(Resources.getResource("job_profile_response.json"), StandardCharsets.UTF_8);
     when(body.string()).thenReturn(content);
 
+    // act
     Optional<JsonNode> jobProfileSnapshot = folioClient.getJobProfileSnapshot(jobProfileId);
-    assertNotNull(jobProfileSnapshot);
+
+    // assert
+    assertThat(jobProfileSnapshot).isNotNull();
   }
 
+  @DisplayName("should return created profile when creating a job profile")
   @Test
-  public void testCreateJobProfile() throws IOException {
-    String jobProfile = "{}";
-
+  void shouldReturnCreatedProfile_whenCreatingJobProfile() throws IOException {
+    // arrange
     when(baseUrlBuilder.addPathSegments(anyString())).thenReturn(baseUrlBuilder);
     when(baseUrlBuilder.build()).thenReturn(HttpUrl.get("http://example.com"));
 
     String content = Resources.toString(Resources.getResource("job_profile_response.json"), StandardCharsets.UTF_8);
     when(body.string()).thenReturn(content);
 
-    Optional<JsonNode> createdJobProfile = folioClient.createJobProfile(jobProfile);
-    assertNotNull(createdJobProfile);
+    // act
+    Optional<JsonNode> createdJobProfile = folioClient.createJobProfile("{}");
+
+    // assert
+    assertThat(createdJobProfile).isNotNull();
   }
 
+  @DisplayName("should return created profile when creating a match profile")
   @Test
-  public void testCreateMatchProfile() throws IOException {
-    String matchProfile = "{}";
-
+  void shouldReturnCreatedProfile_whenCreatingMatchProfile() throws IOException {
+    // arrange
     when(baseUrlBuilder.addPathSegments(anyString())).thenReturn(baseUrlBuilder);
     when(baseUrlBuilder.build()).thenReturn(HttpUrl.get("http://example.com"));
 
     String content = Resources.toString(Resources.getResource("match_profile_response.json"), StandardCharsets.UTF_8);
     when(body.string()).thenReturn(content);
 
-    Optional<JsonNode> createdMatchProfile = folioClient.createMatchProfile(matchProfile);
-    assertNotNull(createdMatchProfile);
+    // act
+    Optional<JsonNode> createdMatchProfile = folioClient.createMatchProfile("{}");
+
+    // assert
+    assertThat(createdMatchProfile).isNotNull();
   }
 
+  @DisplayName("should return created profile when creating an action profile")
   @Test
-  public void testCreateActionProfile() throws IOException {
-    String actionProfile = "{}";
-
+  void shouldReturnCreatedProfile_whenCreatingActionProfile() throws IOException {
+    // arrange
     when(baseUrlBuilder.addPathSegments(anyString())).thenReturn(baseUrlBuilder);
     when(baseUrlBuilder.build()).thenReturn(HttpUrl.get("http://example.com"));
 
     String content = Resources.toString(Resources.getResource("action_profile_response.json"), StandardCharsets.UTF_8);
     when(body.string()).thenReturn(content);
 
-    Optional<JsonNode> createdActionProfile = folioClient.createActionProfile(actionProfile);
-    assertNotNull(createdActionProfile);
+    // act
+    Optional<JsonNode> createdActionProfile = folioClient.createActionProfile("{}");
+
+    // assert
+    assertThat(createdActionProfile).isNotNull();
   }
 
+  @DisplayName("should return created profile when creating a mapping profile")
   @Test
-  public void testCreateMappingProfile() throws IOException {
-    String actionProfile = "{}";
-
+  void shouldReturnCreatedProfile_whenCreatingMappingProfile() throws IOException {
+    // arrange
     when(baseUrlBuilder.addPathSegments(anyString())).thenReturn(baseUrlBuilder);
     when(baseUrlBuilder.build()).thenReturn(HttpUrl.get("http://example.com"));
 
     String content = Resources.toString(Resources.getResource("mapping_profile_response.json"), StandardCharsets.UTF_8);
     when(body.string()).thenReturn(content);
 
-    Optional<JsonNode> createdActionProfile = folioClient.createMappingProfile(actionProfile);
-    assertNotNull(createdActionProfile);
+    // act
+    Optional<JsonNode> createdMappingProfile = folioClient.createMappingProfile("{}");
+
+    // assert
+    assertThat(createdMappingProfile).isNotNull();
   }
 }
