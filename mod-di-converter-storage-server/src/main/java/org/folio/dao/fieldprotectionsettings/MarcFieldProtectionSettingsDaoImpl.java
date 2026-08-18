@@ -18,7 +18,6 @@ import org.folio.rest.persist.Criteria.Criterion;
 import org.folio.rest.persist.cql.CQLWrapper;
 import org.folio.rest.persist.facets.FacetField;
 import org.folio.rest.persist.interfaces.Results;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Repository;
 
 @Repository
@@ -29,8 +28,11 @@ public class MarcFieldProtectionSettingsDaoImpl implements MarcFieldProtectionSe
   private static final String MARC_FIELDS_PROTECTION_SETTINGS_TABLE = "marc_field_protection_settings";
   private static final String ID_FIELD = "'id'";
 
-  @Autowired
-  private PostgresClientFactory pgClientFactory;
+  private final PostgresClientFactory pgClientFactory;
+
+  public MarcFieldProtectionSettingsDaoImpl(PostgresClientFactory pgClientFactory) {
+    this.pgClientFactory = pgClientFactory;
+  }
 
   @Override
   public Future<MarcFieldProtectionSettingsCollection> getAll(String query, int offset, int limit, String tenantId) {

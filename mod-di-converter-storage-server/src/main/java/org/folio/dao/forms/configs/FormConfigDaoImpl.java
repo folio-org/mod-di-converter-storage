@@ -12,7 +12,6 @@ import org.folio.rest.jaxrs.model.FormConfigCollection;
 import org.folio.rest.persist.Criteria.Criteria;
 import org.folio.rest.persist.Criteria.Criterion;
 import org.folio.rest.persist.interfaces.Results;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Repository;
 
 @Repository
@@ -21,8 +20,11 @@ public class FormConfigDaoImpl implements FormConfigDao {
   public static final String TABLE_NAME = "forms_configs";
   private static final String FORM_NAME_FIELD = "'formName'";
 
-  @Autowired
-  private PostgresClientFactory pgClientFactory;
+  private final PostgresClientFactory pgClientFactory;
+
+  public FormConfigDaoImpl(PostgresClientFactory pgClientFactory) {
+    this.pgClientFactory = pgClientFactory;
+  }
 
   @Override
   public Future<FormConfig> save(FormConfig formConfig, String tenantId) {

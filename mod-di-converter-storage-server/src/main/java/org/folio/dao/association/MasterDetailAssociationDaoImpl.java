@@ -21,7 +21,6 @@ import org.folio.rest.jaxrs.model.MappingProfile;
 import org.folio.rest.jaxrs.model.MatchProfile;
 import org.folio.rest.jaxrs.model.ProfileSnapshotWrapper;
 import org.folio.rest.jaxrs.model.ProfileType;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Repository;
 
 @Repository
@@ -47,8 +46,11 @@ public class MasterDetailAssociationDaoImpl implements MasterDetailAssociationDa
   private static final String DETAIL_FIELD = "detail";
   private static final String DETAIL_WRAPPER_ID_ROW = "detailwrapperid";
 
-  @Autowired
-  protected PostgresClientFactory pgClientFactory;
+  private final PostgresClientFactory pgClientFactory;
+
+  public MasterDetailAssociationDaoImpl(PostgresClientFactory pgClientFactory) {
+    this.pgClientFactory = pgClientFactory;
+  }
 
   @Override
   public Future<List<ProfileSnapshotWrapper>> getDetailProfilesByMasterId(String masterId, ProfileType detailType,

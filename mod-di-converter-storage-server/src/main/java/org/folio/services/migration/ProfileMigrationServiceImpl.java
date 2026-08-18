@@ -36,7 +36,7 @@ public class ProfileMigrationServiceImpl implements ProfileMigrationService {
   private static final String MODULE_PLACEHOLDER = "${mymodule}";
   private static final String SYSTEM_TABLE_NAME = "metadata_internal";
 
-  protected final PostgresClientFactory pgClientFactory;
+  private final PostgresClientFactory pgClientFactory;
   private final ProfileWrapperDao profileWrapperDao;
 
   public ProfileMigrationServiceImpl(PostgresClientFactory pgClientFactory, ProfileWrapperDao profileWrapperDao) {

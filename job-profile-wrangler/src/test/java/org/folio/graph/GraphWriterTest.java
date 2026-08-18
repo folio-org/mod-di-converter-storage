@@ -1,10 +1,11 @@
 package org.folio.graph;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.Optional;
 import org.folio.graph.edges.RegularEdge;
 import org.folio.graph.nodes.ActionProfileNode;
@@ -12,20 +13,20 @@ import org.folio.graph.nodes.JobProfileNode;
 import org.folio.graph.nodes.Profile;
 import org.jgrapht.Graph;
 import org.jgrapht.graph.DefaultDirectedGraph;
-import org.junit.Before;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.TemporaryFolder;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
-public class GraphWriterTest {
+class GraphWriterTest {
 
-  @Rule
-  public TemporaryFolder tempDir = new TemporaryFolder();
+  @TempDir
+  Path tempDir;
 
   private Graph<Profile, RegularEdge> graph;
 
-  @Before
-  public void setUp() throws IOException {
+  @BeforeEach
+  void setUp() throws IOException {
     graph = new DefaultDirectedGraph<>(RegularEdge.class);
 
     Profile profile1 = new JobProfileNode("1", "MARC", 0);
@@ -35,49 +36,48 @@ public class GraphWriterTest {
     graph.addVertex(profile2);
     graph.addEdge(profile1, profile2, new RegularEdge());
 
-    // Create an invalid file in the temporary directory
-    tempDir.newFile("invalid.txt");
+    Files.createFile(tempDir.resolve("invalid.txt"));
   }
 
+  @DisplayName("should write graph file when graph is valid")
   @Test
-  public void testWriteGraph() {
-    String repoPath = tempDir.getRoot().toString();
-    Optional<Integer> fileId = GraphWriter.writeGraph(repoPath, graph);
+  void shouldWriteGraphFile_whenGraphIsValid() {
+    // act
+    Optional<Integer> fileId = GraphWriter.writeGraph(tempDir.toString(), graph);
 
-    assertTrue(fileId.isPresent());
-
-    File dotFile = new File(repoPath, GraphWriter.genGraphFileName(fileId.get()));
-    assertTrue(dotFile.exists());
+    // assert
+    assertThat(fileId).isPresent();
+    assertThat(new File(tempDir.toString(), GraphWriter.genGraphFileName(fileId.get()))).exists();
   }
 
+  @DisplayName("should produce svg file when rendering a graph")
   @Test
-  public void testRenderGraph() {
-    String fileName = tempDir.getRoot().toString() + "/graph";
+  void shouldProduceSvgFile_whenRenderingGraph() {
+    // arrange
+    String fileName = tempDir + "/graph";
+
+    // act
     Optional<File> svgFile = GraphWriter.renderGraph(fileName, graph);
 
-    assertTrue(svgFile.isPresent());
-    assertTrue(svgFile.get().exists());
-    assertEquals("graph.svg", svgFile.get().getName());
+    // assert
+    assertThat(svgFile).isPresent();
+    assertThat(svgFile.get()).exists().hasName("graph.svg");
   }
 
+  @DisplayName("should generate distinct file ids when writing the same graph multiple times")
   @Test
-  public void testWriteGraphMultipleTimes() {
-    String repoPath = tempDir.getRoot().toString();
+  void shouldGenerateDistinctFileIds_whenWritingSameGraphMultipleTimes() {
+    // act
+    Optional<Integer> fileId1 = GraphWriter.writeGraph(tempDir.toString(), graph);
+    Optional<Integer> fileId2 = GraphWriter.writeGraph(tempDir.toString(), graph);
+    Optional<Integer> fileId3 = GraphWriter.writeGraph(tempDir.toString(), graph);
 
-    Optional<Integer> fileId1 = GraphWriter.writeGraph(repoPath, graph);
-    Optional<Integer> fileId2 = GraphWriter.writeGraph(repoPath, graph);
-    Optional<Integer> fileId3 = GraphWriter.writeGraph(repoPath, graph);
-
-    assertTrue(fileId1.isPresent());
-    assertTrue(fileId2.isPresent());
-    assertTrue(fileId3.isPresent());
-
-    File dotFile1 = new File(repoPath, GraphWriter.genGraphFileName(fileId1.get()));
-    File dotFile2 = new File(repoPath, GraphWriter.genGraphFileName(fileId2.get()));
-    File dotFile3 = new File(repoPath, GraphWriter.genGraphFileName(fileId3.get()));
-
-    assertTrue(dotFile1.exists());
-    assertTrue(dotFile2.exists());
-    assertTrue(dotFile3.exists());
+    // assert
+    assertThat(fileId1).isPresent();
+    assertThat(fileId2).isPresent();
+    assertThat(fileId3).isPresent();
+    assertThat(new File(tempDir.toString(), GraphWriter.genGraphFileName(fileId1.get()))).exists();
+    assertThat(new File(tempDir.toString(), GraphWriter.genGraphFileName(fileId2.get()))).exists();
+    assertThat(new File(tempDir.toString(), GraphWriter.genGraphFileName(fileId3.get()))).exists();
   }
 }

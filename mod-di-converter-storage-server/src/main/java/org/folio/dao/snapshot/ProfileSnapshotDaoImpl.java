@@ -13,7 +13,6 @@ import org.folio.rest.jaxrs.model.ProfileAssociation;
 import org.folio.rest.jaxrs.model.ProfileSnapshotWrapper;
 import org.folio.rest.jaxrs.model.ProfileType;
 import org.folio.rest.jaxrs.model.ReactToType;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Repository;
 
 /**
@@ -25,9 +24,10 @@ public class ProfileSnapshotDaoImpl implements ProfileSnapshotDao {
   private static final Logger logger = LogManager.getLogger();
   private static final String TABLE_NAME = "profile_snapshots";
   private static final String GET_PROFILE_SNAPSHOT = "select get_profile_snapshot('%s', '%s', '%s', '%s');";
-  protected PostgresClientFactory pgClientFactory;
 
-  public ProfileSnapshotDaoImpl(@Autowired PostgresClientFactory pgClientFactory) {
+  private final PostgresClientFactory pgClientFactory;
+
+  public ProfileSnapshotDaoImpl(PostgresClientFactory pgClientFactory) {
     this.pgClientFactory = pgClientFactory;
   }
 

@@ -7,16 +7,15 @@
 
 ### Tech Dept
 * Delete default quickMarc profiles ([MODDICONV-445](https://folio-org.atlassian.net/browse/MODDICONV-445))
+* JUnit 6 Migration ([MODDICONV-440](https://folio-org.atlassian.net/browse/MODDICONV-440))
 * Add checkstyle validation to the build
 
 ### Dependencies
 * Bump `log4j-bom` from `2.24.3` to `2.26.1`
 * Bump `vertx-stack-depchain` from `5.0.5` to `5.1.5`
 * Bump `spring-framework-bom` from `7.0.6` to `7.0.8`
-* Bump `mockito-core` from `5.21.0` to `5.23.0`
-* Bump `rest-assured` from `5.5.1` to `6.0.1`
+* Bump `mockito` from `5.21.0` to `5.23.0`
 * Bump `caffeine` from `3.2.0` to `3.2.4`
-* Bump `wiremock` from `3.12.1` to `3.13.2`
 * Bump `testcontainers` from `1.20.6` to `2.0.5`
 * Bump `aspectjrt` and `aspectjtools` from `1.9.22.1` to `1.9.25.1`
 * Bump `jgrapht-core` and `jgrapht-io` from `1.5.2` to `1.5.3`

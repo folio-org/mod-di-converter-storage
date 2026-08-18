@@ -1,9 +1,7 @@
 package org.folio.hydration;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.folio.Constants.OBJECT_MAPPER;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -26,22 +24,23 @@ import org.folio.rest.jaxrs.model.JobProfileUpdateDto;
 import org.folio.rest.jaxrs.model.ProfileType;
 import org.jgrapht.Graph;
 import org.jgrapht.graph.DefaultDirectedGraph;
-import org.junit.Before;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
-import org.mockito.junit.MockitoJUnitRunner;
+import org.mockito.junit.jupiter.MockitoExtension;
 
-@RunWith(MockitoJUnitRunner.class)
-public class ProfileHydrationTest {
+@ExtendWith(MockitoExtension.class)
+class ProfileHydrationTest {
 
   @Mock
   private FolioClient folioClient;
 
   private Graph<Profile, RegularEdge> graph;
 
-  @Before
-  public void setUp() {
+  @BeforeEach
+  void setUp() {
     graph = new DefaultDirectedGraph<>(RegularEdge.class);
 
     Profile jobProfile = new JobProfileNode("1", "MARC", 0);
@@ -62,8 +61,10 @@ public class ProfileHydrationTest {
     graph.addEdge(actionProfile, mappingProfile, new RegularEdge());
   }
 
+  @DisplayName("should return hydrated job profile when all sub-profiles are successfully created")
   @Test
-  public void hydrate() throws IOException {
+  void shouldReturnHydratedJobProfile_whenAllSubProfilesAreCreated() throws IOException {
+    // arrange
     String mappingProfileResponse =
       Resources.toString(Resources.getResource("mapping_profile_response.json"), StandardCharsets.UTF_8);
     String actionProfileResponse =
@@ -78,36 +79,54 @@ public class ProfileHydrationTest {
     when(folioClient.createMatchProfile(any())).thenReturn(Optional.of(OBJECT_MAPPER.readTree(matchProfileResponse)));
     when(folioClient.createJobProfile(any())).thenReturn(Optional.of(OBJECT_MAPPER.readTree(jobProfileResponse)));
 
-    ProfileHydration profileHydration = new ProfileHydration(folioClient);
-    var jobProfile = profileHydration.hydrate(1, graph);
-    assertTrue(jobProfile.isPresent());
-    assertTrue(jobProfile.get() instanceof JobProfileUpdateDto);
+    // act
+    var jobProfile = new ProfileHydration(folioClient).hydrate(1, graph);
+
+    // assert
+    assertThat(jobProfile).isPresent();
+    assertThat(jobProfile.get()).isInstanceOf(JobProfileUpdateDto.class);
   }
 
+  @DisplayName("should return JOB_PROFILE type when profile is a JobProfileNode")
   @Test
-  public void testGetProfileType() {
-    Profile jobProfile = new JobProfileNode("1", "MARC", 0);
-    ProfileType profileType = ProfileHydration.getProfileType(jobProfile);
-    assertEquals(ProfileType.JOB_PROFILE, profileType);
+  void shouldReturnJobProfileType_whenProfileIsJobProfileNode() {
+    // act / assert
+    assertThat(ProfileHydration.getProfileType(new JobProfileNode("1", "MARC", 0)))
+      .isEqualTo(ProfileType.JOB_PROFILE);
+  }
 
-    Profile matchProfile =
-      new MatchProfileNode("2", EntityType.MARC_BIBLIOGRAPHIC.toString(), EntityType.INSTANCE.toString(), 0);
-    profileType = ProfileHydration.getProfileType(matchProfile);
-    assertEquals(ProfileType.MATCH_PROFILE, profileType);
+  @DisplayName("should return MATCH_PROFILE type when profile is a MatchProfileNode")
+  @Test
+  void shouldReturnMatchProfileType_whenProfileIsMatchProfileNode() {
+    // act / assert
+    assertThat(ProfileHydration.getProfileType(
+      new MatchProfileNode("2", EntityType.MARC_BIBLIOGRAPHIC.toString(), EntityType.INSTANCE.toString(), 0)))
+      .isEqualTo(ProfileType.MATCH_PROFILE);
+  }
 
-    Profile actionProfile =
-      new ActionProfileNode("3", ActionProfile.Action.CREATE.toString(), ActionProfile.FolioRecord.INSTANCE.toString(),
-        0);
-    profileType = ProfileHydration.getProfileType(actionProfile);
-    assertEquals(ProfileType.ACTION_PROFILE, profileType);
+  @DisplayName("should return ACTION_PROFILE type when profile is an ActionProfileNode")
+  @Test
+  void shouldReturnActionProfileType_whenProfileIsActionProfileNode() {
+    // act / assert
+    assertThat(ProfileHydration.getProfileType(
+      new ActionProfileNode("3", ActionProfile.Action.CREATE.toString(),
+        ActionProfile.FolioRecord.INSTANCE.toString(), 0)))
+      .isEqualTo(ProfileType.ACTION_PROFILE);
+  }
 
-    Profile mappingProfile =
-      new MappingProfileNode("4", EntityType.MARC_BIBLIOGRAPHIC.toString(), EntityType.INSTANCE.toString(), 0);
-    profileType = ProfileHydration.getProfileType(mappingProfile);
-    assertEquals(ProfileType.MAPPING_PROFILE, profileType);
+  @DisplayName("should return MAPPING_PROFILE type when profile is a MappingProfileNode")
+  @Test
+  void shouldReturnMappingProfileType_whenProfileIsMappingProfileNode() {
+    // act / assert
+    assertThat(ProfileHydration.getProfileType(
+      new MappingProfileNode("4", EntityType.MARC_BIBLIOGRAPHIC.toString(), EntityType.INSTANCE.toString(), 0)))
+      .isEqualTo(ProfileType.MAPPING_PROFILE);
+  }
 
-    Profile mock = mock(Profile.class);
-    profileType = ProfileHydration.getProfileType(mock);
-    assertNull(profileType);
+  @DisplayName("should return null when profile type is unknown")
+  @Test
+  void shouldReturnNull_whenProfileTypeIsUnknown() {
+    // act / assert
+    assertThat(ProfileHydration.getProfileType(mock(Profile.class))).isNull();
   }
 }
