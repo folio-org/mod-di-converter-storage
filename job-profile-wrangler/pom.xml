@@ -14,7 +14,7 @@
 
     <jgrapht.version>1.5.3</jgrapht.version>
     <graphviz-java.version>0.18.1</graphviz-java.version>
-    <okhttp.version>5.4.0</okhttp.version>
+    <okhttp.version>5.5.0</okhttp.version>
   </properties>
 
   <dependencies>
