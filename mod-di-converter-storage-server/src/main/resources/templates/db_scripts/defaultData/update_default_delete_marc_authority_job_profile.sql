@@ -33,5 +33,10 @@ WHERE id = '4be5d1d2-1f5a-42ff-a9bd-fc90609d94b6';
 -- defined in the default_delete_marc_authority_job_profile.sql
 -- to have job-to-match relationship instead of job-to-action relationship.
 UPDATE ${myuniversity}_${mymodule}.profile_associations
-SET detail_wrapper_id = '69de98ea-68dd-46be-a187-a115f9afcc05'
+SET detail_wrapper_id = (
+  SELECT id
+  FROM ${myuniversity}_${mymodule}.profile_wrappers
+WHERE match_profile_id = '4be5d1d2-1f5a-42ff-a9bd-fc90609d94b6'
+LIMIT 1
+)
 WHERE id = '644e53c2-7be2-4ae5-bc17-131334222d39';
