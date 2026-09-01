@@ -4,6 +4,7 @@
 * Set Authority DELETE job/action/field mapping profiles to display via Settings > Data import ([MODDICONV-436](https://folio-org.atlassian.net/browse/MODDICONV-436))
 * Add validation for DELETE JobProfiles ([MODDICONV-437](https://folio-org.atlassian.net/browse/MODDICONV-437))
 * Add DELETE Authority default mapping profile ([MODDICONV-447](https://folio-org.atlassian.net/browse/MODDICONV-447))
+* Fix the script to ensure that the default delete MARC Authority job profile is visible on UI ([MODDICONV-450](https://folio-org.atlassian.net/browse/MODDICONV-450))
 
 ### Tech Dept
 * Delete default quickMarc profiles ([MODDICONV-445](https://folio-org.atlassian.net/browse/MODDICONV-445))
