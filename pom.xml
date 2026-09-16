@@ -29,7 +29,7 @@
     <raml-module-builder.version>36.0.1</raml-module-builder.version>
     <folio-di-support.version>4.1.0-SNAPSHOT</folio-di-support.version>
     <data-import-utils.version>3.0.0-SNAPSHOT</data-import-utils.version>
-    <vertx.version>5.1.7</vertx.version>
+    <vertx.version>5.1.8</vertx.version>
     <spring.version>7.0.9</spring.version>
     <aspectj.version>1.9.25.1</aspectj.version>
     <caffeine.version>3.2.4</caffeine.version>
