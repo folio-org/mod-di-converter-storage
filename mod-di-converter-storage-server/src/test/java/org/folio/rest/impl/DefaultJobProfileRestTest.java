@@ -37,7 +37,7 @@ import org.folio.rest.jaxrs.model.MappingProfile;
 import org.folio.rest.jaxrs.model.MappingProfileUpdateDto;
 import org.folio.rest.jaxrs.model.MatchProfile;
 import org.folio.rest.jaxrs.model.MatchProfileUpdateDto;
-import org.folio.rest.jaxrs.model.ProfileAssociation;
+import org.folio.rest.jaxrs.model.ProfileAssociationRecord;
 import org.folio.rest.jaxrs.model.ProfileType;
 import org.folio.rest.jaxrs.model.Tags;
 import org.folio.support.AbstractRestTest;
@@ -54,22 +54,13 @@ class DefaultJobProfileRestTest extends AbstractRestTest {
   private static final String DEFAULT_MARC_HOLDINGS_PROFILE_ID = "80898dee-449f-44dd-9c8e-37d5eb469b1d";
   private static final String DEFAULT_DELETE_MARC_AUTHORITY_ACTION_PROFILE_ID = "fabd9a3e-33c3-49b7-864d-c5af830d9990";
 
-  private static Stream<String> defaultJobProfileIds() {
-    return Stream.of(
-      "d0ebb7b0-2f0f-11eb-adc1-0242ac120002", //OCLC_CREATE_INSTANCE_JOB_PROFILE_ID
-      "91f9b8d6-d80e-4727-9783-73fb53e3c786", //OCLC_UPDATE_INSTANCE_JOB_PROFILE_ID
-      "80898dee-449f-44dd-9c8e-37d5eb469b1d", //DEFAULT_CREATE_HOLDINGS_AND_SRS_MARC_HOLDINGS_JOB_PROFILE_ID
-      "1a338fcd-3efc-4a03-b007-394eeb0d5fb9", //DEFAULT_DELETE_MARC_AUTHORITY_JOB_PROFILE_ID
-      "6eefa4c6-bbf7-4845-ad82-de7fc5abd0e3"  //DEFAULT_CREATE_SRS_MARC_AUTHORITY_JOB_PROFILE_ID
-    );
-  }
-
   @Override
   protected void clearTables(VertxTestContext testContext) {
     testContext.completeNow();
   }
 
-  @DisplayName("should return 201 Created when posting job profile with delete MARC-Authority action as first action under MARC-Authority match profile")
+  @DisplayName(
+    "should return 201 Created when posting job profile with delete MARC-Authority action as first action under MARC-Authority match profile")
   @Test
   @SuppressWarnings("checkstyle:LineLength")
   void shouldReturnCreatedOnPostJobProfileWithDeleteMarcAuthorityActionAsFirstActionUnderMarcAuthorityMatchProfile() {
@@ -85,14 +76,14 @@ class DefaultJobProfileRestTest extends AbstractRestTest {
     postMatchProfile(matchProfileId, "Match MARC-Authority1",
       EntityType.MARC_AUTHORITY, EntityType.MARC_AUTHORITY);
 
-    var jobToMatchAssociation = new ProfileAssociation()
+    var jobToMatchAssociation = new ProfileAssociationRecord()
       .withMasterProfileType(JOB_PROFILE)
       .withMasterProfileId(jobProfileId)
       .withDetailProfileType(MATCH_PROFILE)
       .withDetailProfileId(matchProfileId)
       .withOrder(0);
 
-    var matchToActionAssociation = new ProfileAssociation()
+    var matchToActionAssociation = new ProfileAssociationRecord()
       .withMasterProfileType(MATCH_PROFILE)
       .withMasterProfileId(matchProfileId)
       .withDetailProfileType(ACTION_PROFILE)
@@ -109,7 +100,8 @@ class DefaultJobProfileRestTest extends AbstractRestTest {
       .statusCode(SC_CREATED);
   }
 
-  @DisplayName("should return 201 Created when posting job profile with default delete MARC-Authority action as first action under MARC-Authority match profile")
+  @DisplayName(
+    "should return 201 Created when posting job profile with default delete MARC-Authority action as first action under MARC-Authority match profile")
   @Test
   @SuppressWarnings("checkstyle:LineLength")
   void shouldReturnCreatedOnPostJobProfileWithDefaultDeleteMarcAuthorityActionAsFirstActionUnderMarcAuthorityMatchProfile() {
@@ -119,14 +111,14 @@ class DefaultJobProfileRestTest extends AbstractRestTest {
     postMatchProfile(matchProfileId, "Match MARC-Authority2",
       EntityType.MARC_AUTHORITY, EntityType.MARC_AUTHORITY);
 
-    var jobToMatchAssociation = new ProfileAssociation()
+    var jobToMatchAssociation = new ProfileAssociationRecord()
       .withMasterProfileType(JOB_PROFILE)
       .withMasterProfileId(jobProfileId)
       .withDetailProfileType(MATCH_PROFILE)
       .withDetailProfileId(matchProfileId)
       .withOrder(0);
 
-    var matchToActionAssociation = new ProfileAssociation()
+    var matchToActionAssociation = new ProfileAssociationRecord()
       .withMasterProfileType(MATCH_PROFILE)
       .withMasterProfileId(matchProfileId)
       .withDetailProfileType(ACTION_PROFILE)
@@ -143,7 +135,8 @@ class DefaultJobProfileRestTest extends AbstractRestTest {
       .statusCode(SC_CREATED);
   }
 
-  @DisplayName("should return 422 Unprocessable Entity when posting job profile with delete MARC-Authority under non-match branch")
+  @DisplayName(
+    "should return 422 Unprocessable Entity when posting job profile with delete MARC-Authority under non-match branch")
   @Test
   void shouldReturnUnprocessableEntityOnPostJobProfileWithDeleteMarcAuthorityUnderNonMatchBranch() {
     var jobProfileId = UUID.randomUUID().toString();
@@ -154,13 +147,13 @@ class DefaultJobProfileRestTest extends AbstractRestTest {
       EntityType.MARC_AUTHORITY, EntityType.MARC_AUTHORITY);
     postActionProfile(actionProfileId, "Delete MARC-Authority3", DELETE, MARC_AUTHORITY);
 
-    var jobToMatchAssociation = new ProfileAssociation()
+    var jobToMatchAssociation = new ProfileAssociationRecord()
       .withMasterProfileType(JOB_PROFILE)
       .withMasterProfileId(jobProfileId)
       .withDetailProfileType(MATCH_PROFILE)
       .withDetailProfileId(matchProfileId)
       .withOrder(0);
-    var matchToActionAssociation = new ProfileAssociation()
+    var matchToActionAssociation = new ProfileAssociationRecord()
       .withMasterProfileType(MATCH_PROFILE)
       .withMasterProfileId(matchProfileId)
       .withDetailProfileType(ACTION_PROFILE)
@@ -196,20 +189,20 @@ class DefaultJobProfileRestTest extends AbstractRestTest {
     postActionProfile(updateActionProfileId, "Update Marc-Authority4", UPDATE, MARC_AUTHORITY);
     postActionProfile(deleteActionProfileId, "Delete MARC-Authority4", DELETE, MARC_AUTHORITY);
 
-    var jobToMatchAssociation = new ProfileAssociation()
+    var jobToMatchAssociation = new ProfileAssociationRecord()
       .withMasterProfileType(JOB_PROFILE)
       .withMasterProfileId(jobProfileId)
       .withDetailProfileType(MATCH_PROFILE)
       .withDetailProfileId(matchProfileId)
       .withOrder(0);
-    var matchToUpdateActionAssociation = new ProfileAssociation()
+    var matchToUpdateActionAssociation = new ProfileAssociationRecord()
       .withMasterProfileType(MATCH_PROFILE)
       .withMasterProfileId(matchProfileId)
       .withDetailProfileType(ACTION_PROFILE)
       .withDetailProfileId(updateActionProfileId)
       .withReactTo(MATCH)
       .withOrder(0);
-    var matchToDeleteActionAssociation = new ProfileAssociation()
+    var matchToDeleteActionAssociation = new ProfileAssociationRecord()
       .withMasterProfileType(MATCH_PROFILE)
       .withMasterProfileId(matchProfileId)
       .withDetailProfileType(ACTION_PROFILE)
@@ -222,8 +215,8 @@ class DefaultJobProfileRestTest extends AbstractRestTest {
         .withId(jobProfileId)
         .withName("Delete MARC-Authority4")
         .withDataType(MARC))
-      .withAddedRelations(List.of(
-        jobToMatchAssociation, matchToUpdateActionAssociation, matchToDeleteActionAssociation)))
+      .withAddedRelations(
+        List.of(jobToMatchAssociation, matchToUpdateActionAssociation, matchToDeleteActionAssociation)))
       .statusCode(SC_UNPROCESSABLE_ENTITY)
       .body("errors", hasItem(
         hasEntry(is("message"),
@@ -231,7 +224,8 @@ class DefaultJobProfileRestTest extends AbstractRestTest {
              + "action profiles in the for-matches branch"))));
   }
 
-  @DisplayName("should return 422 Unprocessable Entity when posting job profile with delete MARC-Authority under non-MARC-Authority match profile")
+  @DisplayName(
+    "should return 422 Unprocessable Entity when posting job profile with delete MARC-Authority under non-MARC-Authority match profile")
   @Test
   @SuppressWarnings("checkstyle:LineLength")
   void shouldReturnUnprocessableEntityOnPostJobProfileWithDeleteMarcAuthorityUnderNonMarcAuthorityMatchProfile() {
@@ -243,13 +237,13 @@ class DefaultJobProfileRestTest extends AbstractRestTest {
       EntityType.MARC_BIBLIOGRAPHIC, EntityType.MARC_BIBLIOGRAPHIC);
     postActionProfile(actionProfileId, "Delete MARC-Authority5", DELETE, MARC_AUTHORITY);
 
-    var jobToMatchAssociation = new ProfileAssociation()
+    var jobToMatchAssociation = new ProfileAssociationRecord()
       .withMasterProfileType(JOB_PROFILE)
       .withMasterProfileId(jobProfileId)
       .withDetailProfileType(MATCH_PROFILE)
       .withDetailProfileId(matchProfileId)
       .withOrder(0);
-    var matchToActionAssociation = new ProfileAssociation()
+    var matchToActionAssociation = new ProfileAssociationRecord()
       .withMasterProfileType(MATCH_PROFILE)
       .withMasterProfileId(matchProfileId)
       .withDetailProfileType(ACTION_PROFILE)
@@ -273,6 +267,7 @@ class DefaultJobProfileRestTest extends AbstractRestTest {
 
   @DisplayName("should return 200 OK when putting job profile with delete MARC-Authority as first action under MARC-Authority match profile")
   @Test
+  @SuppressWarnings("checkstyle:LineLength")
   void shouldReturnOkOnPutJobProfileWithDeleteMarcAuthorityAsFirstActionUnderMarcAuthorityMatchProfile() {
     var jobProfileId = UUID.randomUUID().toString();
     var matchProfileId = UUID.randomUUID().toString();
@@ -289,14 +284,8 @@ class DefaultJobProfileRestTest extends AbstractRestTest {
     postActionProfileWithMapping(deleteActionProfileId, "Delete MARC-Authority6",
       DELETE, MARC_AUTHORITY, deleteMappingProfileId);
 
-    var matchToUpdateActionAssociation = new ProfileAssociation()
-      .withMasterProfileType(MATCH_PROFILE)
-      .withMasterProfileId(matchProfileId)
-      .withDetailProfileType(ACTION_PROFILE)
-      .withDetailProfileId(updateActionProfileId)
-      .withReactTo(MATCH)
-      .withOrder(0);
-    var matchToDeleteActionAssociation = new ProfileAssociation()
+    var matchToUpdateActionAssociation = jobProfileToUpdate.getAddedRelations().get(1);
+    var matchToDeleteActionAssociation = new ProfileAssociationRecord()
       .withMasterProfileType(MATCH_PROFILE)
       .withMasterProfileId(matchProfileId)
       .withDetailProfileType(ACTION_PROFILE)
@@ -328,14 +317,14 @@ class DefaultJobProfileRestTest extends AbstractRestTest {
     postActionProfileWithMapping(deleteActionProfileId, "Delete MARC-Authority7",
       DELETE, MARC_AUTHORITY, deleteMappingProfileId);
 
-    var matchToUpdateActionAssociation = new ProfileAssociation()
+    var matchToUpdateActionAssociation = new ProfileAssociationRecord()
       .withMasterProfileType(MATCH_PROFILE)
       .withMasterProfileId(matchProfileId)
       .withDetailProfileType(ACTION_PROFILE)
       .withDetailProfileId(actionProfileId)
       .withReactTo(MATCH)
       .withOrder(0);
-    var matchToDeleteActionAssociation = new ProfileAssociation()
+    var matchToDeleteActionAssociation = new ProfileAssociationRecord()
       .withMasterProfileType(MATCH_PROFILE)
       .withMasterProfileId(matchProfileId)
       .withDetailProfileType(ACTION_PROFILE)
@@ -369,14 +358,14 @@ class DefaultJobProfileRestTest extends AbstractRestTest {
       EntityType.MARC_AUTHORITY, EntityType.MARC_AUTHORITY);
     postActionProfile(deleteActionProfileId, "Delete MARC-Authority8", DELETE, MARC_AUTHORITY);
 
-    var matchToUpdateActionAssociation = new ProfileAssociation()
+    var matchToUpdateActionAssociation = new ProfileAssociationRecord()
       .withMasterProfileType(MATCH_PROFILE)
       .withMasterProfileId(matchProfileId)
       .withDetailProfileType(ACTION_PROFILE)
       .withDetailProfileId(updateActionProfileId)
       .withReactTo(MATCH)
       .withOrder(0);
-    var matchToDeleteActionAssociation = new ProfileAssociation()
+    var matchToDeleteActionAssociation = new ProfileAssociationRecord()
       .withMasterProfileType(MATCH_PROFILE)
       .withMasterProfileId(matchProfileId)
       .withDetailProfileType(ACTION_PROFILE)
@@ -408,14 +397,14 @@ class DefaultJobProfileRestTest extends AbstractRestTest {
       EntityType.MARC_BIBLIOGRAPHIC, EntityType.MARC_BIBLIOGRAPHIC);
     postActionProfile(deleteActionProfileId, "Delete MARC-Authority9", DELETE, MARC_AUTHORITY);
 
-    var matchToUpdateActionAssociation = new ProfileAssociation()
+    var matchToUpdateActionAssociation = new ProfileAssociationRecord()
       .withMasterProfileType(MATCH_PROFILE)
       .withMasterProfileId(marcBibMatchProfileId)
       .withDetailProfileType(ACTION_PROFILE)
       .withDetailProfileId(actionProfileId)
       .withReactTo(MATCH)
       .withOrder(0);
-    var marcBibMatchToDeleteActionAssociation = new ProfileAssociation()
+    var marcBibMatchToDeleteActionAssociation = new ProfileAssociationRecord()
       .withMasterProfileType(MATCH_PROFILE)
       .withMasterProfileId(marcBibMatchProfileId)
       .withDetailProfileType(ACTION_PROFILE)
@@ -505,6 +494,16 @@ class DefaultJobProfileRestTest extends AbstractRestTest {
       .body("tags.tagList", Is.is(Matchers.empty()));
   }
 
+  private static Stream<String> defaultJobProfileIds() {
+    return Stream.of(
+      "d0ebb7b0-2f0f-11eb-adc1-0242ac120002", //OCLC_CREATE_INSTANCE_JOB_PROFILE_ID
+      "91f9b8d6-d80e-4727-9783-73fb53e3c786", //OCLC_UPDATE_INSTANCE_JOB_PROFILE_ID
+      "80898dee-449f-44dd-9c8e-37d5eb469b1d", //DEFAULT_CREATE_HOLDINGS_AND_SRS_MARC_HOLDINGS_JOB_PROFILE_ID
+      "1a338fcd-3efc-4a03-b007-394eeb0d5fb9", //DEFAULT_DELETE_MARC_AUTHORITY_JOB_PROFILE_ID
+      "6eefa4c6-bbf7-4845-ad82-de7fc5abd0e3"  //DEFAULT_CREATE_SRS_MARC_AUTHORITY_JOB_PROFILE_ID
+    );
+  }
+
   private void postMappingProfile(String id, String name, EntityType incomingRecordType,
                                   EntityType existingRecordType) {
     postMappingProfile(new MappingProfileUpdateDto()
@@ -533,7 +532,7 @@ class DefaultJobProfileRestTest extends AbstractRestTest {
         .withName(name)
         .withAction(action)
         .withFolioRecord(recordType))
-      .withAddedRelations(List.of(new ProfileAssociation()
+      .withAddedRelations(List.of(new ProfileAssociationRecord()
         .withMasterProfileType(ACTION_PROFILE)
         .withDetailProfileType(ProfileType.MAPPING_PROFILE)
         .withMasterProfileId(actionProfileId)
@@ -562,14 +561,14 @@ class DefaultJobProfileRestTest extends AbstractRestTest {
     postMatchProfile(matchProfileId, "Match " + incomingRecordType.value() + jobProfileId, incomingRecordType,
       existingRecordType);
 
-    var jobToMatchAssociation = new ProfileAssociation()
+    var jobToMatchAssociation = new ProfileAssociationRecord()
       .withMasterProfileType(JOB_PROFILE)
       .withMasterProfileId(jobProfileId)
       .withDetailProfileType(MATCH_PROFILE)
       .withDetailProfileId(matchProfileId)
       .withOrder(0);
 
-    var matchToActionAssociation = new ProfileAssociation()
+    var matchToActionAssociation = new ProfileAssociationRecord()
       .withMasterProfileType(MATCH_PROFILE)
       .withMasterProfileId(matchProfileId)
       .withDetailProfileType(ACTION_PROFILE)

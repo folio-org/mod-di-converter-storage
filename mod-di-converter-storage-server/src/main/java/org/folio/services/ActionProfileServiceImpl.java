@@ -8,11 +8,13 @@ import static org.folio.rest.jaxrs.model.ActionProfile.FolioRecord.MARC_BIBLIOGR
 import io.vertx.core.Future;
 import io.vertx.core.Promise;
 import io.vertx.core.json.jackson.DatabindCodec;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import javax.ws.rs.NotFoundException;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
@@ -33,6 +35,7 @@ import org.folio.rest.jaxrs.model.ProfileSnapshotWrapper;
 import org.folio.rest.jaxrs.model.ProfileType;
 import org.folio.services.association.CommonProfileAssociationService;
 import org.folio.services.association.ProfileAssociationService;
+import org.folio.services.converter.ProfileAssociationConverter;
 import org.springframework.stereotype.Component;
 
 @Component
@@ -62,10 +65,11 @@ public class ActionProfileServiceImpl
 
   public ActionProfileServiceImpl(ProfileAssociationService profileAssociationService,
                                   CommonProfileAssociationService associationService,
+                                  ProfileAssociationConverter profileAssociationConverter,
                                   ProfileDao<ActionProfile, ActionProfileCollection> profileDao,
                                   ProfileWrapperDao profileWrapperDao,
                                   ProfileServiceFactory profileServiceFactory) {
-    super(profileAssociationService, associationService, profileDao, profileWrapperDao);
+    super(profileAssociationService, associationService, profileAssociationConverter, profileDao, profileWrapperDao);
     this.profileServiceFactory = profileServiceFactory;
   }
 
@@ -131,12 +135,12 @@ public class ActionProfileServiceImpl
 
   @Override
   protected List<ProfileAssociation> getProfileAssociationToAdd(ActionProfileUpdateDto dto) {
-    return dto.getAddedRelations();
+    return dto.getAddedRelations().stream().map(profileAssociationConverter::convert).collect(Collectors.toList());
   }
 
   @Override
   protected List<ProfileAssociation> getProfileAssociationToDelete(ActionProfileUpdateDto dto) {
-    return dto.getDeletedRelations();
+    return dto.getDeletedRelations().stream().map(profileAssociationConverter::convert).collect(Collectors.toList());
   }
 
   @Override
@@ -147,6 +151,21 @@ public class ActionProfileServiceImpl
   @Override
   protected List<String> getDefaultProfiles() {
     return DEFAULT_ACTION_PROFILES;
+  }
+
+  @Override
+  protected List<Error> getMissingRequiredProfileFieldErrors(ActionProfile profile) {
+    List<Error> errors = new ArrayList<>();
+    if (profile.getName() == null) {
+      errors.add(new Error().withMessage("profile.name must not be null"));
+    }
+    if (profile.getAction() == null) {
+      errors.add(new Error().withMessage("profile.action must not be null"));
+    }
+    if (profile.getFolioRecord() == null) {
+      errors.add(new Error().withMessage("profile.folioRecord must not be null"));
+    }
+    return errors;
   }
 
   @Override
@@ -180,13 +199,27 @@ public class ActionProfileServiceImpl
 
   @Override
   public List<ProfileAssociation> getAddedRelations(ActionProfileUpdateDto profileUpdateDto) {
-    return profileUpdateDto.getAddedRelations();
+    return profileUpdateDto.getAddedRelations().stream()
+      .map(profileAssociationConverter::convert)
+      .collect(Collectors.toList());
   }
 
   @Override
   public ActionProfileUpdateDto withDeletedRelations(ActionProfileUpdateDto profileUpdateDto,
                                                      List<ProfileAssociation> profileAssociations) {
-    return profileUpdateDto.withDeletedRelations(profileAssociations);
+    var deletedRelations = profileAssociations.stream()
+      .map((ProfileAssociation a) -> profileAssociationConverter.reverse().convert(a))
+      .collect(Collectors.toList());
+    return profileUpdateDto.withDeletedRelations(deletedRelations);
+  }
+
+  @Override
+  public ActionProfileUpdateDto withAddedRelations(ActionProfileUpdateDto profileUpdateDto,
+                                                    List<ProfileAssociation> profileAssociations) {
+    var addedRelations = profileAssociations.stream()
+      .map((ProfileAssociation a) -> profileAssociationConverter.reverse().convert(a))
+      .collect(Collectors.toList());
+    return profileUpdateDto.withAddedRelations(addedRelations);
   }
 
   private void setDefaults(ActionProfile profile) {

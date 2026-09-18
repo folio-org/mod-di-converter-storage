@@ -43,6 +43,8 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import lombok.Getter;
+import lombok.Setter;
 import org.folio.rest.impl.association.wrapper.MatchProfileWrapper;
 import org.folio.rest.impl.association.wrapper.ProfileWrapper;
 import org.folio.rest.jaxrs.model.ActionProfile;
@@ -56,7 +58,7 @@ import org.folio.rest.jaxrs.model.MappingProfileUpdateDto;
 import org.folio.rest.jaxrs.model.MatchProfile;
 import org.folio.rest.jaxrs.model.MatchProfileUpdateDto;
 import org.folio.rest.jaxrs.model.ProfileAssociation;
-import org.folio.rest.jaxrs.model.ProfileAssociationCollection;
+import org.folio.rest.jaxrs.model.ProfileAssociationRecord;
 import org.folio.rest.jaxrs.model.ProfileType;
 import org.folio.rest.jaxrs.model.Tags;
 import org.folio.support.AbstractRestTest;
@@ -220,7 +222,7 @@ class JobProfileRestTest extends AbstractRestTest {
         .withId(actionProfileId)))
       .statusCode(SC_CREATED);
 
-    var invalidAssociation = new ProfileAssociation()
+    var invalidAssociation = new ProfileAssociationRecord()
       .withDetailProfileType(ACTION_PROFILE)
       .withDetailProfileId(actionProfileId)
       .withMasterProfileType(JOB_PROFILE)
@@ -253,7 +255,7 @@ class JobProfileRestTest extends AbstractRestTest {
         .withId(actionProfileId)))
       .statusCode(SC_CREATED);
 
-    var invalidAssociation = new ProfileAssociation()
+    var invalidAssociation = new ProfileAssociationRecord()
       .withDetailProfileType(ACTION_PROFILE)
       .withDetailProfileId(actionProfileId)
       .withMasterProfileType(JOB_PROFILE)
@@ -294,24 +296,23 @@ class JobProfileRestTest extends AbstractRestTest {
         .withIncomingRecordType(EntityType.MARC_BIBLIOGRAPHIC)
         .withExistingRecordType(EntityType.MARC_BIBLIOGRAPHIC))
       .withAddedRelations(
-        List.of(
-          new ProfileAssociation()
-            .withMasterProfileId(actionProfileModify.getId())
-            .withDetailProfileId(mappingProfileIdModify)
-            .withMasterProfileType(ACTION_PROFILE)
-            .withDetailProfileType(ProfileType.MAPPING_PROFILE)
-            .withOrder(0))))
+        List.of(new ProfileAssociationRecord()
+          .withMasterProfileId(actionProfileModify.getId())
+          .withDetailProfileId(mappingProfileIdModify)
+          .withMasterProfileType(ACTION_PROFILE)
+          .withDetailProfileType(ProfileType.MAPPING_PROFILE)
+          .withOrder(0))))
       .statusCode(SC_CREATED)
       .extract().as(MappingProfileUpdateDto.class);
 
-    var invalidAssociation1 = new ProfileAssociation()
+    var invalidAssociation1 = new ProfileAssociationRecord()
       .withDetailProfileType(ACTION_PROFILE)
       .withDetailProfileId(actionProfileModify.getId())
       .withMasterProfileType(JOB_PROFILE)
       .withMasterProfileId(jobId)
       .withOrder(0);
 
-    var invalidAssociation2 = new ProfileAssociation()
+    var invalidAssociation2 = new ProfileAssociationRecord()
       .withDetailProfileType(ACTION_PROFILE)
       .withDetailProfileId(actionProfileModify.getId())
       .withMasterProfileType(JOB_PROFILE)
@@ -355,13 +356,12 @@ class JobProfileRestTest extends AbstractRestTest {
         .withIncomingRecordType(EntityType.MARC_BIBLIOGRAPHIC)
         .withExistingRecordType(EntityType.MARC_BIBLIOGRAPHIC))
       .withAddedRelations(
-        List.of(
-          new ProfileAssociation()
-            .withMasterProfileId(actionProfileModify.getId())
-            .withDetailProfileId(mappingProfileIdModify)
-            .withMasterProfileType(ACTION_PROFILE)
-            .withDetailProfileType(ProfileType.MAPPING_PROFILE)
-            .withOrder(0))))
+        List.of(new ProfileAssociationRecord()
+          .withMasterProfileId(actionProfileModify.getId())
+          .withDetailProfileId(mappingProfileIdModify)
+          .withMasterProfileType(ACTION_PROFILE)
+          .withDetailProfileType(ProfileType.MAPPING_PROFILE)
+          .withOrder(0))))
       .statusCode(SC_CREATED)
       .extract().as(MappingProfileUpdateDto.class);
 
@@ -380,23 +380,22 @@ class JobProfileRestTest extends AbstractRestTest {
         .withIncomingRecordType(EntityType.MARC_BIBLIOGRAPHIC)
         .withExistingRecordType(EntityType.INSTANCE))
       .withAddedRelations(
-        List.of(
-          new ProfileAssociation()
-            .withMasterProfileId(actionProfileCreate.getId())
-            .withDetailProfileId(mappingProfileIdCreate)
-            .withMasterProfileType(ACTION_PROFILE)
-            .withDetailProfileType(ProfileType.MAPPING_PROFILE)
-            .withOrder(0))))
+        List.of(new ProfileAssociationRecord()
+          .withMasterProfileId(actionProfileCreate.getId())
+          .withDetailProfileId(mappingProfileIdCreate)
+          .withMasterProfileType(ACTION_PROFILE)
+          .withDetailProfileType(ProfileType.MAPPING_PROFILE)
+          .withOrder(0))))
       .statusCode(SC_CREATED)
       .extract().as(MappingProfileUpdateDto.class);
 
-    var validAssociation1 = new ProfileAssociation()
+    var validAssociation1 = new ProfileAssociationRecord()
       .withDetailProfileType(ACTION_PROFILE)
       .withDetailProfileId(actionProfileModify.getId())
       .withMasterProfileType(JOB_PROFILE)
       .withOrder(0);
 
-    var validAssociation2 = new ProfileAssociation()
+    var validAssociation2 = new ProfileAssociationRecord()
       .withDetailProfileType(ACTION_PROFILE)
       .withDetailProfileId(actionProfileCreate.getId())
       .withMasterProfileType(JOB_PROFILE)
@@ -411,7 +410,7 @@ class JobProfileRestTest extends AbstractRestTest {
       .statusCode(SC_CREATED)
       .extract().as(JobProfileUpdateDto.class);
 
-    var deleteAssociation = new ProfileAssociation()
+    var deleteAssociation = new ProfileAssociationRecord()
       .withDetailProfileType(ACTION_PROFILE)
       .withDetailProfileId(actionProfileCreate.getId())
       .withMasterProfileType(JOB_PROFILE)
@@ -467,7 +466,7 @@ class JobProfileRestTest extends AbstractRestTest {
         .withExistingRecordType(EntityType.MARC_BIBLIOGRAPHIC))
       .withAddedRelations(
         List.of(
-          new ProfileAssociation()
+          new ProfileAssociationRecord()
             .withMasterProfileId(actionProfileModify.getId())
             .withDetailProfileId(mappingProfileIdModify)
             .withMasterProfileType(ACTION_PROFILE)
@@ -492,7 +491,7 @@ class JobProfileRestTest extends AbstractRestTest {
         .withExistingRecordType(EntityType.INSTANCE))
       .withAddedRelations(
         List.of(
-          new ProfileAssociation()
+          new ProfileAssociationRecord()
             .withMasterProfileId(actionProfileCreate.getId())
             .withDetailProfileId(mappingProfileIdCreate)
             .withMasterProfileType(ACTION_PROFILE)
@@ -501,20 +500,20 @@ class JobProfileRestTest extends AbstractRestTest {
       .statusCode(SC_CREATED)
       .extract().as(MappingProfileUpdateDto.class);
 
-    var validAssociation1 = new ProfileAssociation()
+    var validAssociation1 = new ProfileAssociationRecord()
       .withDetailProfileType(MATCH_PROFILE)
       .withDetailProfileId(matchProfileId)
       .withMasterProfileType(JOB_PROFILE)
       .withMasterProfileId(jobId);
 
-    var validAssociation2 = new ProfileAssociation()
+    var validAssociation2 = new ProfileAssociationRecord()
       .withDetailProfileType(ACTION_PROFILE)
       .withDetailProfileId(actionProfileCreate.getId())
       .withMasterProfileType(MATCH_PROFILE)
       .withMasterProfileId(matchProfileId)
       .withOrder(0);
 
-    var validAssociation3 = new ProfileAssociation()
+    var validAssociation3 = new ProfileAssociationRecord()
       .withDetailProfileType(ACTION_PROFILE)
       .withDetailProfileId(actionProfileModify.getId())
       .withMasterProfileType(MATCH_PROFILE)
@@ -530,7 +529,7 @@ class JobProfileRestTest extends AbstractRestTest {
       .statusCode(SC_CREATED)
       .extract().as(JobProfileUpdateDto.class);
 
-    var deleteAssociation = new ProfileAssociation()
+    var deleteAssociation = new ProfileAssociationRecord()
       .withDetailProfileType(ACTION_PROFILE)
       .withDetailProfileId(actionProfileCreate.getId())
       .withMasterProfileType(MATCH_PROFILE)
@@ -575,13 +574,13 @@ class JobProfileRestTest extends AbstractRestTest {
         .withId(actionProfileId)))
       .statusCode(SC_CREATED);
 
-    var invalidAssociationActionToMatch = new ProfileAssociation()
+    var invalidAssociationActionToMatch = new ProfileAssociationRecord()
       .withDetailProfileType(ACTION_PROFILE)
       .withDetailProfileId(actionProfileId)
       .withMasterProfileType(MATCH_PROFILE)
       .withMasterProfileId(matchProfileId);
 
-    var invalidAssociationMatchToJobProfile = new ProfileAssociation()
+    var invalidAssociationMatchToJobProfile = new ProfileAssociationRecord()
       .withDetailProfileType(MATCH_PROFILE)
       .withDetailProfileId(matchProfileId)
       .withMasterProfileType(JOB_PROFILE)
@@ -608,13 +607,13 @@ class JobProfileRestTest extends AbstractRestTest {
     var jobIdWithAction = UUID.randomUUID().toString();
     var jobIdWithMatch = UUID.randomUUID().toString();
 
-    var invalidActionAssociation = new ProfileAssociation()
+    var invalidActionAssociation = new ProfileAssociationRecord()
       .withDetailProfileType(ACTION_PROFILE)
       .withDetailProfileId(actionProfileId)
       .withMasterProfileType(JOB_PROFILE)
       .withMasterProfileId(jobIdWithAction);
 
-    var invalidMatchAssociation = new ProfileAssociation()
+    var invalidMatchAssociation = new ProfileAssociationRecord()
       .withDetailProfileType(MATCH_PROFILE)
       .withDetailProfileId(matchProfileId)
       .withMasterProfileType(JOB_PROFILE)
@@ -715,9 +714,10 @@ class JobProfileRestTest extends AbstractRestTest {
       .statusCode(SC_CREATED)
       .extract().as(JobProfileUpdateDto.class);
 
+    var relationToDelete = jobProfileToUpdate.getAddedRelations().getFirst();
     putRequest(JOB_PROFILES_PATH + "/" + jobProfile.getProfile().getId(), jobProfileToUpdate
       .withAddedRelations(null)
-      .withDeletedRelations(List.of(jobProfile.getAddedRelations().getFirst())))
+      .withDeletedRelations(List.of(relationToDelete)))
       .statusCode(SC_OK)
       .body("id", is(jobProfileToUpdate.getProfile().getId()))
       .body("name", is(jobProfileToUpdate.getProfile().getName()))
@@ -811,7 +811,7 @@ class JobProfileRestTest extends AbstractRestTest {
         .withExistingRecordType(EntityType.INSTANCE))
       .withAddedRelations(
         List.of(
-          new ProfileAssociation()
+          new ProfileAssociationRecord()
             .withMasterProfileId(actionProfile.getId())
             .withDetailProfileId(mappingProfileId)
             .withMasterProfileType(ACTION_PROFILE)
@@ -829,13 +829,13 @@ class JobProfileRestTest extends AbstractRestTest {
         .withName("testJob")
         .withDataType(MARC))
       .withAddedRelations(List.of(
-          new ProfileAssociation()
+          new ProfileAssociationRecord()
             .withMasterProfileId(jobProfileId)
             .withDetailProfileId(actionProfile.getId())
             .withMasterProfileType(JOB_PROFILE)
             .withDetailProfileType(ACTION_PROFILE)
             .withOrder(0),
-          new ProfileAssociation()
+          new ProfileAssociationRecord()
             .withMasterProfileId(jobProfileId)
             .withDetailProfileId(actionProfile.getId())
             .withMasterProfileType(JOB_PROFILE)
@@ -851,7 +851,7 @@ class JobProfileRestTest extends AbstractRestTest {
       Map.of("master", JOB_PROFILE.value(), "detail", ACTION_PROFILE.value())
     )
       .statusCode(SC_OK)
-      .extract().body().as(ProfileAssociationCollection.class);
+      .extract().body().as(AssociationCollection.class);
     assertThat(profileAssociationCollection.getTotalRecords().intValue()).isEqualTo(2);
 
     putRequest(JOB_PROFILES_PATH + "/" + jobProfile.getProfile().getId(), jobProfile
@@ -868,7 +868,7 @@ class JobProfileRestTest extends AbstractRestTest {
       Map.of("master", JOB_PROFILE.value(), "detail", ACTION_PROFILE.value())
     )
       .statusCode(SC_OK)
-      .extract().body().as(ProfileAssociationCollection.class);
+      .extract().body().as(AssociationCollection.class);
     assertThat(profileAssociationCollection.getTotalRecords().intValue()).isEqualTo(1);
   }
 
@@ -897,13 +897,13 @@ class JobProfileRestTest extends AbstractRestTest {
         .withExistingRecordType(EntityType.INSTANCE)
       ).withAddedRelations(
         List.of(
-          new ProfileAssociation()
+          new ProfileAssociationRecord()
             .withMasterProfileId(jobProfile.getProfile().getId())
             .withDetailProfileId(matchProfileId)
             .withMasterProfileType(JOB_PROFILE)
             .withDetailProfileType(MATCH_PROFILE)
             .withOrder(0),
-          new ProfileAssociation()
+          new ProfileAssociationRecord()
             .withMasterProfileId(jobProfile.getProfile().getId())
             .withDetailProfileId(matchProfileId)
             .withMasterProfileType(JOB_PROFILE)
@@ -931,7 +931,7 @@ class JobProfileRestTest extends AbstractRestTest {
         .withExistingRecordType(EntityType.INSTANCE))
       .withAddedRelations(
         List.of(
-          new ProfileAssociation()
+          new ProfileAssociationRecord()
             .withMasterProfileId(actionProfile.getId())
             .withDetailProfileId(mappingProfileId)
             .withMasterProfileType(ACTION_PROFILE)
@@ -942,8 +942,8 @@ class JobProfileRestTest extends AbstractRestTest {
       .statusCode(SC_CREATED)
       .extract().as(MappingProfileUpdateDto.class);
 
-    ProfileAssociation match1ToMatchAction =
-      new ProfileAssociation()
+    var match1ToMatchAction =
+      new ProfileAssociationRecord()
         .withMasterProfileId(matchProfile.getAddedRelations().get(0).getDetailProfileId())
         .withDetailProfileId(actionProfileId)
         .withMasterProfileType(MATCH_PROFILE)
@@ -952,8 +952,8 @@ class JobProfileRestTest extends AbstractRestTest {
         .withOrder(0)
         .withReactTo(MATCH);
 
-    ProfileAssociation match1ToNonMatchAction =
-      new ProfileAssociation()
+    var match1ToNonMatchAction =
+      new ProfileAssociationRecord()
         .withMasterProfileId(matchProfile.getAddedRelations().get(0).getDetailProfileId())
         .withDetailProfileId(actionProfileId)
         .withMasterProfileType(MATCH_PROFILE)
@@ -962,8 +962,8 @@ class JobProfileRestTest extends AbstractRestTest {
         .withOrder(0)
         .withReactTo(NON_MATCH);
 
-    ProfileAssociation match2ToMatchAction =
-      new ProfileAssociation()
+    var match2ToMatchAction =
+      new ProfileAssociationRecord()
         .withMasterProfileId(matchProfile.getAddedRelations().get(1).getDetailProfileId())
         .withDetailProfileId(actionProfileId)
         .withMasterProfileType(MATCH_PROFILE)
@@ -972,8 +972,8 @@ class JobProfileRestTest extends AbstractRestTest {
         .withOrder(0)
         .withReactTo(MATCH);
 
-    ProfileAssociation match2ToNonMatchAction =
-      new ProfileAssociation()
+    var match2ToNonMatchAction =
+      new ProfileAssociationRecord()
         .withMasterProfileId(matchProfile.getAddedRelations().get(1).getDetailProfileId())
         .withDetailProfileId(actionProfileId)
         .withMasterProfileType(MATCH_PROFILE)
@@ -996,12 +996,12 @@ class JobProfileRestTest extends AbstractRestTest {
       .extract().as(Object.class);
     assertThat(resp2).isNotNull();
 
-    ProfileAssociationCollection profileAssociationCollection = getRequest(
+    var profileAssociationCollection = getRequest(
       ASSOCIATED_PROFILES_PATH,
       Map.of("master", MATCH_PROFILE.value(), "detail", ACTION_PROFILE.value())
     )
       .statusCode(SC_OK)
-      .extract().body().as(ProfileAssociationCollection.class);
+      .extract().body().as(AssociationCollection.class);
     assertThat(profileAssociationCollection.getTotalRecords().intValue()).isEqualTo(4);
 
     putRequest(JOB_PROFILES_PATH + "/" + jobProfile.getProfile().getId(), jobProfile
@@ -1018,10 +1018,10 @@ class JobProfileRestTest extends AbstractRestTest {
       Map.of("master", MATCH_PROFILE.value(), "detail", ACTION_PROFILE.value())
     )
       .statusCode(SC_OK)
-      .extract().body().as(ProfileAssociationCollection.class);
+      .extract().body().as(AssociationCollection.class);
     assertThat(profileAssociationCollection.getTotalRecords().intValue()).isEqualTo(3);
 
-    ProfileAssociation profileAssociation2deleteWithNullOrder =
+    var profileAssociation2deleteWithNullOrder =
       profileAssociationCollection.getProfileAssociations().getFirst().withOrder(null);
 
     putRequest(JOB_PROFILES_PATH + "/" + jobProfile.getProfile().getId(), jobProfile
@@ -1038,7 +1038,7 @@ class JobProfileRestTest extends AbstractRestTest {
       Map.of("master", MATCH_PROFILE.value(), "detail", ACTION_PROFILE.value())
     )
       .statusCode(SC_OK)
-      .extract().body().as(ProfileAssociationCollection.class);
+      .extract().body().as(AssociationCollection.class);
     assertThat(profileAssociationCollection.getTotalRecords().intValue()).isEqualTo(2);
   }
 
@@ -1059,7 +1059,7 @@ class JobProfileRestTest extends AbstractRestTest {
         .withId(actionProfileId)))
       .statusCode(SC_CREATED);
 
-    var invalidAssociation = new ProfileAssociation()
+    var invalidAssociation = new ProfileAssociationRecord()
       .withDetailProfileType(ACTION_PROFILE)
       .withDetailProfileId(actionProfileId)
       .withMasterProfileType(JOB_PROFILE)
@@ -1182,7 +1182,7 @@ class JobProfileRestTest extends AbstractRestTest {
       .statusCode(SC_CREATED)
       .extract().as(JobProfileUpdateDto.class);
 
-    var invalidAssociation = new ProfileAssociation()
+    var invalidAssociation = new ProfileAssociationRecord()
       .withDetailProfileType(ACTION_PROFILE)
       .withDetailProfileId(actionProfileId)
       .withMasterProfileType(JOB_PROFILE)
@@ -1234,13 +1234,13 @@ class JobProfileRestTest extends AbstractRestTest {
       .statusCode(SC_CREATED)
       .extract().as(JobProfileUpdateDto.class);
 
-    var invalidAssociationActionToMatch = new ProfileAssociation()
+    var invalidAssociationActionToMatch = new ProfileAssociationRecord()
       .withDetailProfileType(ACTION_PROFILE)
       .withDetailProfileId(actionProfileId)
       .withMasterProfileType(MATCH_PROFILE)
       .withMasterProfileId(matchProfileId);
 
-    var invalidAssociationMatchToJobProfile = new ProfileAssociation()
+    var invalidAssociationMatchToJobProfile = new ProfileAssociationRecord()
       .withDetailProfileType(MATCH_PROFILE)
       .withDetailProfileId(matchProfileId)
       .withMasterProfileType(JOB_PROFILE)
@@ -1291,7 +1291,7 @@ class JobProfileRestTest extends AbstractRestTest {
 
     String jobProfileId = UUID.randomUUID().toString();
 
-    var jobToMatchAssociation = new ProfileAssociation()
+    var jobToMatchAssociation = new ProfileAssociationRecord()
       .withId(UUID.randomUUID().toString())
       .withDetailProfileId(matchProfile.getProfile().getId())
       .withMasterProfileId(jobProfileId)
@@ -1299,7 +1299,7 @@ class JobProfileRestTest extends AbstractRestTest {
       .withDetailProfileType(MATCH_PROFILE)
       .withOrder(1);
 
-    var matchToActionAssociation = new ProfileAssociation()
+    var matchToActionAssociation = new ProfileAssociationRecord()
       .withId(UUID.randomUUID().toString())
       .withDetailProfileId(actionProfile.getProfile().getId())
       .withMasterProfileId(matchProfile.getProfile().getId())
@@ -1307,7 +1307,7 @@ class JobProfileRestTest extends AbstractRestTest {
       .withDetailProfileType(ACTION_PROFILE)
       .withOrder(1);
 
-    var actionToMappingAssociation = new ProfileAssociation()
+    var actionToMappingAssociation = new ProfileAssociationRecord()
       .withMasterProfileId(actionProfile.getProfile().getId())
       .withDetailProfileId(mappingProfile.getProfile().getId())
       .withMasterProfileType(ACTION_PROFILE)
@@ -1326,7 +1326,7 @@ class JobProfileRestTest extends AbstractRestTest {
       .statusCode(SC_CREATED)
       .extract().as(JobProfileUpdateDto.class);
 
-    ProfileAssociation jobToActionAssociation =
+    var jobToActionAssociation =
       postProfileAssociation(new ProfileAssociation()
           .withId(UUID.randomUUID().toString())
           .withDetailProfileId(actionProfile.getProfile().getId())
@@ -1461,7 +1461,7 @@ class JobProfileRestTest extends AbstractRestTest {
       .extract().body().as(profileWrapper.getProfileType());
     profileWrapper.setProfile(profile);
 
-    var association = new ProfileAssociation()
+    var association = new ProfileAssociationRecord()
       .withMasterProfileId(jobProfileUpdateDto.getProfile().getId())
       .withDetailProfileId(profileWrapper.getId())
       .withMasterProfileType(JOB_PROFILE)
@@ -1490,7 +1490,7 @@ class JobProfileRestTest extends AbstractRestTest {
         .withExistingRecordType(EntityType.INSTANCE))
       .withAddedRelations(
         List.of(
-          new ProfileAssociation()
+          new ProfileAssociationRecord()
             .withMasterProfileId(actionProfileIdCreate)
             .withDetailProfileId(mappingProfileIdCreate)
             .withMasterProfileType(ACTION_PROFILE)
@@ -1498,7 +1498,7 @@ class JobProfileRestTest extends AbstractRestTest {
             .withOrder(0))))
       .statusCode(SC_CREATED);
 
-    var validAssociation = new ProfileAssociation()
+    var validAssociation = new ProfileAssociationRecord()
       .withMasterProfileId(jobProfileUpdateDto.getId())
       .withDetailProfileId(actionProfileIdCreate)
       .withMasterProfileType(JOB_PROFILE)
@@ -1519,14 +1519,14 @@ class JobProfileRestTest extends AbstractRestTest {
       .statusCode(SC_CREATED)
       .extract().as(ActionProfileUpdateDto.class);
 
-    var actionToMappingAssociation = new ProfileAssociation()
+    var actionToMappingAssociation = new ProfileAssociationRecord()
       .withMasterProfileId(actionProfile.getProfile().getId())
       .withDetailProfileId(mappingProfile.getProfile().getId())
       .withMasterProfileType(ACTION_PROFILE)
       .withDetailProfileType(MAPPING_PROFILE)
       .withOrder(0);
 
-    var jobToActionAssociation = new ProfileAssociation()
+    var jobToActionAssociation = new ProfileAssociationRecord()
       .withMasterProfileId(jobProfileUpdateDto.getId())
       .withDetailProfileId(actionProfile.getProfile().getId())
       .withMasterProfileType(JOB_PROFILE)
@@ -1552,21 +1552,21 @@ class JobProfileRestTest extends AbstractRestTest {
       .statusCode(SC_CREATED)
       .extract().as(ActionProfileUpdateDto.class);
 
-    var jobToMatchAssociation = new ProfileAssociation()
+    var jobToMatchAssociation = new ProfileAssociationRecord()
       .withMasterProfileId(jobProfileUpdateDto.getId())
       .withDetailProfileId(matchProfile.getId())
       .withMasterProfileType(JOB_PROFILE)
       .withDetailProfileType(MATCH_PROFILE)
       .withOrder(1);
 
-    var jobToActionAssociation = new ProfileAssociation()
+    var jobToActionAssociation = new ProfileAssociationRecord()
       .withMasterProfileId(matchProfile.getId())
       .withDetailProfileId(actionProfile.getId())
       .withMasterProfileType(MATCH_PROFILE)
       .withDetailProfileType(ACTION_PROFILE)
       .withOrder(1);
 
-    var actionToMappingAssociation = new ProfileAssociation()
+    var actionToMappingAssociation = new ProfileAssociationRecord()
       .withMasterProfileId(actionProfile.getId())
       .withDetailProfileId(mappingProfile.getId())
       .withMasterProfileType(ACTION_PROFILE)
@@ -1590,6 +1590,14 @@ class JobProfileRestTest extends AbstractRestTest {
       postRequest(JOB_PROFILES_PATH, jobProfile)
         .statusCode(SC_CREATED);
     }
+  }
+
+  @Getter
+  @Setter
+  public static class AssociationCollection {
+
+    private List<ProfileAssociationRecord> profileAssociations;
+    private Integer totalRecords;
   }
 }
 

@@ -38,6 +38,7 @@ import org.folio.rest.jaxrs.model.ProfileType;
 import org.folio.rest.jaxrs.model.ReactToType;
 import org.folio.services.association.CommonProfileAssociationService;
 import org.folio.services.association.ProfileAssociationService;
+import org.folio.services.converter.ProfileAssociationConverter;
 import org.folio.services.snapshot.ProfileSnapshotService;
 import org.springframework.stereotype.Component;
 
@@ -73,11 +74,12 @@ public class JobProfileServiceImpl
 
   public JobProfileServiceImpl(ProfileAssociationService profileAssociationService,
                                CommonProfileAssociationService associationService,
+                               ProfileAssociationConverter associationConverter,
                                ProfileDao<JobProfile, JobProfileCollection> profileDao,
                                ProfileWrapperDao profileWrapperDao,
                                ProfileSnapshotService profileSnapshotService,
                                ProfileServiceFactory profileServiceFactory) {
-    super(profileAssociationService, associationService, profileDao, profileWrapperDao);
+    super(profileAssociationService, associationService, associationConverter, profileDao, profileWrapperDao);
     this.profileServiceFactory = profileServiceFactory;
     this.profileSnapshotService = profileSnapshotService;
   }
@@ -89,13 +91,27 @@ public class JobProfileServiceImpl
 
   @Override
   public List<ProfileAssociation> getAddedRelations(JobProfileUpdateDto profileUpdateDto) {
-    return profileUpdateDto.getAddedRelations();
+    return profileUpdateDto.getAddedRelations().stream()
+      .map(profileAssociationConverter::convert)
+      .collect(Collectors.toList());
   }
 
   @Override
   public JobProfileUpdateDto withDeletedRelations(JobProfileUpdateDto profileUpdateDto,
                                                   List<ProfileAssociation> profileAssociations) {
-    return profileUpdateDto.withDeletedRelations(profileAssociations);
+    var deletedRelations = profileAssociations.stream()
+      .map((ProfileAssociation a) -> profileAssociationConverter.reverse().convert(a))
+      .collect(Collectors.toList());
+    return profileUpdateDto.withDeletedRelations(deletedRelations);
+  }
+
+  @Override
+  public JobProfileUpdateDto withAddedRelations(JobProfileUpdateDto profileUpdateDto,
+                                                List<ProfileAssociation> profileAssociations) {
+    var addedRelations = profileAssociations.stream()
+      .map((ProfileAssociation a) -> profileAssociationConverter.reverse().convert(a))
+      .collect(Collectors.toList());
+    return profileUpdateDto.withAddedRelations(addedRelations);
   }
 
   @Override
@@ -156,12 +172,16 @@ public class JobProfileServiceImpl
 
   @Override
   protected List<ProfileAssociation> getProfileAssociationToAdd(JobProfileUpdateDto dto) {
-    return dto.getAddedRelations();
+    return dto.getAddedRelations().stream()
+      .map(profileAssociationConverter::convert)
+      .collect(Collectors.toList());
   }
 
   @Override
   protected List<ProfileAssociation> getProfileAssociationToDelete(JobProfileUpdateDto dto) {
-    return dto.getDeletedRelations();
+    return dto.getDeletedRelations().stream()
+      .map(profileAssociationConverter::convert)
+      .collect(Collectors.toList());
   }
 
   @Override
@@ -172,6 +192,18 @@ public class JobProfileServiceImpl
   @Override
   protected List<String> getDefaultProfiles() {
     return DEFAULT_JOB_PROFILES;
+  }
+
+  @Override
+  protected List<Error> getMissingRequiredProfileFieldErrors(JobProfile profile) {
+    List<Error> errors = new ArrayList<>();
+    if (profile.getName() == null) {
+      errors.add(new Error().withMessage("profile.name must not be null"));
+    }
+    if (profile.getDataType() == null) {
+      errors.add(new Error().withMessage("profile.dataType must not be null"));
+    }
+    return errors;
   }
 
   @Override
@@ -313,7 +345,9 @@ public class JobProfileServiceImpl
         )
       );
     }
-    profileAssociations.addAll(jobProfileUpdateDto.getAddedRelations());
+    profileAssociations.addAll(jobProfileUpdateDto.getAddedRelations().stream()
+      .map(profileAssociationConverter::convert)
+      .toList());
     return profileAssociations;
   }
 

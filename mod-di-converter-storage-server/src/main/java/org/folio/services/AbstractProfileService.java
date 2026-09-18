@@ -46,6 +46,7 @@ import org.folio.rest.jaxrs.model.ProfileType;
 import org.folio.rest.jaxrs.model.UserInfo;
 import org.folio.services.association.CommonProfileAssociationService;
 import org.folio.services.association.ProfileAssociationService;
+import org.folio.services.converter.ProfileAssociationConverter;
 import org.folio.services.exception.ConflictException;
 import org.folio.services.exception.UnprocessableEntityException;
 import org.folio.services.util.EntityTypes;
@@ -80,16 +81,19 @@ public abstract class AbstractProfileService<T, S, D> implements ProfileService<
 
   protected final ProfileAssociationService profileAssociationService;
   protected final CommonProfileAssociationService associationService;
+  protected final ProfileAssociationConverter profileAssociationConverter;
   private final EntityTypeCollection entityTypeCollection;
   private final ProfileDao<T, S> profileDao;
   private final ProfileWrapperDao profileWrapperDao;
 
   protected AbstractProfileService(ProfileAssociationService profileAssociationService,
                                    CommonProfileAssociationService associationService,
+                                   ProfileAssociationConverter profileAssociationConverter,
                                    ProfileDao<T, S> profileDao,
                                    ProfileWrapperDao profileWrapperDao) {
     this.profileAssociationService = profileAssociationService;
     this.associationService = associationService;
+    this.profileAssociationConverter = profileAssociationConverter;
     this.profileDao = profileDao;
     this.profileWrapperDao = profileWrapperDao;
     List<String> entityTypeList = Arrays.stream(EntityTypes.values())
@@ -131,8 +135,8 @@ public abstract class AbstractProfileService<T, S, D> implements ProfileService<
       .compose(profile -> setUserInfoForProfile(profile, params))
       .compose(profileWithInfo -> profileDao.saveProfile(setProfileId(profileWithInfo), params.getTenantId())
         .map(prepareAssociations(profileDto))
-        .compose(ar -> deleteRelatedAssociations(getProfileAssociationToDelete(profileDto), params.getTenantId()))
-        .compose(ar -> saveRelatedAssociations(getProfileAssociationToAdd(profileDto), params.getTenantId()))
+        .compose(dto -> deleteRelatedAssociationsAndSyncDto(dto, params.getTenantId()))
+        .compose(dto -> saveRelatedAssociationsAndSyncDto(dto, params.getTenantId()))
         .map(profileWithInfo));
   }
 
@@ -152,9 +156,30 @@ public abstract class AbstractProfileService<T, S, D> implements ProfileService<
       .compose(profile -> setUserInfoForProfile(profile, params))
       .compose(profileWithInfo -> profileDao.updateProfile(profileWithInfo, params.getTenantId()))
       .map(prepareAssociations(profileDto))
-      .compose(ar -> deleteRelatedAssociations(getProfileAssociationToDelete(profileDto), params.getTenantId()))
-      .compose(ar -> saveRelatedAssociations(getProfileAssociationToAdd(profileDto), params.getTenantId()))
+      .compose(dto -> deleteRelatedAssociationsAndSyncDto(dto, params.getTenantId()))
+      .compose(dto -> saveRelatedAssociationsAndSyncDto(dto, params.getTenantId()))
       .map(getProfile(profileDto));
+  }
+
+  /**
+   * Deletes {@code dto}'s deletedRelations, then writes the (server-mutated) association list back onto
+   * {@code dto} via {@link #withDeletedRelations}. {@code getProfileAssociationToDelete}/
+   * {@code getProfileAssociationToAdd} convert the dto's permissive {@code ProfileAssociationRecord} list
+   * into new {@code ProfileAssociation} copies; {@code deleteRelatedAssociations}/
+   * {@code saveRelatedAssociations} mutate those copies in place (setting id/wrapper ids), and without
+   * writing them back, the response (which echoes back {@code dto} unchanged) would show null ids for
+   * relations the client needs to reference in a later request.
+   */
+  private Future<D> deleteRelatedAssociationsAndSyncDto(D dto, String tenantId) {
+    List<ProfileAssociation> associationsToDelete = getProfileAssociationToDelete(dto);
+    return deleteRelatedAssociations(associationsToDelete, tenantId)
+      .map(deleted -> withDeletedRelations(dto, associationsToDelete));
+  }
+
+  private Future<D> saveRelatedAssociationsAndSyncDto(D dto, String tenantId) {
+    List<ProfileAssociation> associationsToAdd = getProfileAssociationToAdd(dto);
+    return saveRelatedAssociations(associationsToAdd, tenantId)
+      .map(saved -> withAddedRelations(dto, associationsToAdd));
   }
 
   @Override
@@ -240,6 +265,14 @@ public abstract class AbstractProfileService<T, S, D> implements ProfileService<
 
   protected abstract List<String> getDefaultProfiles();
 
+  /**
+   * Checks the profile's own required fields (e.g. name/dataType, name/action/folioRecord) - fields the
+   * profile's own JSON schema (jobProfile.json, actionProfile.json, etc.) marks "required", but which RMB
+   * never enforces on write, because the *UpdateDto wrapper's "profile" property is typed via a "javaType"
+   * schema override rather than a "$ref", so Bean Validation never cascades into it.
+   */
+  protected abstract List<Error> getMissingRequiredProfileFieldErrors(T profile);
+
   protected Future<Errors> validateProfile(OperationType operationType, D profileDto, String tenantId) {
     T profile = getProfile(profileDto);
     Promise<Errors> promise = Promise.promise();
@@ -254,6 +287,7 @@ public abstract class AbstractProfileService<T, S, D> implements ProfileService<
           .map(errorCode -> new Error().withMessage(format(errorCode,
             ERROR_CODES_TYPES_RELATION.get(profileTypeName), getProfileName(profile))))
           .collect(Collectors.toCollection(ArrayList::new));
+        errors.addAll(getMissingRequiredProfileFieldErrors(profile));
         promise.complete(new Errors().withErrors(errors).withTotalRecords(errors.size()));
       } else {
         promise.fail(ar.cause());
@@ -264,6 +298,12 @@ public abstract class AbstractProfileService<T, S, D> implements ProfileService<
 
   protected void validateAssociations(ActionProfile actionProfile, MappingProfile mappingProfile, List<Error> errors,
                                       String errMsg) {
+    if (mappingProfile.getExistingRecordType() == null) {
+      LOGGER.warn("validateAssociations:: MappingProfile with ID:{} is missing existingRecordType",
+        mappingProfile.getId());
+      errors.add(new Error().withMessage(errMsg));
+      return;
+    }
     var mappingRecordType = mappingProfile.getExistingRecordType().value();
     var actionRecordType = actionProfile.getFolioRecord().value();
     if (!actionRecordType.equals(mappingRecordType)) {
@@ -381,7 +421,15 @@ public abstract class AbstractProfileService<T, S, D> implements ProfileService<
     Promise<Boolean> result = Promise.promise();
     Future.all(futureList).onComplete(ar -> {
       if (ar.succeeded()) {
-        result.complete(true);
+        boolean allDeleted = ar.result().<Boolean>list().stream().allMatch(Boolean.TRUE::equals);
+        if (allDeleted) {
+          result.complete(true);
+        } else {
+          LOGGER.warn("deleteRelatedAssociations:: Could not delete one or more profile associations, "
+            + "no matching association found for the given ids");
+          result.fail(new NotFoundException(
+            "Could not delete one or more profile associations: no matching association found"));
+        }
       } else {
         result.fail(ar.cause());
       }

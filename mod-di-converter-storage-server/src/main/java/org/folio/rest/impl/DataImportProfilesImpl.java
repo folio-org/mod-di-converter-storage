@@ -22,12 +22,14 @@ import org.folio.rest.jaxrs.model.JobProfileUpdateDto;
 import org.folio.rest.jaxrs.model.MappingProfileUpdateDto;
 import org.folio.rest.jaxrs.model.MatchProfileUpdateDto;
 import org.folio.rest.jaxrs.model.ProfileAssociation;
+import org.folio.rest.jaxrs.model.ProfileSnapshotImport;
 import org.folio.rest.jaxrs.model.ProfileSnapshotWrapper;
 import org.folio.rest.jaxrs.model.ProfileType;
 import org.folio.rest.jaxrs.resource.DataImportProfiles;
 import org.folio.rest.tools.utils.TenantTool;
 import org.folio.services.ProfileServiceFactory;
 import org.folio.services.association.ProfileAssociationService;
+import org.folio.services.converter.ProfileSnapshotImportConverter;
 import org.folio.services.importprofile.ProfileImportService;
 import org.folio.services.snapshot.ProfileSnapshotService;
 import org.folio.spring.SpringContextUtil;
@@ -48,6 +50,8 @@ public class DataImportProfilesImpl implements DataImportProfiles {
   private ProfileSnapshotService profileSnapshotService;
   @Autowired
   private ProfileImportService profileImportService;
+  @Autowired
+  private ProfileSnapshotImportConverter profileSnapshotImportConverter;
 
   public DataImportProfilesImpl(Vertx vertx, String tenantId) {
     SpringContextUtil.autowireDependencies(this, Vertx.currentContext());
@@ -669,12 +673,13 @@ public class DataImportProfilesImpl implements DataImportProfiles {
   }
 
   @Override
-  public void postDataImportProfilesProfileSnapshots(ProfileSnapshotWrapper profileSnapshot,
+  public void postDataImportProfilesProfileSnapshots(ProfileSnapshotImport profileSnapshotImport,
                                                      Map<String, String> okapiHeaders,
                                                      Handler<AsyncResult<Response>> asyncResultHandler,
                                                      Context vertxContext) {
     vertxContext.runOnContext(v -> {
       try {
+        ProfileSnapshotWrapper profileSnapshot = profileSnapshotImportConverter.convert(profileSnapshotImport);
         profileImportService.importProfile(profileSnapshot, tenantId, new OkapiConnectionParams(okapiHeaders))
           .map(snapshot -> (Response) PostDataImportProfilesProfileSnapshotsResponse.respond201WithApplicationJson(
             snapshot))

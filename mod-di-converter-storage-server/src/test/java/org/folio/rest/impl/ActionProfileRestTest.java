@@ -40,6 +40,7 @@ import org.folio.rest.jaxrs.model.MappingDetail;
 import org.folio.rest.jaxrs.model.MappingProfile;
 import org.folio.rest.jaxrs.model.MappingProfileUpdateDto;
 import org.folio.rest.jaxrs.model.ProfileAssociation;
+import org.folio.rest.jaxrs.model.ProfileAssociationRecord;
 import org.folio.rest.jaxrs.model.ProfileSnapshotWrapper;
 import org.folio.rest.jaxrs.model.ProfileType;
 import org.folio.rest.jaxrs.model.Tags;
@@ -255,13 +256,13 @@ class ActionProfileRestTest extends AbstractRestTest {
         .withName("Test Mapping Profile with relations")
         .withExistingRecordType(EntityType.INSTANCE)
         .withIncomingRecordType(EntityType.INSTANCE))
-      .withAddedRelations(List.of(new ProfileAssociation()
+      .withAddedRelations(List.of(new ProfileAssociationRecord()
         .withMasterProfileType(ProfileType.ACTION_PROFILE)
         .withMasterProfileId(actionProfileDto.getId())
         .withDetailProfileType(ProfileType.MAPPING_PROFILE))));
 
     putRequest(ACTION_PROFILES_PATH + "/" + actionProfileDto.getProfile().getId(), actionProfileDto
-      .withDeletedRelations(List.of(new ProfileAssociation()
+      .withDeletedRelations(List.of(new ProfileAssociationRecord()
         .withMasterProfileType(ProfileType.ACTION_PROFILE)
         .withMasterProfileId(actionProfileDto.getProfile().getId())
         .withDetailProfileType(ProfileType.MAPPING_PROFILE)
@@ -337,7 +338,7 @@ class ActionProfileRestTest extends AbstractRestTest {
 
     //unlinking actionProfile1 - mappingProfile
     putRequest(ACTION_PROFILES_PATH + "/" + actionProfileDto1.getProfile().getId(), actionProfileDto1
-      .withDeletedRelations(List.of(new ProfileAssociation()
+      .withDeletedRelations(List.of(new ProfileAssociationRecord()
         .withMasterProfileType(ProfileType.ACTION_PROFILE)
         .withMasterProfileId(actionProfileDto1.getId())
         .withDetailProfileType(ProfileType.MAPPING_PROFILE)
@@ -349,7 +350,7 @@ class ActionProfileRestTest extends AbstractRestTest {
     //linking actionProfile1 - mappingProfile
     putRequest(ACTION_PROFILES_PATH + "/" + actionProfileDto1.getProfile().getId(), actionProfileDto1
       .withDeletedRelations(List.of())
-      .withAddedRelations(List.of(new ProfileAssociation()
+      .withAddedRelations(List.of(new ProfileAssociationRecord()
         .withMasterProfileType(ProfileType.ACTION_PROFILE)
         .withMasterProfileId(actionProfileDto1.getId())
         .withDetailProfileType(ProfileType.MAPPING_PROFILE)
@@ -373,7 +374,7 @@ class ActionProfileRestTest extends AbstractRestTest {
         .withName("Test Mapping Profile with relations")
         .withExistingRecordType(EntityType.INSTANCE)
         .withIncomingRecordType(EntityType.INSTANCE))
-      .withAddedRelations(List.of(new ProfileAssociation()
+      .withAddedRelations(List.of(new ProfileAssociationRecord()
         .withMasterProfileType(ProfileType.ACTION_PROFILE)
         .withMasterProfileId(actionProfileDto.getId())
         .withDetailProfileType(ProfileType.MAPPING_PROFILE))));
@@ -382,7 +383,7 @@ class ActionProfileRestTest extends AbstractRestTest {
     String mappingProfileId = mappingProfileDto.getId();
 
     putRequest(ACTION_PROFILES_PATH + "/" + actionProfileDto.getProfile().getId(), actionProfileDto
-      .withDeletedRelations(List.of(new ProfileAssociation()
+      .withDeletedRelations(List.of(new ProfileAssociationRecord()
         .withMasterProfileType(ProfileType.ACTION_PROFILE)
         .withMasterProfileId(actionProfileId)
         .withDetailProfileType(ProfileType.MAPPING_PROFILE)
@@ -393,7 +394,7 @@ class ActionProfileRestTest extends AbstractRestTest {
 
     putRequest(ACTION_PROFILES_PATH + "/" + actionProfileDto.getProfile().getId(), actionProfileDto
       .withDeletedRelations(List.of())
-      .withAddedRelations(List.of(new ProfileAssociation()
+      .withAddedRelations(List.of(new ProfileAssociationRecord()
         .withMasterProfileType(ProfileType.ACTION_PROFILE)
         .withMasterProfileId(actionProfileId)
         .withDetailProfileType(ProfileType.MAPPING_PROFILE)
@@ -555,11 +556,10 @@ class ActionProfileRestTest extends AbstractRestTest {
         .withName("Test Action Profile")
         .withAction(CREATE)
         .withFolioRecord(MARC_BIBLIOGRAPHIC))
-      .withAddedRelations(List.of(
-        new ProfileAssociation()
-          .withDetailProfileType(ProfileType.MAPPING_PROFILE)
-          .withDetailProfileId(mappingProfileUpdateDto.getId())
-          .withMasterProfileType(ProfileType.ACTION_PROFILE))))
+      .withAddedRelations(List.of(new ProfileAssociationRecord()
+        .withDetailProfileType(ProfileType.MAPPING_PROFILE)
+        .withDetailProfileId(mappingProfileUpdateDto.getId())
+        .withMasterProfileType(ProfileType.ACTION_PROFILE))))
       .statusCode(HttpStatus.SC_UNPROCESSABLE_ENTITY)
       .body("errors", hasItem(
         hasEntry(is("message"),
@@ -575,7 +575,8 @@ class ActionProfileRestTest extends AbstractRestTest {
       .withProfile(new MappingProfile()
         .withName("Test Mapping Profile")
         .withTags(new Tags().withTagList(Arrays.asList("lorem", "ipsum", "dolor")))
-        .withMappingDetails(new MappingDetail().withMarcMappingOption(MappingDetail.MarcMappingOption.UPDATE))
+        .withMappingDetails(new MappingDetail().withMarcMappingOption(MappingDetail.MarcMappingOption.UPDATE)
+          .withName("marcBibliographic").withRecordType(EntityType.MARC_BIBLIOGRAPHIC))
         .withExistingRecordType(EntityType.MARC_BIBLIOGRAPHIC)
         .withIncomingRecordType(EntityType.MARC_BIBLIOGRAPHIC)));
 
@@ -584,11 +585,10 @@ class ActionProfileRestTest extends AbstractRestTest {
         .withName("Test Action Profile")
         .withAction(MODIFY)
         .withFolioRecord(MARC_BIBLIOGRAPHIC))
-      .withAddedRelations(List.of(
-        new ProfileAssociation()
-          .withDetailProfileType(ProfileType.MAPPING_PROFILE)
-          .withDetailProfileId(mappingProfileUpdateDto.getId())
-          .withMasterProfileType(ProfileType.ACTION_PROFILE))))
+      .withAddedRelations(List.of(new ProfileAssociationRecord()
+        .withDetailProfileType(ProfileType.MAPPING_PROFILE)
+        .withDetailProfileId(mappingProfileUpdateDto.getId())
+        .withMasterProfileType(ProfileType.ACTION_PROFILE))))
       .statusCode(HttpStatus.SC_UNPROCESSABLE_ENTITY)
       .body("errors", hasItem(
         hasEntry(is("message"),
@@ -621,11 +621,10 @@ class ActionProfileRestTest extends AbstractRestTest {
         .withName("Test Action Profile")
         .withAction(UPDATE)
         .withFolioRecord(MARC_BIBLIOGRAPHIC))
-      .withAddedRelations(List.of(
-        new ProfileAssociation()
-          .withDetailProfileType(ProfileType.MAPPING_PROFILE)
-          .withDetailProfileId(mappingProfileUpdateDto.getProfile().getId())
-          .withMasterProfileType(ProfileType.ACTION_PROFILE))));
+      .withAddedRelations(List.of(new ProfileAssociationRecord()
+        .withDetailProfileType(ProfileType.MAPPING_PROFILE)
+        .withDetailProfileId(mappingProfileUpdateDto.getProfile().getId())
+        .withMasterProfileType(ProfileType.ACTION_PROFILE))));
 
     putRequest(ACTION_PROFILES_PATH + "/" + actionProfileUpdateDto.getProfile().getId(),
       new ActionProfileUpdateDto()
@@ -633,16 +632,14 @@ class ActionProfileRestTest extends AbstractRestTest {
           .withName("Test Action Profile")
           .withAction(UPDATE)
           .withFolioRecord(MARC_BIBLIOGRAPHIC))
-        .withAddedRelations(List.of(
-          new ProfileAssociation()
-            .withDetailProfileType(ProfileType.MAPPING_PROFILE)
-            .withDetailProfileId(mappingProfileUpdateDto1.getProfile().getId())
-            .withMasterProfileType(ProfileType.ACTION_PROFILE)))
-        .withDeletedRelations(List.of(
-          new ProfileAssociation()
-            .withDetailProfileType(ProfileType.MAPPING_PROFILE)
-            .withDetailProfileId(mappingProfileUpdateDto.getProfile().getId())
-            .withMasterProfileType(ProfileType.ACTION_PROFILE))))
+        .withAddedRelations(List.of(new ProfileAssociationRecord()
+          .withDetailProfileType(ProfileType.MAPPING_PROFILE)
+          .withDetailProfileId(mappingProfileUpdateDto1.getProfile().getId())
+          .withMasterProfileType(ProfileType.ACTION_PROFILE)))
+        .withDeletedRelations(List.of(new ProfileAssociationRecord()
+          .withDetailProfileType(ProfileType.MAPPING_PROFILE)
+          .withDetailProfileId(mappingProfileUpdateDto.getProfile().getId())
+          .withMasterProfileType(ProfileType.ACTION_PROFILE))))
       .statusCode(HttpStatus.SC_UNPROCESSABLE_ENTITY)
       .body("errors", hasItem(
         hasEntry(is("message"),
@@ -674,7 +671,8 @@ class ActionProfileRestTest extends AbstractRestTest {
       .withProfile(new MappingProfile()
         .withName("Test Mapping Profile")
         .withTags(new Tags().withTagList(Arrays.asList("lorem", "ipsum", "dolor")))
-        .withMappingDetails(new MappingDetail().withMarcMappingOption(MappingDetail.MarcMappingOption.UPDATE))
+        .withMappingDetails(new MappingDetail().withMarcMappingOption(MappingDetail.MarcMappingOption.UPDATE)
+          .withName("marcBibliographic").withRecordType(EntityType.MARC_BIBLIOGRAPHIC))
         .withExistingRecordType(EntityType.MARC_BIBLIOGRAPHIC)
         .withIncomingRecordType(EntityType.MARC_BIBLIOGRAPHIC)));
 
@@ -690,11 +688,10 @@ class ActionProfileRestTest extends AbstractRestTest {
           .withName("Test Action Profile")
           .withAction(MODIFY)
           .withFolioRecord(MARC_BIBLIOGRAPHIC))
-        .withAddedRelations(List.of(
-          new ProfileAssociation()
-            .withDetailProfileType(ProfileType.MAPPING_PROFILE)
-            .withDetailProfileId(mappingProfileUpdateDto.getProfile().getId())
-            .withMasterProfileType(ProfileType.ACTION_PROFILE))))
+        .withAddedRelations(List.of(new ProfileAssociationRecord()
+          .withDetailProfileType(ProfileType.MAPPING_PROFILE)
+          .withDetailProfileId(mappingProfileUpdateDto.getProfile().getId())
+          .withMasterProfileType(ProfileType.ACTION_PROFILE))))
       .statusCode(HttpStatus.SC_UNPROCESSABLE_ENTITY)
       .body("errors", hasItem(
         hasEntry(is("message"),

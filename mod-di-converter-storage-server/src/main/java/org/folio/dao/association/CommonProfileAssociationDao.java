@@ -291,7 +291,7 @@ public class CommonProfileAssociationDao implements ProfileAssociationDao {
 
   private String safeGetString(Row row, String columnName) {
     Object value = row.getValue(columnName);
-    return value != null ? value.toString() : "";
+    return value != null ? value.toString() : null;
   }
 
   private ProfileType safeGetProfileType(Row row, String columnName) {

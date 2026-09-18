@@ -35,7 +35,7 @@ import org.folio.rest.jaxrs.model.MappingProfile;
 import org.folio.rest.jaxrs.model.MappingProfileUpdateDto;
 import org.folio.rest.jaxrs.model.MatchProfile;
 import org.folio.rest.jaxrs.model.MatchProfileUpdateDto;
-import org.folio.rest.jaxrs.model.ProfileAssociation;
+import org.folio.rest.jaxrs.model.ProfileAssociationRecord;
 import org.folio.rest.jaxrs.model.ProfileSnapshotWrapper;
 import org.folio.rest.jaxrs.model.ProfileType;
 import org.folio.support.AbstractRestTest;
@@ -60,7 +60,7 @@ class JobProfileSnapshotRestTest extends AbstractRestTest {
     actionProfile = postActionProfile(new ActionProfileUpdateDto()
       .withProfile(new ActionProfile().withName("testActionProfile1").withDescription("test-description")
         .withAction(UPDATE).withFolioRecord(MARC_BIBLIOGRAPHIC))
-      .withAddedRelations(Collections.singletonList(new ProfileAssociation()
+      .withAddedRelations(Collections.singletonList(new ProfileAssociationRecord()
         .withMasterProfileId(null)
         .withDetailProfileId(mappingProfile.getId())
         .withMasterProfileType(ProfileType.ACTION_PROFILE)
@@ -73,7 +73,7 @@ class JobProfileSnapshotRestTest extends AbstractRestTest {
         .withIncomingRecordType(EntityType.MARC_BIBLIOGRAPHIC)
         .withExistingRecordType(EntityType.MARC_BIBLIOGRAPHIC)
         .withDescription("test-description"))
-      .withAddedRelations(Collections.singletonList(new ProfileAssociation()
+      .withAddedRelations(Collections.singletonList(new ProfileAssociationRecord()
         .withMasterProfileId(null)
         .withDetailProfileId(actionProfile.getId())
         .withMasterProfileType(ProfileType.MATCH_PROFILE)
@@ -85,13 +85,13 @@ class JobProfileSnapshotRestTest extends AbstractRestTest {
 
     jobProfile = postJobProfile(new JobProfileUpdateDto()
       .withProfile(new JobProfile().withName("testJobProfile1").withDataType(MARC).withDescription("test-description"))
-      .withAddedRelations(Lists.newArrayList(new ProfileAssociation()
+      .withAddedRelations(Lists.newArrayList(new ProfileAssociationRecord()
           .withMasterProfileId(null)
           .withDetailProfileId(matchProfile.getId())
           .withMasterProfileType(ProfileType.JOB_PROFILE)
           .withDetailProfileType(ProfileType.MATCH_PROFILE)
           .withOrder(0),
-        new ProfileAssociation()
+        new ProfileAssociationRecord()
           .withMasterProfileId(matchProfile.getId())
           .withDetailProfileId(actionProfile.getId())
           .withMasterProfileType(ProfileType.MATCH_PROFILE)
@@ -227,19 +227,19 @@ class JobProfileSnapshotRestTest extends AbstractRestTest {
         .withDataType(MARC)
       )
       .withAddedRelations(Arrays.asList(
-        new ProfileAssociation()
+        new ProfileAssociationRecord()
           .withDetailProfileId(matchProfile.getId())
           .withMasterProfileType(ProfileType.JOB_PROFILE)
           .withDetailProfileType(ProfileType.MATCH_PROFILE)
           .withOrder(0),
-        new ProfileAssociation()
+        new ProfileAssociationRecord()
           .withMasterProfileId(matchProfile.getId())
           .withDetailProfileId(actionProfile2.getId())
           .withMasterProfileType(ProfileType.MATCH_PROFILE)
           .withDetailProfileType(ProfileType.ACTION_PROFILE)
           .withReactTo(MATCH)
           .withOrder(0),
-        new ProfileAssociation()
+        new ProfileAssociationRecord()
           .withMasterProfileId(actionProfile2.getId())
           .withDetailProfileId(mappingProfile2.getId())
           .withMasterProfileType(ProfileType.ACTION_PROFILE)
