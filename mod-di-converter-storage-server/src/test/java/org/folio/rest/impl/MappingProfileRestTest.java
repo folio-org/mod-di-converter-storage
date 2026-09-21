@@ -45,6 +45,8 @@ import org.folio.rest.jaxrs.model.EntityType;
 import org.folio.rest.jaxrs.model.MappingDetail;
 import org.folio.rest.jaxrs.model.MappingProfile;
 import org.folio.rest.jaxrs.model.MappingProfileUpdateDto;
+import org.folio.rest.jaxrs.model.MarcField;
+import org.folio.rest.jaxrs.model.MarcMappingDetail;
 import org.folio.rest.jaxrs.model.ProfileAssociation;
 import org.folio.rest.jaxrs.model.ProfileAssociationRecord;
 import org.folio.rest.jaxrs.model.ProfileSnapshotWrapper;
@@ -113,6 +115,28 @@ class MappingProfileRestTest extends AbstractRestTest {
     createProfiles();
     postRequest(MAPPING_PROFILES_PATH, new JsonObject().toString())
       .statusCode(SC_UNPROCESSABLE_ENTITY);
+  }
+
+  @DisplayName("should default marcMappingDetails action to ADD on POST when action is missing")
+  @Test
+  void shouldDefaultMarcMappingDetailsAction_whenActionIsMissing() {
+    // arrange
+    MappingProfileUpdateDto profileWithoutMarcMappingDetailAction = new MappingProfileUpdateDto()
+      .withProfile(new MappingProfile()
+        .withName("Test Mapping Profile")
+        .withIncomingRecordType(EntityType.MARC_BIBLIOGRAPHIC)
+        .withExistingRecordType(EntityType.MARC_BIBLIOGRAPHIC)
+        .withMappingDetails(new MappingDetail()
+          .withName("marcBibliographic")
+          .withRecordType(EntityType.MARC_BIBLIOGRAPHIC)
+          .withMarcMappingDetails(List.of(new MarcMappingDetail()
+            .withOrder(0)
+            .withField(new MarcField().withField("245"))))));
+
+    // act + assert
+    postRequest(MAPPING_PROFILES_PATH, profileWithoutMarcMappingDetailAction)
+      .statusCode(SC_CREATED)
+      .body("profile.mappingDetails.marcMappingDetails[0].action", is("ADD"));
   }
 
   @DisplayName("should create profile on POST")
