@@ -23,6 +23,7 @@ import static org.folio.support.ProfileFixtures.MAPPING_PROFILE_UUID;
 import static org.folio.support.ProfileFixtures.MAPPING_PROFILE_WITH_EMPTY_SUBFIELDS_AND_DELETE_EXISTING_ACTION;
 import static org.folio.support.ProfileFixtures.MAPPING_PROFILE_WITH_EMPTY_SUBFIELDS_AND_EMPTY_ACTION;
 import static org.folio.support.ProfileFixtures.MAPPING_PROFILE_WITH_EMPTY_SUBFIELDS_AND_NOT_DELETE_EXISTING_ACTION;
+import static org.folio.support.ProfileFixtures.marcBibliographicMappingDetail;
 import static org.folio.support.TestUtil.ACTION_PROFILES_PATH;
 import static org.folio.support.TestUtil.ASSOCIATED_PROFILES_PATH;
 import static org.folio.support.TestUtil.MAPPING_PROFILES_PATH;
@@ -126,9 +127,7 @@ class MappingProfileRestTest extends AbstractRestTest {
         .withName("Test Mapping Profile")
         .withIncomingRecordType(EntityType.MARC_BIBLIOGRAPHIC)
         .withExistingRecordType(EntityType.MARC_BIBLIOGRAPHIC)
-        .withMappingDetails(new MappingDetail()
-          .withName("marcBibliographic")
-          .withRecordType(EntityType.MARC_BIBLIOGRAPHIC)
+        .withMappingDetails(marcBibliographicMappingDetail()
           .withMarcMappingDetails(List.of(new MarcMappingDetail()
             .withOrder(0)
             .withField(new MarcField().withField("245"))))));
@@ -632,8 +631,8 @@ class MappingProfileRestTest extends AbstractRestTest {
         .withName("Test Action Profile")
         .withExistingRecordType(EntityType.MARC_BIBLIOGRAPHIC)
         .withIncomingRecordType(EntityType.MARC_BIBLIOGRAPHIC)
-        .withMappingDetails(new MappingDetail().withMarcMappingOption(MappingDetail.MarcMappingOption.MODIFY)
-          .withName("marcBibliographic").withRecordType(EntityType.MARC_BIBLIOGRAPHIC)))
+        .withMappingDetails(marcBibliographicMappingDetail()
+          .withMarcMappingOption(MappingDetail.MarcMappingOption.MODIFY)))
       .withAddedRelations(List.of(new ProfileAssociationRecord()
         .withMasterProfileType(ProfileType.ACTION_PROFILE)
         .withMasterProfileId(actionProfileUpdateDto.getProfile().getId())
@@ -719,8 +718,8 @@ class MappingProfileRestTest extends AbstractRestTest {
       .withProfile(new MappingProfile()
         .withName("Test Mapping Profile")
         .withTags(new Tags().withTagList(Arrays.asList("lorem", "ipsum", "dolor")))
-        .withMappingDetails(new MappingDetail().withMarcMappingOption(MappingDetail.MarcMappingOption.UPDATE)
-          .withName("marcBibliographic").withRecordType(EntityType.MARC_BIBLIOGRAPHIC))
+        .withMappingDetails(marcBibliographicMappingDetail()
+          .withMarcMappingOption(MappingDetail.MarcMappingOption.UPDATE))
         .withExistingRecordType(EntityType.MARC_BIBLIOGRAPHIC)
         .withIncomingRecordType(EntityType.MARC_BIBLIOGRAPHIC)));
 
@@ -735,8 +734,8 @@ class MappingProfileRestTest extends AbstractRestTest {
         .withProfile(new MappingProfile()
           .withName("Test Mapping Profile")
           .withTags(new Tags().withTagList(Arrays.asList("lorem", "ipsum", "dolor")))
-          .withMappingDetails(new MappingDetail().withMarcMappingOption(MappingDetail.MarcMappingOption.UPDATE)
-            .withName("marcBibliographic").withRecordType(EntityType.MARC_BIBLIOGRAPHIC))
+          .withMappingDetails(marcBibliographicMappingDetail()
+            .withMarcMappingOption(MappingDetail.MarcMappingOption.UPDATE))
           .withExistingRecordType(EntityType.MARC_BIBLIOGRAPHIC)
           .withIncomingRecordType(EntityType.MARC_BIBLIOGRAPHIC))
         .withAddedRelations(List.of(new ProfileAssociationRecord()

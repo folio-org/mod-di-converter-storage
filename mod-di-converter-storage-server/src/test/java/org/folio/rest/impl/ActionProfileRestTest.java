@@ -17,6 +17,7 @@ import static org.folio.support.ProfileFixtures.ACTION_PROFILE_3;
 import static org.folio.support.ProfileFixtures.ACTION_PROFILE_4;
 import static org.folio.support.ProfileFixtures.ACTION_PROFILE_NOT_EMPTY_CHILD_AND_PARENT;
 import static org.folio.support.ProfileFixtures.ACTION_PROFILE_UUID;
+import static org.folio.support.ProfileFixtures.marcBibliographicMappingDetail;
 import static org.folio.support.TestUtil.ACTION_PROFILES_PATH;
 import static org.folio.support.TestUtil.ASSOCIATED_PROFILES_PATH;
 import static org.folio.support.TestUtil.ENTITY_TYPES_PATH;
@@ -575,8 +576,8 @@ class ActionProfileRestTest extends AbstractRestTest {
       .withProfile(new MappingProfile()
         .withName("Test Mapping Profile")
         .withTags(new Tags().withTagList(Arrays.asList("lorem", "ipsum", "dolor")))
-        .withMappingDetails(new MappingDetail().withMarcMappingOption(MappingDetail.MarcMappingOption.UPDATE)
-          .withName("marcBibliographic").withRecordType(EntityType.MARC_BIBLIOGRAPHIC))
+        .withMappingDetails(marcBibliographicMappingDetail()
+          .withMarcMappingOption(MappingDetail.MarcMappingOption.UPDATE))
         .withExistingRecordType(EntityType.MARC_BIBLIOGRAPHIC)
         .withIncomingRecordType(EntityType.MARC_BIBLIOGRAPHIC)));
 
@@ -671,8 +672,8 @@ class ActionProfileRestTest extends AbstractRestTest {
       .withProfile(new MappingProfile()
         .withName("Test Mapping Profile")
         .withTags(new Tags().withTagList(Arrays.asList("lorem", "ipsum", "dolor")))
-        .withMappingDetails(new MappingDetail().withMarcMappingOption(MappingDetail.MarcMappingOption.UPDATE)
-          .withName("marcBibliographic").withRecordType(EntityType.MARC_BIBLIOGRAPHIC))
+        .withMappingDetails(marcBibliographicMappingDetail()
+          .withMarcMappingOption(MappingDetail.MarcMappingOption.UPDATE))
         .withExistingRecordType(EntityType.MARC_BIBLIOGRAPHIC)
         .withIncomingRecordType(EntityType.MARC_BIBLIOGRAPHIC)));
 

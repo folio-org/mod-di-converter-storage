@@ -189,6 +189,13 @@ public class ProfileImportServiceImpl implements ProfileImportService {
     return association;
   }
 
+  /**
+   * Calls {@link ProfileService#saveProfile}/{@link ProfileService#updateProfile} directly, bypassing the
+   * HTTP endpoint that would otherwise enforce each profile type's JSON-schema required fields via the
+   * {@code profile: $ref} cascade. {@code profileUpdateDto} is built here from an untyped snapshot's
+   * {@code content}, so it can legally be missing fields the schema marks required; each service's
+   * {@code getMissingRequiredProfileFieldErrors} is the only thing that still catches that for this path.
+   */
   private <T, S, D> Future<T> saveProfile(OkapiConnectionParams okapiParams, D profileUpdateDto,
                                           ProfileService<T, S, D> profileService, String profileId,
                                           ProfileType profileType) {

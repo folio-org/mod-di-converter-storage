@@ -82,6 +82,7 @@ public abstract class AbstractProfileService<T, S, D> implements ProfileService<
   protected final ProfileAssociationService profileAssociationService;
   protected final CommonProfileAssociationService associationService;
   protected final ProfileAssociationConverter profileAssociationConverter;
+  private final ProfileRelationsAccessor<D> relationsAccessor;
   private final EntityTypeCollection entityTypeCollection;
   private final ProfileDao<T, S> profileDao;
   private final ProfileWrapperDao profileWrapperDao;
@@ -90,18 +91,43 @@ public abstract class AbstractProfileService<T, S, D> implements ProfileService<
                                    CommonProfileAssociationService associationService,
                                    ProfileAssociationConverter profileAssociationConverter,
                                    ProfileDao<T, S> profileDao,
-                                   ProfileWrapperDao profileWrapperDao) {
+                                   ProfileWrapperDao profileWrapperDao,
+                                   ProfileRelationsAccessor<D> relationsAccessor) {
     this.profileAssociationService = profileAssociationService;
     this.associationService = associationService;
     this.profileAssociationConverter = profileAssociationConverter;
     this.profileDao = profileDao;
     this.profileWrapperDao = profileWrapperDao;
+    this.relationsAccessor = relationsAccessor;
     List<String> entityTypeList = Arrays.stream(EntityTypes.values())
       .map(EntityTypes::getName)
       .toList();
     entityTypeCollection = new EntityTypeCollection()
       .withEntityTypes(entityTypeList)
       .withTotalRecords(entityTypeList.size());
+  }
+
+  @Override
+  public List<ProfileAssociation> getAddedRelations(D profileUpdateDto) {
+    return relationsAccessor.getAddedRelations(profileUpdateDto).stream()
+      .map(profileAssociationConverter::convert)
+      .toList();
+  }
+
+  @Override
+  public D withDeletedRelations(D profileUpdateDto, List<ProfileAssociation> profileAssociations) {
+    var deletedRelations = profileAssociations.stream()
+      .map((ProfileAssociation a) -> profileAssociationConverter.reverse().convert(a))
+      .toList();
+    return relationsAccessor.withDeletedRelations(profileUpdateDto, deletedRelations);
+  }
+
+  @Override
+  public D withAddedRelations(D profileUpdateDto, List<ProfileAssociation> profileAssociations) {
+    var addedRelations = profileAssociations.stream()
+      .map((ProfileAssociation a) -> profileAssociationConverter.reverse().convert(a))
+      .toList();
+    return relationsAccessor.withAddedRelations(profileUpdateDto, addedRelations);
   }
 
   @Override
@@ -257,9 +283,15 @@ public abstract class AbstractProfileService<T, S, D> implements ProfileService<
 
   protected abstract List<T> getProfilesList(S profilesCollection);
 
-  protected abstract List<ProfileAssociation> getProfileAssociationToAdd(D dto);
+  protected List<ProfileAssociation> getProfileAssociationToAdd(D dto) {
+    return getAddedRelations(dto);
+  }
 
-  protected abstract List<ProfileAssociation> getProfileAssociationToDelete(D dto);
+  protected List<ProfileAssociation> getProfileAssociationToDelete(D dto) {
+    return relationsAccessor.getDeletedRelations(dto).stream()
+      .map(profileAssociationConverter::convert)
+      .toList();
+  }
 
   protected abstract T getProfile(D dto);
 
@@ -301,6 +333,12 @@ public abstract class AbstractProfileService<T, S, D> implements ProfileService<
     if (mappingProfile.getExistingRecordType() == null) {
       LOGGER.warn("validateAssociations:: MappingProfile with ID:{} is missing existingRecordType",
         mappingProfile.getId());
+      errors.add(new Error().withMessage(errMsg));
+      return;
+    }
+    if (actionProfile.getFolioRecord() == null) {
+      LOGGER.warn("validateAssociations:: ActionProfile with ID:{} is missing folioRecord",
+        actionProfile.getId());
       errors.add(new Error().withMessage(errMsg));
       return;
     }

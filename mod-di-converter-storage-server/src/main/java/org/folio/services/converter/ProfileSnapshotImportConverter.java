@@ -1,5 +1,7 @@
 package org.folio.services.converter;
 
+import java.util.List;
+import java.util.Optional;
 import org.folio.rest.jaxrs.model.ProfileSnapshotImport;
 import org.folio.rest.jaxrs.model.ProfileSnapshotWrapper;
 import org.springframework.stereotype.Component;
@@ -19,7 +21,7 @@ public class ProfileSnapshotImportConverter {
       .withReactTo(source.getReactTo())
       .withContent(source.getContent())
       .withOrder(source.getOrder())
-      .withChildSnapshotWrappers(source.getChildSnapshotWrappers().stream()
+      .withChildSnapshotWrappers(Optional.ofNullable(source.getChildSnapshotWrappers()).orElse(List.of()).stream()
         .map(this::convert)
         .toList());
   }

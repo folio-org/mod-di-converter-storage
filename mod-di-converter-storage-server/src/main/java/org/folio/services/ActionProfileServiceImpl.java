@@ -29,7 +29,6 @@ import org.folio.rest.jaxrs.model.Error;
 import org.folio.rest.jaxrs.model.Errors;
 import org.folio.rest.jaxrs.model.MappingProfile;
 import org.folio.rest.jaxrs.model.OperationType;
-import org.folio.rest.jaxrs.model.ProfileAssociation;
 import org.folio.rest.jaxrs.model.ProfileSnapshotWrapper;
 import org.folio.rest.jaxrs.model.ProfileType;
 import org.folio.services.association.CommonProfileAssociationService;
@@ -68,7 +67,10 @@ public class ActionProfileServiceImpl
                                   ProfileDao<ActionProfile, ActionProfileCollection> profileDao,
                                   ProfileWrapperDao profileWrapperDao,
                                   ProfileServiceFactory profileServiceFactory) {
-    super(profileAssociationService, associationService, profileAssociationConverter, profileDao, profileWrapperDao);
+    super(profileAssociationService, associationService, profileAssociationConverter, profileDao, profileWrapperDao,
+      ProfileRelationsAccessor.of(ActionProfileUpdateDto::getAddedRelations,
+        ActionProfileUpdateDto::getDeletedRelations, ActionProfileUpdateDto::withAddedRelations,
+        ActionProfileUpdateDto::withDeletedRelations));
     this.profileServiceFactory = profileServiceFactory;
   }
 
@@ -133,16 +135,6 @@ public class ActionProfileServiceImpl
   }
 
   @Override
-  protected List<ProfileAssociation> getProfileAssociationToAdd(ActionProfileUpdateDto dto) {
-    return dto.getAddedRelations().stream().map(profileAssociationConverter::convert).toList();
-  }
-
-  @Override
-  protected List<ProfileAssociation> getProfileAssociationToDelete(ActionProfileUpdateDto dto) {
-    return dto.getDeletedRelations().stream().map(profileAssociationConverter::convert).toList();
-  }
-
-  @Override
   protected ActionProfile getProfile(ActionProfileUpdateDto dto) {
     return dto.getProfile();
   }
@@ -194,31 +186,6 @@ public class ActionProfileServiceImpl
   @Override
   public String getProfileName(ActionProfile profile) {
     return profile.getName();
-  }
-
-  @Override
-  public List<ProfileAssociation> getAddedRelations(ActionProfileUpdateDto profileUpdateDto) {
-    return profileUpdateDto.getAddedRelations().stream()
-      .map(profileAssociationConverter::convert)
-      .toList();
-  }
-
-  @Override
-  public ActionProfileUpdateDto withDeletedRelations(ActionProfileUpdateDto profileUpdateDto,
-                                                     List<ProfileAssociation> profileAssociations) {
-    var deletedRelations = profileAssociations.stream()
-      .map((ProfileAssociation a) -> profileAssociationConverter.reverse().convert(a))
-      .toList();
-    return profileUpdateDto.withDeletedRelations(deletedRelations);
-  }
-
-  @Override
-  public ActionProfileUpdateDto withAddedRelations(ActionProfileUpdateDto profileUpdateDto,
-                                                    List<ProfileAssociation> profileAssociations) {
-    var addedRelations = profileAssociations.stream()
-      .map((ProfileAssociation a) -> profileAssociationConverter.reverse().convert(a))
-      .toList();
-    return profileUpdateDto.withAddedRelations(addedRelations);
   }
 
   private void setDefaults(ActionProfile profile) {

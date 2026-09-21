@@ -11,6 +11,7 @@ import static org.folio.rest.jaxrs.model.ProfileType.MAPPING_PROFILE;
 import static org.folio.rest.jaxrs.model.ProfileType.MATCH_PROFILE;
 import static org.folio.rest.jaxrs.model.ProfileType.valueOf;
 import static org.folio.rest.jaxrs.model.ProfileType.values;
+import static org.folio.support.ProfileFixtures.instanceMappingDetail;
 import static org.folio.support.TestUtil.ACTION_PROFILES_PATH;
 import static org.folio.support.TestUtil.ASSOCIATED_PROFILES_PATH;
 import static org.folio.support.TestUtil.DETAILS_BY_MASTER_PATH;
@@ -36,7 +37,6 @@ import org.folio.rest.jaxrs.model.ActionProfileUpdateDto;
 import org.folio.rest.jaxrs.model.EntityType;
 import org.folio.rest.jaxrs.model.JobProfile;
 import org.folio.rest.jaxrs.model.JobProfileUpdateDto;
-import org.folio.rest.jaxrs.model.MappingDetail;
 import org.folio.rest.jaxrs.model.MappingProfile;
 import org.folio.rest.jaxrs.model.MappingProfileUpdateDto;
 import org.folio.rest.jaxrs.model.MatchProfile;
@@ -997,7 +997,7 @@ class CommonProfileAssociationRestTest extends AbstractRestTest {
         .withName("Existing MappingProfile")
         .withExistingRecordType(EntityType.INSTANCE)
         .withIncomingRecordType(EntityType.MARC_BIBLIOGRAPHIC)
-        .withMappingDetails(new MappingDetail().withName("instance").withRecordType(EntityType.INSTANCE))
+        .withMappingDetails(instanceMappingDetail())
         .withHidden(false)
         .withDescription("test-description")));
 

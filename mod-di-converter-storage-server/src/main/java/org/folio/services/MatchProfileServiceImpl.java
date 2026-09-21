@@ -13,7 +13,6 @@ import org.folio.rest.jaxrs.model.Error;
 import org.folio.rest.jaxrs.model.MatchProfile;
 import org.folio.rest.jaxrs.model.MatchProfileCollection;
 import org.folio.rest.jaxrs.model.MatchProfileUpdateDto;
-import org.folio.rest.jaxrs.model.ProfileAssociation;
 import org.folio.rest.jaxrs.model.ProfileSnapshotWrapper;
 import org.folio.rest.jaxrs.model.ProfileType;
 import org.folio.services.association.CommonProfileAssociationService;
@@ -36,37 +35,14 @@ public class MatchProfileServiceImpl
                                  ProfileAssociationConverter associationConverter,
                                  ProfileDao<MatchProfile, MatchProfileCollection> profileDao,
                                  ProfileWrapperDao profileWrapperDao) {
-    super(profileAssociationService, associationService, associationConverter, profileDao, profileWrapperDao);
+    super(profileAssociationService, associationService, associationConverter, profileDao, profileWrapperDao,
+      ProfileRelationsAccessor.of(MatchProfileUpdateDto::getAddedRelations, MatchProfileUpdateDto::getDeletedRelations,
+        MatchProfileUpdateDto::withAddedRelations, MatchProfileUpdateDto::withDeletedRelations));
   }
 
   @Override
   public String getProfileName(MatchProfile profile) {
     return profile.getName();
-  }
-
-  @Override
-  public List<ProfileAssociation> getAddedRelations(MatchProfileUpdateDto profileUpdateDto) {
-    return profileUpdateDto.getAddedRelations().stream()
-      .map(profileAssociationConverter::convert)
-      .toList();
-  }
-
-  @Override
-  public MatchProfileUpdateDto withDeletedRelations(MatchProfileUpdateDto profileUpdateDto,
-                                                    List<ProfileAssociation> profileAssociations) {
-    var deletedRelations = profileAssociations.stream()
-      .map((ProfileAssociation a) -> profileAssociationConverter.reverse().convert(a))
-      .toList();
-    return profileUpdateDto.withDeletedRelations(deletedRelations);
-  }
-
-  @Override
-  public MatchProfileUpdateDto withAddedRelations(MatchProfileUpdateDto profileUpdateDto,
-                                                  List<ProfileAssociation> profileAssociations) {
-    var addedRelations = profileAssociations.stream()
-      .map((ProfileAssociation a) -> profileAssociationConverter.reverse().convert(a))
-      .toList();
-    return profileUpdateDto.withAddedRelations(addedRelations);
   }
 
   @Override
@@ -115,20 +91,6 @@ public class MatchProfileServiceImpl
   @Override
   protected List<MatchProfile> getProfilesList(MatchProfileCollection profilesCollection) {
     return profilesCollection.getMatchProfiles();
-  }
-
-  @Override
-  protected List<ProfileAssociation> getProfileAssociationToAdd(MatchProfileUpdateDto dto) {
-    return dto.getAddedRelations().stream()
-      .map(profileAssociationConverter::convert)
-      .toList();
-  }
-
-  @Override
-  protected List<ProfileAssociation> getProfileAssociationToDelete(MatchProfileUpdateDto dto) {
-    return dto.getDeletedRelations().stream()
-      .map(profileAssociationConverter::convert)
-      .toList();
   }
 
   @Override
