@@ -23,6 +23,7 @@ import static org.folio.support.ProfileFixtures.MAPPING_PROFILE_UUID;
 import static org.folio.support.ProfileFixtures.MAPPING_PROFILE_WITH_EMPTY_SUBFIELDS_AND_DELETE_EXISTING_ACTION;
 import static org.folio.support.ProfileFixtures.MAPPING_PROFILE_WITH_EMPTY_SUBFIELDS_AND_EMPTY_ACTION;
 import static org.folio.support.ProfileFixtures.MAPPING_PROFILE_WITH_EMPTY_SUBFIELDS_AND_NOT_DELETE_EXISTING_ACTION;
+import static org.folio.support.ProfileFixtures.marcBibliographicMappingDetail;
 import static org.folio.support.TestUtil.ACTION_PROFILES_PATH;
 import static org.folio.support.TestUtil.ASSOCIATED_PROFILES_PATH;
 import static org.folio.support.TestUtil.MAPPING_PROFILES_PATH;
@@ -45,7 +46,10 @@ import org.folio.rest.jaxrs.model.EntityType;
 import org.folio.rest.jaxrs.model.MappingDetail;
 import org.folio.rest.jaxrs.model.MappingProfile;
 import org.folio.rest.jaxrs.model.MappingProfileUpdateDto;
+import org.folio.rest.jaxrs.model.MarcField;
+import org.folio.rest.jaxrs.model.MarcMappingDetail;
 import org.folio.rest.jaxrs.model.ProfileAssociation;
+import org.folio.rest.jaxrs.model.ProfileAssociationRecord;
 import org.folio.rest.jaxrs.model.ProfileSnapshotWrapper;
 import org.folio.rest.jaxrs.model.ProfileType;
 import org.folio.rest.jaxrs.model.ReactToType;
@@ -112,6 +116,26 @@ class MappingProfileRestTest extends AbstractRestTest {
     createProfiles();
     postRequest(MAPPING_PROFILES_PATH, new JsonObject().toString())
       .statusCode(SC_UNPROCESSABLE_ENTITY);
+  }
+
+  @DisplayName("should default marcMappingDetails action to ADD on POST when action is missing")
+  @Test
+  void shouldDefaultMarcMappingDetailsAction_whenActionIsMissing() {
+    // arrange
+    MappingProfileUpdateDto profileWithoutMarcMappingDetailAction = new MappingProfileUpdateDto()
+      .withProfile(new MappingProfile()
+        .withName("Test Mapping Profile")
+        .withIncomingRecordType(EntityType.MARC_BIBLIOGRAPHIC)
+        .withExistingRecordType(EntityType.MARC_BIBLIOGRAPHIC)
+        .withMappingDetails(marcBibliographicMappingDetail()
+          .withMarcMappingDetails(List.of(new MarcMappingDetail()
+            .withOrder(0)
+            .withField(new MarcField().withField("245"))))));
+
+    // act + assert
+    postRequest(MAPPING_PROFILES_PATH, profileWithoutMarcMappingDetailAction)
+      .statusCode(SC_CREATED)
+      .body("profile.mappingDetails.marcMappingDetails[0].action", is("ADD"));
   }
 
   @DisplayName("should create profile on POST")
@@ -362,7 +386,7 @@ class MappingProfileRestTest extends AbstractRestTest {
         .withName("testActionProfile")
         .withAction(CREATE)
         .withFolioRecord(INSTANCE))
-      .withAddedRelations(List.of(new ProfileAssociation()
+      .withAddedRelations(List.of(new ProfileAssociationRecord()
         .withMasterProfileType(ProfileType.ACTION_PROFILE)
         .withDetailProfileType(ProfileType.MAPPING_PROFILE)
         .withDetailProfileId(mappingProfile1.getProfile().getId()))))
@@ -381,12 +405,11 @@ class MappingProfileRestTest extends AbstractRestTest {
         .withIncomingRecordType(EntityType.MARC_BIBLIOGRAPHIC)
         .withExistingRecordType(EntityType.INSTANCE))
       .withAddedRelations(
-        List.of(
-          new ProfileAssociation()
-            .withMasterProfileType(ProfileType.ACTION_PROFILE)
-            .withDetailProfileType(ProfileType.MAPPING_PROFILE)
-            .withMasterWrapperId(actionProfile.getAddedRelations().getFirst().getMasterWrapperId())
-            .withMasterProfileId(actionProfile.getProfile().getId())
+        List.of(new ProfileAssociationRecord()
+          .withMasterProfileType(ProfileType.ACTION_PROFILE)
+          .withDetailProfileType(ProfileType.MAPPING_PROFILE)
+          .withMasterWrapperId(actionProfile.getAddedRelations().getFirst().getMasterWrapperId())
+          .withMasterProfileId(actionProfile.getProfile().getId())
         )
       ))
       .statusCode(SC_CREATED)
@@ -418,7 +441,7 @@ class MappingProfileRestTest extends AbstractRestTest {
         .withName("testActionProfile")
         .withAction(CREATE)
         .withFolioRecord(INSTANCE))
-      .withAddedRelations(List.of(new ProfileAssociation()
+      .withAddedRelations(List.of(new ProfileAssociationRecord()
         .withMasterProfileType(ProfileType.ACTION_PROFILE)
         .withDetailProfileType(ProfileType.MAPPING_PROFILE)
         .withDetailProfileId(mappingProfile1.getProfile().getId()))))
@@ -441,7 +464,7 @@ class MappingProfileRestTest extends AbstractRestTest {
         .withProfile(new MappingProfile().withName("mapping profile 2")
           .withIncomingRecordType(EntityType.MARC_BIBLIOGRAPHIC)
           .withExistingRecordType(EntityType.INSTANCE))
-        .withAddedRelations(List.of(new ProfileAssociation()
+        .withAddedRelations(List.of(new ProfileAssociationRecord()
           .withMasterProfileType(ProfileType.ACTION_PROFILE)
           .withDetailProfileType(ProfileType.MAPPING_PROFILE)
           .withMasterProfileId(actionProfile.getProfile().getId())
@@ -473,7 +496,7 @@ class MappingProfileRestTest extends AbstractRestTest {
         .withName("Test Mapping Profile with relations")
         .withExistingRecordType(EntityType.INSTANCE)
         .withIncomingRecordType(EntityType.INSTANCE))
-      .withAddedRelations(List.of(new ProfileAssociation()
+      .withAddedRelations(List.of(new ProfileAssociationRecord()
         .withMasterProfileType(ProfileType.ACTION_PROFILE)
         .withMasterProfileId(actionProfileDto.getId())
         .withReactTo(ReactToType.MATCH)
@@ -487,7 +510,7 @@ class MappingProfileRestTest extends AbstractRestTest {
           .withName("Test Mapping Profile with relations")
           .withExistingRecordType(EntityType.INSTANCE)
           .withIncomingRecordType(EntityType.INSTANCE))
-        .withDeletedRelations(List.of(new ProfileAssociation()
+        .withDeletedRelations(List.of(new ProfileAssociationRecord()
           .withMasterProfileType(ProfileType.ACTION_PROFILE)
           .withMasterProfileId(actionProfileDto.getProfile().getId())
           .withDetailProfileType(ProfileType.MAPPING_PROFILE)
@@ -523,7 +546,7 @@ class MappingProfileRestTest extends AbstractRestTest {
         .withName("Test Mapping Profile with relations")
         .withExistingRecordType(EntityType.INSTANCE)
         .withIncomingRecordType(EntityType.INSTANCE))
-      .withAddedRelations(List.of(new ProfileAssociation()
+      .withAddedRelations(List.of(new ProfileAssociationRecord()
         .withMasterProfileType(ProfileType.ACTION_PROFILE)
         .withMasterProfileId(actionProfileDto.getId())
         .withDetailProfileType(ProfileType.MAPPING_PROFILE)
@@ -540,7 +563,7 @@ class MappingProfileRestTest extends AbstractRestTest {
           .withName("Test Mapping Profile with relations")
           .withExistingRecordType(EntityType.INSTANCE)
           .withIncomingRecordType(EntityType.INSTANCE))
-        .withDeletedRelations(List.of(new ProfileAssociation()
+        .withDeletedRelations(List.of(new ProfileAssociationRecord()
           .withMasterProfileType(ProfileType.ACTION_PROFILE)
           .withMasterProfileId(actionProfileId)
           .withDetailProfileType(ProfileType.MAPPING_PROFILE)
@@ -558,7 +581,7 @@ class MappingProfileRestTest extends AbstractRestTest {
           .withName("Test Mapping Profile with relations")
           .withExistingRecordType(EntityType.INSTANCE)
           .withIncomingRecordType(EntityType.INSTANCE))
-        .withAddedRelations(List.of(new ProfileAssociation()
+        .withAddedRelations(List.of(new ProfileAssociationRecord()
           .withMasterProfileType(ProfileType.ACTION_PROFILE)
           .withMasterProfileId(actionProfileId)
           .withDetailProfileType(ProfileType.MAPPING_PROFILE)
@@ -582,11 +605,10 @@ class MappingProfileRestTest extends AbstractRestTest {
         .withName("Test Action Profile")
         .withExistingRecordType(EntityType.INSTANCE)
         .withIncomingRecordType(EntityType.MARC_BIBLIOGRAPHIC))
-      .withAddedRelations(List.of(
-        new ProfileAssociation()
-          .withMasterProfileType(ProfileType.ACTION_PROFILE)
-          .withMasterProfileId(actionProfileUpdateDto.getProfile().getId())
-          .withDetailProfileType(ProfileType.MAPPING_PROFILE))))
+      .withAddedRelations(List.of(new ProfileAssociationRecord()
+        .withMasterProfileType(ProfileType.ACTION_PROFILE)
+        .withMasterProfileId(actionProfileUpdateDto.getProfile().getId())
+        .withDetailProfileType(ProfileType.MAPPING_PROFILE))))
       .statusCode(SC_UNPROCESSABLE_ENTITY)
       .body("errors", hasItem(
         hasEntry(is("message"),
@@ -609,12 +631,12 @@ class MappingProfileRestTest extends AbstractRestTest {
         .withName("Test Action Profile")
         .withExistingRecordType(EntityType.MARC_BIBLIOGRAPHIC)
         .withIncomingRecordType(EntityType.MARC_BIBLIOGRAPHIC)
-        .withMappingDetails(new MappingDetail().withMarcMappingOption(MappingDetail.MarcMappingOption.MODIFY)))
-      .withAddedRelations(List.of(
-        new ProfileAssociation()
-          .withMasterProfileType(ProfileType.ACTION_PROFILE)
-          .withMasterProfileId(actionProfileUpdateDto.getProfile().getId())
-          .withDetailProfileType(ProfileType.MAPPING_PROFILE))))
+        .withMappingDetails(marcBibliographicMappingDetail()
+          .withMarcMappingOption(MappingDetail.MarcMappingOption.MODIFY)))
+      .withAddedRelations(List.of(new ProfileAssociationRecord()
+        .withMasterProfileType(ProfileType.ACTION_PROFILE)
+        .withMasterProfileId(actionProfileUpdateDto.getProfile().getId())
+        .withDetailProfileType(ProfileType.MAPPING_PROFILE))))
       .statusCode(SC_UNPROCESSABLE_ENTITY)
       .body("errors", hasItem(
         hasEntry(is("message"),
@@ -645,7 +667,7 @@ class MappingProfileRestTest extends AbstractRestTest {
         .withName("Test Mapping Profile")
         .withExistingRecordType(EntityType.INSTANCE)
         .withIncomingRecordType(EntityType.INSTANCE))
-      .withAddedRelations(List.of(new ProfileAssociation()
+      .withAddedRelations(List.of(new ProfileAssociationRecord()
         .withMasterProfileType(ProfileType.ACTION_PROFILE)
         .withMasterProfileId(actionProfileUpdateDto.getId())
         .withDetailProfileType(ProfileType.MAPPING_PROFILE))));
@@ -656,12 +678,12 @@ class MappingProfileRestTest extends AbstractRestTest {
           .withName("Test Mapping Profile")
           .withExistingRecordType(EntityType.INSTANCE)
           .withIncomingRecordType(EntityType.INSTANCE))
-        .withAddedRelations(List.of(new ProfileAssociation()
+        .withAddedRelations(List.of(new ProfileAssociationRecord()
           .withMasterProfileType(ProfileType.ACTION_PROFILE)
           .withMasterProfileId(actionProfileUpdateDto1.getProfile().getId())
           .withDetailProfileType(ProfileType.MAPPING_PROFILE))
         )
-        .withDeletedRelations(List.of(new ProfileAssociation()
+        .withDeletedRelations(List.of(new ProfileAssociationRecord()
           .withMasterProfileType(ProfileType.ACTION_PROFILE)
           .withMasterProfileId(actionProfileUpdateDto.getProfile().getId())
           .withDetailProfileType(ProfileType.MAPPING_PROFILE))))
@@ -696,7 +718,8 @@ class MappingProfileRestTest extends AbstractRestTest {
       .withProfile(new MappingProfile()
         .withName("Test Mapping Profile")
         .withTags(new Tags().withTagList(Arrays.asList("lorem", "ipsum", "dolor")))
-        .withMappingDetails(new MappingDetail().withMarcMappingOption(MappingDetail.MarcMappingOption.UPDATE))
+        .withMappingDetails(marcBibliographicMappingDetail()
+          .withMarcMappingOption(MappingDetail.MarcMappingOption.UPDATE))
         .withExistingRecordType(EntityType.MARC_BIBLIOGRAPHIC)
         .withIncomingRecordType(EntityType.MARC_BIBLIOGRAPHIC)));
 
@@ -711,14 +734,14 @@ class MappingProfileRestTest extends AbstractRestTest {
         .withProfile(new MappingProfile()
           .withName("Test Mapping Profile")
           .withTags(new Tags().withTagList(Arrays.asList("lorem", "ipsum", "dolor")))
-          .withMappingDetails(new MappingDetail().withMarcMappingOption(MappingDetail.MarcMappingOption.UPDATE))
+          .withMappingDetails(marcBibliographicMappingDetail()
+            .withMarcMappingOption(MappingDetail.MarcMappingOption.UPDATE))
           .withExistingRecordType(EntityType.MARC_BIBLIOGRAPHIC)
           .withIncomingRecordType(EntityType.MARC_BIBLIOGRAPHIC))
-        .withAddedRelations(List.of(
-          new ProfileAssociation()
-            .withMasterProfileType(ProfileType.ACTION_PROFILE)
-            .withMasterProfileId(actionProfileUpdateDto.getProfile().getId())
-            .withDetailProfileType(ProfileType.MAPPING_PROFILE))))
+        .withAddedRelations(List.of(new ProfileAssociationRecord()
+          .withMasterProfileType(ProfileType.ACTION_PROFILE)
+          .withMasterProfileId(actionProfileUpdateDto.getProfile().getId())
+          .withDetailProfileType(ProfileType.MAPPING_PROFILE))))
       .statusCode(SC_UNPROCESSABLE_ENTITY)
       .body("errors", hasItem(
         hasEntry(is("message"),

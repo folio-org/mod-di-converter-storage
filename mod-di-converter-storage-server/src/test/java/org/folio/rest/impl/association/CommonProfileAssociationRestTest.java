@@ -11,6 +11,7 @@ import static org.folio.rest.jaxrs.model.ProfileType.MAPPING_PROFILE;
 import static org.folio.rest.jaxrs.model.ProfileType.MATCH_PROFILE;
 import static org.folio.rest.jaxrs.model.ProfileType.valueOf;
 import static org.folio.rest.jaxrs.model.ProfileType.values;
+import static org.folio.support.ProfileFixtures.instanceMappingDetail;
 import static org.folio.support.TestUtil.ACTION_PROFILES_PATH;
 import static org.folio.support.TestUtil.ASSOCIATED_PROFILES_PATH;
 import static org.folio.support.TestUtil.DETAILS_BY_MASTER_PATH;
@@ -36,12 +37,12 @@ import org.folio.rest.jaxrs.model.ActionProfileUpdateDto;
 import org.folio.rest.jaxrs.model.EntityType;
 import org.folio.rest.jaxrs.model.JobProfile;
 import org.folio.rest.jaxrs.model.JobProfileUpdateDto;
-import org.folio.rest.jaxrs.model.MappingDetail;
 import org.folio.rest.jaxrs.model.MappingProfile;
 import org.folio.rest.jaxrs.model.MappingProfileUpdateDto;
 import org.folio.rest.jaxrs.model.MatchProfile;
 import org.folio.rest.jaxrs.model.MatchProfileUpdateDto;
 import org.folio.rest.jaxrs.model.ProfileAssociation;
+import org.folio.rest.jaxrs.model.ProfileAssociationRecord;
 import org.folio.rest.jaxrs.model.ProfileType;
 import org.folio.support.AbstractRestTest;
 import org.junit.jupiter.api.DisplayName;
@@ -498,19 +499,19 @@ class CommonProfileAssociationRestTest extends AbstractRestTest {
     var actionProfileId = fixture.actionProfileId();
     var matchProfileId = fixture.firstMatchProfileId();
 
-    var jobToMatchAssociation = new ProfileAssociation()
+    var jobToMatchAssociation = new ProfileAssociationRecord()
       .withMasterProfileId(jobProfileWrapper.getId())
       .withDetailProfileId(matchProfileId)
       .withMasterProfileType(JOB_PROFILE)
       .withDetailProfileType(MATCH_PROFILE);
 
-    var matchToActionAssociation = new ProfileAssociation()
+    var matchToActionAssociation = new ProfileAssociationRecord()
       .withMasterProfileId(matchProfileId)
       .withDetailProfileId(actionProfileId)
       .withMasterProfileType(MATCH_PROFILE)
       .withDetailProfileType(ACTION_PROFILE);
 
-    var actionToMappingAssociation = new ProfileAssociation()
+    var actionToMappingAssociation = new ProfileAssociationRecord()
       .withMasterProfileId(actionProfileId)
       .withDetailProfileId(fixture.mappingProfileId())
       .withMasterProfileType(ACTION_PROFILE)
@@ -974,6 +975,8 @@ class CommonProfileAssociationRestTest extends AbstractRestTest {
       .withProfile(new MatchProfile()
         .withId(firstMatchProfileId)
         .withName("Existing MatchProfile")
+        .withIncomingRecordType(EntityType.MARC_BIBLIOGRAPHIC)
+        .withExistingRecordType(EntityType.INSTANCE)
         .withMatchDetails(Lists.newArrayList())
         .withHidden(false)
         .withDescription("test-description")));
@@ -982,6 +985,8 @@ class CommonProfileAssociationRestTest extends AbstractRestTest {
       .withProfile(new MatchProfile()
         .withId(secondMatchProfileId)
         .withName("Second Existing MatchProfile")
+        .withIncomingRecordType(EntityType.MARC_BIBLIOGRAPHIC)
+        .withExistingRecordType(EntityType.INSTANCE)
         .withMatchDetails(Lists.newArrayList())
         .withHidden(false)
         .withDescription("test-description")));
@@ -992,7 +997,7 @@ class CommonProfileAssociationRestTest extends AbstractRestTest {
         .withName("Existing MappingProfile")
         .withExistingRecordType(EntityType.INSTANCE)
         .withIncomingRecordType(EntityType.MARC_BIBLIOGRAPHIC)
-        .withMappingDetails(new MappingDetail())
+        .withMappingDetails(instanceMappingDetail())
         .withHidden(false)
         .withDescription("test-description")));
 
@@ -1391,14 +1396,14 @@ class CommonProfileAssociationRestTest extends AbstractRestTest {
     var mappingWrapper = postProfile(mappingProfileWrapper, MAPPING_PROFILES_PATH);
     var actionWrapper = postProfile(actionProfileWrapper, ACTION_PROFILES_PATH);
 
-    var actionToMappingAssociation = new ProfileAssociation()
+    var actionToMappingAssociation = new ProfileAssociationRecord()
       .withMasterProfileId(actionWrapper.getId())
       .withDetailProfileId(mappingWrapper.getId())
       .withMasterProfileType(ACTION_PROFILE)
       .withDetailProfileType(MAPPING_PROFILE)
       .withOrder(0);
 
-    var jobToActionAssociation = new ProfileAssociation()
+    var jobToActionAssociation = new ProfileAssociationRecord()
       .withId(ASSOCIATION_UUID)
       .withMasterProfileId(jobProfileWrapper.getProfile().getId())
       .withDetailProfileId(actionWrapper.getId())
@@ -1419,14 +1424,14 @@ class CommonProfileAssociationRestTest extends AbstractRestTest {
     var actionWrapper = postProfile(actionProfileWrapper, ACTION_PROFILES_PATH);
     var matchWrapper = postProfile(matchProfileWrapper, MATCH_PROFILES_PATH);
 
-    var actionToMappingAssociation = new ProfileAssociation()
+    var actionToMappingAssociation = new ProfileAssociationRecord()
       .withMasterProfileId(actionWrapper.getId())
       .withDetailProfileId(mappingWrapper.getId())
       .withMasterProfileType(ACTION_PROFILE)
       .withDetailProfileType(MAPPING_PROFILE)
       .withOrder(0);
 
-    var matchToActionAssociation = new ProfileAssociation()
+    var matchToActionAssociation = new ProfileAssociationRecord()
       .withMasterProfileId(matchWrapper.getId())
       .withDetailProfileId(actionWrapper.getId())
       .withMasterProfileType(MATCH_PROFILE)
@@ -1434,7 +1439,7 @@ class CommonProfileAssociationRestTest extends AbstractRestTest {
       .withOrder(5)
       .withTriggered(true);
 
-    var jobToMatchAssociation = new ProfileAssociation()
+    var jobToMatchAssociation = new ProfileAssociationRecord()
       .withId(ASSOCIATION_UUID)
       .withMasterProfileId(jobProfileWrapper.getProfile().getId())
       .withDetailProfileId(matchProfileWrapper.getId())

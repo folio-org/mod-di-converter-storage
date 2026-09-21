@@ -26,7 +26,7 @@
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <sonar.exclusions>**/ModTenantAPI.java</sonar.exclusions>
 
-    <raml-module-builder.version>36.0.1</raml-module-builder.version>
+    <raml-module-builder.version>36.1.0-SNAPSHOT</raml-module-builder.version>
     <folio-di-support.version>4.1.0-SNAPSHOT</folio-di-support.version>
     <data-import-utils.version>3.0.0-SNAPSHOT</data-import-utils.version>
     <vertx.version>5.1.8</vertx.version>

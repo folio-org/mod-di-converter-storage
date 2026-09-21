@@ -38,6 +38,7 @@ import org.folio.rest.jaxrs.model.ProfileType;
 import org.folio.rest.jaxrs.model.ReactToType;
 import org.folio.services.association.CommonProfileAssociationService;
 import org.folio.services.association.ProfileAssociationService;
+import org.folio.services.converter.ProfileAssociationConverter;
 import org.folio.services.snapshot.ProfileSnapshotService;
 import org.springframework.stereotype.Component;
 
@@ -73,11 +74,14 @@ public class JobProfileServiceImpl
 
   public JobProfileServiceImpl(ProfileAssociationService profileAssociationService,
                                CommonProfileAssociationService associationService,
+                               ProfileAssociationConverter associationConverter,
                                ProfileDao<JobProfile, JobProfileCollection> profileDao,
                                ProfileWrapperDao profileWrapperDao,
                                ProfileSnapshotService profileSnapshotService,
                                ProfileServiceFactory profileServiceFactory) {
-    super(profileAssociationService, associationService, profileDao, profileWrapperDao);
+    super(profileAssociationService, associationService, associationConverter, profileDao, profileWrapperDao,
+      ProfileRelationsAccessor.of(JobProfileUpdateDto::getAddedRelations, JobProfileUpdateDto::getDeletedRelations,
+        JobProfileUpdateDto::withAddedRelations, JobProfileUpdateDto::withDeletedRelations));
     this.profileServiceFactory = profileServiceFactory;
     this.profileSnapshotService = profileSnapshotService;
   }
@@ -85,17 +89,6 @@ public class JobProfileServiceImpl
   @Override
   public String getProfileName(JobProfile profile) {
     return profile.getName();
-  }
-
-  @Override
-  public List<ProfileAssociation> getAddedRelations(JobProfileUpdateDto profileUpdateDto) {
-    return profileUpdateDto.getAddedRelations();
-  }
-
-  @Override
-  public JobProfileUpdateDto withDeletedRelations(JobProfileUpdateDto profileUpdateDto,
-                                                  List<ProfileAssociation> profileAssociations) {
-    return profileUpdateDto.withDeletedRelations(profileAssociations);
   }
 
   @Override
@@ -155,16 +148,6 @@ public class JobProfileServiceImpl
   }
 
   @Override
-  protected List<ProfileAssociation> getProfileAssociationToAdd(JobProfileUpdateDto dto) {
-    return dto.getAddedRelations();
-  }
-
-  @Override
-  protected List<ProfileAssociation> getProfileAssociationToDelete(JobProfileUpdateDto dto) {
-    return dto.getDeletedRelations();
-  }
-
-  @Override
   protected JobProfile getProfile(JobProfileUpdateDto dto) {
     return dto.getProfile();
   }
@@ -175,13 +158,28 @@ public class JobProfileServiceImpl
   }
 
   @Override
+  protected List<Error> getMissingRequiredProfileFieldErrors(JobProfile profile) {
+    List<Error> errors = new ArrayList<>();
+    if (profile.getName() == null) {
+      errors.add(new Error().withMessage("profile.name must not be null"));
+    }
+    if (profile.getDataType() == null) {
+      errors.add(new Error().withMessage("profile.dataType must not be null"));
+    }
+    return errors;
+  }
+
+  @Override
   protected Future<Errors> validateProfile(OperationType operationType, JobProfileUpdateDto profileDto,
                                            String tenantId) {
+    List<ProfileAssociation> addedRelations = profileDto.getAddedRelations().stream()
+      .map(profileAssociationConverter::convert)
+      .toList();
     return composeFutureErrors(
-      validateJobProfileAssociations(profileDto, tenantId),
+      validateJobProfileAssociations(profileDto, addedRelations, tenantId),
       super.validateProfile(operationType, profileDto, tenantId),
-      validateJobProfileLinkedActionProfiles(profileDto, tenantId),
-      validateJobProfileLinkedMatchProfile(profileDto, tenantId)
+      validateJobProfileLinkedActionProfiles(profileDto, addedRelations, tenantId),
+      validateJobProfileLinkedMatchProfile(profileDto, addedRelations, tenantId)
     );
   }
 
@@ -198,7 +196,8 @@ public class JobProfileServiceImpl
       .compose(userInfo -> Future.succeededFuture(profile.withUserInfo(userInfo)));
   }
 
-  private Future<Errors> validateJobProfileAssociations(JobProfileUpdateDto entity, String tenantId) {
+  private Future<Errors> validateJobProfileAssociations(JobProfileUpdateDto entity,
+                                                        List<ProfileAssociation> addedRelations, String tenantId) {
     String jobProfileId = entity.getProfile().getId();
     Future<List<ProfileAssociation>> existingJobProfileAssociationsFuture =
       (jobProfileId != null)
@@ -208,7 +207,7 @@ public class JobProfileServiceImpl
     List<Error> errors = new LinkedList<>();
     return existingJobProfileAssociationsFuture
       .map(this::filterProfileAssociations)
-      .map(profileAssociations -> removeDeletedProfileAssociations(profileAssociations, entity))
+      .map(profileAssociations -> removeDeletedProfileAssociations(profileAssociations, entity, addedRelations))
       .compose(profileAssociations -> validateJobProfileAssociations(profileAssociations, errors));
   }
 
@@ -223,6 +222,7 @@ public class JobProfileServiceImpl
   }
 
   private Future<Errors> validateJobProfileLinkedActionProfiles(JobProfileUpdateDto jobProfileUpdateDto,
+                                                                List<ProfileAssociation> addedRelations,
                                                                 String tenantId) {
     String jobProfileId = jobProfileUpdateDto.getProfile().getId();
     LOGGER.debug("validateJobProfileLinkedActionProfiles:: Validating ActionProfiles added to JobProfile {}",
@@ -238,11 +238,13 @@ public class JobProfileServiceImpl
 
     return existingJobProfileAssociationsFuture
       .map(this::filterProfileAssociations)
-      .map(profileAssociations -> removeDeletedProfileAssociations(profileAssociations, jobProfileUpdateDto))
+      .map(profileAssociations -> removeDeletedProfileAssociations(profileAssociations, jobProfileUpdateDto,
+        addedRelations))
       .compose(profileAssociations -> validateActionProfilesAssociations(profileAssociations, errors, tenantId));
   }
 
   private Future<Errors> validateJobProfileLinkedMatchProfile(JobProfileUpdateDto jobProfileUpdateDto,
+                                                              List<ProfileAssociation> addedRelations,
                                                               String tenantId) {
     String jobProfileId = jobProfileUpdateDto.getProfile().getId();
     LOGGER.debug("validateJobProfileLinkedMatchProfile:: Validating MatchProfiles added to JobProfile {}",
@@ -256,7 +258,8 @@ public class JobProfileServiceImpl
 
     return existingJobProfileAssociationsFuture
       .map(this::filterProfileAssociations)
-      .map(profileAssociations -> removeDeletedProfileAssociations(profileAssociations, jobProfileUpdateDto))
+      .map(profileAssociations -> removeDeletedProfileAssociations(profileAssociations, jobProfileUpdateDto,
+        addedRelations))
       .compose(profileAssociations -> validateJobProfileLinkedMatchProfile(profileAssociations, errors, tenantId));
   }
 
@@ -300,7 +303,8 @@ public class JobProfileServiceImpl
   }
 
   private List<ProfileAssociation> removeDeletedProfileAssociations(List<ProfileAssociation> profileAssociations,
-                                                                    JobProfileUpdateDto jobProfileUpdateDto) {
+                                                                    JobProfileUpdateDto jobProfileUpdateDto,
+                                                                    List<ProfileAssociation> addedRelations) {
     if (!profileAssociations.isEmpty() && !jobProfileUpdateDto.getDeletedRelations().isEmpty()) {
       profileAssociations.removeIf(profileAssociation ->
         jobProfileUpdateDto.getDeletedRelations().stream().anyMatch(deleteAssociation -> {
@@ -313,7 +317,7 @@ public class JobProfileServiceImpl
         )
       );
     }
-    profileAssociations.addAll(jobProfileUpdateDto.getAddedRelations());
+    profileAssociations.addAll(addedRelations);
     return profileAssociations;
   }
 
@@ -416,7 +420,7 @@ public class JobProfileServiceImpl
 
   private static boolean isFirstAtMatchBlock(List<ProfileAssociation> profileAssociations,
                                              ProfileAssociation association) {
-    if (association.getOrder() == 0) {
+    if (orderOrDefault(association) == 0) {
       return true;
     }
     if (association.getMasterWrapperId() != null) {
@@ -424,11 +428,20 @@ public class JobProfileServiceImpl
         .filter(a -> Objects.equals(a.getMasterWrapperId(), association.getMasterWrapperId())).toList();
 
       ProfileAssociation associationWithLowestOrder = Collections.min(associationsAtMatchBlock,
-        Comparator.comparingInt(ProfileAssociation::getOrder));
+        Comparator.comparingInt(JobProfileServiceImpl::orderOrDefault));
 
       return associationWithLowestOrder == association;
     }
     return false;
+  }
+
+  /**
+   * {@code order} is a permissive, non-required field on the wire ({@code profileAssociationRecord.json}), so a
+   * client may explicitly send {@code "order": null}; treat that the same as an omitted order (the generated
+   * model's own default), since callers below unbox it.
+   */
+  private static int orderOrDefault(ProfileAssociation association) {
+    return Objects.requireNonNullElse(association.getOrder(), 0);
   }
 
   private Future<Void> validateDeleteMarcAuthorityActionProfileAssociation(ProfileAssociation association,
@@ -441,7 +454,7 @@ public class JobProfileServiceImpl
       return Future.succeededFuture();
     }
 
-    if (association.getOrder() != 0) {
+    if (orderOrDefault(association) != 0) {
       LOGGER.warn("validateDeleteMarcAuthorityActionProfileAssociation:: Delete MARC-AUTHORITY action "
           + "profile {} is preceded by other action profiles in the for-matches branch (order = {})",
         actionProfile.getId(), association.getOrder());

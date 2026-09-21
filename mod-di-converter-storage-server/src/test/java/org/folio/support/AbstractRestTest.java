@@ -65,6 +65,11 @@ public abstract class AbstractRestTest extends BaseRestTest {
     clearTables(testContext);
   }
 
+  @Override
+  protected boolean shareVerticle() {
+    return false;
+  }
+
   /**
    * Hook for subclasses to customise table cleanup between tests. Must call
    * {@code testContext.completeNow()} (or fail it) once done. The default implementation

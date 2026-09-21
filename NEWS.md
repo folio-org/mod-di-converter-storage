@@ -6,6 +6,9 @@
 * Add DELETE Authority default mapping profile ([MODDICONV-447](https://folio-org.atlassian.net/browse/MODDICONV-447))
 * Fix the script to ensure that the default delete MARC Authority job profile is visible on UI ([MODDICONV-450](https://folio-org.atlassian.net/browse/MODDICONV-450))
 
+### Bug Fixes
+* Improve validation based on API schemas ([MODDICONV-452](https://folio-org.atlassian.net/browse/MODDICONV-452))
+
 ### Tech Dept
 * Delete default quickMarc profiles ([MODDICONV-445](https://folio-org.atlassian.net/browse/MODDICONV-445))
 * JUnit 6 Migration ([MODDICONV-440](https://folio-org.atlassian.net/browse/MODDICONV-440))

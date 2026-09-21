@@ -1,6 +1,7 @@
 package org.folio.services;
 
 import io.vertx.core.Future;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
@@ -8,14 +9,15 @@ import org.apache.commons.lang3.StringUtils;
 import org.folio.dao.ProfileDao;
 import org.folio.dao.association.ProfileWrapperDao;
 import org.folio.rest.impl.util.OkapiConnectionParams;
+import org.folio.rest.jaxrs.model.Error;
 import org.folio.rest.jaxrs.model.MatchProfile;
 import org.folio.rest.jaxrs.model.MatchProfileCollection;
 import org.folio.rest.jaxrs.model.MatchProfileUpdateDto;
-import org.folio.rest.jaxrs.model.ProfileAssociation;
 import org.folio.rest.jaxrs.model.ProfileSnapshotWrapper;
 import org.folio.rest.jaxrs.model.ProfileType;
 import org.folio.services.association.CommonProfileAssociationService;
 import org.folio.services.association.ProfileAssociationService;
+import org.folio.services.converter.ProfileAssociationConverter;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -30,25 +32,17 @@ public class MatchProfileServiceImpl
 
   public MatchProfileServiceImpl(ProfileAssociationService profileAssociationService,
                                  CommonProfileAssociationService associationService,
+                                 ProfileAssociationConverter associationConverter,
                                  ProfileDao<MatchProfile, MatchProfileCollection> profileDao,
                                  ProfileWrapperDao profileWrapperDao) {
-    super(profileAssociationService, associationService, profileDao, profileWrapperDao);
+    super(profileAssociationService, associationService, associationConverter, profileDao, profileWrapperDao,
+      ProfileRelationsAccessor.of(MatchProfileUpdateDto::getAddedRelations, MatchProfileUpdateDto::getDeletedRelations,
+        MatchProfileUpdateDto::withAddedRelations, MatchProfileUpdateDto::withDeletedRelations));
   }
 
   @Override
   public String getProfileName(MatchProfile profile) {
     return profile.getName();
-  }
-
-  @Override
-  public List<ProfileAssociation> getAddedRelations(MatchProfileUpdateDto profileUpdateDto) {
-    return profileUpdateDto.getAddedRelations();
-  }
-
-  @Override
-  public MatchProfileUpdateDto withDeletedRelations(MatchProfileUpdateDto profileUpdateDto,
-                                                    List<ProfileAssociation> profileAssociations) {
-    return profileUpdateDto.withDeletedRelations(profileAssociations);
   }
 
   @Override
@@ -100,16 +94,6 @@ public class MatchProfileServiceImpl
   }
 
   @Override
-  protected List<ProfileAssociation> getProfileAssociationToAdd(MatchProfileUpdateDto dto) {
-    return dto.getAddedRelations();
-  }
-
-  @Override
-  protected List<ProfileAssociation> getProfileAssociationToDelete(MatchProfileUpdateDto dto) {
-    return dto.getDeletedRelations();
-  }
-
-  @Override
   protected MatchProfile getProfile(MatchProfileUpdateDto dto) {
     return dto.getProfile();
   }
@@ -117,6 +101,21 @@ public class MatchProfileServiceImpl
   @Override
   protected List<String> getDefaultProfiles() {
     return DEFAULT_MATCH_PROFILES;
+  }
+
+  @Override
+  protected List<Error> getMissingRequiredProfileFieldErrors(MatchProfile profile) {
+    List<Error> errors = new ArrayList<>();
+    if (profile.getName() == null) {
+      errors.add(new Error().withMessage("profile.name must not be null"));
+    }
+    if (profile.getIncomingRecordType() == null) {
+      errors.add(new Error().withMessage("profile.incomingRecordType must not be null"));
+    }
+    if (profile.getExistingRecordType() == null) {
+      errors.add(new Error().withMessage("profile.existingRecordType must not be null"));
+    }
+    return errors;
   }
 
   @Override

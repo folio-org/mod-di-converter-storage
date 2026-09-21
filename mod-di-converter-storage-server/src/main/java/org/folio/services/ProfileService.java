@@ -116,6 +116,14 @@ public interface ProfileService<T, S, D> {
   D withDeletedRelations(D profileUpdateDto, List<ProfileAssociation> profileAssociations);
 
   /**
+   * Set added relations to specified profile update dto.
+   *
+   * @param profileUpdateDto - profile update dto entity
+   * @return - profile update dto
+   */
+  D withAddedRelations(D profileUpdateDto, List<ProfileAssociation> profileAssociations);
+
+  /**
    * Checks is profile contains child profiles.
    *
    * @param profile - T entity

@@ -11,6 +11,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
+import lombok.experimental.UtilityClass;
 import org.folio.rest.jaxrs.model.ActionProfile;
 import org.folio.rest.jaxrs.model.ActionProfileUpdateDto;
 import org.folio.rest.jaxrs.model.EntityType;
@@ -29,6 +30,7 @@ import org.folio.rest.jaxrs.model.Tags;
  * Canonical static test-data fixtures shared across REST integration test classes.
  * All four profile types share consistent naming (Bla/Boo/Foo/OLA) and tag sets.
  */
+@UtilityClass
 public final class ProfileFixtures {
 
   // ---- ActionProfile -------------------------------------------------------
@@ -150,13 +152,14 @@ public final class ProfileFixtures {
         .withTags(new Tags().withTagList(Collections.singletonList("lorem")))
         .withIncomingRecordType(EntityType.MARC_BIBLIOGRAPHIC)
         .withExistingRecordType(EntityType.INSTANCE)
-        .withMappingDetails(new MappingDetail().withMappingFields(Lists.newArrayList(new MappingRule()
-          .withName("repeatableField")
-          .withPath("instance.repeatableField[]")
-          .withValue("")
-          .withEnabled("true")
-          .withRepeatableFieldAction(MappingRule.RepeatableFieldAction.DELETE_EXISTING)
-          .withSubfields(Collections.emptyList())))));
+        .withMappingDetails(instanceMappingDetail()
+          .withMappingFields(Lists.newArrayList(new MappingRule()
+            .withName("repeatableField")
+            .withPath("instance.repeatableField[]")
+            .withValue("")
+            .withEnabled("true")
+            .withRepeatableFieldAction(MappingRule.RepeatableFieldAction.DELETE_EXISTING)
+            .withSubfields(Collections.emptyList())))));
 
   public static final MappingProfileUpdateDto MAPPING_PROFILE_WITH_EMPTY_SUBFIELDS_AND_EMPTY_ACTION =
     new MappingProfileUpdateDto()
@@ -164,13 +167,14 @@ public final class ProfileFixtures {
         .withTags(new Tags().withTagList(Collections.singletonList("lorem")))
         .withIncomingRecordType(EntityType.MARC_BIBLIOGRAPHIC)
         .withExistingRecordType(EntityType.INSTANCE)
-        .withMappingDetails(new MappingDetail().withMappingFields(Lists.newArrayList(new MappingRule()
-          .withName("repeatableField")
-          .withPath("instance.repeatableField[]")
-          .withValue("")
-          .withEnabled("true")
-          .withRepeatableFieldAction(null)
-          .withSubfields(Collections.emptyList())))));
+        .withMappingDetails(instanceMappingDetail()
+          .withMappingFields(Lists.newArrayList(new MappingRule()
+            .withName("repeatableField")
+            .withPath("instance.repeatableField[]")
+            .withValue("")
+            .withEnabled("true")
+            .withRepeatableFieldAction(null)
+            .withSubfields(Collections.emptyList())))));
 
   public static final MappingProfileUpdateDto MAPPING_PROFILE_WITH_EMPTY_SUBFIELDS_AND_NOT_DELETE_EXISTING_ACTION =
     new MappingProfileUpdateDto()
@@ -178,13 +182,14 @@ public final class ProfileFixtures {
         .withTags(new Tags().withTagList(Collections.singletonList("lorem")))
         .withIncomingRecordType(EntityType.MARC_BIBLIOGRAPHIC)
         .withExistingRecordType(EntityType.INSTANCE)
-        .withMappingDetails(new MappingDetail().withMappingFields(Lists.newArrayList(new MappingRule()
-          .withName("repeatableField")
-          .withPath("instance.repeatableField[]")
-          .withValue("")
-          .withEnabled("true")
-          .withRepeatableFieldAction(MappingRule.RepeatableFieldAction.EXTEND_EXISTING)
-          .withSubfields(Collections.emptyList())))));
+        .withMappingDetails(instanceMappingDetail()
+          .withMappingFields(Lists.newArrayList(new MappingRule()
+            .withName("repeatableField")
+            .withPath("instance.repeatableField[]")
+            .withValue("")
+            .withEnabled("true")
+            .withRepeatableFieldAction(MappingRule.RepeatableFieldAction.EXTEND_EXISTING)
+            .withSubfields(Collections.emptyList())))));
 
   // ---- MatchProfile --------------------------------------------------------
 
@@ -223,6 +228,21 @@ public final class ProfileFixtures {
         .withChildProfiles(List.of(new ProfileSnapshotWrapper().withId(UUID.randomUUID().toString())))
         .withParentProfiles(List.of(new ProfileSnapshotWrapper().withId(UUID.randomUUID().toString()))));
 
-  private ProfileFixtures() {
+  /**
+   * A minimal {@code marcBibliographic}/{@code MARC_BIBLIOGRAPHIC} {@link MappingDetail}, shared with
+   * {@code ActionProfileRestTest}/{@code MappingProfileRestTest} to avoid re-pasting this snippet; callers
+   * chain further {@code with*} calls (e.g. {@code withMarcMappingOption}) onto the returned instance.
+   */
+  public static MappingDetail marcBibliographicMappingDetail() {
+    return new MappingDetail().withName("marcBibliographic").withRecordType(EntityType.MARC_BIBLIOGRAPHIC);
+  }
+
+  /**
+   * A minimal {@code instance}/{@code INSTANCE} {@link MappingDetail}, shared with
+   * {@code CommonProfileAssociationRestTest} to avoid re-pasting this snippet; callers chain further
+   * {@code with*} calls onto the returned instance.
+   */
+  public static MappingDetail instanceMappingDetail() {
+    return new MappingDetail().withName("instance").withRecordType(EntityType.INSTANCE);
   }
 }

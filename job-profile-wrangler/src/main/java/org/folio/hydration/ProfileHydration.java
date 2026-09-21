@@ -37,7 +37,7 @@ import org.folio.rest.jaxrs.model.MappingProfile;
 import org.folio.rest.jaxrs.model.MappingProfileUpdateDto;
 import org.folio.rest.jaxrs.model.MatchProfile;
 import org.folio.rest.jaxrs.model.MatchProfileUpdateDto;
-import org.folio.rest.jaxrs.model.ProfileAssociation;
+import org.folio.rest.jaxrs.model.ProfileAssociationRecord;
 import org.folio.rest.jaxrs.model.ProfileType;
 import org.folio.rest.jaxrs.model.ReactToType;
 import org.jgrapht.Graph;
@@ -133,7 +133,7 @@ public class ProfileHydration {
           Profile target = (Profile) edge.get().getTarget();
           MappingProfileUpdateDto mappingProfile = (MappingProfileUpdateDto) createdObjectsInFolio.get(target);
           actionProfileUpdateDto = actionProfileUpdateDto
-            .withAddedRelations(List.of(new ProfileAssociation()
+            .withAddedRelations(List.of(new ProfileAssociationRecord()
               .withMasterProfileType(ProfileType.ACTION_PROFILE)
               .withDetailProfileType(ProfileType.MAPPING_PROFILE)
               .withDetailProfileId(mappingProfile.getId())));
@@ -170,7 +170,7 @@ public class ProfileHydration {
       return Optional.empty();
     }
 
-    List<ProfileAssociation> profileAssociations = new ArrayList<>();
+    List<ProfileAssociationRecord> profileAssociations = new ArrayList<>();
     // Profile associations have to be created in the collection in the right order, utilize depth-first search
     DepthFirstIterator<Profile, RegularEdge> dfsIterator = new ProfileDepthFirstIterator(graph, jobProfile.get());
     while (dfsIterator.hasNext()) {
@@ -184,7 +184,7 @@ public class ProfileHydration {
           Object targetObjInFolio = createdObjectsInFolio.get(target);
           String targetProfileId = invokeGetId(targetObjInFolio);
           ProfileType targetProfileType = getProfileType(target);
-          profileAssociations.add(new ProfileAssociation()
+          profileAssociations.add(new ProfileAssociationRecord()
             .withMasterProfileType(ProfileType.JOB_PROFILE)
             .withDetailProfileId(targetProfileId)
             .withDetailProfileType(targetProfileType));
@@ -198,7 +198,7 @@ public class ProfileHydration {
           String targetProfileId = invokeGetId(targetObjInFolio);
           ProfileType sourceProfileType = getProfileType(source);
           ProfileType targetProfileType = getProfileType(target);
-          ProfileAssociation profileAssociation = new ProfileAssociation()
+          var profileAssociation = new ProfileAssociationRecord()
             .withMasterProfileId(sourceProfileId)
             .withMasterProfileType(sourceProfileType)
             .withDetailProfileId(targetProfileId)

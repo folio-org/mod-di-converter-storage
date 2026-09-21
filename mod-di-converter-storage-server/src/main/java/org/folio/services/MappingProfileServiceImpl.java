@@ -12,7 +12,6 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
-import java.util.stream.Collectors;
 import javax.ws.rs.NotFoundException;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
@@ -29,11 +28,12 @@ import org.folio.rest.jaxrs.model.MappingProfileCollection;
 import org.folio.rest.jaxrs.model.MappingProfileUpdateDto;
 import org.folio.rest.jaxrs.model.MappingRule;
 import org.folio.rest.jaxrs.model.OperationType;
-import org.folio.rest.jaxrs.model.ProfileAssociation;
+import org.folio.rest.jaxrs.model.ProfileAssociationRecord;
 import org.folio.rest.jaxrs.model.ProfileSnapshotWrapper;
 import org.folio.rest.jaxrs.model.ProfileType;
 import org.folio.services.association.CommonProfileAssociationService;
 import org.folio.services.association.ProfileAssociationService;
+import org.folio.services.converter.ProfileAssociationConverter;
 import org.springframework.stereotype.Component;
 
 @Component
@@ -62,10 +62,14 @@ public class MappingProfileServiceImpl
 
   public MappingProfileServiceImpl(ProfileAssociationService profileAssociationService,
                                    CommonProfileAssociationService associationService,
+                                   ProfileAssociationConverter profileAssociationConverter,
                                    ProfileDao<MappingProfile, MappingProfileCollection> profileDao,
                                    ProfileWrapperDao profileWrapperDao,
                                    ProfileServiceFactory profileServiceFactory) {
-    super(profileAssociationService, associationService, profileDao, profileWrapperDao);
+    super(profileAssociationService, associationService, profileAssociationConverter, profileDao, profileWrapperDao,
+      ProfileRelationsAccessor.of(MappingProfileUpdateDto::getAddedRelations,
+        MappingProfileUpdateDto::getDeletedRelations, MappingProfileUpdateDto::withAddedRelations,
+        MappingProfileUpdateDto::withDeletedRelations));
     this.profileServiceFactory = profileServiceFactory;
   }
 
@@ -130,16 +134,6 @@ public class MappingProfileServiceImpl
   }
 
   @Override
-  protected List<ProfileAssociation> getProfileAssociationToAdd(MappingProfileUpdateDto dto) {
-    return dto.getAddedRelations();
-  }
-
-  @Override
-  protected List<ProfileAssociation> getProfileAssociationToDelete(MappingProfileUpdateDto dto) {
-    return dto.getDeletedRelations();
-  }
-
-  @Override
   protected MappingProfile getProfile(MappingProfileUpdateDto dto) {
     return dto.getProfile();
   }
@@ -147,6 +141,21 @@ public class MappingProfileServiceImpl
   @Override
   protected List<String> getDefaultProfiles() {
     return DEFAULT_MAPPING_PROFILES;
+  }
+
+  @Override
+  protected List<Error> getMissingRequiredProfileFieldErrors(MappingProfile profile) {
+    List<Error> errors = new ArrayList<>();
+    if (profile.getName() == null) {
+      errors.add(new Error().withMessage("profile.name must not be null"));
+    }
+    if (profile.getIncomingRecordType() == null) {
+      errors.add(new Error().withMessage("profile.incomingRecordType must not be null"));
+    }
+    if (profile.getExistingRecordType() == null) {
+      errors.add(new Error().withMessage("profile.existingRecordType must not be null"));
+    }
+    return errors;
   }
 
   @Override
@@ -178,32 +187,36 @@ public class MappingProfileServiceImpl
     return profile.getName();
   }
 
-  @Override
-  public List<ProfileAssociation> getAddedRelations(MappingProfileUpdateDto profileUpdateDto) {
-    return profileUpdateDto.getAddedRelations();
-  }
-
-  @Override
-  public MappingProfileUpdateDto withDeletedRelations(MappingProfileUpdateDto profileUpdateDto,
-                                                      List<ProfileAssociation> profileAssociations) {
-    return profileUpdateDto.withDeletedRelations(profileAssociations);
-  }
-
   private Future<Boolean> deleteExistingActionToMappingAssociations(MappingProfileUpdateDto profileDto,
                                                                     String tenantId) {
     List<Future<Boolean>> futures = profileDto.getAddedRelations().stream()
-      .filter(profileAssociation -> profileAssociation.getMasterProfileType().equals(ACTION_PROFILE))
-      .map(ProfileAssociation::getMasterWrapperId)
+      .filter(profileAssociation -> profileAssociation.getMasterProfileType() == ACTION_PROFILE)
+      .map(ProfileAssociationRecord::getMasterWrapperId)
+      .filter(StringUtils::isNotBlank)
       .map(actionProfileId -> profileAssociationService.deleteByMasterWrapperId(actionProfileId,
         ProfileType.ACTION_PROFILE,
         ProfileType.MAPPING_PROFILE, tenantId))
-      .collect(Collectors.toCollection(ArrayList::new));
+      .toList();
+
+    if (futures.isEmpty()) {
+      return Future.succeededFuture(true);
+    }
 
     return Future.all(futures)
       .onFailure(th ->
         LOGGER.warn("deleteExistingActionToMappingAssociations:: "
                     + "Failed to delete existing action-to-mapping associations", th))
-      .map(true);
+      .compose(ar -> {
+        boolean allDeleted = ar.<Boolean>list().stream().allMatch(Boolean.TRUE::equals);
+        if (allDeleted) {
+          return Future.succeededFuture(true);
+        }
+        LOGGER.warn("deleteExistingActionToMappingAssociations:: Could not delete one or more existing "
+                    + "action-to-mapping associations for a wrapper id explicitly supplied on addedRelations, "
+                    + "no matching association found");
+        return Future.failedFuture(new NotFoundException(
+          "Could not delete one or more existing action-to-mapping associations: no matching association found"));
+      });
   }
 
   private Future<Errors> validateMappingProfileAddedRelationsFolioRecord(

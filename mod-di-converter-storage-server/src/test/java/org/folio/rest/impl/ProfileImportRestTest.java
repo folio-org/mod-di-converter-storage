@@ -34,7 +34,7 @@ import org.folio.rest.jaxrs.model.JobProfile;
 import org.folio.rest.jaxrs.model.JobProfileUpdateDto;
 import org.folio.rest.jaxrs.model.MappingProfile;
 import org.folio.rest.jaxrs.model.MappingProfileUpdateDto;
-import org.folio.rest.jaxrs.model.ProfileAssociation;
+import org.folio.rest.jaxrs.model.ProfileAssociationRecord;
 import org.folio.rest.jaxrs.model.ProfileSnapshotWrapper;
 import org.folio.support.AbstractRestTest;
 import org.junit.jupiter.api.DisplayName;
@@ -116,7 +116,7 @@ class ProfileImportRestTest extends AbstractRestTest {
         .withName("testActionProfile2").withDescription("test-description")
         .withAction(ActionProfile.Action.CREATE)
         .withFolioRecord(ActionProfile.FolioRecord.INSTANCE))
-      .withAddedRelations(List.of(new ProfileAssociation()
+      .withAddedRelations(List.of(new ProfileAssociationRecord()
         .withMasterProfileId(actionProfileId)
         .withMasterProfileType(ACTION_PROFILE)
         .withDetailProfileId(existingMappingProfile.getId())
@@ -184,7 +184,7 @@ class ProfileImportRestTest extends AbstractRestTest {
         .withName("testActionProfile3").withDescription("test-description")
         .withAction(ActionProfile.Action.CREATE)
         .withFolioRecord(ActionProfile.FolioRecord.INSTANCE))
-      .withAddedRelations(List.of(new ProfileAssociation()
+      .withAddedRelations(List.of(new ProfileAssociationRecord()
         .withMasterProfileId(actionProfileId)
         .withMasterProfileType(ACTION_PROFILE)
         .withDetailProfileId(mappingProfileId)
@@ -197,7 +197,7 @@ class ProfileImportRestTest extends AbstractRestTest {
       .withProfile(new JobProfile().withId(jobProfileId)
         .withName("testJobProfile3").withDescription("test-description")
         .withDataType(JobProfile.DataType.MARC))
-      .withAddedRelations(List.of(new ProfileAssociation()
+      .withAddedRelations(List.of(new ProfileAssociationRecord()
         .withMasterProfileId(jobProfileId)
         .withMasterProfileType(JOB_PROFILE)
         .withDetailProfileId(actionProfileId)
@@ -307,7 +307,7 @@ class ProfileImportRestTest extends AbstractRestTest {
 
     JsonArray childSnapshotWrapper = importWrapper.getJsonArray("childSnapshotWrappers");
     if (!childSnapshotWrapper.isEmpty()) {
-      for (Object object : childSnapshotWrapper) {
+      for (var object : childSnapshotWrapper) {
         removeWrapperId((JsonObject) object);
       }
     }

@@ -27,6 +27,7 @@ import org.folio.rest.jaxrs.model.MappingProfileUpdateDto;
 import org.folio.rest.jaxrs.model.MatchProfile;
 import org.folio.rest.jaxrs.model.MatchProfileUpdateDto;
 import org.folio.rest.jaxrs.model.ProfileAssociation;
+import org.folio.rest.jaxrs.model.ProfileAssociationRecord;
 import org.folio.rest.jaxrs.model.ProfileSnapshotWrapper;
 import org.folio.rest.jaxrs.model.ProfileType;
 import org.folio.services.ProfileService;
@@ -162,13 +163,13 @@ public class ProfileImportServiceImpl implements ProfileImportService {
     }
   }
 
-  private List<ProfileAssociation> formAddedRelations(ProfileSnapshotWrapper rootSnapshot,
-                                                      ProfileType rootContentType) {
-    List<ProfileAssociation> associations = new ArrayList<>();
+  private List<ProfileAssociationRecord> formAddedRelations(ProfileSnapshotWrapper rootSnapshot,
+                                                            ProfileType rootContentType) {
+    List<ProfileAssociationRecord> associations = new ArrayList<>();
     if (rootSnapshot.getChildSnapshotWrappers() != null) {
       for (ProfileSnapshotWrapper childSnapshot : rootSnapshot.getChildSnapshotWrappers()) {
         if (rootContentType == ACTION_PROFILE || childSnapshot.getContentType() != MAPPING_PROFILE) {
-          ProfileAssociation association = createAssociation(rootSnapshot, childSnapshot);
+          ProfileAssociationRecord association = createAssociation(rootSnapshot, childSnapshot);
           associations.add(association);
           associations.addAll(formAddedRelations(childSnapshot, rootContentType));
         }
@@ -177,8 +178,8 @@ public class ProfileImportServiceImpl implements ProfileImportService {
     return associations;
   }
 
-  private ProfileAssociation createAssociation(ProfileSnapshotWrapper parent, ProfileSnapshotWrapper child) {
-    ProfileAssociation association = new ProfileAssociation();
+  private ProfileAssociationRecord createAssociation(ProfileSnapshotWrapper parent, ProfileSnapshotWrapper child) {
+    var association = new ProfileAssociationRecord();
     association.setMasterProfileId(parent.getProfileId());
     association.setDetailProfileId(child.getProfileId());
     association.setOrder(child.getOrder());
@@ -188,6 +189,13 @@ public class ProfileImportServiceImpl implements ProfileImportService {
     return association;
   }
 
+  /**
+   * Calls {@link ProfileService#saveProfile}/{@link ProfileService#updateProfile} directly, bypassing the
+   * HTTP endpoint that would otherwise enforce each profile type's JSON-schema required fields via the
+   * {@code profile: $ref} cascade. {@code profileUpdateDto} is built here from an untyped snapshot's
+   * {@code content}, so it can legally be missing fields the schema marks required; each service's
+   * {@code getMissingRequiredProfileFieldErrors} is the only thing that still catches that for this path.
+   */
   private <T, S, D> Future<T> saveProfile(OkapiConnectionParams okapiParams, D profileUpdateDto,
                                           ProfileService<T, S, D> profileService, String profileId,
                                           ProfileType profileType) {
@@ -222,11 +230,13 @@ public class ProfileImportServiceImpl implements ProfileImportService {
               .toList();
         }
 
-        profileService.getAddedRelations(profileUpdateDto).stream()
+        List<ProfileAssociation> addedRelations = profileService.getAddedRelations(profileUpdateDto);
+        addedRelations.stream()
           .filter(a -> a.getMasterProfileType().equals(profileType))
           .forEach(a -> a.setMasterWrapperId(rootAssociation.getDetailWrapperId()));
 
-        return profileService.withDeletedRelations(profileUpdateDto, associationsToDelete);
+        D dtoWithAddedRelations = profileService.withAddedRelations(profileUpdateDto, addedRelations);
+        return profileService.withDeletedRelations(dtoWithAddedRelations, associationsToDelete);
       });
   }
 }

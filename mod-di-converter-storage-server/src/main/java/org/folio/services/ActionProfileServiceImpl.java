@@ -8,6 +8,7 @@ import static org.folio.rest.jaxrs.model.ActionProfile.FolioRecord.MARC_BIBLIOGR
 import io.vertx.core.Future;
 import io.vertx.core.Promise;
 import io.vertx.core.json.jackson.DatabindCodec;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.List;
@@ -28,11 +29,11 @@ import org.folio.rest.jaxrs.model.Error;
 import org.folio.rest.jaxrs.model.Errors;
 import org.folio.rest.jaxrs.model.MappingProfile;
 import org.folio.rest.jaxrs.model.OperationType;
-import org.folio.rest.jaxrs.model.ProfileAssociation;
 import org.folio.rest.jaxrs.model.ProfileSnapshotWrapper;
 import org.folio.rest.jaxrs.model.ProfileType;
 import org.folio.services.association.CommonProfileAssociationService;
 import org.folio.services.association.ProfileAssociationService;
+import org.folio.services.converter.ProfileAssociationConverter;
 import org.springframework.stereotype.Component;
 
 @Component
@@ -62,10 +63,14 @@ public class ActionProfileServiceImpl
 
   public ActionProfileServiceImpl(ProfileAssociationService profileAssociationService,
                                   CommonProfileAssociationService associationService,
+                                  ProfileAssociationConverter profileAssociationConverter,
                                   ProfileDao<ActionProfile, ActionProfileCollection> profileDao,
                                   ProfileWrapperDao profileWrapperDao,
                                   ProfileServiceFactory profileServiceFactory) {
-    super(profileAssociationService, associationService, profileDao, profileWrapperDao);
+    super(profileAssociationService, associationService, profileAssociationConverter, profileDao, profileWrapperDao,
+      ProfileRelationsAccessor.of(ActionProfileUpdateDto::getAddedRelations,
+        ActionProfileUpdateDto::getDeletedRelations, ActionProfileUpdateDto::withAddedRelations,
+        ActionProfileUpdateDto::withDeletedRelations));
     this.profileServiceFactory = profileServiceFactory;
   }
 
@@ -130,16 +135,6 @@ public class ActionProfileServiceImpl
   }
 
   @Override
-  protected List<ProfileAssociation> getProfileAssociationToAdd(ActionProfileUpdateDto dto) {
-    return dto.getAddedRelations();
-  }
-
-  @Override
-  protected List<ProfileAssociation> getProfileAssociationToDelete(ActionProfileUpdateDto dto) {
-    return dto.getDeletedRelations();
-  }
-
-  @Override
   protected ActionProfile getProfile(ActionProfileUpdateDto dto) {
     return dto.getProfile();
   }
@@ -147,6 +142,21 @@ public class ActionProfileServiceImpl
   @Override
   protected List<String> getDefaultProfiles() {
     return DEFAULT_ACTION_PROFILES;
+  }
+
+  @Override
+  protected List<Error> getMissingRequiredProfileFieldErrors(ActionProfile profile) {
+    List<Error> errors = new ArrayList<>();
+    if (profile.getName() == null) {
+      errors.add(new Error().withMessage("profile.name must not be null"));
+    }
+    if (profile.getAction() == null) {
+      errors.add(new Error().withMessage("profile.action must not be null"));
+    }
+    if (profile.getFolioRecord() == null) {
+      errors.add(new Error().withMessage("profile.folioRecord must not be null"));
+    }
+    return errors;
   }
 
   @Override
@@ -176,17 +186,6 @@ public class ActionProfileServiceImpl
   @Override
   public String getProfileName(ActionProfile profile) {
     return profile.getName();
-  }
-
-  @Override
-  public List<ProfileAssociation> getAddedRelations(ActionProfileUpdateDto profileUpdateDto) {
-    return profileUpdateDto.getAddedRelations();
-  }
-
-  @Override
-  public ActionProfileUpdateDto withDeletedRelations(ActionProfileUpdateDto profileUpdateDto,
-                                                     List<ProfileAssociation> profileAssociations) {
-    return profileUpdateDto.withDeletedRelations(profileAssociations);
   }
 
   private void setDefaults(ActionProfile profile) {

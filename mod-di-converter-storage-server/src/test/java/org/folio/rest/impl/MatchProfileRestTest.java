@@ -57,6 +57,7 @@ import org.folio.rest.jaxrs.model.MatchExpression;
 import org.folio.rest.jaxrs.model.MatchProfile;
 import org.folio.rest.jaxrs.model.MatchProfileUpdateDto;
 import org.folio.rest.jaxrs.model.ProfileAssociation;
+import org.folio.rest.jaxrs.model.ProfileAssociationRecord;
 import org.folio.rest.jaxrs.model.ProfileType;
 import org.folio.rest.jaxrs.model.Qualifier;
 import org.folio.rest.jaxrs.model.ReactToType;
@@ -546,14 +547,14 @@ class MatchProfileRestTest extends AbstractRestTest {
       createdActions.add(postRequest(ACTION_PROFILES_PATH, new ActionProfileUpdateDto()
         .withProfile(action.getProfile()
           .withName(nameForProfiles + i))
-        .withAddedRelations(Lists.newArrayList(new ProfileAssociation()
+        .withAddedRelations(Lists.newArrayList(new ProfileAssociationRecord()
             .withMasterProfileId(profilesIds.get(i))
             .withDetailProfileType(ProfileType.ACTION_PROFILE)
             .withMasterProfileType(ProfileType.MATCH_PROFILE)
             .withOrder(0)
             .withTriggered(false)
             .withReactTo(ReactToType.MATCH),
-          new ProfileAssociation()
+          new ProfileAssociationRecord()
             .withMasterProfileId(action.getProfile().getId())
             .withDetailProfileId(createdMappings.get(i).getId())
             .withDetailProfileType(ProfileType.MAPPING_PROFILE)
@@ -568,19 +569,20 @@ class MatchProfileRestTest extends AbstractRestTest {
       created.add(postRequest(JOB_PROFILES_PATH, new JobProfileUpdateDto()
         .withProfile(profile.getProfile().withName(nameForProfiles + i))
         .withAddedRelations(List.of(
-          new ProfileAssociation()
+          new ProfileAssociationRecord()
             .withDetailProfileId(profilesIds.get(i))
             .withDetailProfileType(ProfileType.MATCH_PROFILE)
             .withMasterProfileType(ProfileType.JOB_PROFILE)
             .withOrder(0)
             .withTriggered(false).withReactTo(ReactToType.MATCH),
-          new ProfileAssociation()
+          new ProfileAssociationRecord()
+            .withMasterProfileId(profilesIds.get(i))
             .withDetailProfileId(createdActions.get(i).getId())
             .withDetailProfileType(ACTION_PROFILE)
             .withMasterProfileType(MATCH_PROFILE)
             .withOrder(0)
             .withTriggered(false),
-          new ProfileAssociation()
+          new ProfileAssociationRecord()
             .withDetailProfileId(createdActions.get(i).getId())
             .withDetailProfileType(ACTION_PROFILE)
             .withMasterProfileType(JOB_PROFILE)
@@ -592,14 +594,7 @@ class MatchProfileRestTest extends AbstractRestTest {
     }
     i = 0;
     for (JobProfileUpdateDto profile : created) {
-      profile.setDeletedRelations(Collections.singletonList(new ProfileAssociation()
-        .withDetailProfileId(createdActions.get(i).getId())
-        .withMasterProfileId(profile.getProfile().getId())
-        .withDetailProfileType(ACTION_PROFILE)
-        .withMasterProfileType(JOB_PROFILE)
-        .withOrder(0)
-        .withTriggered(false).withReactTo(ReactToType.MATCH)
-      ));
+      profile.setDeletedRelations(Collections.singletonList(profile.getAddedRelations().get(2)));
       profile.getAddedRelations().clear();
       putRequest(JOB_PROFILES_PATH + "/" + profile.getProfile().getId(), profile)
         .statusCode(SC_OK);
@@ -607,7 +602,7 @@ class MatchProfileRestTest extends AbstractRestTest {
     }
     i = 0;
     for (JobProfileUpdateDto profile : created) {
-      profile.setAddedRelations(Collections.singletonList(new ProfileAssociation()
+      profile.setAddedRelations(Collections.singletonList(new ProfileAssociationRecord()
         .withDetailProfileId(profilesIds.get(i))
         .withMasterProfileId(profile.getProfile().getId())
         .withDetailProfileType(ProfileType.MATCH_PROFILE)
