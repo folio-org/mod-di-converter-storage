@@ -12,7 +12,6 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
-import java.util.stream.Collectors;
 import javax.ws.rs.NotFoundException;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
@@ -136,14 +135,14 @@ public class MappingProfileServiceImpl
   protected List<ProfileAssociation> getProfileAssociationToAdd(MappingProfileUpdateDto dto) {
     return dto.getAddedRelations().stream()
       .map(profileAssociationConverter::convert)
-      .collect(Collectors.toList());
+      .toList();
   }
 
   @Override
   protected List<ProfileAssociation> getProfileAssociationToDelete(MappingProfileUpdateDto dto) {
     return dto.getDeletedRelations().stream()
       .map(profileAssociationConverter::convert)
-      .collect(Collectors.toList());
+      .toList();
   }
 
   @Override
@@ -204,7 +203,7 @@ public class MappingProfileServiceImpl
   public List<ProfileAssociation> getAddedRelations(MappingProfileUpdateDto profileUpdateDto) {
     return profileUpdateDto.getAddedRelations().stream()
       .map(profileAssociationConverter::convert)
-      .collect(Collectors.toList());
+      .toList();
   }
 
   @Override
@@ -212,7 +211,7 @@ public class MappingProfileServiceImpl
                                                       List<ProfileAssociation> profileAssociations) {
     var deletedRelations = profileAssociations.stream()
       .map((ProfileAssociation a) -> profileAssociationConverter.reverse().convert(a))
-      .collect(Collectors.toList());
+      .toList();
     return profileUpdateDto.withDeletedRelations(deletedRelations);
   }
 
@@ -221,7 +220,7 @@ public class MappingProfileServiceImpl
                                                      List<ProfileAssociation> profileAssociations) {
     var addedRelations = profileAssociations.stream()
       .map((ProfileAssociation a) -> profileAssociationConverter.reverse().convert(a))
-      .collect(Collectors.toList());
+      .toList();
     return profileUpdateDto.withAddedRelations(addedRelations);
   }
 

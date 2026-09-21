@@ -93,7 +93,7 @@ public class JobProfileServiceImpl
   public List<ProfileAssociation> getAddedRelations(JobProfileUpdateDto profileUpdateDto) {
     return profileUpdateDto.getAddedRelations().stream()
       .map(profileAssociationConverter::convert)
-      .collect(Collectors.toList());
+      .toList();
   }
 
   @Override
@@ -101,7 +101,7 @@ public class JobProfileServiceImpl
                                                   List<ProfileAssociation> profileAssociations) {
     var deletedRelations = profileAssociations.stream()
       .map((ProfileAssociation a) -> profileAssociationConverter.reverse().convert(a))
-      .collect(Collectors.toList());
+      .toList();
     return profileUpdateDto.withDeletedRelations(deletedRelations);
   }
 
@@ -110,7 +110,7 @@ public class JobProfileServiceImpl
                                                 List<ProfileAssociation> profileAssociations) {
     var addedRelations = profileAssociations.stream()
       .map((ProfileAssociation a) -> profileAssociationConverter.reverse().convert(a))
-      .collect(Collectors.toList());
+      .toList();
     return profileUpdateDto.withAddedRelations(addedRelations);
   }
 
@@ -174,14 +174,14 @@ public class JobProfileServiceImpl
   protected List<ProfileAssociation> getProfileAssociationToAdd(JobProfileUpdateDto dto) {
     return dto.getAddedRelations().stream()
       .map(profileAssociationConverter::convert)
-      .collect(Collectors.toList());
+      .toList();
   }
 
   @Override
   protected List<ProfileAssociation> getProfileAssociationToDelete(JobProfileUpdateDto dto) {
     return dto.getDeletedRelations().stream()
       .map(profileAssociationConverter::convert)
-      .collect(Collectors.toList());
+      .toList();
   }
 
   @Override

@@ -5,7 +5,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
-import java.util.stream.Collectors;
 import org.apache.commons.lang3.StringUtils;
 import org.folio.dao.ProfileDao;
 import org.folio.dao.association.ProfileWrapperDao;
@@ -49,7 +48,7 @@ public class MatchProfileServiceImpl
   public List<ProfileAssociation> getAddedRelations(MatchProfileUpdateDto profileUpdateDto) {
     return profileUpdateDto.getAddedRelations().stream()
       .map(profileAssociationConverter::convert)
-      .collect(Collectors.toList());
+      .toList();
   }
 
   @Override
@@ -57,7 +56,7 @@ public class MatchProfileServiceImpl
                                                     List<ProfileAssociation> profileAssociations) {
     var deletedRelations = profileAssociations.stream()
       .map((ProfileAssociation a) -> profileAssociationConverter.reverse().convert(a))
-      .collect(Collectors.toList());
+      .toList();
     return profileUpdateDto.withDeletedRelations(deletedRelations);
   }
 
@@ -66,7 +65,7 @@ public class MatchProfileServiceImpl
                                                   List<ProfileAssociation> profileAssociations) {
     var addedRelations = profileAssociations.stream()
       .map((ProfileAssociation a) -> profileAssociationConverter.reverse().convert(a))
-      .collect(Collectors.toList());
+      .toList();
     return profileUpdateDto.withAddedRelations(addedRelations);
   }
 
@@ -122,14 +121,14 @@ public class MatchProfileServiceImpl
   protected List<ProfileAssociation> getProfileAssociationToAdd(MatchProfileUpdateDto dto) {
     return dto.getAddedRelations().stream()
       .map(profileAssociationConverter::convert)
-      .collect(Collectors.toList());
+      .toList();
   }
 
   @Override
   protected List<ProfileAssociation> getProfileAssociationToDelete(MatchProfileUpdateDto dto) {
     return dto.getDeletedRelations().stream()
       .map(profileAssociationConverter::convert)
-      .collect(Collectors.toList());
+      .toList();
   }
 
   @Override
