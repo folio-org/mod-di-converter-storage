@@ -8,6 +8,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.folio.rest.jaxrs.model.ProfileType.ACTION_PROFILE;
 import static org.folio.rest.jaxrs.model.ProfileType.JOB_PROFILE;
 import static org.folio.rest.jaxrs.model.ProfileType.MAPPING_PROFILE;
+import static org.folio.rest.jaxrs.model.ProfileType.MATCH_PROFILE;
 import static org.folio.support.TestUtil.ACTION_PROFILES_PATH;
 import static org.folio.support.TestUtil.JOB_PROFILES_PATH;
 import static org.folio.support.TestUtil.JOB_PROFILE_ID_PARAM;
@@ -289,6 +290,85 @@ class ProfileImportRestTest extends AbstractRestTest {
     postRequest(PROFILE_SNAPSHOT_PATH, importWrapper.encode())
       .statusCode(SC_BAD_REQUEST)
       .body(startsWith("Cannot map profile content, error: "));
+  }
+
+  @DisplayName("should import snapshot when the same action/mapping profile is repeated across match branches")
+  @Test
+  void shouldImportSnapshotWithProfileRepeatedAcrossMatchBranches() throws IOException {
+    String jobProfileId = UUID.randomUUID().toString();
+    String matchProfileId1 = UUID.randomUUID().toString();
+    String matchProfileId2 = UUID.randomUUID().toString();
+    String matchProfileId3 = UUID.randomUUID().toString();
+    String actionProfileId = UUID.randomUUID().toString();
+    String mappingProfileId = UUID.randomUUID().toString();
+
+    JsonObject importWrapper = constructSharedProfileWrapper(jobProfileId, matchProfileId1, matchProfileId2,
+      matchProfileId3, actionProfileId, mappingProfileId);
+
+    JsonObject postResult = new JsonObject(postRequest(PROFILE_SNAPSHOT_PATH, importWrapper.encode())
+      .statusCode(SC_CREATED)
+      .extract().body().asPrettyString());
+
+    // the shared action and its mapping are stored exactly once ...
+    getRequest(JOB_PROFILES_PATH + "/" + jobProfileId).statusCode(SC_OK);
+    getRequest(MATCH_PROFILES_PATH + "/" + matchProfileId1).statusCode(SC_OK);
+    getRequest(MATCH_PROFILES_PATH + "/" + matchProfileId2).statusCode(SC_OK);
+    getRequest(MATCH_PROFILES_PATH + "/" + matchProfileId3).statusCode(SC_OK);
+    getRequest(ACTION_PROFILES_PATH + "/" + actionProfileId).statusCode(SC_OK);
+    getRequest(MAPPING_PROFILES_PATH + "/" + mappingProfileId).statusCode(SC_OK);
+
+    // ... while remaining reachable from every match branch in the reconstructed snapshot
+    assertThat(countByContentType(postResult, MATCH_PROFILE.value())).isEqualTo(3);
+    assertThat(countByContentType(postResult, ACTION_PROFILE.value())).isEqualTo(3);
+    assertThat(countByContentType(postResult, MAPPING_PROFILE.value())).isEqualTo(3);
+  }
+
+  @DisplayName("should return 400 Bad Request when a profile id is repeated with conflicting content")
+  @Test
+  void shouldFailWhenSnapshotHasConflictingDuplicateProfile() throws IOException {
+    String jobProfileId = UUID.randomUUID().toString();
+    String matchProfileId1 = UUID.randomUUID().toString();
+    String matchProfileId2 = UUID.randomUUID().toString();
+    String matchProfileId3 = UUID.randomUUID().toString();
+    String actionProfileId = UUID.randomUUID().toString();
+    String mappingProfileId = UUID.randomUUID().toString();
+
+    JsonObject importWrapper = constructSharedProfileWrapper(jobProfileId, matchProfileId1, matchProfileId2,
+      matchProfileId3, actionProfileId, mappingProfileId);
+
+    // make one occurrence of the shared action differ from the others -> conflicting definition
+    importWrapper.getJsonArray("childSnapshotWrappers").getJsonObject(0)
+      .getJsonArray("childSnapshotWrappers").getJsonObject(1)
+      .getJsonObject("content").put("name", "Conflicting action name");
+
+    postRequest(PROFILE_SNAPSHOT_PATH, importWrapper.encode())
+      .statusCode(SC_BAD_REQUEST)
+      .body(is(String.format("Imported snapshot contains conflicting definitions for %s id '%s'; "
+        + "all occurrences of a profile within a snapshot must be identical", ACTION_PROFILE, actionProfileId)));
+  }
+
+  private JsonObject constructSharedProfileWrapper(String jobProfileId, String matchProfileId1,
+                                                   String matchProfileId2, String matchProfileId3,
+                                                   String actionProfileId, String mappingProfileId)
+    throws IOException {
+    return new JsonObject(readFileFromPath(PROFILE_SNAPSHOT_FILE_PATH + "profileSnapshotWithSharedProfiles.json")
+      .replace("#(jobProfileId)", jobProfileId)
+      .replace("#(matchProfileId1)", matchProfileId1)
+      .replace("#(matchProfileId2)", matchProfileId2)
+      .replace("#(matchProfileId3)", matchProfileId3)
+      .replace("#(actionProfileId)", actionProfileId)
+      .replace("#(mappingProfileId)", mappingProfileId));
+  }
+
+  private int countByContentType(JsonObject node, String contentType) {
+    int count = contentType.equals(node.getString("contentType")) ? 1 : 0;
+    JsonArray children = node.getJsonArray("childSnapshotWrappers");
+    if (children != null) {
+      for (Object child : children) {
+        count += countByContentType((JsonObject) child, contentType);
+      }
+    }
+    return count;
   }
 
   private JsonObject constructProfileWrapper(String profilePath, String jobProfileId, String matchProfileId,

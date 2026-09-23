@@ -1,0 +1,288 @@
+{
+  "id" : "11111111-1111-4111-8111-111111111101",
+  "profileId" : "#(jobProfileId)",
+  "profileWrapperId" : "21111111-1111-4111-8111-111111111101",
+  "contentType" : "JOB_PROFILE",
+  "content" : {
+    "id" : "#(jobProfileId)",
+    "name" : "Shared profiles job",
+    "description" : "",
+    "dataType" : "MARC",
+    "userInfo" : {
+      "firstName" : "DIKU",
+      "lastName" : "ADMINISTRATOR",
+      "userName" : "diku_admin"
+    },
+    "parentProfiles" : [ ],
+    "childProfiles" : [ ],
+    "hidden" : false,
+    "metadata" : {
+      "createdDate" : "2024-08-13T20:05:57.550+00:00",
+      "createdByUserId" : "455eb13e-679b-599d-9a41-4a7712432bc3",
+      "updatedDate" : "2024-08-13T20:05:57.550+00:00",
+      "updatedByUserId" : "455eb13e-679b-599d-9a41-4a7712432bc3"
+    }
+  },
+  "order" : 0,
+  "childSnapshotWrappers" : [ {
+    "id" : "11111111-1111-4111-8111-111111111112",
+    "profileId" : "#(matchProfileId1)",
+    "profileWrapperId" : "21111111-1111-4111-8111-111111111112",
+    "contentType" : "MATCH_PROFILE",
+    "content" : {
+      "id" : "#(matchProfileId1)",
+      "name" : "Shared match on UUID",
+      "description" : "",
+      "incomingRecordType" : "MARC_BIBLIOGRAPHIC",
+      "existingRecordType" : "INSTANCE",
+      "matchDetails" : [ {
+        "incomingRecordType" : "MARC_BIBLIOGRAPHIC",
+        "existingRecordType" : "INSTANCE",
+        "incomingMatchExpression" : {
+          "dataValueType" : "VALUE_FROM_RECORD",
+          "fields" : [ {
+            "label" : "field",
+            "value" : "001"
+          } ]
+        },
+        "matchCriterion" : "EXACTLY_MATCHES",
+        "existingMatchExpression" : {
+          "dataValueType" : "VALUE_FROM_RECORD",
+          "fields" : [ {
+            "label" : "field",
+            "value" : "instance.id"
+          } ]
+        }
+      } ],
+      "parentProfiles" : [ ],
+      "childProfiles" : [ ],
+      "hidden" : false
+    },
+    "order" : 0,
+    "childSnapshotWrappers" : [ {
+      "id" : "11111111-1111-4111-8111-111111111113",
+      "profileId" : "#(matchProfileId2)",
+      "profileWrapperId" : "21111111-1111-4111-8111-111111111113",
+      "contentType" : "MATCH_PROFILE",
+      "reactTo" : "NON_MATCH",
+      "content" : {
+        "id" : "#(matchProfileId2)",
+        "name" : "Shared match on HRID",
+        "description" : "",
+        "incomingRecordType" : "MARC_BIBLIOGRAPHIC",
+        "existingRecordType" : "INSTANCE",
+        "matchDetails" : [ {
+          "incomingRecordType" : "MARC_BIBLIOGRAPHIC",
+          "existingRecordType" : "INSTANCE",
+          "incomingMatchExpression" : {
+            "dataValueType" : "VALUE_FROM_RECORD",
+            "fields" : [ {
+              "label" : "field",
+              "value" : "001"
+            } ]
+          },
+          "matchCriterion" : "EXACTLY_MATCHES",
+          "existingMatchExpression" : {
+            "dataValueType" : "VALUE_FROM_RECORD",
+            "fields" : [ {
+              "label" : "field",
+              "value" : "instance.hrid"
+            } ]
+          }
+        } ],
+        "parentProfiles" : [ ],
+        "childProfiles" : [ ],
+        "hidden" : false
+      },
+      "order" : 0,
+      "childSnapshotWrappers" : [ {
+        "id" : "11111111-1111-4111-8111-111111111114",
+        "profileId" : "#(matchProfileId3)",
+        "profileWrapperId" : "21111111-1111-4111-8111-111111111114",
+        "contentType" : "MATCH_PROFILE",
+        "reactTo" : "NON_MATCH",
+        "content" : {
+          "id" : "#(matchProfileId3)",
+          "name" : "Shared match on barcode",
+          "description" : "",
+          "incomingRecordType" : "MARC_BIBLIOGRAPHIC",
+          "existingRecordType" : "INSTANCE",
+          "matchDetails" : [ {
+            "incomingRecordType" : "MARC_BIBLIOGRAPHIC",
+            "existingRecordType" : "INSTANCE",
+            "incomingMatchExpression" : {
+              "dataValueType" : "VALUE_FROM_RECORD",
+              "fields" : [ {
+                "label" : "field",
+                "value" : "001"
+              } ]
+            },
+            "matchCriterion" : "EXACTLY_MATCHES",
+            "existingMatchExpression" : {
+              "dataValueType" : "VALUE_FROM_RECORD",
+              "fields" : [ {
+                "label" : "field",
+                "value" : "instance.barcode"
+              } ]
+            }
+          } ],
+          "parentProfiles" : [ ],
+          "childProfiles" : [ ],
+          "hidden" : false
+        },
+        "order" : 0,
+        "childSnapshotWrappers" : [ {
+          "id" : "11111111-1111-4111-8111-1111111111a1",
+          "profileId" : "#(actionProfileId)",
+          "profileWrapperId" : "21111111-1111-4111-8111-1111111111af",
+          "contentType" : "ACTION_PROFILE",
+          "reactTo" : "MATCH",
+          "content" : {
+            "id" : "#(actionProfileId)",
+            "name" : "Shared create action",
+            "description" : "",
+            "action" : "CREATE",
+            "folioRecord" : "INSTANCE",
+            "parentProfiles" : [ ],
+            "childProfiles" : [ ],
+            "hidden" : false,
+            "remove9Subfields" : false
+          },
+          "order" : 0,
+          "childSnapshotWrappers" : [ {
+            "id" : "11111111-1111-4111-8111-1111111111b1",
+            "profileId" : "#(mappingProfileId)",
+            "profileWrapperId" : "21111111-1111-4111-8111-1111111111bf",
+            "contentType" : "MAPPING_PROFILE",
+            "content" : {
+              "id" : "#(mappingProfileId)",
+              "name" : "Shared create mapping",
+              "description" : "",
+              "incomingRecordType" : "MARC_BIBLIOGRAPHIC",
+              "existingRecordType" : "INSTANCE",
+              "marcFieldProtectionSettings" : [ ],
+              "parentProfiles" : [ ],
+              "childProfiles" : [ ],
+              "mappingDetails" : {
+                "name" : "instance",
+                "recordType" : "INSTANCE",
+                "mappingFields" : [ {
+                  "name" : "discoverySuppress",
+                  "enabled" : "true",
+                  "required" : false,
+                  "path" : "instance.discoverySuppress",
+                  "value" : "",
+                  "subfields" : [ ]
+                } ],
+                "marcMappingDetails" : [ ]
+              },
+              "hidden" : false
+            },
+            "order" : 0,
+            "childSnapshotWrappers" : [ ]
+          } ]
+        } ]
+      }, {
+        "id" : "11111111-1111-4111-8111-1111111111a2",
+        "profileId" : "#(actionProfileId)",
+        "profileWrapperId" : "21111111-1111-4111-8111-1111111111af",
+        "contentType" : "ACTION_PROFILE",
+        "reactTo" : "MATCH",
+        "content" : {
+          "id" : "#(actionProfileId)",
+          "name" : "Shared create action",
+          "description" : "",
+          "action" : "CREATE",
+          "folioRecord" : "INSTANCE",
+          "parentProfiles" : [ ],
+          "childProfiles" : [ ],
+          "hidden" : false,
+          "remove9Subfields" : false
+        },
+        "order" : 0,
+        "childSnapshotWrappers" : [ {
+          "id" : "11111111-1111-4111-8111-1111111111b2",
+          "profileId" : "#(mappingProfileId)",
+          "profileWrapperId" : "21111111-1111-4111-8111-1111111111bf",
+          "contentType" : "MAPPING_PROFILE",
+          "content" : {
+            "id" : "#(mappingProfileId)",
+            "name" : "Shared create mapping",
+            "description" : "",
+            "incomingRecordType" : "MARC_BIBLIOGRAPHIC",
+            "existingRecordType" : "INSTANCE",
+            "marcFieldProtectionSettings" : [ ],
+            "parentProfiles" : [ ],
+            "childProfiles" : [ ],
+            "mappingDetails" : {
+              "name" : "instance",
+              "recordType" : "INSTANCE",
+              "mappingFields" : [ {
+                "name" : "discoverySuppress",
+                "enabled" : "true",
+                "required" : false,
+                "path" : "instance.discoverySuppress",
+                "value" : "",
+                "subfields" : [ ]
+              } ],
+              "marcMappingDetails" : [ ]
+            },
+            "hidden" : false
+          },
+          "order" : 0,
+          "childSnapshotWrappers" : [ ]
+        } ]
+      } ]
+    }, {
+      "id" : "11111111-1111-4111-8111-1111111111a3",
+      "profileId" : "#(actionProfileId)",
+      "profileWrapperId" : "21111111-1111-4111-8111-1111111111af",
+      "contentType" : "ACTION_PROFILE",
+      "reactTo" : "MATCH",
+      "content" : {
+        "id" : "#(actionProfileId)",
+        "name" : "Shared create action",
+        "description" : "",
+        "action" : "CREATE",
+        "folioRecord" : "INSTANCE",
+        "parentProfiles" : [ ],
+        "childProfiles" : [ ],
+        "hidden" : false,
+        "remove9Subfields" : false
+      },
+      "order" : 0,
+      "childSnapshotWrappers" : [ {
+        "id" : "11111111-1111-4111-8111-1111111111b3",
+        "profileId" : "#(mappingProfileId)",
+        "profileWrapperId" : "21111111-1111-4111-8111-1111111111bf",
+        "contentType" : "MAPPING_PROFILE",
+        "content" : {
+          "id" : "#(mappingProfileId)",
+          "name" : "Shared create mapping",
+          "description" : "",
+          "incomingRecordType" : "MARC_BIBLIOGRAPHIC",
+          "existingRecordType" : "INSTANCE",
+          "marcFieldProtectionSettings" : [ ],
+          "parentProfiles" : [ ],
+          "childProfiles" : [ ],
+          "mappingDetails" : {
+            "name" : "instance",
+            "recordType" : "INSTANCE",
+            "mappingFields" : [ {
+              "name" : "discoverySuppress",
+              "enabled" : "true",
+              "required" : false,
+              "path" : "instance.discoverySuppress",
+              "value" : "",
+              "subfields" : [ ]
+            } ],
+            "marcMappingDetails" : [ ]
+          },
+          "hidden" : false
+        },
+        "order" : 0,
+        "childSnapshotWrappers" : [ ]
+      } ]
+    } ]
+  } ]
+}
