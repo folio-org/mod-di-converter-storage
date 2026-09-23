@@ -460,14 +460,11 @@ public abstract class AbstractProfileService<T, S, D> implements ProfileService<
     Future.all(futureList).onComplete(ar -> {
       if (ar.succeeded()) {
         boolean allDeleted = ar.result().<Boolean>list().stream().allMatch(Boolean.TRUE::equals);
-        if (allDeleted) {
-          result.complete(true);
-        } else {
-          LOGGER.warn("deleteRelatedAssociations:: Could not delete one or more profile associations, "
-            + "no matching association found for the given ids");
-          result.fail(new NotFoundException(
-            "Could not delete one or more profile associations: no matching association found"));
+        if (!allDeleted) {
+          LOGGER.info("deleteRelatedAssociations:: One or more profile associations were already removed "
+            + "(likely cascaded from a parent association delete); treating them as deleted");
         }
+        result.complete(true);
       } else {
         result.fail(ar.cause());
       }

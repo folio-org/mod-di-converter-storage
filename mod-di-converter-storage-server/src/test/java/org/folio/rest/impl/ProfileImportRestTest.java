@@ -295,17 +295,17 @@ class ProfileImportRestTest extends AbstractRestTest {
   @DisplayName("should import snapshot when the same action/mapping profile is repeated across match branches")
   @Test
   void shouldImportSnapshotWithProfileRepeatedAcrossMatchBranches() throws IOException {
-    String jobProfileId = UUID.randomUUID().toString();
-    String matchProfileId1 = UUID.randomUUID().toString();
-    String matchProfileId2 = UUID.randomUUID().toString();
-    String matchProfileId3 = UUID.randomUUID().toString();
-    String actionProfileId = UUID.randomUUID().toString();
-    String mappingProfileId = UUID.randomUUID().toString();
+    var jobProfileId = UUID.randomUUID().toString();
+    var matchProfileId1 = UUID.randomUUID().toString();
+    var matchProfileId2 = UUID.randomUUID().toString();
+    var matchProfileId3 = UUID.randomUUID().toString();
+    var actionProfileId = UUID.randomUUID().toString();
+    var mappingProfileId = UUID.randomUUID().toString();
 
-    JsonObject importWrapper = constructSharedProfileWrapper(jobProfileId, matchProfileId1, matchProfileId2,
+    var importWrapper = constructSharedProfileWrapper(jobProfileId, matchProfileId1, matchProfileId2,
       matchProfileId3, actionProfileId, mappingProfileId);
 
-    JsonObject postResult = new JsonObject(postRequest(PROFILE_SNAPSHOT_PATH, importWrapper.encode())
+    var postResult = new JsonObject(postRequest(PROFILE_SNAPSHOT_PATH, importWrapper.encode())
       .statusCode(SC_CREATED)
       .extract().body().asPrettyString());
 
@@ -326,14 +326,14 @@ class ProfileImportRestTest extends AbstractRestTest {
   @DisplayName("should return 400 Bad Request when a profile id is repeated with conflicting content")
   @Test
   void shouldFailWhenSnapshotHasConflictingDuplicateProfile() throws IOException {
-    String jobProfileId = UUID.randomUUID().toString();
-    String matchProfileId1 = UUID.randomUUID().toString();
-    String matchProfileId2 = UUID.randomUUID().toString();
-    String matchProfileId3 = UUID.randomUUID().toString();
-    String actionProfileId = UUID.randomUUID().toString();
-    String mappingProfileId = UUID.randomUUID().toString();
+    var jobProfileId = UUID.randomUUID().toString();
+    var matchProfileId1 = UUID.randomUUID().toString();
+    var matchProfileId2 = UUID.randomUUID().toString();
+    var matchProfileId3 = UUID.randomUUID().toString();
+    var actionProfileId = UUID.randomUUID().toString();
+    var mappingProfileId = UUID.randomUUID().toString();
 
-    JsonObject importWrapper = constructSharedProfileWrapper(jobProfileId, matchProfileId1, matchProfileId2,
+    var importWrapper = constructSharedProfileWrapper(jobProfileId, matchProfileId1, matchProfileId2,
       matchProfileId3, actionProfileId, mappingProfileId);
 
     // make one occurrence of the shared action differ from the others -> conflicting definition
@@ -345,6 +345,32 @@ class ProfileImportRestTest extends AbstractRestTest {
       .statusCode(SC_BAD_REQUEST)
       .body(is(String.format("Imported snapshot contains conflicting definitions for %s id '%s'; "
         + "all occurrences of a profile within a snapshot must be identical", ACTION_PROFILE, actionProfileId)));
+  }
+
+  @DisplayName("should re-import the same snapshot with repeated profiles (overlay) without failing")
+  @Test
+  void shouldReimportSnapshotWithProfileRepeatedAcrossMatchBranches() throws IOException {
+    var jobProfileId = UUID.randomUUID().toString();
+    var matchProfileId1 = UUID.randomUUID().toString();
+    var matchProfileId2 = UUID.randomUUID().toString();
+    var matchProfileId3 = UUID.randomUUID().toString();
+    var actionProfileId = UUID.randomUUID().toString();
+    var mappingProfileId = UUID.randomUUID().toString();
+
+    var importWrapper = constructSharedProfileWrapper(jobProfileId, matchProfileId1, matchProfileId2,
+      matchProfileId3, actionProfileId, mappingProfileId);
+
+    postRequest(PROFILE_SNAPSHOT_PATH, importWrapper.encode()).statusCode(SC_CREATED);
+
+    // re-importing overlays the existing profiles; deleting the nested match associations cascades to their
+    // children, so the cleanup must stay idempotent instead of failing on already-removed associations
+    var secondResult = new JsonObject(postRequest(PROFILE_SNAPSHOT_PATH, importWrapper.encode())
+      .statusCode(SC_CREATED)
+      .extract().body().asPrettyString());
+
+    assertThat(countByContentType(secondResult, MATCH_PROFILE.value())).isEqualTo(3);
+    assertThat(countByContentType(secondResult, ACTION_PROFILE.value())).isEqualTo(3);
+    assertThat(countByContentType(secondResult, MAPPING_PROFILE.value())).isEqualTo(3);
   }
 
   private JsonObject constructSharedProfileWrapper(String jobProfileId, String matchProfileId1,
