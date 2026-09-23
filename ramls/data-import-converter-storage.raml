@@ -457,36 +457,35 @@ resourceTypes:
                 body:
                   application/json:
                     type: profileSnapshotWrapper
-  /jobProfileSnapshots:
+  /jobProfileSnapshots/{id}:
     displayName: Profile snapshots
     description: API for managing Job Profile Snapshots
-    /{id}:
-      get:
-        description: Method to get Job Profile Snapshot by id
-        responses:
-          200:
-            body:
-              application/json:
-                type: profileSnapshotWrapper
-      post:
-        description: Method to create a Job Profile Snapshot from the Job Profile identified by the {id}
-          path parameter. The snapshot is built entirely server-side from the persisted Job Profile and its
-          relations; this endpoint does not accept a request body.
-        responses:
-          201:
-            body:
-              application/json:
-                type: profileSnapshotWrapper
-          400:
-            description: "Bad request"
-            body:
-              text/plain:
-                example: "Bad request"
-          500:
-            description: "Internal server error"
-            body:
-              text/plain:
-                example: "Internal server error"
+    get:
+      description: Method to get Job Profile Snapshot by id
+      responses:
+        200:
+          body:
+            application/json:
+              type: profileSnapshotWrapper
+    post:
+      description: Method to create a Job Profile Snapshot from the Job Profile identified by the {id}
+        path parameter. The snapshot is built entirely server-side from the persisted Job Profile and its
+        relations; this endpoint does not accept a request body.
+      responses:
+        201:
+          body:
+            application/json:
+              type: profileSnapshotWrapper
+        400:
+          description: "Bad request"
+          body:
+            text/plain:
+              example: "Bad request"
+        500:
+          description: "Internal server error"
+          body:
+            text/plain:
+              example: "Internal server error"
   /entityTypes:
     displayName: Entity types
     get:
