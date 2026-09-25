@@ -9,6 +9,7 @@ import static org.folio.services.snapshot.ProfileSnapshotServiceImpl.convertProf
 import io.vertx.core.CompositeFuture;
 import io.vertx.core.Future;
 import io.vertx.core.json.JsonArray;
+import io.vertx.core.json.JsonObject;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.EnumMap;
@@ -43,6 +44,9 @@ public class ProfileImportServiceImpl implements ProfileImportService {
     List.of(MAPPING_PROFILE, ACTION_PROFILE, MATCH_PROFILE, JOB_PROFILE);
   private static final String PROFILE_SNAPSHOT_INVALID_TYPE =
     "Cannot import profile snapshot of %s required type is %s";
+  private static final String CONFLICTING_PROFILE_DEFINITIONS =
+    "Imported snapshot contains conflicting definitions for %s id '%s'; "
+    + "all occurrences of a profile within a snapshot must be identical";
   private final EnumMap<ProfileType, BiFunction<ProfileSnapshotWrapper, OkapiConnectionParams, Future<Object>>>
     profileSaveHandlers;
   private final ProfileSnapshotService profileSnapshotService;
@@ -110,7 +114,13 @@ public class ProfileImportServiceImpl implements ProfileImportService {
       return Future.failedFuture(new BadRequestException(errorMessage));
     }
 
-    var profileTypeToSnapshots = getProfileTypeToSnapshot(profileSnapshot);
+    EnumMap<ProfileType, List<ProfileSnapshotWrapper>> profileTypeToSnapshots;
+    try {
+      profileTypeToSnapshots = getProfileTypeToSnapshot(profileSnapshot);
+    } catch (BadRequestException e) {
+      LOGGER.warn("importProfile:: {}", e.getMessage());
+      return Future.failedFuture(e);
+    }
     var profileTypesInSaveOrder = orderProfileTypesBeforeSaving(profileTypeToSnapshots);
 
     Future<List<Object>> saveProfilesFuture = Future.succeededFuture();
@@ -149,11 +159,16 @@ public class ProfileImportServiceImpl implements ProfileImportService {
 
   private void addSnapshotsToMap(ProfileSnapshotWrapper snapshot,
                                  EnumMap<ProfileType, List<ProfileSnapshotWrapper>> profileTypeToSnapshots) {
-    List<ProfileSnapshotWrapper> snapshots =
-      profileTypeToSnapshots.computeIfAbsent(snapshot.getContentType(), k -> new ArrayList<>());
+    var snapshots = profileTypeToSnapshots.computeIfAbsent(snapshot.getContentType(), k -> new ArrayList<>());
 
-    if (snapshots.stream().noneMatch(s -> s.getId().equals(snapshot.getId()))) {
+    var alreadyBucketed = snapshots.stream()
+      .filter(s -> s.getProfileId().equals(snapshot.getProfileId()))
+      .findFirst();
+    if (alreadyBucketed.isEmpty()) {
       snapshots.add(snapshot);
+    } else if (!contentEquals(alreadyBucketed.get(), snapshot)) {
+      throw new BadRequestException(
+        String.format(CONFLICTING_PROFILE_DEFINITIONS, snapshot.getContentType(), snapshot.getProfileId()));
     }
 
     if (snapshot.getChildSnapshotWrappers() != null) {
@@ -161,6 +176,19 @@ public class ProfileImportServiceImpl implements ProfileImportService {
         addSnapshotsToMap(child, profileTypeToSnapshots);
       }
     }
+  }
+
+  private boolean contentEquals(ProfileSnapshotWrapper first, ProfileSnapshotWrapper second) {
+    return normalizeForComparison(first.getContent()).equals(normalizeForComparison(second.getContent()));
+  }
+
+  private JsonObject normalizeForComparison(Object content) {
+    JsonObject json = JsonObject.mapFrom(content);
+    json.remove("metadata");
+    json.remove("userInfo");
+    json.remove("parentProfiles");
+    json.remove("childProfiles");
+    return json;
   }
 
   private List<ProfileAssociationRecord> formAddedRelations(ProfileSnapshotWrapper rootSnapshot,
