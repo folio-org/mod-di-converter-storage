@@ -32,11 +32,11 @@
     <vertx.version>5.2.0</vertx.version>
     <spring.version>7.0.9</spring.version>
     <aspectj.version>1.9.25.1</aspectj.version>
-    <caffeine.version>3.2.4</caffeine.version>
+    <caffeine.version>3.3.0</caffeine.version>
     <log4j.version>2.26.1</log4j.version>
 
     <junit.version>6.1.3</junit.version>
-    <mockito.version>5.23.0</mockito.version>
+    <mockito.version>5.24.0</mockito.version>
     <assertj.version>3.27.7</assertj.version>
     <testcontainers.version>2.0.5</testcontainers.version>
 
