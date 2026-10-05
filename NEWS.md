@@ -9,6 +9,7 @@
 ### Bug Fixes
 * Improve validation based on API schemas ([MODDICONV-452](https://folio-org.atlassian.net/browse/MODDICONV-452))
 * Fix import of job profiles containing multiple occurrences of same action/mapping profiles ([MODDICONV-441](https://folio-org.atlassian.net/browse/MODDICONV-441))
+* Reject match profiles with blank qualifier value or missing qualifier type ([MODDICONV-453](https://folio-org.atlassian.net/browse/MODDICONV-453))
 
 ### Tech Dept
 * Delete default quickMarc profiles ([MODDICONV-445](https://folio-org.atlassian.net/browse/MODDICONV-445))
