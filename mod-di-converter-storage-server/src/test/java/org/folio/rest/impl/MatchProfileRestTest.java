@@ -15,6 +15,7 @@ import static org.folio.rest.jaxrs.model.ProfileType.ACTION_PROFILE;
 import static org.folio.rest.jaxrs.model.ProfileType.JOB_PROFILE;
 import static org.folio.rest.jaxrs.model.ProfileType.MATCH_PROFILE;
 import static org.folio.rest.jaxrs.model.Qualifier.ComparisonPart.NUMERICS_ONLY;
+import static org.folio.rest.jaxrs.model.Qualifier.QualifierType.BEGINS_WITH;
 import static org.folio.support.ProfileFixtures.ACTION_PROFILE_1;
 import static org.folio.support.ProfileFixtures.JOB_PROFILE_1;
 import static org.folio.support.ProfileFixtures.MAPPING_PROFILE_1;
@@ -36,6 +37,7 @@ import static org.hamcrest.Matchers.everyItem;
 import static org.hamcrest.Matchers.hasItem;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.notNullValue;
+import static org.hamcrest.Matchers.nullValue;
 
 import com.google.common.collect.Lists;
 import io.vertx.core.json.JsonObject;
@@ -65,8 +67,15 @@ import org.folio.rest.jaxrs.model.Tags;
 import org.folio.support.AbstractRestTest;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.NullAndEmptySource;
+import org.junit.jupiter.params.provider.ValueSource;
 
 class MatchProfileRestTest extends AbstractRestTest {
+  private static final String BLANK_QUALIFIER_VALUE_MESSAGE =
+    "Match profile - Use a qualifier field cannot be saved with blank or whitespace only value.";
+  private static final String MISSING_QUALIFIER_TYPE_MESSAGE =
+    "Match profile - Use a qualifier field cannot be saved without a qualifier type.";
 
   @DisplayName("should return empty list when no profiles exist")
   @Test
@@ -503,6 +512,189 @@ class MatchProfileRestTest extends AbstractRestTest {
       .statusCode(SC_UNPROCESSABLE_ENTITY)
       .body("errors[0].message", is("Match profile read-only 'child' field should be empty"))
       .body("errors[1].message", is("Match profile read-only 'parent' field should be empty"));
+  }
+
+  @DisplayName("should return 422 on POST when incoming qualifier type is set and value is blank")
+  @ParameterizedTest
+  @NullAndEmptySource
+  @ValueSource(strings = {"   "})
+  void shouldReturnUnprocessableEntity_whenPostWithQualifierTypeAndBlankIncomingValue(String blankValue) {
+    // arrange
+    Qualifier qualifier = new Qualifier().withQualifierType(BEGINS_WITH).withQualifierValue(blankValue);
+    MatchProfileUpdateDto dto = matchProfileWithQualifiers("qualifier-blank-incoming", qualifier, null);
+
+    // act & assert
+    postRequest(MATCH_PROFILES_PATH, dto)
+      .statusCode(SC_UNPROCESSABLE_ENTITY)
+      .body("errors[0].message", is(BLANK_QUALIFIER_VALUE_MESSAGE));
+  }
+
+  @DisplayName("should return 422 on POST when existing qualifier type is set and value is blank")
+  @Test
+  void shouldReturnUnprocessableEntity_whenPostWithQualifierTypeAndBlankExistingValue() {
+    // arrange
+    Qualifier qualifier = new Qualifier().withQualifierType(BEGINS_WITH).withQualifierValue("  ");
+    MatchProfileUpdateDto dto = matchProfileWithQualifiers("qualifier-blank-existing", null, qualifier);
+
+    // act & assert
+    postRequest(MATCH_PROFILES_PATH, dto)
+      .statusCode(SC_UNPROCESSABLE_ENTITY)
+      .body("errors[0].message", is(BLANK_QUALIFIER_VALUE_MESSAGE));
+  }
+
+  @DisplayName("should return 422 on POST when qualifier value is set without qualifier type")
+  @Test
+  void shouldReturnUnprocessableEntity_whenPostWithQualifierValueAndNoType() {
+    // arrange
+    Qualifier qualifier = new Qualifier().withQualifierValue("abc");
+    MatchProfileUpdateDto dto = matchProfileWithQualifiers("qualifier-no-type", qualifier, null);
+
+    // act & assert
+    postRequest(MATCH_PROFILES_PATH, dto)
+      .statusCode(SC_UNPROCESSABLE_ENTITY)
+      .body("errors[0].message", is(MISSING_QUALIFIER_TYPE_MESSAGE));
+  }
+
+  @DisplayName("should create profile on POST when qualifier type and non-blank value are set")
+  @Test
+  void shouldCreateProfile_whenPostWithQualifierTypeAndValue() {
+    // arrange
+    Qualifier qualifier = new Qualifier().withQualifierType(BEGINS_WITH).withQualifierValue("abc");
+    MatchProfileUpdateDto dto = matchProfileWithQualifiers("qualifier-valid", qualifier, null);
+
+    // act & assert
+    postRequest(MATCH_PROFILES_PATH, dto)
+      .statusCode(SC_CREATED);
+  }
+
+  @DisplayName("should create profile on POST when only comparison part is set on qualifier")
+  @Test
+  void shouldCreateProfile_whenPostWithOnlyComparisonPart() {
+    // arrange
+    Qualifier qualifier = new Qualifier().withComparisonPart(NUMERICS_ONLY);
+    MatchProfileUpdateDto dto = matchProfileWithQualifiers("qualifier-comparison-only", qualifier, null);
+
+    // act & assert
+    postRequest(MATCH_PROFILES_PATH, dto)
+      .statusCode(SC_CREATED);
+  }
+
+  @DisplayName("should return 422 on PUT when qualifier value is changed to blank")
+  @Test
+  void shouldReturnUnprocessableEntity_whenPutWithBlankQualifierValue() {
+    // arrange
+    Qualifier valid = new Qualifier().withQualifierType(BEGINS_WITH).withQualifierValue("abc");
+    MatchProfileUpdateDto created = postRequest(MATCH_PROFILES_PATH,
+      matchProfileWithQualifiers("qualifier-put-blank", valid, null))
+      .statusCode(SC_CREATED)
+      .extract().body().as(MatchProfileUpdateDto.class);
+    Qualifier blank = new Qualifier().withQualifierType(BEGINS_WITH).withQualifierValue(" ");
+    MatchProfileUpdateDto update = matchProfileWithQualifiers("qualifier-put-blank", blank, null);
+
+    // act & assert
+    putRequest(MATCH_PROFILES_PATH + "/" + created.getProfile().getId(), update)
+      .statusCode(SC_UNPROCESSABLE_ENTITY)
+      .body("errors[0].message", is(BLANK_QUALIFIER_VALUE_MESSAGE));
+  }
+
+  @DisplayName("should update profile on PUT when qualifier is unchecked")
+  @Test
+  void shouldUpdateProfile_whenPutWithQualifierUnchecked() {
+    // arrange
+    Qualifier valid = new Qualifier().withQualifierType(BEGINS_WITH).withQualifierValue("abc");
+    MatchProfileUpdateDto created = postRequest(MATCH_PROFILES_PATH,
+      matchProfileWithQualifiers("qualifier-put-unchecked", valid, null))
+      .statusCode(SC_CREATED)
+      .extract().body().as(MatchProfileUpdateDto.class);
+    MatchProfileUpdateDto update = matchProfileWithQualifiers("qualifier-put-unchecked", new Qualifier(), null);
+
+    // act & assert
+    putRequest(MATCH_PROFILES_PATH + "/" + created.getProfile().getId(), update)
+      .statusCode(SC_OK);
+  }
+
+  @DisplayName("should update profile on PUT when qualifier value is non-blank")
+  @Test
+  void shouldUpdateProfile_whenPutWithNonBlankQualifierValue() {
+    // arrange
+    Qualifier initial = new Qualifier().withQualifierType(BEGINS_WITH).withQualifierValue("abc");
+    MatchProfileUpdateDto created = postRequest(MATCH_PROFILES_PATH,
+      matchProfileWithQualifiers("qualifier-put-valid", initial, null))
+      .statusCode(SC_CREATED)
+      .extract().body().as(MatchProfileUpdateDto.class);
+    Qualifier changed = new Qualifier().withQualifierType(BEGINS_WITH).withQualifierValue("xyz");
+    MatchProfileUpdateDto update = matchProfileWithQualifiers("qualifier-put-valid", changed, null);
+
+    // act & assert
+    putRequest(MATCH_PROFILES_PATH + "/" + created.getProfile().getId(), update)
+      .statusCode(SC_OK);
+  }
+
+  @DisplayName("should save null qualifier value on POST when qualifier type is null and value is blank")
+  @ParameterizedTest
+  @NullAndEmptySource
+  @ValueSource(strings = {"   "})
+  void shouldNormalizeBlankQualifierValueToNull_whenPostWithoutQualifierType(String blankValue) {
+    // arrange
+    Qualifier qualifier = new Qualifier().withQualifierValue(blankValue).withComparisonPart(NUMERICS_ONLY);
+    MatchProfileUpdateDto dto = matchProfileWithQualifiers("qualifier-normalize-post", qualifier, qualifier);
+
+    // act
+    MatchProfileUpdateDto response = postRequest(MATCH_PROFILES_PATH, dto)
+      .statusCode(SC_CREATED)
+      .extract().body().as(MatchProfileUpdateDto.class);
+
+    // assert
+    MatchDetail detail = response.getProfile().getMatchDetails().getFirst();
+    assertThat(detail.getIncomingMatchExpression().getQualifier().getQualifierValue()).isNull();
+    assertThat(detail.getExistingMatchExpression().getQualifier().getQualifierValue()).isNull();
+    assertThat(detail.getIncomingMatchExpression().getQualifier().getComparisonPart()).isEqualTo(NUMERICS_ONLY);
+  }
+
+  @DisplayName("should save null qualifier value on PUT when qualifier type is null and value is blank")
+  @ParameterizedTest
+  @NullAndEmptySource
+  @ValueSource(strings = {"   "})
+  void shouldNormalizeBlankQualifierValueToNull_whenPutWithoutQualifierType(String blankValue) {
+    // arrange
+    Qualifier valid = new Qualifier().withQualifierType(BEGINS_WITH).withQualifierValue("abc");
+    MatchProfileUpdateDto created = postRequest(MATCH_PROFILES_PATH,
+      matchProfileWithQualifiers("qualifier-normalize-put", valid, null))
+      .statusCode(SC_CREATED)
+      .extract().body().as(MatchProfileUpdateDto.class);
+    Qualifier blank = new Qualifier().withQualifierValue(blankValue);
+    MatchProfileUpdateDto update = matchProfileWithQualifiers("qualifier-normalize-put", blank, blank);
+
+    // act
+    var response = putRequest(MATCH_PROFILES_PATH + "/" + created.getProfile().getId(), update)
+      .statusCode(SC_OK);
+
+    // assert
+    response.body("matchDetails[0].incomingMatchExpression.qualifier.qualifierValue", nullValue());
+    getRequest(MATCH_PROFILES_PATH + "/" + created.getProfile().getId())
+      .statusCode(SC_OK)
+      .body("matchDetails[0].incomingMatchExpression.qualifier.qualifierValue", nullValue())
+      .body("matchDetails[0].existingMatchExpression.qualifier.qualifierValue", nullValue());
+  }
+
+  private MatchProfileUpdateDto matchProfileWithQualifiers(String name, Qualifier incoming, Qualifier existing) {
+    MatchDetail matchDetail = new MatchDetail()
+      .withIncomingRecordType(EntityType.MARC_BIBLIOGRAPHIC)
+      .withExistingRecordType(EntityType.MARC_BIBLIOGRAPHIC)
+      .withMatchCriterion(EXACTLY_MATCHES)
+      .withIncomingMatchExpression(new MatchExpression()
+        .withDataValueType(VALUE_FROM_RECORD)
+        .withFields(Collections.singletonList(new Field().withLabel("field").withValue("001")))
+        .withQualifier(incoming))
+      .withExistingMatchExpression(new MatchExpression()
+        .withDataValueType(VALUE_FROM_RECORD)
+        .withFields(Collections.singletonList(new Field().withLabel("field").withValue("INSTANCE_HRID")))
+        .withQualifier(existing));
+    return new MatchProfileUpdateDto().withProfile(new MatchProfile()
+      .withName(name)
+      .withIncomingRecordType(EntityType.MARC_BIBLIOGRAPHIC)
+      .withExistingRecordType(EntityType.MARC_BIBLIOGRAPHIC)
+      .withMatchDetails(Collections.singletonList(matchDetail)));
   }
 
   private List<String> createProfiles() {

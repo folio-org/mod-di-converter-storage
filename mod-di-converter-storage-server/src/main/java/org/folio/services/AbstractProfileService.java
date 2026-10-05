@@ -305,6 +305,13 @@ public abstract class AbstractProfileService<T, S, D> implements ProfileService<
    */
   protected abstract List<Error> getMissingRequiredProfileFieldErrors(T profile);
 
+  /**
+   * Hook to normalize the profile in place before validation on create and update. No-op by default.
+   */
+  protected void normalizeProfile(T profile) {
+    // nothing to normalize by default
+  }
+
   protected Future<Errors> validateProfile(OperationType operationType, D profileDto, String tenantId) {
     T profile = getProfile(profileDto);
     Promise<Errors> promise = Promise.promise();
@@ -676,6 +683,7 @@ public abstract class AbstractProfileService<T, S, D> implements ProfileService<
   }
 
   private Future<T> processValidation(OperationType operationType, D profileDto, String tenantId) {
+    normalizeProfile(getProfile(profileDto));
     return validateProfile(operationType, profileDto, tenantId)
       .onFailure(th -> LOGGER.warn(PROFILE_VALIDATE_ERROR_MESSAGE, th.getCause()))
       .compose(errors -> {
