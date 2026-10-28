@@ -39,7 +39,7 @@
 * Add `folio-java-checkstyle 1.2.0`
 * Add `checkstyle 13.7.0`
 
-## 2025-04-14 2.5.0
+## 2026-04-14 2.5.0
 * [MODDICONV-425](https://folio-org.atlassian.net/browse/MODDICONV-425) Create new Default Mapping profile for Mosaic invoices
 * [MODDICONV-429](https://folio-org.atlassian.net/browse/MODDICONV-429) Upgrade module to Vert.x 5.0
 * [MODDICONV-427](https://folio-org.atlassian.net/browse/MODDICONV-427) Delete old association tables
