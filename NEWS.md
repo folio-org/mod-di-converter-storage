@@ -10,6 +10,7 @@
 * Improve validation based on API schemas ([MODDICONV-452](https://folio-org.atlassian.net/browse/MODDICONV-452))
 * Fix import of job profiles containing multiple occurrences of same action/mapping profiles ([MODDICONV-441](https://folio-org.atlassian.net/browse/MODDICONV-441))
 * Reject match profiles with blank qualifier value or missing qualifier type ([MODDICONV-453](https://folio-org.atlassian.net/browse/MODDICONV-453))
+* Return the job profile in `parentProfiles` of match profiles nested under another match profile ([MODDICONV-381](https://folio-org.atlassian.net/browse/MODDICONV-381))
 
 ### Tech Dept
 * Delete default quickMarc profiles ([MODDICONV-445](https://folio-org.atlassian.net/browse/MODDICONV-445))
@@ -39,7 +40,7 @@
 * Add `folio-java-checkstyle 1.2.0`
 * Add `checkstyle 13.7.0`
 
-## 2025-04-14 2.5.0
+## 2026-04-14 2.5.0
 * [MODDICONV-425](https://folio-org.atlassian.net/browse/MODDICONV-425) Create new Default Mapping profile for Mosaic invoices
 * [MODDICONV-429](https://folio-org.atlassian.net/browse/MODDICONV-429) Upgrade module to Vert.x 5.0
 * [MODDICONV-427](https://folio-org.atlassian.net/browse/MODDICONV-427) Delete old association tables
