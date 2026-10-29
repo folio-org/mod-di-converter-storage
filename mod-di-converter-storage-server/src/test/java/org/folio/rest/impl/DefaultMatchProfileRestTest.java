@@ -3,6 +3,7 @@ package org.folio.rest.impl;
 import static org.apache.http.HttpStatus.SC_BAD_REQUEST;
 import static org.folio.support.ProfileFixtures.MATCH_PROFILE_1;
 import static org.folio.support.TestUtil.MATCH_PROFILES_PATH;
+import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.hamcrest.core.Is.is;
 
 import java.util.Arrays;
@@ -22,6 +23,8 @@ class DefaultMatchProfileRestTest extends AbstractDefaultProfileTest {
 
   private static final String OCLC_INSTANCE_UUID_MATCH_PROFILE_ID = "31dbb554-0826-48ec-a0a4-3c55293d4dee";
   private static final String DEFAULT_DELETE_MARC_AUTHORITY_MATCH_PROFILE_ID = "4be5d1d2-1f5a-42ff-a9bd-fc90609d94b6";
+  private static final String OCLC_MARC_MARC_MATCH_PROFILE_ID = "d27d71ce-8a1e-44c6-acea-96961b5592c6";
+  private static final String OCLC_UPDATE_JOB_PROFILE_ID = "91f9b8d6-d80e-4727-9783-73fb53e3c786";
 
   @DisplayName("should add and remove tags on default match profile")
   @Test
@@ -40,6 +43,22 @@ class DefaultMatchProfileRestTest extends AbstractDefaultProfileTest {
       new MatchProfileUpdateDto().withProfile(profile.withTags(new Tags().withTagList(Collections.emptyList()))))
       .statusCode(HttpStatus.SC_OK)
       .body("tags.tagList", is(Matchers.empty()));
+  }
+
+  @DisplayName("should return parent job profile when match profile is nested under another match profile")
+  @Test
+  void shouldReturnParentMatchAndJobProfiles_whenMatchProfileIsNested() {
+    // given
+    var path = MATCH_PROFILES_PATH + "/" + OCLC_INSTANCE_UUID_MATCH_PROFILE_ID + "?withRelations=true";
+
+    // when
+    var response = getRequest(path);
+
+    // then
+    response
+      .statusCode(HttpStatus.SC_OK)
+      .body("parentProfiles*.id", containsInAnyOrder(OCLC_MARC_MARC_MATCH_PROFILE_ID, OCLC_UPDATE_JOB_PROFILE_ID))
+      .body("parentProfiles*.contentType", containsInAnyOrder("MATCH_PROFILE", "JOB_PROFILE"));
   }
 
   @DisplayName("should update default delete MARC-Authority match profile on PUT")
