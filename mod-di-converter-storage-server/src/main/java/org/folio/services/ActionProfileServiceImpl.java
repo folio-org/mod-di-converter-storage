@@ -189,6 +189,11 @@ public class ActionProfileServiceImpl
   }
 
   private void setDefaults(ActionProfile profile) {
+    // POC MODBULKOPS-690: hidden profiles are created by modules, not users, and keep the flag they send
+    // (bulk edit's batch authority control profile sends false to keep $9 for linking)
+    if (Boolean.TRUE.equals(profile.getHidden())) {
+      return;
+    }
     var bibInstanceProfile = profile.getFolioRecord().equals(ActionProfile.FolioRecord.INSTANCE)
                              || profile.getFolioRecord().equals(MARC_BIBLIOGRAPHIC);
     profile.setRemove9Subfields(bibInstanceProfile);
