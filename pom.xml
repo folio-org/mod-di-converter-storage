@@ -47,7 +47,7 @@
     <copy-rename-maven-plugin.version>1.0.1</copy-rename-maven-plugin.version>
     <maven-release-plugin.version>3.3.1</maven-release-plugin.version>
     <maven-compiler-plugin.version>3.16.0</maven-compiler-plugin.version>
-    <versions-maven-plugin.version>2.25.1</versions-maven-plugin.version>
+    <versions-maven-plugin.version>2.25.2</versions-maven-plugin.version>
     <build-helper-maven-plugin.version>3.8.0</build-helper-maven-plugin.version>
     <aspectj-maven-plugin.version>1.14.1</aspectj-maven-plugin.version>
     <properties-maven-plugin.version>1.4.0</properties-maven-plugin.version>
